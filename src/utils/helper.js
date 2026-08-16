@@ -50,6 +50,24 @@ export const pickAuthor = (item) => {
 }
 
 /**
+ * 解析评论/动态的作者信息（兼容后端多种关联结构）
+ * comment/flat 实际把作者放在 result.author
+ */
+export const pickCommentAuthor = (item) => {
+  const author =
+    item?.result?.author ||
+    item?.author ||
+    item?.user ||
+    (item?.result && item.result.user ? item.result.user : null) ||
+    {}
+  return {
+    id: author?.id || item?.uid || null,
+    nickname: author?.nickname || item?.nickname || '匿名',
+    avatar: author?.avatar || item?.avatar || ''
+  }
+}
+
+/**
  * 判断用户是否为管理员
  * 兼容两种用户结构：user.auth（顶层）和 user.result.auth（嵌套）
  * 参考主题实现：auth.all 或 auth.group.list 中存在 key === 'admin'

@@ -27,12 +27,10 @@
           </router-link>
         </nav>
 
-        <div class="site-footer">
-          <p class="footer-line" v-if="site.copyCode">© {{ site.copyCode }}</p>
+        <!-- <div class="site-footer">
+          <p class="footer-line" v-if="site.copyCode">{{ site.copyCode }}</p>
           <p class="footer-line" v-if="site.recordCode">{{ site.recordCode }}</p>
-          <p class="footer-line">Theme <a href="#">Matcha</a></p>
-          <p class="footer-line">Powered by <a href="#">INIS</a></p>
-        </div>
+        </div> -->
       </aside>
 
       <!-- 中栏 - 内容 -->
@@ -54,24 +52,24 @@ import SidebarRight from '@/components/SidebarRight.vue'
 import { call } from '@/api/request'
 import { getConfig } from '@/api/config'
 
-// 站点信息（来自 /api/config/one?key=inis_functions）
+// 站点信息（来自 /api/config/one?key=Mellow_functions）
 const siteConfig = ref({})
 const pages = ref([])
 
 const site = computed(() => {
   const c = siteConfig.value || {}
   return {
-    title: c.title || '考拉咖啡馆',
+    title: c.title || '朱某的生活印记',
     description: c.description || '我从虚空中惊醒',
     copyCode: c.copy?.code || '',
     recordCode: c.police?.code || ''
   }
 })
 
-// 获取站点配置（inis_functions）
+// 获取站点配置（Mellow_functions）
 async function loadSiteConfig() {
   try {
-    const res = await getConfig('inis_functions')
+    const res = await getConfig('Mellow_functions')
     siteConfig.value = res.data?.json || {}
   } catch {
     siteConfig.value = {}

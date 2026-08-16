@@ -43,7 +43,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { fetchEmojiCategories } from '@/utils/emoji'
+import { fetchEmojiCategories, getFullUrl } from '@/utils/emoji'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false }
@@ -94,13 +94,6 @@ const currentEmojis = computed(() => {
     return cat?.items || []
   }
 })
-
-function getFullUrl(url) {
-  if (!url) return ''
-  if (/^https?:\/\//.test(url)) return url
-  if (url.startsWith('//')) return url
-  return url
-}
 
 function selectEmoji(emoji) {
   emit('select', emoji)
@@ -157,6 +150,12 @@ onUnmounted(() => {
 
 <style scoped>
 .emoji-picker-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  z-index: 100;
+  min-width: 320px;
+  max-width: calc(100vw - 24px);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -166,7 +165,7 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   animation: emojiFadeIn 0.2s ease-out;
-  margin-top: 8px;
+  margin-top: 4px;
 }
 @keyframes emojiFadeIn {
   from { opacity: 0; transform: translateY(-5px); }

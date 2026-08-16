@@ -97,10 +97,6 @@
         <span>友链</span>
         <strong>{{ stats.link }}</strong>
       </div>
-      <div class="stat-row">
-        <span>运行</span>
-        <strong>{{ runtimeDays }} 天</strong>
-      </div>
     </div>
 
     <!-- 签到弹窗 -->

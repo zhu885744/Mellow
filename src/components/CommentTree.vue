@@ -1,176 +1,299 @@
 <template>
-  <div>
-    <div v-if="loading" class="loading">
-      <span class="spinner" /> 加载评论中...
+  <div class="comment-tree">
+    <!-- 发表评论（根评论） -->
+    <div class="root-comment-box">
+      <img class="root-avatar" :src="userStore.user?.avatar || defaultAvatar" alt="" />
+      <div class="root-input">
+        <EmojiEditor
+          v-model="newComment"
+          :disabled="!userStore.isLogged"
+          :placeholder="userStore.isLogged ? '写下你的评论…' : '登录后即可发表评论'"
+        />
+        <div class="root-actions">
+          <button
+            class="btn-primary"
+            :disabled="!userStore.isLogged || !newComment.trim()"
+            @click="submitRoot"
+          >
+            发表评论
+          </button>
+        </div>
+      </div>
     </div>
-    <div v-else-if="!comments.length" class="empty small">
-      还没有评论，<a href="#" @click.prevent="focusEditor">抢沙发</a>
+
+    <div v-if="loading" class="comment-loading">
+      <span class="spinner" /> 加载中...
     </div>
-    <ul v-else class="comment-tree">
+    <EmptyState v-else-if="!tree.length" icon="💬" text="还没有评论，快来抢沙发~" />
+    <template v-else>
       <CommentItem
-        v-for="c in flatTree"
+        v-for="c in tree"
         :key="c.id"
         :comment="c"
-        :depth="0"
+        :bind-type="bindType"
+        :author-id="authorId"
+        :reply-to="replyTo"
+        @like="onLike"
         @reply="onReply"
+        @submit="onSubmit"
+        @remove="onRemove"
       />
-    </ul>
-
-    <!-- 评论输入框 -->
-    <div class="comment-editor" :ref="el => editorRef = el">
-      <div v-if="replyTo" class="reply-to">
-        回复 <strong>@{{ replyTo.author?.nickname || '用户' }}</strong>
-        <button class="btn-link" @click="replyTo = null">取消</button>
-      </div>
-      <EmojiEditor
-        v-model="content"
-        placeholder="说点什么吧..."
+      <Pagination
+        v-if="total > pageSize"
+        :current="page"
+        :total="total"
+        :page-size="pageSize"
+        @update:current="(p) => { page = p; load() }"
       />
-      <div class="comment-actions">
-        <div class="comment-tools">
-          <span class="text-muted">支持 Markdown</span>
-        </div>
-        <button class="btn btn-primary" :disabled="submitting" @click="submit">
-          {{ submitting ? '提交中...' : '发表评论' }}
-        </button>
-      </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed, watch } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import CommentItem from './CommentItem.vue'
-import EmojiEditor from '@/components/EmojiEditor.vue'
-import { getCommentTree, createComment } from '@/api/comment'
-import { toast } from '@/utils/toast'
+import Pagination from './Pagination.vue'
+import EmptyState from './EmptyState.vue'
+import EmojiEditor from './EmojiEditor.vue'
+import { getCommentTree, createComment, removeComment } from '@/api/comment'
+import { likesCount, isLiked, like, unlike } from '@/api/tags'
 import { useUserStore } from '@/stores/user'
-import { useRouter } from 'vue-router'
+import { toast } from '@/utils/toast'
 
 const props = defineProps({
   bindId: { type: [String, Number], required: true },
-  bindType: { type: String, default: 'article' }
+  bindType: { type: String, default: 'article' },
+  authorId: { type: [String, Number], default: null }
 })
 
-const router = useRouter()
+// 通知父组件真实评论总数（发表/删除后同步）
+const emit = defineEmits(['loaded'])
+
 const userStore = useUserStore()
 
-const comments = ref([])
+const rawList = ref([])
+const tree = ref([])
+const newComment = ref('')
+
+const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
 const loading = ref(false)
-const submitting = ref(false)
-const content = ref('')
+const page = ref(1)
+const pageSize = 15
+const total = ref(0)
 const replyTo = ref(null)
-const editorRef = ref(null)
+
+// 扁平评论按 pid 本地构树（参考 i-comment.vue / CommentList.vue）
+function buildTree(list) {
+  const map = new Map()
+  const roots = []
+  list.forEach((c) => {
+    map.set(c.id, { ...c, replies: [], parentName: '' })
+  })
+  list.forEach((c) => {
+    const node = map.get(c.id)
+    if (c.pid && map.has(Number(c.pid))) {
+      node.parentName = map.get(Number(c.pid)).user?.nickname || ''
+      map.get(Number(c.pid)).replies.push(node)
+    } else {
+      roots.push(node)
+    }
+  })
+  // 子回复按时间正序，父评论倒序
+  const sortRec = (arr) => {
+    arr.forEach((n) => sortRec(n.replies))
+  }
+  roots.sort((a, b) => b.create_time - a.create_time)
+  sortRec(roots)
+  return roots
+}
+
+// 拉取点赞数与已点赞状态
+//  - 已登录：逐项 is-liked，返回里同时带 count（用 count 填点赞数）
+//  - 未登录：批量 counts（target_ids 数组）
+async function loadLikes(list) {
+  if (!list.length) return
+  if (userStore.isLogged) {
+    await Promise.all(
+      list.map(async (c) => {
+        const r = await isLiked('comment', c.id).catch(() => null)
+        c.liked = !!r?.data?.is_liked
+        if (r?.data?.count !== undefined) c.likeCount = r.data.count
+      })
+    )
+  } else {
+    const ids = list.map((c) => c.id)
+    const countsRes = await likesCount('comment', ids).catch(() => null)
+    const countMap = countsRes?.data?.counts || {}
+    list.forEach((c) => {
+      c.likeCount = countMap[c.id] ?? countMap[String(c.id)] ?? 0
+    })
+  }
+}
 
 async function load() {
   loading.value = true
   try {
     const res = await getCommentTree(props.bindId, props.bindType, {
-      page: 1,
-      limit: 100
+      page: page.value,
+      limit: pageSize
     })
-    // 兼容 204 无评论返回 { data: null }
-    comments.value = res.data?.data || res.data || []
+    const list = res.data?.data || []
+    total.value = res.data?.count || list.length
+    await loadLikes(list)
+    rawList.value = list
+    tree.value = buildTree(list)
+    emit('loaded', total.value)
   } catch {
-    comments.value = []
+    rawList.value = []
+    tree.value = []
+    total.value = 0
+    emit('loaded', 0)
   } finally {
     loading.value = false
   }
 }
 
-function onReply(c) {
-  replyTo.value = c
-  if (editorRef.value) editorRef.value.scrollIntoView({ behavior: 'smooth' })
-}
-
-function focusEditor() {
-  if (editorRef.value) editorRef.value.scrollIntoView({ behavior: 'smooth' })
-}
-
-// 平铺评论树（按 parentId 分组）,然后递归渲染
-const flatTree = computed(() => comments.value)
-
-async function submit() {
+async function onLike(comment) {
   if (!userStore.isLogged) {
     toast.warning('请先登录')
-    router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
     return
   }
-  if (!content.value.trim()) {
-    toast.warning('评论不能为空')
-    return
-  }
-  submitting.value = true
+  const next = !comment.liked
+  const prevCount = comment.likeCount || 0
+  // 乐观更新
+  comment.liked = next
+  comment.likeCount = prevCount + (next ? 1 : -1)
   try {
-    await createComment({
-      content: content.value,
-      bind_id: props.bindId,
-      bind_type: props.bindType,
-      pid: replyTo.value?.id || 0
-    })
-    content.value = ''
-    replyTo.value = null
-    toast.success('评论成功')
-    load()
-  } catch (e) {
-    // toast already shown
-  } finally {
-    submitting.value = false
+    if (next) await like('comment', comment.id)
+    else await unlike('comment', comment.id)
+    // 用 is-liked 返回的实时 count 校准（后端为唯一数据源）
+    const r = await isLiked('comment', comment.id).catch(() => null)
+    if (r?.data?.count !== undefined) comment.likeCount = r.data.count
+    comment.liked = next
+  } catch {
+    comment.liked = !next
+    comment.likeCount = prevCount
+    toast.error('操作失败')
   }
 }
 
-watch(() => props.bindId, load)
+function onReply(comment) {
+  replyTo.value = { id: comment.id, name: comment.user?.nickname || '匿名' }
+}
+
+// 发表根评论
+async function submitRoot() {
+  const content = newComment.value.trim()
+  if (!content) return
+  await onSubmit({ content, pid: 0 })
+  newComment.value = ''
+}
+
+async function onSubmit({ content, pid }) {
+  if (!userStore.isLogged) {
+    toast.warning('请先登录')
+    return
+  }
+  try {
+    await createComment({
+      bind_id: props.bindId,
+      bind_type: props.bindType,
+      pid: pid || 0,
+      content,
+      status: 1,
+      audit: 1
+    })
+    toast.success('评论成功')
+    replyTo.value = null
+    page.value = 1
+    load()
+  } catch {
+    toast.error('评论失败')
+  }
+}
+
+async function onRemove(comment) {
+  if (!confirm('确定删除该评论吗？')) return
+  try {
+    await removeComment(String(comment.id))
+    toast.success('已删除')
+    load()
+  } catch {
+    toast.error('删除失败')
+  }
+}
+
+watch(() => props.bindId, () => {
+  page.value = 1
+  load()
+})
 onMounted(load)
+
+defineExpose({ load })
 </script>
 
 <style scoped>
-.loading {
-  padding: 24px;
+.comment-tree {
+  margin-top: 8px;
+}
+.comment-loading {
+  padding: 32px;
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
 }
-.empty.small {
-  padding: 24px;
-}
-.comment-tree {
-  margin-bottom: 24px;
-}
-.reply-to {
+
+.root-comment-box {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: var(--bg-muted);
-  padding: 8px 12px;
-  border-radius: var(--radius);
-  font-size: 13px;
-  margin-bottom: 12px;
-  color: var(--text-soft);
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg-alt, #faf9f5);
+  border: 1px solid var(--border, #e8e6dd);
+  border-radius: 12px;
+  margin-bottom: 16px;
 }
-.btn-link {
-  background: none;
+.root-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.root-input {
+  flex: 1;
+}
+.root-input textarea {
+  width: 100%;
+  border: 1px solid var(--border, #e8e6dd);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 14px;
+  resize: vertical;
+  background: var(--bg, #fff);
+  color: var(--text, #2c2c2c);
+  font-family: inherit;
+  box-sizing: border-box;
+}
+.root-input textarea:focus {
+  outline: none;
+  border-color: var(--accent, #c2a36b);
+}
+.root-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.btn-primary {
+  background: var(--accent, #c2a36b);
+  color: #fff;
   border: none;
-  color: var(--text-muted);
-  font-size: 12px;
+  padding: 7px 18px;
+  border-radius: 8px;
+  font-size: 14px;
   cursor: pointer;
-  text-decoration: underline;
 }
-.comment-editor {
-  padding: 16px;
-  background: var(--bg-card);
-  border-radius: var(--radius);
-  border: 1px solid var(--border-soft);
-}
-.comment-actions {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 12px;
-  font-size: 12px;
-}
-.comment-tools {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

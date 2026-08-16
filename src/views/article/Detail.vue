@@ -47,7 +47,12 @@
         <span class="text-muted">{{ commentsCount }} 条评论</span>
       </template>
     </SectionTitle>
-    <CommentTree :bind-id="article.id" bind-type="article" />
+    <CommentTree
+      :bind-id="article.id"
+      bind-type="article"
+      :author-id="article.result?.author?.id"
+      @loaded="(n) => commentsCount = n"
+    />
   </div>
 
   <EmptyState v-else-if="!loading" text="文章不存在或已被删除" />
@@ -63,10 +68,9 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import CommentTree from '@/components/CommentTree.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { getArticle } from '@/api/article'
-import { call } from '@/api/request'
 import {
-  like, unlike, isLiked, likesCount,
-  collect, uncollect, isCollected, collectsCount
+  like, unlike, isLiked,
+  collect, uncollect, isCollected
 } from '@/api/tags'
 import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
@@ -102,12 +106,9 @@ async function load() {
     const res = await getArticle(route.params.id)
     article.value = res.data
 
-    // 评论数
-    const cRes = await call('comment', 'count', {
-      method: 'GET',
-      params: { bind_id: route.params.id, bind_type: 'article' }
-    })
-    commentsCount.value = cRes.data || 0
+    // 评论数直接取详情返回里的 result.comment.count
+    // （comment/count 不支持 bind_id/bind_type 过滤，会返回全站评论总数）
+    commentsCount.value = res.data?.result?.comment?.count || 0
   } catch {
     article.value = null
   } finally {
@@ -124,15 +125,14 @@ async function load() {
       // is-liked 返回 { data: { is_liked, count } }
       liked.value = !!(l?.data?.is_liked ?? l?.data)
       collected.value = !!(c?.data?.is_collected ?? c?.data)
-      likeCount.value = l?.data?.count || 0
-      collectCount.value = c?.data?.count || 0
+      // 已登录：优先用接口返回的精确计数，缺失时回退到文章详情自带计数
+      likeCount.value = l?.data?.count ?? article.value?.result?.like?.length ?? article.value?.likes ?? 0
+      collectCount.value = c?.data?.count ?? article.value?.result?.collect?.length ?? article.value?.favorites ?? 0
     } else {
-      const [lc, cc] = await Promise.all([
-        likesCount('article', route.params.id).catch(() => null),
-        collectsCount('article', route.params.id).catch(() => null)
-      ])
-      likeCount.value = lc?.data?.count || lc?.data || 0
-      collectCount.value = cc?.data?.count || cc?.data || 0
+      // 未登录：直接使用文章详情接口返回的计数（参考 archives.vue 做法，
+      // 不调用 user-likes/counts、user-collects/counts 批量接口，避免 target_ids 报错）
+      likeCount.value = article.value?.result?.like?.length ?? article.value?.likes ?? 0
+      collectCount.value = article.value?.result?.collect?.length ?? article.value?.favorites ?? 0
     }
   } catch {}
 }

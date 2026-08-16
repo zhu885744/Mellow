@@ -5,11 +5,11 @@ import { call } from '@/api/request'
 import { cache } from '@/utils/cache'
 import { toast } from '@/utils/toast'
 import { getCookie, setCookie, clearCookie } from '@/utils/cookie'
+import { TOKEN_NAME } from '@/api/request'
 
 const TOKEN_KEY = 'blog_user'
 const TOKEN_VALID = 'blog_token_valid'
 const USER_CACHE = 'user-info'
-const TOKEN_NAME = 'INIS_LOGIN_TOKEN'
 
 // 并发保护
 let checkingToken = false
@@ -37,7 +37,7 @@ export const useUserStore = defineStore('user', () => {
   const tokenValid = ref(0)
   // 兼容参考主题的 login 结构：finish 表示登录态校验是否完成
   const login = ref({ finish: false, user: {} })
-  // 站点信息（从 config/one?key=inis_functions 获取）
+  // 站点信息（从 config/one?key=Mellow_functions 获取）
   const siteInfo = ref({})
 
   const isLogged = computed(() => !!user.value)
@@ -170,7 +170,7 @@ export const useUserStore = defineStore('user', () => {
     }
     fetchingSiteInfo = true
     fetchSiteInfoPromise = (async () => {
-      const cacheName = 'inis_functions'
+      const cacheName = 'Mellow_functions'
       try {
         if (!force) {
           const cached = cache.get(cacheName)
@@ -179,7 +179,7 @@ export const useUserStore = defineStore('user', () => {
             return cached
           }
         }
-        const res = await call('config', 'one', { method: 'GET', params: { key: 'inis_functions' } })
+        const res = await call('config', 'one', { method: 'GET', params: { key: 'Mellow_functions' } })
         if (res.code === 200 && res.data) {
           let info = res.data.json || res.data
           if (info && typeof info === 'object') {

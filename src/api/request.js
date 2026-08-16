@@ -3,14 +3,32 @@ import { toast } from '@/utils/toast'
 import { useUserStore } from '@/stores/user'
 import router from '@/router'
 import { cache } from '@/utils/cache'
+import { getCookie } from '@/utils/cookie'
+
+// 与 stores/user.js、Login.vue、Register.vue 保持一致的 token cookie 名
+export const TOKEN_NAME = 'INIS_LOGIN_TOKEN'
+
+// baseURL 优先取 .env 的 VITE_API_URI（指向真实后端），
+// 未配置时回退到 '/api'（配合 vite dev proxy 转发）
+const API_URI = import.meta.env.VITE_API_URI || ''
+const baseURL = API_URI ? `${API_URI.replace(/\/$/, '')}/api` : '/api'
 
 const service = axios.create({
-  baseURL: '/api',
+  baseURL,
   timeout: 30000,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
+})
+
+// 请求拦截器：注入登录 token（INIS 后端以 Authorization: Bearer <token> 鉴权）
+service.interceptors.request.use((config) => {
+  const token = getCookie(TOKEN_NAME)
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
+  }
+  return config
 })
 
 // 是否正在登出中，防止重复触发

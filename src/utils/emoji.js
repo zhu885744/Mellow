@@ -5,8 +5,8 @@ import { call } from '@/api/request'
  * 后端规范：[emoji:表情链接] -> <img>
  */
 
-// 表情图片 URL 前缀（相对路径补全用）
-const BASE_URL = import.meta.env.VITE_BASE_URL || ''
+// 表情图片 URL 前缀（后端静态资源，使用 VITE_API_URI 补全完整地址）
+const BASE_URL = import.meta.env.VITE_API_URI || ''
 
 // 获取完整 URL（相对路径补全）
 export const getFullUrl = (url) => {

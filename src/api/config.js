@@ -4,9 +4,9 @@ import { call } from './request'
 export const getConfig = (key) =>
   call('config', 'one', { method: 'GET', params: { key } })
 
-// 获取站点功能配置（inis_functions）
+// 获取站点功能配置（Mellow_functions）
 export const getSiteFunctions = () =>
-  call('config', 'one', { method: 'GET', params: { key: 'inis_functions' } })
+  call('config', 'one', { method: 'GET', params: { key: 'Mellow_functions' } })
 
 // 保存配置
 export const saveConfig = (key, json, value = '') =>

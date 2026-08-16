@@ -415,7 +415,7 @@ import { isAdmin as helperIsAdmin } from '@/utils/helper'
 
 const userStore = useUserStore()
 
-const CONFIG_KEY = 'inis_functions'
+const CONFIG_KEY = 'Mellow_functions'
 const COMMENT_KEY = 'COMMENT'
 
 // 配置缓存

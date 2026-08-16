@@ -50,8 +50,7 @@ import { login } from '@/api/comm'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
 import { setCookie } from '@/utils/cookie'
-
-const TOKEN_NAME = 'INIS_LOGIN_TOKEN'
+import { TOKEN_NAME } from '@/api/request'
 
 const account = ref('')
 const password = ref('')

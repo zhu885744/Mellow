@@ -2,7 +2,7 @@
   <div class="auth-layout">
     <div class="auth-bg"></div>
     <div class="auth-card">
-      <router-link to="/" class="auth-logo">考拉咖啡馆</router-link>
+      <router-link to="/" class="auth-logo">朱某的生活印记</router-link>
       <router-view />
       <div class="auth-footer">
         <router-link to="/">← 返回首页</router-link>

@@ -38,11 +38,10 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/time'
 import { truncate } from '@/utils/helper'
-import { call } from '@/api/request'
 
 const props = defineProps({
   article: { type: Object, required: true }
@@ -77,26 +76,13 @@ const author = computed(() => {
   return props.article.result?.author || null
 })
 
-const commentCount = ref(0)
-
-async function loadCommentCount() {
-  try {
-    const res = await call('comment', 'count', {
-      method: 'GET',
-      params: { bind_id: props.article.id, bind_type: 'article' }
-    })
-    commentCount.value = res.data || 0
-  } catch {
-    commentCount.value = 0
-  }
-}
+// 评论数直接取文章返回里的 result.comment.count
+// （comment/count 不支持 bind_id/bind_type 过滤，会返回全站评论总数）
+const commentCount = computed(() => props.article.result?.comment?.count || 0)
 
 function goDetail() {
   router.push(`/archives/${props.article.id}`)
 }
-
-watch(() => props.article.id, loadCommentCount)
-onMounted(loadCommentCount)
 </script>
 
 <style scoped>

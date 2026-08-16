@@ -155,6 +155,7 @@ defineExpose({ clear, focus: () => editorRef.value?.focus() })
 <style scoped>
 .emoji-editor {
   width: 100%;
+  position: relative;
 }
 .editor-content {
   min-height: 100px;

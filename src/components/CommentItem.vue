@@ -1,108 +1,209 @@
 <template>
-  <li class="comment-item" :style="depthStyle">
-    <div class="comment-head">
-      <img :src="comment.result?.author?.avatar || defaultAvatar" class="avatar" />
-      <div class="meta">
-        <div class="name">
-          {{ comment.result?.author?.nickname || '匿名' }}
-          <span v-if="comment.result?.author?.title" class="title-tag">{{ comment.result.author.title }}</span>
-        </div>
-        <div class="time">{{ fromNow(comment.create_time) }}</div>
-      </div>
-      <button class="reply-btn" @click="$emit('reply', comment)">回复</button>
+  <div class="comment-item" :class="{ 'is-child': isChild }">
+    <div class="c-avatar">
+      <img :src="author.avatar || defaultAvatar" :alt="author.nickname" @error="onImgError" />
     </div>
-    <div class="comment-body" v-html="renderedContent"></div>
-    <ul v-if="comment.replies?.length" class="sub-comment">
-      <CommentItem
-        v-for="r in comment.replies"
-        :key="r.id"
-        :comment="r"
-        :depth="depth + 1"
-        @reply="(c) => $emit('reply', c)"
-      />
-    </ul>
-  </li>
+    <div class="c-body">
+      <div class="c-head">
+        <span class="c-name">{{ author.nickname }}</span>
+        <span v-if="author.id === authorId" class="c-badge">作者</span>
+        <span class="c-time">{{ formatDate(comment.create_time) }}</span>
+        <button v-if="canDelete" class="c-del" @click="$emit('remove', comment)">删除</button>
+      </div>
+
+      <div class="c-content" v-html="renderedContent"></div>
+
+      <div class="c-actions">
+        <button class="c-action" :class="{ active: comment.liked }" @click="$emit('like', comment)">
+          <span class="c-icon">{{ comment.liked ? '♥' : '♡' }}</span>
+          <span>{{ comment.likeCount || 0 }}</span>
+        </button>
+        <button class="c-action" @click="$emit('reply', comment)">
+          <span class="c-icon">💬</span> 回复
+        </button>
+      </div>
+
+      <!-- 回复框 -->
+      <div v-if="replyTo && replyTo.id === comment.id" class="c-reply-box">
+        <EmojiEditor
+          v-model="replyText"
+          :placeholder="`回复 @${replyTo.name}：`"
+        />
+        <div class="c-reply-actions">
+          <button class="btn btn-sm" @click="cancelReply">取消</button>
+          <button class="btn btn-primary btn-sm" :disabled="!replyText.trim()" @click="submitReply">发送</button>
+        </div>
+      </div>
+
+      <!-- 子评论 -->
+      <div v-if="comment.replies && comment.replies.length" class="c-children">
+        <CommentItem
+          v-for="child in comment.replies"
+          :key="child.id"
+          :comment="child"
+          :bind-type="bindType"
+          :is-child="true"
+          :author-id="authorId"
+          :reply-to="replyTo"
+          @like="$emit('like', $event)"
+          @reply="$emit('reply', $event)"
+          @submit="$emit('submit', $event)"
+          @remove="$emit('remove', $event)"
+        />
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
-import { fromNow } from '@/utils/time'
-import { renderEmoji } from '@/utils/emoji'
+import { ref, computed } from 'vue'
+import { formatDate } from '@/utils/time'
+import { useUserStore } from '@/stores/user'
+import { isAdmin, pickCommentAuthor } from '@/utils/helper'
+import { renderEmojiWithBreaks } from '@/utils/emoji'
+import EmojiEditor from './EmojiEditor.vue'
 
 const props = defineProps({
   comment: { type: Object, required: true },
-  depth: { type: Number, default: 0 }
+  bindType: { type: String, default: 'article' },
+  isChild: { type: Boolean, default: false },
+  authorId: { type: [String, Number], default: null },
+  replyTo: { type: Object, default: null }
 })
-defineEmits(['reply'])
 
+const emit = defineEmits(['like', 'reply', 'submit', 'remove'])
+
+const userStore = useUserStore()
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
-const depthStyle = computed(() => ({
-  marginLeft: `${Math.min(props.depth, 3) * 24}px`
-}))
-const renderedContent = computed(() => renderEmoji(props.comment.content, { size: 20 }))
+const replyText = ref('')
+
+// 后端把评论作者放在 result.author
+const author = computed(() => pickCommentAuthor(props.comment))
+const renderedContent = computed(() => renderEmojiWithBreaks(props.comment.content))
+
+const parentName = computed(() => props.comment.parentName || '')
+
+const canDelete = computed(() => {
+  const uid = userStore.user?.id
+  const cid = author.value.id
+  return !!(uid && (String(uid) === String(cid) || isAdmin(userStore.user) || props.authorId === uid))
+})
+
+function onImgError(e) {
+  e.target.src = defaultAvatar
+}
+
+function cancelReply() {
+  replyText.value = ''
+  emit('reply', { id: null })
+}
+
+function submitReply() {
+  if (!replyText.value.trim()) return
+  emit('submit', { content: replyText.value.trim(), pid: props.comment.id })
+  replyText.value = ''
+}
 </script>
 
 <style scoped>
 .comment-item {
+  display: flex;
+  gap: 12px;
   padding: 16px 0;
-  border-bottom: 1px dashed var(--border-soft);
+  border-bottom: 1px dashed var(--border);
 }
 .comment-item:last-child {
   border-bottom: none;
 }
-.comment-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-.avatar {
-  width: 36px;
-  height: 36px;
+.c-avatar img {
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   object-fit: cover;
+  background: var(--bg-muted);
 }
-.meta {
+.c-body {
   flex: 1;
+  min-width: 0;
 }
-.name {
+.c-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-size: 13px;
+}
+.c-name {
   font-weight: 500;
   color: var(--text);
 }
-.title-tag {
-  display: inline-block;
-  margin-left: 6px;
-  font-size: 11px;
-  padding: 1px 6px;
-  background: var(--bg-muted);
-  color: var(--primary-deep);
+.c-badge {
+  font-size: 10px;
+  padding: 0 5px;
   border-radius: 3px;
+  background: rgba(192, 57, 43, 0.1);
+  color: var(--accent);
 }
-.time {
-  font-size: 11px;
+.c-time {
   color: var(--text-muted);
-}
-.reply-btn {
   font-size: 12px;
-  color: var(--text-muted);
-  background: none;
+}
+.c-del {
+  margin-left: auto;
   border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12px;
   cursor: pointer;
 }
-.reply-btn:hover {
+.c-del:hover {
+  color: var(--accent);
+}
+.c-content {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text-soft);
+  margin: 6px 0;
+  word-break: break-word;
+}
+.c-reply-to {
   color: var(--primary);
 }
-.comment-body {
-  font-size: 14px;
-  color: var(--text-soft);
-  line-height: 1.7;
-  padding-left: 48px;
+.c-actions {
+  display: flex;
+  gap: 16px;
 }
-.sub-comment {
-  margin-left: 24px;
-  margin-top: 8px;
-  border-left: 2px solid var(--border-soft);
-  padding-left: 12px;
+.c-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 0;
+}
+.c-action:hover {
+  color: var(--primary);
+}
+.c-action.active {
+  color: var(--accent);
+}
+.c-icon {
+  font-size: 14px;
+}
+.c-reply-box {
+  margin-top: 10px;
+}
+.c-reply-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 6px;
+}
+.c-children {
+  margin-top: 12px;
+  padding-left: 14px;
+  border-left: 2px solid var(--border);
 }
 </style>
