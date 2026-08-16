@@ -1,0 +1,50 @@
+/**
+ * 工具
+ */
+export const debounce = (fn, wait = 300) => {
+  let t
+  return function (...args) {
+    clearTimeout(t)
+    t = setTimeout(() => fn.apply(this, args), wait)
+  }
+}
+
+/**
+ * 解析 tags 字段（格式 "1|2|3|" 或 字符串）
+ */
+export const parseTagsField = (field) => {
+  if (!field) return []
+  if (Array.isArray(field)) return field
+  return String(field).split('|').filter(Boolean)
+}
+
+/**
+ * 字符串截断
+ */
+export const truncate = (str, len = 80) => {
+  if (!str) return ''
+  str = String(str).replace(/<[^>]+>/g, '')
+  return str.length > len ? str.slice(0, len) + '...' : str
+}
+
+/**
+ * 深拷贝
+ */
+export const clone = (obj) => JSON.parse(JSON.stringify(obj))
+
+/**
+ * 获取 cookie
+ */
+export const getCookie = (name) => {
+  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
+  return match ? decodeURIComponent(match[2]) : ''
+}
+
+/**
+ * 提取 result.author.user 之类的关联数据
+ */
+export const pickAuthor = (item) => {
+  return item?.result?.user?.nickname
+    ? item.result.user
+    : item?.result?.author || item?.user || { id: item?.uid, nickname: '匿名', avatar: '' }
+}

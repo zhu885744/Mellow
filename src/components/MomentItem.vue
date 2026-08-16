@@ -1,0 +1,170 @@
+<template>
+  <div class="moment-card">
+    <div class="moment-head">
+      <img :src="author?.avatar || defaultAvatar" class="avatar" />
+      <div class="info">
+        <div class="name">
+          {{ author?.nickname || '匿名' }}
+          <span v-if="moment.top" class="top-tag">置顶</span>
+        </div>
+        <div class="time">{{ fromNow(moment.create_time) }}</div>
+      </div>
+      <button
+        v-if="canDelete"
+        class="btn-icon"
+        @click="$emit('delete', moment)"
+        title="删除"
+      >×</button>
+    </div>
+    <div class="moment-content">{{ moment.content }}</div>
+    <div v-if="imageList.length" class="moment-images">
+      <img
+        v-for="(img, i) in imageList"
+        :key="i"
+        :src="img"
+        class="moment-img"
+        @click="previewImage(i)"
+      />
+    </div>
+    <div v-if="moment.location" class="moment-loc">
+      📍 {{ moment.location }}
+    </div>
+    <div class="moment-actions">
+      <span class="action-item">💬 {{ moment.comment_count || 0 }}</span>
+      <span class="action-item">👁 {{ moment.views || 0 }}</span>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { computed } from 'vue'
+import { fromNow } from '@/utils/time'
+import { parseTagsField } from '@/utils/helper'
+import { useUserStore } from '@/stores/user'
+
+const props = defineProps({
+  moment: { type: Object, required: true }
+})
+defineEmits(['delete'])
+
+const userStore = useUserStore()
+
+const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
+
+const author = computed(() => props.moment.result?.author || props.moment.user)
+const imageList = computed(() => parseTagsField(props.moment.images))
+
+const canDelete = computed(() => {
+  return userStore.user?.id === props.moment.uid || userStore.user?.auth?.root
+})
+
+function previewImage(i) {
+  // 这里可以接入图片预览组件
+  window.open(imageList.value[i], '_blank')
+}
+</script>
+
+<style scoped>
+.moment-card {
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-soft);
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: box-shadow 0.2s;
+}
+.moment-card:hover {
+  box-shadow: var(--shadow);
+}
+.moment-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.info {
+  flex: 1;
+}
+.name {
+  font-size: 14px;
+  font-weight: 500;
+}
+.top-tag {
+  display: inline-block;
+  margin-left: 6px;
+  font-size: 11px;
+  padding: 1px 6px;
+  background: rgba(192, 57, 43, 0.1);
+  color: var(--accent);
+  border-radius: 3px;
+}
+.time {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.btn-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+}
+.btn-icon:hover {
+  background: var(--danger);
+  color: #fff;
+}
+
+.moment-content {
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+  margin-bottom: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.moment-images {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.moment-img {
+  width: 100%;
+  aspect-ratio: 1;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.moment-img:hover {
+  transform: scale(1.02);
+}
+.moment-loc {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.moment-actions {
+  display: flex;
+  gap: 16px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border-soft);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.action-item {
+  cursor: pointer;
+}
+.action-item:hover {
+  color: var(--primary);
+}
+</style>
