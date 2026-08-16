@@ -17,6 +17,11 @@ export default defineConfig({
         target: 'https://cs.zhuxu.asia',
         changeOrigin: true
       },
+      // 静态资源（含表情图片、上传附件等）也转发到后端
+      '/assets': {
+        target: 'https://cs.zhuxu.asia',
+        changeOrigin: true
+      },
       '/socket': {
         target: 'wss://cs.zhuxu.asia',
         ws: true,

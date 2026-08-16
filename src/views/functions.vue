@@ -411,6 +411,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import { getConfig, saveConfig } from '@/api/config'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
+import { isAdmin as helperIsAdmin } from '@/utils/helper'
 
 const userStore = useUserStore()
 
@@ -451,12 +452,7 @@ const tabs = [
 const activeTab = ref('global')
 
 // 管理员判断
-const isAdmin = computed(() => {
-  const u = userStore.user
-  const auth = u?.auth
-  const groups = auth?.group?.list || []
-  return !!auth?.all || groups.some((g) => g.key === 'admin')
-})
+const isAdmin = computed(() => helperIsAdmin(userStore.user))
 
 // 评论配置
 const commentConfig = ref({

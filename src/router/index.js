@@ -7,13 +7,18 @@ const routes = [
     children: [
       { path: '', name: 'home', component: () => import('@/views/home/Index.vue') },
       { path: 'articles', name: 'articles', component: () => import('@/views/article/List.vue') },
-      { path: 'articles/:id', name: 'article-detail', component: () => import('@/views/article/Detail.vue'), props: true },
+      { path: 'archives/:id', name: 'article-detail', component: () => import('@/views/article/Detail.vue'), props: true },
+      { path: 'archives', name: 'archives', component: () => import('@/views/article/Archives.vue') },
+      { path: 'category/:key', name: 'category', component: () => import('@/views/article/Category.vue'), props: true },
+      { path: 'tag/:key', name: 'tag', component: () => import('@/views/article/Tag.vue'), props: true },
       { path: 'moments', name: 'moments', component: () => import('@/views/moments/Index.vue') },
       { path: 'links', name: 'links', component: () => import('@/views/links/Index.vue') },
-      { path: 'archives', name: 'archives', component: () => import('@/views/article/Archives.vue') },
       { path: 'settings', name: 'settings', component: () => import('@/views/functions.vue'), meta: { auth: true } },
-      { path: 'page/:key', name: 'page', component: () => import('@/views/page/Index.vue'), props: true },
       { path: 'about', name: 'about', component: () => import('@/views/page/Index.vue'), props: { key: 'about' } },
+      // 用户主页 /author/:id（必须在 /:key 之前，避免被兜底路由拦截）
+      { path: 'author/:id', name: 'author', component: () => import('@/views/user/Author.vue'), props: true },
+      // 独立页面 /:key（必须放在最后，避免与其他固定路径冲突）
+      { path: ':key', name: 'page', component: () => import('@/views/page/Index.vue'), props: true },
       {
         path: 'user',
         component: () => import('@/views/user/Layout.vue'),
@@ -21,11 +26,11 @@ const routes = [
         children: [
           { path: '', redirect: '/user/profile' },
           { path: 'profile', name: 'user-profile', component: () => import('@/views/user/Profile.vue') },
+          { path: 'contact', name: 'user-contact', component: () => import('@/views/user/Contact.vue') },
           { path: 'security', name: 'user-security', component: () => import('@/views/user/Security.vue') },
           { path: 'collections', name: 'user-collections', component: () => import('@/views/user/Collections.vue') },
           { path: 'likes', name: 'user-likes', component: () => import('@/views/user/Likes.vue') },
-          { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
-          { path: 'exp', name: 'user-exp', component: () => import('@/views/user/Exp.vue') }
+          { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') }
         ]
       }
     ]
@@ -45,13 +50,13 @@ const routes = [
 const router = createRouter({
   history: createWebHistory(),
   routes,
-  scrollBehavior(to, from, saved) {
+  scrollBehavior(_to, _from, saved) {
     if (saved) return saved
     return { top: 0 }
   }
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   if (to.meta.auth) {
     const userStr = localStorage.getItem('blog_user')
     if (!userStr || userStr === 'null') {

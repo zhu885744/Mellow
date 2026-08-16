@@ -71,25 +71,23 @@ function setFilter(f) {
 async function load() {
   loading.value = true
   try {
-    const where = { status: 1 }
-    if (filter.value.group) {
-      where.group = filter.value.group
-    }
-    const res = await listArticles({
+    const params = {
       page: page.value,
       limit: pageSize,
-      where: JSON.stringify(where),
+      where: { audit: 1 },
       order: filter.value.sort
-    })
+    }
+    // 分组过滤：group 字段直接匹配
+    if (filter.value.group) {
+      params.where.group = filter.value.group
+    }
+    // 标签过滤：用 like 匹配 tags 字段中的 |id|
+    if (filter.value.tag) {
+      params.like = `tags|%7C${filter.value.tag}%7C`
+    }
+    const res = await listArticles(params)
     articles.value = res.data?.data || []
     total.value = res.data?.count || 0
-
-    // tag 字段过滤（前端二次过滤）
-    if (filter.value.tag) {
-      articles.value = articles.value.filter((a) =>
-        String(a.tags || '').includes(`|${filter.value.tag}|`)
-      )
-    }
   } catch {
     articles.value = []
     total.value = 0

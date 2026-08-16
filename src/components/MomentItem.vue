@@ -16,7 +16,7 @@
         title="删除"
       >×</button>
     </div>
-    <div class="moment-content">{{ moment.content }}</div>
+    <div class="moment-content" v-html="renderedContent"></div>
     <div v-if="imageList.length" class="moment-images">
       <img
         v-for="(img, i) in imageList"
@@ -39,7 +39,8 @@
 <script setup>
 import { computed } from 'vue'
 import { fromNow } from '@/utils/time'
-import { parseTagsField } from '@/utils/helper'
+import { parseTagsField, isAdmin as helperIsAdmin } from '@/utils/helper'
+import { renderEmojiWithBreaks } from '@/utils/emoji'
 import { useUserStore } from '@/stores/user'
 
 const props = defineProps({
@@ -53,9 +54,10 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
 
 const author = computed(() => props.moment.result?.author || props.moment.user)
 const imageList = computed(() => parseTagsField(props.moment.images))
+const renderedContent = computed(() => renderEmojiWithBreaks(props.moment.content))
 
 const canDelete = computed(() => {
-  return userStore.user?.id === props.moment.uid || userStore.user?.auth?.root
+  return userStore.user?.id === props.moment.uid || helperIsAdmin(userStore.user)
 })
 
 function previewImage(i) {

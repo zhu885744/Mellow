@@ -1,26 +1,64 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { checkToken, logout as apiLogout } from '@/api/comm'
+import { call } from '@/api/request'
+import { cache } from '@/utils/cache'
 import { toast } from '@/utils/toast'
+import { getCookie, setCookie, clearCookie } from '@/utils/cookie'
 
 const TOKEN_KEY = 'blog_user'
 const TOKEN_VALID = 'blog_token_valid'
+const USER_CACHE = 'user-info'
+const TOKEN_NAME = 'INIS_LOGIN_TOKEN'
+
+// 并发保护
+let checkingToken = false
+let checkTokenPromise = null
+let fetchingSiteInfo = false
+let fetchSiteInfoPromise = null
+
+// 规范化用户对象：确保 json 字段是对象（后端可能返回字符串）
+function normalizeUser(u) {
+  if (!u || typeof u !== 'object') return u || {}
+  const user = { ...u }
+  if (user.json && typeof user.json === 'string') {
+    try {
+      user.json = JSON.parse(user.json)
+    } catch {
+      user.json = {}
+    }
+  }
+  if (!user.json) user.json = {}
+  return user
+}
 
 export const useUserStore = defineStore('user', () => {
   const user = ref(null)
   const tokenValid = ref(0)
-  const isLogged = computed(() => !!user.value)
+  // 兼容参考主题的 login 结构：finish 表示登录态校验是否完成
+  const login = ref({ finish: false, user: {} })
+  // 站点信息（从 config/one?key=inis_functions 获取）
+  const siteInfo = ref({})
 
+  const isLogged = computed(() => !!user.value)
+  const isLoggedIn = computed(() => login.value.finish && Object.keys(login.value.user || {}).length > 0)
+
+  // ===== 基础持久化 =====
   function setUser(u, valid = 1296000) {
-    user.value = u
+    const nu = normalizeUser(u)
+    user.value = nu
     tokenValid.value = valid
+    login.value = { finish: true, user: nu || {} }
     save()
+    cache.set(USER_CACHE, nu || {}, Math.ceil(valid / 60))
   }
 
   function clear() {
     user.value = null
     tokenValid.value = 0
+    login.value = { finish: true, user: {} }
     save()
+    cache.del(USER_CACHE)
   }
 
   function save() {
@@ -36,7 +74,70 @@ export const useUserStore = defineStore('user', () => {
       const v = localStorage.getItem(TOKEN_VALID)
       user.value = u && u !== 'null' ? JSON.parse(u) : null
       tokenValid.value = v ? parseInt(v) : 0
+      if (user.value) {
+        login.value = { finish: true, user: user.value }
+      }
     } catch {}
+  }
+
+  // ===== 登录态校验（参考主题 checkToken）=====
+  async function checkLoginState() {
+    if (checkingToken && checkTokenPromise) {
+      await checkTokenPromise
+      return login.value
+    }
+    checkingToken = true
+    checkTokenPromise = (async () => {
+      login.value.finish = false
+      try {
+        const cachedUser = cache.get(USER_CACHE)
+        if (cachedUser) {
+          user.value = cachedUser
+          login.value = { finish: true, user: cachedUser }
+        }
+        const res = await checkToken(false)
+        if (res.code === 200) {
+          const u = normalizeUser(res.data?.user || res.data || {})
+          user.value = u
+          login.value = { finish: true, user: u }
+          const valid = Number(res.data?.valid_time) > 0 ? Number(res.data.valid_time) : 2 * 60 * 60
+          tokenValid.value = valid
+          // 同步 token 到 cookie（刷新/续期）
+          if (res.data?.token) {
+            setCookie(TOKEN_NAME, res.data.token, valid)
+          }
+          cache.set(USER_CACHE, u, Math.ceil(valid / 60))
+          save()
+        } else if (res.code === 401 || res.code === 412) {
+          clear()
+        } else {
+          login.value.finish = true
+        }
+      } catch {
+        if (cache.get(USER_CACHE)) {
+          login.value.finish = true
+        }
+      } finally {
+        checkingToken = false
+        checkTokenPromise = null
+      }
+    })()
+    await checkTokenPromise
+    return login.value
+  }
+
+  // 应用启动时校验（仅当存在 token 或缓存用户时才发请求）
+  async function ensureLogin() {
+    const hasToken = !!getCookie(TOKEN_NAME)
+    const hasCachedUser = user.value || cache.get(USER_CACHE)
+    if (!hasToken && !hasCachedUser) {
+      login.value.finish = true
+      return login.value
+    }
+    if (!login.value.finish || !hasCachedUser) {
+      await checkLoginState()
+    }
+    return login.value
   }
 
   async function verifyToken(silent = false) {
@@ -44,8 +145,13 @@ export const useUserStore = defineStore('user', () => {
     try {
       const res = await checkToken(false)
       if (res.code === 200) {
-        if (res.data?.user) user.value = res.data.user
+        const u = normalizeUser(res.data?.user || res.data || {})
+        user.value = u
+        login.value = { finish: true, user: u }
         if (res.data?.valid_time) tokenValid.value = res.data.valid_time
+        if (res.data?.token) {
+          setCookie(TOKEN_NAME, res.data.token, Number(res.data.valid_time) > 0 ? Number(res.data.valid_time) : 2 * 60 * 60)
+        }
         save()
         return true
       }
@@ -57,23 +163,67 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
+  // ===== 站点信息（参考主题 fetchSiteInfo）=====
+  async function fetchSiteInfo(force = false) {
+    if (!force && fetchingSiteInfo && fetchSiteInfoPromise) {
+      return fetchSiteInfoPromise
+    }
+    fetchingSiteInfo = true
+    fetchSiteInfoPromise = (async () => {
+      const cacheName = 'inis_functions'
+      try {
+        if (!force) {
+          const cached = cache.get(cacheName)
+          if (cached && typeof cached === 'object') {
+            siteInfo.value = cached
+            return cached
+          }
+        }
+        const res = await call('config', 'one', { method: 'GET', params: { key: 'inis_functions' } })
+        if (res.code === 200 && res.data) {
+          let info = res.data.json || res.data
+          if (info && typeof info === 'object') {
+            siteInfo.value = info
+            cache.set(cacheName, info, 30)
+          }
+          return siteInfo.value
+        }
+      } catch (e) {
+        console.error('获取站点信息失败:', e)
+      } finally {
+        fetchingSiteInfo = false
+        fetchSiteInfoPromise = null
+      }
+      return siteInfo.value
+    })()
+    return fetchSiteInfoPromise
+  }
+
   async function logout() {
     try {
       await apiLogout()
     } catch {}
     clear()
+    // 清除 token cookie
+    clearCookie(TOKEN_NAME)
     toast.success('已退出登录')
   }
 
   return {
     user,
     tokenValid,
+    login,
+    siteInfo,
     isLogged,
+    isLoggedIn,
     setUser,
     clear,
     save,
     restore,
     verifyToken,
+    checkLoginState,
+    ensureLogin,
+    fetchSiteInfo,
     logout
   }
 })

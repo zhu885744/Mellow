@@ -5,7 +5,7 @@ export const listMoments = (params = {}) =>
   call('moments', 'all', {
     method: 'GET',
     params: {
-      where: JSON.stringify({ audit: 1, status: 1 }),
+      where: { audit: 1, status: 1 },
       order: 'top desc, create_time desc',
       ...params
     }
@@ -22,9 +22,9 @@ export const getMomentComments = (bind_id, params = {}) =>
     params: { bind_id, ...params }
   })
 
-// 创建动态
+// 创建动态（用 create）
 export const createMoment = (data) =>
-  call('moments', 'save', { method: 'POST', data })
+  call('moments', 'create', { method: 'POST', data })
 
 // 删除动态
 export const removeMoment = (ids) =>

@@ -1,6 +1,6 @@
-# INIS 博客主题
+# MELLOW 主题
 
-基于 Vue 3 + Vite + 纯 HTML/CSS/JS 开发的三栏轻量博客主题，对接 INIS 后端 API。
+基于 Vue 3 + Vite + 纯 HTML/CSS/JS 开发的三栏博客主题
 
 ## 功能模块
 

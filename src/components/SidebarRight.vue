@@ -14,6 +14,11 @@
           <router-link :to="`/user`" class="btn btn-sm btn-ghost">用户中心</router-link>
           <button class="btn btn-sm btn-ghost" @click="userStore.logout">退出</button>
         </div>
+        <div class="signin-entry">
+          <button class="btn btn-sm btn-primary btn-block" @click="openCheckin">
+            ✨ 每日签到
+          </button>
+        </div>
       </template>
       <template v-else>
         <img :src="defaultAvatar" class="user-avatar" />
@@ -34,9 +39,6 @@
       </div>
       <div class="notify-actions">
         <router-link to="/user/notifications" class="btn btn-sm btn-block">查看全部</router-link>
-        <button class="btn btn-sm btn-block" :disabled="notif.count === 0" @click="markAll">
-          全部已读
-        </button>
       </div>
     </div>
 
@@ -45,7 +47,7 @@
       <div class="card-title"><span>分类导航</span></div>
       <ul class="cat-list">
         <li v-for="g in groups" :key="g.id">
-          <router-link :to="`/articles?group=${g.id}`" class="cat-item">
+          <router-link :to="`/category/${g.id}`" class="cat-item">
             <span class="cat-name">{{ g.name }}</span>
             <span class="cat-count">{{ g.count || 0 }}</span>
           </router-link>
@@ -61,7 +63,7 @@
         <router-link
           v-for="t in tags"
           :key="t.id"
-          :to="`/articles?tag=${t.id}`"
+          :to="`/tag/${t.id}`"
           class="tag tag-primary"
         >{{ t.name }}</router-link>
         <span v-if="!tags.length" class="empty" style="padding: 12px 0;">暂无标签</span>
@@ -100,6 +102,9 @@
         <strong>{{ runtimeDays }} 天</strong>
       </div>
     </div>
+
+    <!-- 签到弹窗 -->
+    <CheckinDialog ref="checkinDialog" />
   </div>
 </template>
 
@@ -108,13 +113,19 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
-import { getArticleGroupTree } from '@/api/article'
+import { getArticleGroups, countArticlesByGroup } from '@/api/article'
 import { call } from '@/api/request'
 import { toast } from '@/utils/toast'
+import CheckinDialog from '@/components/CheckinDialog.vue'
 
 const userStore = useUserStore()
 const notif = useNotificationStore()
 const { user } = storeToRefs(userStore)
+
+const checkinDialog = ref(null)
+function openCheckin() {
+  checkinDialog.value?.show()
+}
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 
@@ -130,18 +141,37 @@ const startTime = ref(Date.now())
 
 async function loadGroups() {
   try {
-    const res = await getArticleGroupTree()
-    const tree = res.data || []
-    // 拍平树
+    const res = await getArticleGroups()
+    const list = res.data?.data || []
+    // 基于 pid 构建层级，按 pid 排序（pid=0 为顶级）
     const flat = []
-    const walk = (nodes, level = 0) => {
-      nodes.forEach((n) => {
-        flat.push({ id: n.id, name: '— '.repeat(level) + n.name, count: n.article_count })
-        if (n.children?.length) walk(n.children, level + 1)
-      })
+    const walk = (parentId, level) => {
+      list
+        .filter((n) => n.pid === parentId)
+        .forEach((n) => {
+          flat.push({ id: n.id, name: '— '.repeat(level) + n.name, count: n.article_count })
+          walk(n.id, level + 1)
+        })
     }
-    walk(tree)
+    walk(0, 0)
+    // 处理孤儿节点
+    list
+      .filter((n) => !flat.find((f) => f.id === n.id))
+      .forEach((n) => flat.push({ id: n.id, name: n.name, count: n.article_count }))
     groups.value = flat
+
+    // 后端 article-group 的 article_count 字段未维护（恒为 null），逐个统计真实文章数
+    await Promise.all(
+      flat.map(async (g) => {
+        try {
+          const c = await countArticlesByGroup(g.id)
+          g.count = c.data || 0
+        } catch {
+          g.count = 0
+        }
+      })
+    )
+    groups.value = [...flat]
   } catch {
     groups.value = []
   }
@@ -160,8 +190,8 @@ async function loadTags() {
 async function loadStats() {
   try {
     const [a, m, l] = await Promise.all([
-      call('article', 'count', { method: 'GET', params: { where: JSON.stringify({ status: 1 }) } }),
-      call('moments', 'count', { method: 'GET', params: { where: JSON.stringify({ audit: 1, status: 1 }) } }),
+      call('article', 'count', { method: 'GET', params: { where: { audit: 1 } } }),
+      call('moments', 'count', { method: 'GET', params: { where: { audit: 1, status: 1 } } }),
       call('links', 'count', { method: 'GET' })
     ])
     stats.value = {
@@ -235,6 +265,9 @@ watch(
   display: flex;
   justify-content: center;
   gap: 8px;
+}
+.signin-entry {
+  margin-top: 12px;
 }
 
 .card-title {

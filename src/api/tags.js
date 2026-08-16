@@ -11,7 +11,7 @@ export const like = (target_type, target_id) =>
   call('user-likes', 'like', { method: 'POST', data: { target_type, target_id } })
 
 export const unlike = (target_type, target_id) =>
-  call('user-likes', 'unlike', { method: 'POST', data: { target_type, target_id } })
+  call('user-likes', 'unlike', { method: 'PUT', data: { target_type, target_id } })
 
 export const isLiked = (target_type, target_id) =>
   call('user-likes', 'is-liked', { method: 'GET', params: { target_type, target_id } })
@@ -24,7 +24,7 @@ export const collect = (target_type, target_id) =>
   call('user-collects', 'collect', { method: 'POST', data: { target_type, target_id } })
 
 export const uncollect = (target_type, target_id) =>
-  call('user-collects', 'uncollect', { method: 'POST', data: { target_type, target_id } })
+  call('user-collects', 'uncollect', { method: 'PUT', data: { target_type, target_id } })
 
 export const isCollected = (target_type, target_id) =>
   call('user-collects', 'is-collected', { method: 'GET', params: { target_type, target_id } })
@@ -34,6 +34,10 @@ export const collectsCount = (target_type, target_id) =>
 
 export const myCollects = (params = {}) =>
   call('user-collects', 'collects', { method: 'GET', params })
+
+// 获取点赞列表（支持 where: { login } 查询他人点赞）
+export const myLikes = (params = {}) =>
+  call('user-likes', 'likes', { method: 'GET', params })
 
 // 关注
 export const follow = (follow_uid) =>
@@ -60,7 +64,3 @@ export const readAllNotifications = () =>
 
 export const removeAllNotifications = () =>
   call('notification', 'remove-all', { method: 'DELETE' })
-
-// 经验榜
-export const expActive = () =>
-  call('exp', 'active', { method: 'GET' })

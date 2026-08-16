@@ -14,6 +14,9 @@
           <router-link to="/user/profile" class="menu-item">
             <span>👤</span> 个人资料
           </router-link>
+          <router-link to="/user/contact" class="menu-item">
+            <span>📇</span> 联系方式
+          </router-link>
           <router-link to="/user/security" class="menu-item">
             <span>🔒</span> 账号安全
           </router-link>
@@ -26,9 +29,6 @@
           <router-link to="/user/notifications" class="menu-item">
             <span>🔔</span> 消息通知
             <span v-if="notif.count > 0" class="badge">{{ notif.count }}</span>
-          </router-link>
-          <router-link to="/user/exp" class="menu-item">
-            <span>✨</span> 每日签到
           </router-link>
           <router-link v-if="isAdmin" to="/settings" class="menu-item">
             <span>🛠️</span> 站点配置
@@ -53,16 +53,13 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
 import { storeToRefs } from 'pinia'
+import { isAdmin as helperIsAdmin } from '@/utils/helper'
 
 const userStore = useUserStore()
 const notif = useNotificationStore()
 const { user } = storeToRefs(userStore)
 
-const isAdmin = computed(() => {
-  const auth = user.value?.auth
-  const groups = auth?.group?.list || []
-  return !!auth?.all || groups.some((g) => g.key === 'admin')
-})
+const isAdmin = computed(() => helperIsAdmin(user.value))
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/></svg>'
 </script>
@@ -73,6 +70,9 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
   grid-template-columns: 220px 1fr;
   gap: 16px;
   align-items: start;
+}
+.user-body {
+  min-width: 0;
 }
 .user-menu {
   position: sticky;

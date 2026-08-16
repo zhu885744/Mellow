@@ -1,9 +1,9 @@
 {
-  "name": "blog-theme",
+  "name": "Mellow",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "INIS 博客三栏轻量主题 - Vue + Vite 纯前端",
+  "description": "INIS 博客三栏主题",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

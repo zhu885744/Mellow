@@ -15,7 +15,7 @@
         <h3 class="archive-year">{{ g.label }}</h3>
         <ul class="archive-items">
           <li v-for="a in g.list" :key="a.id" class="archive-item">
-            <router-link :to="`/articles/${a.id}`">{{ a.title }}</router-link>
+            <router-link :to="`/archives/${a.id}`">{{ a.title }}</router-link>
             <span class="archive-date">{{ formatDate(a.create_time) }}</span>
           </li>
         </ul>
@@ -53,9 +53,9 @@ async function load() {
     const res = await listArticles({
       page: 1,
       limit: 999,
-      where: JSON.stringify({ status: 1 }),
-      order: 'create_time desc',
-      field: 'id,title,create_time'
+      where: { audit: 1 },
+      order: 'publish_time desc',
+      field: 'id,title,create_time,publish_time'
     })
     groups.value = groupByYear(res.data?.data || [])
   } catch {

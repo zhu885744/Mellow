@@ -81,6 +81,9 @@ import { useRouter } from 'vue-router'
 import { register, registerSendCode } from '@/api/comm'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
+import { setCookie } from '@/utils/cookie'
+
+const TOKEN_NAME = 'INIS_LOGIN_TOKEN'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -131,7 +134,12 @@ async function handleRegister() {
   try {
     const res = await register(form.value.social, form.value.code, form.value.password, form.value.account, form.value.nickname)
     if (res.code === 200) {
-      userStore.setUser(res.data?.user, res.data?.valid_time || 1296000)
+      const data = res.data || {}
+      const validTime = Number(data.valid_time) > 0 ? Number(data.valid_time) : 15 * 24 * 60 * 60
+      if (data.token) {
+        setCookie(TOKEN_NAME, data.token, validTime)
+      }
+      userStore.setUser(data.user, validTime)
       toast.success('注册成功，已自动登录')
       router.replace('/')
     }

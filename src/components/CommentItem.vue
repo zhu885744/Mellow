@@ -11,7 +11,7 @@
       </div>
       <button class="reply-btn" @click="$emit('reply', comment)">回复</button>
     </div>
-    <div class="comment-body">{{ comment.content }}</div>
+    <div class="comment-body" v-html="renderedContent"></div>
     <ul v-if="comment.replies?.length" class="sub-comment">
       <CommentItem
         v-for="r in comment.replies"
@@ -27,6 +27,7 @@
 <script setup>
 import { computed } from 'vue'
 import { fromNow } from '@/utils/time'
+import { renderEmoji } from '@/utils/emoji'
 
 const props = defineProps({
   comment: { type: Object, required: true },
@@ -38,6 +39,7 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
 const depthStyle = computed(() => ({
   marginLeft: `${Math.min(props.depth, 3) * 24}px`
 }))
+const renderedContent = computed(() => renderEmoji(props.comment.content, { size: 20 }))
 </script>
 
 <style scoped>

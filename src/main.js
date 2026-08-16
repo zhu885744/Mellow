@@ -11,8 +11,10 @@ const pinia = createPinia()
 app.use(pinia)
 app.use(router)
 
-// 应用启动时尝试恢复登录态
+// 应用启动时恢复登录态并拉取站点信息
 const userStore = useUserStore()
 userStore.restore()
+userStore.ensureLogin()
+userStore.fetchSiteInfo()
 
 app.mount('#app')

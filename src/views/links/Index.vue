@@ -84,7 +84,7 @@
 import { ref, onMounted } from 'vue'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { listLinkGroups, listLinks, createLink } from '@/api/links'
+import { listLinks, createLink } from '@/api/links'
 import { toast } from '@/utils/toast'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82">友</text></svg>'
@@ -99,27 +99,31 @@ const form = ref({
   url: '',
   description: '',
   avatar: '',
-  group: 1
+  group: 1,
+  target: '_blank'
 })
 
 async function load() {
   loading.value = true
   try {
-    const [g, l] = await Promise.all([
-      listLinkGroups({ page: 1, limit: 100, field: 'id,name,description' }),
-      listLinks({ page: 1, limit: 200, status: true, field: 'id,nickname,url,description,avatar,group,online' })
-    ])
-    const groupsData = g.data?.data || []
-    const linksData = l.data?.data || []
-    groups.value = groupsData.map((gp) => ({
-      ...gp,
-      list: linksData.filter((x) => x.group === gp.id)
-    }))
-    // 没有分组的链接
-    const noGroup = linksData.filter((x) => !groupsData.find((g) => g.id === x.group))
-    if (noGroup.length) {
-      groups.value.unshift({ id: 0, name: '默认分组', description: '', list: noGroup })
-    }
+    const res = await listLinks({
+      page: 1,
+      limit: 200,
+      where: { audit: 1 },
+      field: 'id,nickname,url,description,avatar,group'
+    })
+    const linksData = res.data?.data || []
+    // 按 result.group 分组
+    const map = new Map()
+    linksData.forEach((link) => {
+      const g = link.result?.group || {}
+      const gid = g.id ?? 0
+      if (!map.has(gid)) {
+        map.set(gid, { id: gid, name: g.name || '默认分组', description: g.description || '', list: [] })
+      }
+      map.get(gid).list.push(link)
+    })
+    groups.value = [...map.values()]
   } catch {
     groups.value = []
   } finally {
@@ -145,7 +149,7 @@ async function submit() {
     await createLink(form.value)
     toast.success('申请已提交，等待审核')
     showApply.value = false
-    form.value = { nickname: '', url: '', description: '', avatar: '', group: 1 }
+    form.value = { nickname: '', url: '', description: '', avatar: '', group: 1, target: '_blank' }
   } catch {} finally {
     submitting.value = false
   }
@@ -233,19 +237,6 @@ onMounted(load)
   overflow: hidden;
   margin: 4px 0 8px;
   min-height: 32px;
-}
-.link-foot {
-  display: flex;
-  justify-content: flex-end;
-}
-.link-status {
-  font-size: 11px;
-}
-.link-status.on {
-  color: var(--success);
-}
-.link-status.off {
-  color: var(--text-light);
 }
 
 .loading {

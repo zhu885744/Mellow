@@ -12,11 +12,9 @@
         <img :src="user?.avatar || defaultAvatar" class="avatar" />
         <span class="name">{{ user?.nickname }}</span>
       </div>
-      <textarea
+      <EmojiEditor
         v-model="newContent"
-        class="textarea"
         placeholder="此刻的想法..."
-        rows="3"
       />
       <div class="pub-actions">
         <button class="btn btn-primary btn-sm" :disabled="publishing" @click="publish">
@@ -54,6 +52,7 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import MomentItem from '@/components/MomentItem.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import EmojiEditor from '@/components/EmojiEditor.vue'
 import { listMoments, createMoment, removeMoment } from '@/api/moments'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'

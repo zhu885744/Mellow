@@ -22,14 +22,14 @@
         回复 <strong>@{{ replyTo.author?.nickname || '用户' }}</strong>
         <button class="btn-link" @click="replyTo = null">取消</button>
       </div>
-      <textarea
+      <EmojiEditor
         v-model="content"
-        class="textarea"
         placeholder="说点什么吧..."
-        rows="4"
       />
       <div class="comment-actions">
-        <span class="text-muted">支持 Markdown</span>
+        <div class="comment-tools">
+          <span class="text-muted">支持 Markdown</span>
+        </div>
         <button class="btn btn-primary" :disabled="submitting" @click="submit">
           {{ submitting ? '提交中...' : '发表评论' }}
         </button>
@@ -41,6 +41,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import CommentItem from './CommentItem.vue'
+import EmojiEditor from '@/components/EmojiEditor.vue'
 import { getCommentTree, createComment } from '@/api/comment'
 import { toast } from '@/utils/toast'
 import { useUserStore } from '@/stores/user'
@@ -68,7 +69,8 @@ async function load() {
       page: 1,
       limit: 100
     })
-    comments.value = res.data?.data || []
+    // 兼容 204 无评论返回 { data: null }
+    comments.value = res.data?.data || res.data || []
   } catch {
     comments.value = []
   } finally {
@@ -165,5 +167,10 @@ onMounted(load)
   align-items: center;
   margin-top: 12px;
   font-size: 12px;
+}
+.comment-tools {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 </style>

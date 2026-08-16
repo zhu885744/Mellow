@@ -49,6 +49,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { login } from '@/api/comm'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
+import { setCookie } from '@/utils/cookie'
+
+const TOKEN_NAME = 'INIS_LOGIN_TOKEN'
 
 const account = ref('')
 const password = ref('')
@@ -67,7 +70,15 @@ async function handleLogin() {
   try {
     const res = await login(account.value, password.value)
     if (res.code === 200 || res.code === 201) {
-      userStore.setUser(res.data?.user, res.data?.valid_time || 1296000)
+      const data = res.data || {}
+      const validTime = Number(data.valid_time) > 0 ? Number(data.valid_time) : 15 * 24 * 60 * 60
+      // 关键：手动将 token 写入 cookie，后续请求才能通过鉴权
+      if (data.token) {
+        setCookie(TOKEN_NAME, data.token, validTime)
+      }
+      userStore.setUser(data.user, validTime)
+      // 用 check-token 的权威结构刷新用户信息（确保 result.auth 等字段完整）
+      userStore.checkLoginState()
       toast.success('登录成功')
       const redirect = route.query.redirect || '/'
       router.replace(redirect)

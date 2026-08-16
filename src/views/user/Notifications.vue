@@ -131,7 +131,7 @@ async function onClick(n) {
   }
   // 跳转
   if (n.bind_type === 'article' && n.bind_id) {
-    router.push(`/articles/${n.bind_id}`)
+    router.push(`/archives/${n.bind_id}`)
   } else if (n.bind_type === 'moments' && n.bind_id) {
     router.push('/moments')
   } else if (n.bind_type === 'user' && n.bind_id) {

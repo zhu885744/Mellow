@@ -16,10 +16,10 @@
     <div v-if="tagList.length" class="article-tags">
       <router-link
         v-for="t in tagList"
-        :key="t"
-        :to="`/articles?tag=${t}`"
+        :key="t.id"
+        :to="`/tag/${t.id}`"
         class="tag tag-primary"
-      >{{ t }}</router-link>
+      >#{{ t.name }}</router-link>
     </div>
 
     <div class="article-actions">
@@ -72,7 +72,6 @@ import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/time'
 import { renderMarkdown } from '@/utils/markdown'
-import { parseTagsField } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
 const route = useRoute()
@@ -90,14 +89,11 @@ const collectCount = ref(0)
 const commentsCount = ref(0)
 
 const contentHtml = computed(() => renderMarkdown(article.value?.content || ''))
-const author = computed(() => article.value?.result?.author || article.value?.user || null)
+const author = computed(() => article.value?.result?.author || null)
 const tagList = computed(() => {
-  const arr = parseTagsField(article.value?.tags)
-  // 提取标签名（实际更多使用 result.tags）
-  if (article.value?.result?.tags?.length) {
-    return article.value.result.tags.map((t) => t.name || t)
-  }
-  return arr
+  const t = article.value?.result?.tags
+  if (Array.isArray(t)) return t
+  return []
 })
 
 async function load() {
@@ -119,29 +115,26 @@ async function load() {
   }
 
   // 点赞 / 收藏状态
-  if (userStore.isLogged) {
-    try {
-      const [l, c, lc, cc] = await Promise.all([
+  try {
+    if (userStore.isLogged) {
+      const [l, c] = await Promise.all([
         isLiked('article', route.params.id).catch(() => null),
-        isCollected('article', route.params.id).catch(() => null),
-        likesCount('article', route.params.id).catch(() => null),
-        collectsCount('article', route.params.id).catch(() => null)
+        isCollected('article', route.params.id).catch(() => null)
       ])
-      liked.value = !!(l?.data)
-      collected.value = !!(c?.data)
-      likeCount.value = lc?.data?.count || 0
-      collectCount.value = cc?.data?.count || 0
-    } catch {}
-  } else {
-    try {
+      // is-liked 返回 { data: { is_liked, count } }
+      liked.value = !!(l?.data?.is_liked ?? l?.data)
+      collected.value = !!(c?.data?.is_collected ?? c?.data)
+      likeCount.value = l?.data?.count || 0
+      collectCount.value = c?.data?.count || 0
+    } else {
       const [lc, cc] = await Promise.all([
         likesCount('article', route.params.id).catch(() => null),
         collectsCount('article', route.params.id).catch(() => null)
       ])
-      likeCount.value = lc?.data?.count || 0
-      collectCount.value = cc?.data?.count || 0
-    } catch {}
-  }
+      likeCount.value = lc?.data?.count || lc?.data || 0
+      collectCount.value = cc?.data?.count || cc?.data || 0
+    }
+  } catch {}
 }
 
 function requireLogin() {

@@ -48,3 +48,23 @@ export const pickAuthor = (item) => {
     ? item.result.user
     : item?.result?.author || item?.user || { id: item?.uid, nickname: '匿名', avatar: '' }
 }
+
+/**
+ * 判断用户是否为管理员
+ * 兼容两种用户结构：user.auth（顶层）和 user.result.auth（嵌套）
+ * 参考主题实现：auth.all 或 auth.group.list 中存在 key === 'admin'
+ */
+export const isAdmin = (user) => {
+  if (!user || typeof user !== 'object') return false
+  // 兼容 result.auth 和顶层 auth
+  const auth = user?.result?.auth || user?.auth
+  if (!auth) return false
+  // 拥有 all 权限
+  if (auth.all === true || auth.all === 1) return true
+  // 权限组中存在 admin
+  const groups = auth?.group?.list || auth?.group || []
+  if (Array.isArray(groups)) {
+    return groups.some((g) => g?.key === 'admin')
+  }
+  return false
+}

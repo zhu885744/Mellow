@@ -12,6 +12,9 @@
           <router-link to="/" exact-active-class="active" class="nav-item">
             <span class="nav-zh">首页</span>
           </router-link>
+          <router-link to="/moments" active-class="active" class="nav-item">
+            <span class="nav-zh">奇思</span>
+          </router-link>
           <!-- 动态导航页（来自 /api/pages/all） -->
           <router-link
             v-for="p in pages"
@@ -99,7 +102,7 @@ function navTarget(p) {
   if (key === 'archive') return '/archives'
   if (key === 'links') return '/links'
   if (key === 'about') return '/about'
-  return `/page/${p.key || p.id}`
+  return `/${p.key || p.id}`
 }
 
 onMounted(() => {
