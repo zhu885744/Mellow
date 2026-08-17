@@ -3,13 +3,33 @@
     <!-- 用户资料卡 -->
     <div class="card card-pad author-card">
       <div class="author-head">
-        <img :src="profile.avatar || defaultAvatar" class="author-avatar" @error="onImgError" />
+        <AvatarFrame
+          :src="profile.avatar"
+          :frame="frame"
+          :fallback="defaultAvatar"
+          :size="'75px'"
+          :frame-scale="1.6"
+          alt="头像"
+        />
         <div class="author-meta">
           <div class="author-name-row">
             <span class="author-name">{{ profile.nickname }}</span>
             <span v-if="level" class="author-level">Lv.{{ level }}</span>
+            <span
+              v-if="profile.title"
+              :class="['author-title', titleClass]"
+            >{{ profile.title }}</span>
           </div>
           <div class="author-desc">{{ profile.description || '这个人很懒，什么都没留下' }}</div>
+          <a
+            v-if="website && website.url"
+            class="author-website"
+            :href="website.url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <i class="bi bi-link-45deg" /> {{ website.name || website.url }}
+          </a>
           <div class="author-stats">
             <div class="stat" @click="switchTab('article')">
               <strong>{{ stats.article }}</strong>
@@ -34,8 +54,8 @@
             <router-link v-else to="/user/profile" class="btn btn-sm btn-ghost">编辑资料</router-link>
           </div>
         </div>
+        </div>
       </div>
-    </div>
 
     <!-- 内容区 -->
     <div class="card card-pad">
@@ -57,7 +77,7 @@
 
       <!-- 文章列表 -->
       <template v-else-if="tab === 'article'">
-        <ArticleCard v-for="a in list" :key="a.id" :article="a" />
+        <ArticleCard v-for="a in list" :key="a.id" :article="a" :abstract-limit="50" />
       </template>
 
       <!-- 粉丝 / 关注 列表（仅本人可见） -->
@@ -102,6 +122,7 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ArticleCard from '@/components/ArticleCard.vue'
+import AvatarFrame from '@/components/AvatarFrame.vue'
 import { getUser } from '@/api/users'
 import { getAuthorArticles, countArticlesByAuthor } from '@/api/article'
 import { myLikes, myCollects } from '@/api/tags'
@@ -120,6 +141,26 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
 
 const profile = ref({})
 const level = ref(0)
+
+// 个人网站（来自 json.website，用户在 Contact 页设置）
+const website = computed(() => (profile.value?.json && profile.value.json.website) || null)
+
+// 头像框（来自 json.frame，用户在 Profile 页设置）
+const frame = computed(() => (profile.value?.json && profile.value.json.frame) || '')
+
+// 头衔（与 Profile 页一致的颜色映射）
+const PRESET_TITLES = ['掌门', '长老', '护法', '侠客', '学徒']
+const titleColorMap = {
+  '掌门': 'title-zhangmen',
+  '长老': 'title-zhanglao',
+  '护法': 'title-hufa',
+  '侠客': 'title-xiake',
+  '学徒': 'title-xuetu'
+}
+function getTitleColorClass(title) {
+  return titleColorMap[title] || 'title-default'
+}
+const titleClass = computed(() => getTitleColorClass(profile.value.title))
 const stats = ref({ article: 0, follow: 0, fans: 0 })
 const following = ref(false)
 const isSelf = computed(() => userStore.isLogged && Number(userStore.user?.id) === uid.value)
@@ -274,7 +315,9 @@ async function loadProfile() {
     profile.value = {
       nickname: u.nickname || '匿名用户',
       avatar: u.avatar || '',
-      description: u.description || u.remarks || ''
+      description: u.description || u.remarks || '',
+      title: u.title || '',
+      json: u.json || {}
     }
     // 等级：兼容 result.level.current 与 users_rating.grade 两种结构
     const lv = u.result?.level?.current || u.users_rating?.users_grade
@@ -324,7 +367,7 @@ async function loadFollowState() {
       method: 'GET',
       params: { follow_uid: uid.value }
     })
-    following.value = !!(res.data && res.data.status)
+    following.value = !!(res.data && res.data.is_following)
   } catch {}
 }
 
@@ -335,7 +378,7 @@ async function toggleFollow() {
   }
   try {
     if (following.value) {
-      await call('user-follows', 'unfollow', { method: 'POST', data: { follow_uid: uid.value } })
+      await call('user-follows', 'unfollow', { method: 'PUT', data: { follow_uid: uid.value } })
       following.value = false
       stats.value.fans = Math.max(0, stats.value.fans - 1)
     } else {
@@ -444,14 +487,6 @@ watch(() => route.params.id, () => {
   gap: 20px;
   align-items: flex-start;
 }
-.author-avatar {
-  width: 96px;
-  height: 96px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 2px solid var(--border);
-  flex-shrink: 0;
-}
 .author-meta {
   flex: 1;
   min-width: 0;
@@ -472,11 +507,41 @@ watch(() => route.params.id, () => {
   background: rgba(184, 153, 104, 0.14);
   color: var(--primary-deep);
 }
+.author-title {
+  font-size: 12px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: #fff;
+}
+/* 头衔配色（与 Profile 页一致） */
+.title-zhangmen { background: linear-gradient(135deg, #c8a04a, #b07d2e); }
+.title-zhanglao { background: linear-gradient(135deg, #8e6f3e, #6c4f24); }
+.title-hufa { background: linear-gradient(135deg, #4a7fb0, #2f5d86); }
+.title-xiake { background: linear-gradient(135deg, #4a9e6f, #2f7d52); }
+.title-xuetu { background: linear-gradient(135deg, #9aa0a6, #6c757d); }
+.title-default { background: #6c757d; }
 .author-desc {
   font-size: 13px;
   color: var(--text-soft);
   margin: 8px 0 14px;
   line-height: 1.6;
+}
+.author-website {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 13px;
+  color: var(--primary-deep);
+  text-decoration: none;
+  margin-bottom: 14px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.author-website:hover {
+  text-decoration: underline;
 }
 .author-stats {
   display: flex;

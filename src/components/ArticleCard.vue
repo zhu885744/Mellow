@@ -24,10 +24,10 @@
             <router-link :to="`/tag/${t.id}`">#{{ t.name }}</router-link>
           </span>
         </div>
-        <p class="article-abstract">{{ truncate(article.abstract || article.text || article.content, 140) }}</p>
+        <p class="article-abstract">{{ truncate(article.abstract || article.text || article.content, abstractLimit) }}</p>
         <div class="article-foot">
-          <span class="meta-stat">
-            <router-link v-if="author" :to="`/author/${author.id}`">{{ author.nickname }}</router-link>
+          <span v-if="author" class="meta-stat">
+            <router-link :to="`/author/${author.id}`">{{ author.nickname }}</router-link>
           </span>
           <span class="meta-stat">{{ article.views || 0 }} 次阅读</span>
           <span class="meta-stat">{{ commentCount }} 评论</span>
@@ -44,7 +44,8 @@ import { formatDate } from '@/utils/time'
 import { truncate } from '@/utils/helper'
 
 const props = defineProps({
-  article: { type: Object, required: true }
+  article: { type: Object, required: true },
+  abstractLimit: { type: Number, default: 140 }
 })
 
 const router = useRouter()

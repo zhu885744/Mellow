@@ -12,6 +12,7 @@
         v-for="a in articles"
         :key="a.id"
         :article="a"
+        :abstract-limit="50"
       />
       <div v-if="loading" class="loading">
         <span class="spinner" /> 加载中...

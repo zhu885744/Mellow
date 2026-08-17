@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h2 class="title">加入我们 ✨</h2>
+    <h2 class="title">加入我们</h2>
     <p class="subtitle">注册账号，开启你的创作之旅</p>
 
     <form class="auth-form" @submit.prevent="handleRegister">
@@ -30,12 +30,12 @@
       </div>
 
       <div class="form-item">
-        <label class="form-label">账号（可选）</label>
+        <label class="form-label">账号 *</label>
         <input v-model="form.account" class="input" />
       </div>
 
       <div class="form-item">
-        <label class="form-label">昵称（可选）</label>
+        <label class="form-label">昵称 *</label>
         <input v-model="form.nickname" class="input" />
       </div>
 
@@ -64,6 +64,8 @@
         </p>
       </div>
 
+      <AuthAgreement v-model="agreed" ref="agreeRef" required />
+
       <button class="btn btn-primary btn-block btn-lg" :disabled="loading" type="submit">
         {{ loading ? '注册中...' : '注 册' }}
       </button>
@@ -81,6 +83,7 @@ import { useRouter } from 'vue-router'
 import { register, registerSendCode } from '@/api/comm'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
+import AuthAgreement from '@/components/AuthAgreement.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -98,6 +101,9 @@ const loading = ref(false)
 const sending = ref(false)
 const countdown = ref(0)
 let timer = null
+
+const agreed = ref(false)
+const agreeRef = ref(null)
 
 async function sendCode() {
   if (!form.value.social) {
@@ -125,6 +131,10 @@ async function handleRegister() {
   }
   if (form.value.password !== form.value.password2) {
     toast.warning('两次密码不一致')
+    return
+  }
+  if (agreeRef.value && !agreeRef.value.validate()) {
+    toast.warning('请先阅读并同意用户协议和隐私政策')
     return
   }
   loading.value = true

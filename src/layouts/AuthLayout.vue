@@ -2,7 +2,7 @@
   <div class="auth-layout">
     <div class="auth-bg"></div>
     <div class="auth-card">
-      <router-link to="/" class="auth-logo">朱某的生活印记</router-link>
+      <router-link to="/" class="auth-logo">{{ site.title }}</router-link>
       <router-view />
       <div class="auth-footer">
         <router-link to="/"><i class="bi bi-arrow-left" /> 返回首页</router-link>
@@ -10,6 +10,35 @@
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref, computed, onMounted } from 'vue'
+import { getConfig } from '@/api/config'
+
+// 站点信息（来自 /api/config/one?key=Mellow_functions）
+const siteConfig = ref({})
+
+const site = computed(() => {
+  const c = siteConfig.value || {}
+  return {
+    title: c.title || 'Mellow'
+  }
+})
+
+// 获取站点配置（Mellow_functions）
+async function loadSiteConfig() {
+  try {
+    const res = await getConfig('Mellow_functions')
+    siteConfig.value = res.data?.json || {}
+  } catch {
+    siteConfig.value = {}
+  }
+}
+
+onMounted(() => {
+  loadSiteConfig()
+})
+</script>
 
 <style scoped>
 .auth-layout {

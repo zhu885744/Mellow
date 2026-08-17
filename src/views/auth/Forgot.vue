@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h2 class="title">找回密码 🔑</h2>
+    <h2 class="title">找回密码</h2>
     <p class="subtitle">通过邮箱或手机号重置密码</p>
 
     <!-- 步骤条 -->
@@ -73,6 +73,8 @@
       </button>
     </form>
 
+    <AuthAgreement />
+
     <div class="auth-bottom">
       想起来了？<router-link to="/auth/login">立即登录</router-link>
     </div>
@@ -84,6 +86,7 @@ import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { resetPasswordSendCode, resetPassword } from '@/api/comm'
 import { toast } from '@/utils/toast'
+import AuthAgreement from '@/components/AuthAgreement.vue'
 
 const router = useRouter()
 

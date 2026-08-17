@@ -33,6 +33,7 @@
       :key="m.id"
       :moment="m"
       @delete="onDelete"
+      @refresh="load"
     />
 
     <EmptyState v-if="!loading && !moments.length" icon="✨" text="还没有动态" />

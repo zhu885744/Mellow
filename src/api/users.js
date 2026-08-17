@@ -25,9 +25,10 @@ export const updatePhone = (data) =>
 export const destroySendCode = () =>
   call('users', 'destroy', { method: 'DELETE' })
 
-// 注销账户（提交）
-export const destroy = (code, password) =>
-  call('users', 'destroy', { method: 'DELETE', params: { code, password } })
+// 注销账户（提交验证码 + 密码二次验证）
+// code/password 为必填，source 为可选注销原因（默认 default）
+export const destroy = (code, password, source = 'default') =>
+  call('users', 'destroy', { method: 'DELETE', params: { code, password, source } })
 
 // ===== 签到 =====
 export const checkIn = () =>

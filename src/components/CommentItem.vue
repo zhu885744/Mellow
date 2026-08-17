@@ -14,8 +14,8 @@
       <div class="c-content" v-html="renderedContent"></div>
 
       <div class="c-actions">
-        <button class="c-action" :class="{ active: comment.liked }" @click="$emit('like', comment)">
-          <span class="c-icon"><i class="bi" :class="comment.liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
+        <button ref="likeBtn" class="c-action like-btn" :class="{ active: comment.liked }" @click="$emit('like', comment)">
+          <span class="c-icon"><i ref="likeIcon" class="bi" :class="comment.liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
           <span>{{ comment.likeCount || 0 }}</span>
         </button>
         <button class="c-action" @click="$emit('reply', comment)">
@@ -56,11 +56,12 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { formatDate } from '@/utils/time'
 import { useUserStore } from '@/stores/user'
 import { isAdmin, pickCommentAuthor } from '@/utils/helper'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
+import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import EmojiEditor from './EmojiEditor.vue'
 
 const props = defineProps({
@@ -92,6 +93,23 @@ const canDelete = computed(() => {
 function onImgError(e) {
   e.target.src = defaultAvatar
 }
+
+const likeIcon = ref(null)
+const likeBtn = ref(null)
+
+// 点赞状态由父组件（CommentTree）乐观更新，此处监听触发动画
+watch(
+  () => props.comment.liked,
+  (val, old) => {
+    if (val === old || val === undefined) return
+    if (val) {
+      popIcon(likeIcon.value)
+      burstHeart(likeBtn.value)
+    } else {
+      popOut(likeIcon.value)
+    }
+  }
+)
 
 function cancelReply() {
   replyText.value = ''
@@ -185,6 +203,9 @@ function submitReply() {
 }
 .c-action:hover {
   color: var(--primary);
+}
+.like-btn {
+  position: relative;
 }
 .c-action.active {
   color: var(--accent);

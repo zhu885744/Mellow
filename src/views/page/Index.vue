@@ -71,47 +71,11 @@ onMounted(load)
 </script>
 
 <style scoped>
-.page-content {
-  font-size: 15px;
-  line-height: 1.8;
-  color: var(--text);
-}
 .loading {
   padding: 64px;
   text-align: center;
   color: var(--text-muted);
 }
 
-.markdown-body :deep(h1),
-.markdown-body :deep(h2),
-.markdown-body :deep(h3) {
-  margin: 1.2em 0 0.6em;
-  font-weight: 600;
-}
-.markdown-body :deep(p) {
-  margin: 0.8em 0;
-}
-.markdown-body :deep(a) {
-  color: var(--link);
-}
-.markdown-body :deep(blockquote) {
-  border-left: 4px solid var(--primary-soft);
-  padding: 4px 16px;
-  color: var(--text-muted);
-  background: var(--bg-soft);
-  margin: 12px 0;
-}
-.markdown-body :deep(code) {
-  background: var(--bg-muted);
-  padding: 1px 6px;
-  border-radius: 3px;
-  color: var(--primary-deep);
-}
-.markdown-body :deep(pre) {
-  background: #2c2a26;
-  color: #f0eee5;
-  padding: 16px;
-  border-radius: var(--radius);
-  overflow-x: auto;
-}
+/* Markdown 排版样式统一使用全局 styles.css 中的 .markdown-body */
 </style>

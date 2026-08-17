@@ -28,8 +28,8 @@
     </div>
 
     <div class="article-actions">
-      <button class="btn btn-sm" @click="toggleLike">
-        <i class="bi" :class="liked ? 'bi-star-fill' : 'bi-star'" /> 点赞 <span v-if="likeCount">({{ likeCount }})</span>
+      <button ref="likeBtn" class="btn btn-sm like-btn" @click="toggleLike">
+        <i ref="likeIcon" class="bi" :class="liked ? 'bi-star-fill' : 'bi-star'" /> 点赞 <span v-if="likeCount">({{ likeCount }})</span>
       </button>
       <button class="btn btn-sm" @click="toggleCollect">
         {{ collected ? '收藏' : '收藏' }}
@@ -127,6 +127,7 @@ import { formatDate } from '@/utils/time'
 import { renderMarkdown } from '@/utils/markdown'
 import { toast } from '@/utils/toast'
 import { openLightbox } from '@/utils/lightbox'
+import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 
 const route = useRoute()
 const router = useRouter()
@@ -250,19 +251,26 @@ function requireLogin() {
 
 async function toggleLike() {
   if (!requireLogin()) return
-  try {
-    if (liked.value) {
+  if (liked.value) {
+    // 取消点赞：图标收缩动画 + 乐观提示
+    popOut(likeIcon.value)
+    try {
       await unlike('article', route.params.id)
       liked.value = false
       likeCount.value = Math.max(0, likeCount.value - 1)
       toast.info('已取消点赞')
-    } else {
+    } catch {}
+  } else {
+    // 点赞：立即弹跳 + 飘心
+    popIcon(likeIcon.value)
+    burstHeart(likeBtn.value)
+    try {
       await like('article', route.params.id)
       liked.value = true
       likeCount.value += 1
       toast.success('点赞成功')
-    }
-  } catch {}
+    } catch {}
+  }
 }
 
 async function toggleCollect() {
@@ -323,12 +331,7 @@ onUnmounted(() => {
   border-radius: 0 var(--radius) var(--radius) 0;
   margin-bottom: 24px;
 }
-.content {
-  font-size: 15px;
-  line-height: 1.8;
-  color: var(--text);
-  word-break: break-word;
-}
+/* .content 基础排版由全局 .markdown-body 提供 */
 
 .article-tags {
   display: flex;
@@ -343,6 +346,9 @@ onUnmounted(() => {
   padding: 16px 0;
   border-top: 1px dashed var(--border);
   border-bottom: 1px dashed var(--border);
+}
+.like-btn {
+  position: relative;
 }
 .reward-btn {
   border-color: var(--danger);
@@ -483,190 +489,5 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 
-/* Markdown 渲染样式（基础排版） */
-.markdown-body {
-  font-size: 15px;
-  line-height: 1.8;
-  color: var(--text);
-  word-break: break-word;
-  overflow-wrap: anywhere;
-}
-.markdown-body :deep(h1),
-.markdown-body :deep(h2),
-.markdown-body :deep(h3),
-.markdown-body :deep(h4),
-.markdown-body :deep(h5),
-.markdown-body :deep(h6) {
-  margin: 1.6em 0 0.8em;
-  font-weight: 600;
-  line-height: 1.4;
-  color: var(--text);
-}
-.markdown-body :deep(h1) { font-size: 1.7em; }
-.markdown-body :deep(h2) {
-  font-size: 1.4em;
-  padding-bottom: 0.3em;
-  border-bottom: 1px solid var(--border-soft);
-}
-.markdown-body :deep(h3) { font-size: 1.2em; }
-.markdown-body :deep(h4) { font-size: 1.05em; }
-.markdown-body :deep(h5) { font-size: 0.95em; color: var(--text-soft); }
-.markdown-body :deep(h6) { font-size: 0.88em; color: var(--text-muted); }
-
-.markdown-body :deep(p) {
-  margin: 0.85em 0;
-}
-.markdown-body :deep(strong) {
-  font-weight: 600;
-  color: var(--text);
-}
-.markdown-body :deep(em) {
-  font-style: italic;
-}
-.markdown-body :deep(del) {
-  color: var(--text-muted);
-}
-.markdown-body :deep(a) {
-  color: var(--link);
-  text-decoration: none;
-  border-bottom: 1px solid transparent;
-  transition: border-color 0.2s, color 0.2s;
-}
-.markdown-body :deep(a:hover) {
-  color: var(--link-hover);
-  border-bottom-color: var(--link-hover);
-}
-
-.markdown-body :deep(hr) {
-  border: none;
-  border-top: 1px solid var(--border-soft);
-  margin: 2em 0;
-}
-
-/* 行内代码 */
-.markdown-body :deep(code) {
-  background: var(--bg-muted);
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 0.88em;
-  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
-  color: var(--primary-deep);
-  word-break: break-all;
-}
-/* 代码块 */
-.markdown-body :deep(pre) {
-  background: #2c2a26;
-  color: #f0eee5;
-  padding: 16px;
-  border-radius: var(--radius);
-  overflow-x: auto;
-  font-size: 13px;
-  line-height: 1.6;
-  margin: 1em 0;
-}
-.markdown-body :deep(pre code) {
-  background: transparent;
-  padding: 0;
-  border-radius: 0;
-  font-size: inherit;
-  color: inherit;
-  word-break: normal;
-}
-.markdown-body :deep(pre)::-webkit-scrollbar {
-  height: 8px;
-}
-.markdown-body :deep(pre)::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-}
-
-/* 引用 */
-.markdown-body :deep(blockquote) {
-  border-left: 4px solid var(--primary-soft);
-  padding: 6px 16px;
-  margin: 1em 0;
-  color: var(--text-muted);
-  background: var(--bg-soft);
-  border-radius: 0 var(--radius) var(--radius) 0;
-}
-.markdown-body :deep(blockquote p) {
-  margin: 0.4em 0;
-}
-.markdown-body :deep(blockquote blockquote) {
-  margin: 0.5em 0;
-}
-
-/* 列表 */
-.markdown-body :deep(ul),
-.markdown-body :deep(ol) {
-  padding-left: 24px;
-  margin: 0.8em 0;
-}
-.markdown-body :deep(li) {
-  margin: 0.3em 0;
-}
-.markdown-body :deep(ul ul),
-.markdown-body :deep(ol ol),
-.markdown-body :deep(ul ol),
-.markdown-body :deep(ol ul) {
-  margin: 0.3em 0;
-}
-/* 任务列表 */
-.markdown-body :deep(li.task-list-item) {
-  list-style: none;
-  margin-left: -20px;
-}
-.markdown-body :deep(li.task-list-item input) {
-  margin-right: 8px;
-  vertical-align: middle;
-}
-
-/* 图片 / 视频 */
-.markdown-body :deep(img) {
-  display: block;
-  max-width: 100%;
-  margin: 1em auto;
-  border-radius: var(--radius);
-  cursor: zoom-in;
-}
-.markdown-body :deep(video) {
-  display: block;
-  max-width: 100%;
-  margin: 1em auto;
-  border-radius: var(--radius);
-}
-
-/* 表格 */
-.markdown-body :deep(table) {
-  width: 100%;
-  border-collapse: collapse;
-  margin: 1em 0;
-  font-size: 0.9em;
-  overflow: hidden;
-  border-radius: var(--radius);
-}
-.markdown-body :deep(th),
-.markdown-body :deep(td) {
-  border: 1px solid var(--border);
-  padding: 8px 12px;
-  text-align: left;
-}
-.markdown-body :deep(thead th) {
-  background: var(--bg-muted);
-  font-weight: 600;
-}
-.markdown-body :deep(tbody tr:nth-child(even)) {
-  background: var(--bg-soft);
-}
-
-.markdown-body :deep(kbd) {
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-size: 0.85em;
-  font-family: var(--font-mono, ui-monospace, monospace);
-}
-
+/* Markdown 排版样式统一使用全局 styles.css 中的 .markdown-body */
 </style>

@@ -102,7 +102,8 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
   flex-wrap: wrap;
   gap: 6px;
   padding: 6px;
-  background: var(--bg-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
   border-radius: 12px;
   margin-bottom: 16px;
 }
@@ -124,8 +125,8 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
   color: var(--primary);
 }
 .tab-item.router-link-active {
-  background: var(--bg-base);
-  color: var(--primary-deep);
+  background: var(--primary);
+  color: #fff;
   font-weight: 600;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }

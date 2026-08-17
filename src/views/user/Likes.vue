@@ -9,7 +9,7 @@
       <EmptyState text="还没有点赞任何内容" />
     </div>
     <ul v-else class="item-list">
-      <li v-for="i in items" :key="i.id" class="item">
+      <li v-for="i in items" :key="i.id" class="item" :class="{ leaving: leavingId === i.id }">
         <span class="item-type">{{ typeLabel(i.target_type) }}</span>
         <span class="item-title">{{ i.result?.title || formatContent(i) }}</span>
         <span class="item-time">{{ fromNow(i.create_time) }}</span>
@@ -29,6 +29,7 @@ import { toast } from '@/utils/toast'
 
 const items = ref([])
 const loading = ref(false)
+const leavingId = ref(null)
 
 async function load() {
   loading.value = true
@@ -55,11 +56,17 @@ function formatContent(i) {
 }
 
 async function remove(i) {
+  leavingId.value = i.id
   try {
     await unlike(i.target_type, i.target_id)
-    items.value = items.value.filter((x) => x.id !== i.id)
     toast.success('已取消点赞')
-  } catch {}
+    window.setTimeout(() => {
+      items.value = items.value.filter((x) => x.id !== i.id)
+      leavingId.value = null
+    }, 280)
+  } catch {
+    leavingId.value = null
+  }
 }
 
 onMounted(load)
@@ -83,6 +90,15 @@ onMounted(load)
   gap: 12px;
   padding: 12px 4px;
   border-bottom: 1px dashed var(--border-soft);
+}
+@keyframes item-leave {
+  to {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+.item.leaving {
+  animation: item-leave 0.28s ease forwards;
 }
 .item-type {
   font-size: 11px;

@@ -2,7 +2,10 @@
   <div>
     <SectionTitle title="友情链接">
       <template #extra>
-        <button class="btn btn-sm btn-primary" @click="showApply = true">申请友链</button>
+        <div class="links-extra">
+          <button class="btn btn-sm" @click="openExplain">友链说明</button>
+          <button class="btn btn-sm btn-primary" @click="showApply = true">申请友链</button>
+        </div>
       </template>
     </SectionTitle>
 
@@ -16,12 +19,6 @@
 
     <div v-else>
       <div v-for="g in groups" :key="g.id" class="link-group">
-        <h3 class="group-title">
-          <span class="title-bar"></span>
-          {{ g.name }}
-          <span class="group-desc" v-if="g.description">{{ g.description }}</span>
-        </h3>
-
         <div class="link-grid">
           <a
             v-for="link in (g.list || [])"
@@ -32,19 +29,28 @@
             class="link-card card card-pad-sm"
           >
             <div class="link-head">
-              <img :src="link.avatar || defaultAvatar" class="link-avatar" />
               <div class="link-info">
                 <div class="link-name">{{ link.nickname }}</div>
                 <div class="link-url">{{ host(link.url) }}</div>
               </div>
             </div>
             <p class="link-desc">{{ link.description || '期待与您的互换链接' }}</p>
-            <div class="link-foot">
-              <span :class="['link-status', link.online ? 'on' : 'off']">
-                {{ link.online ? '● 在线' : '○ 离线' }}
-              </span>
-            </div>
           </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- 友链说明弹窗 -->
+    <div v-if="showExplain" class="dialog-mask" @click.self="showExplain = false">
+      <div class="dialog dialog-lg card card-pad">
+        <h3 class="dialog-title">{{ explain?.title || '友链说明' }}</h3>
+        <div v-if="explainLoading" class="explain-loading">
+          <span class="spinner" /> 加载中...
+        </div>
+        <div v-else-if="explain" class="markdown-body explain-content" v-html="explainHtml" />
+        <EmptyState v-else text="暂无说明" />
+        <div class="dialog-actions">
+          <button class="btn btn-primary" @click="showExplain = false">我知道了</button>
         </div>
       </div>
     </div>
@@ -81,10 +87,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listLinks, createLink } from '@/api/links'
+import { call } from '@/api/request'
+import { renderMarkdown } from '@/utils/markdown'
 import { toast } from '@/utils/toast'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82">友</text></svg>'
@@ -93,6 +101,33 @@ const loading = ref(false)
 const groups = ref([])
 const showApply = ref(false)
 const submitting = ref(false)
+const showExplain = ref(false)
+const explainLoading = ref(false)
+const explain = ref(null)
+
+const explainHtml = computed(() => {
+  const c = explain.value?.content || ''
+  if (!c) return ''
+  // 内容含 HTML 标签时直接渲染，否则按 markdown 渲染
+  return /<\/?[a-z][\s\S]*>/i.test(c) ? c : renderMarkdown(c)
+})
+
+async function openExplain() {
+  showExplain.value = true
+  if (explain.value || explainLoading.value) return
+  explainLoading.value = true
+  try {
+    const res = await call('pages', 'one', {
+      method: 'GET',
+      params: { key: 'links', field: 'id,key,title,content' }
+    })
+    explain.value = res.data || null
+  } catch {
+    explain.value = null
+  } finally {
+    explainLoading.value = false
+  }
+}
 
 const form = ref({
   nickname: '',
@@ -255,15 +290,33 @@ onMounted(load)
   justify-content: center;
   padding: 16px;
 }
+.links-extra {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
 .dialog {
   width: 100%;
   max-width: 420px;
+}
+.dialog-lg {
+  max-width: 640px;
 }
 .dialog-title {
   font-size: 16px;
   font-weight: 600;
   margin-bottom: 16px;
 }
+.explain-loading {
+  padding: 32px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.explain-content {
+  max-height: 50vh;
+  overflow-y: auto;
+}
+/* markdown 排版样式统一使用全局 styles.css 中的 .markdown-body */
 .dialog-actions {
   display: flex;
   justify-content: flex-end;

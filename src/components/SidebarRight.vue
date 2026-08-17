@@ -3,26 +3,29 @@
     <!-- 用户卡片 -->
     <div class="user-card card card-pad">
       <template v-if="userStore.isLogged">
-        <img
-          :src="user?.avatar || defaultAvatar"
-          class="user-avatar"
-          @error="onAvatarError"
+        <AvatarFrame
+          :src="user?.avatar"
+          :frame="user?.json?.frame"
+          :fallback="defaultAvatar"
+          :size="'75px'"
+          :frame-scale="1.6"
+          alt="用户头像"
         />
         <div class="user-name">{{ user?.nickname }}</div>
         <div class="user-desc">{{ user?.description || '这个人很懒，什么都没留下' }}</div>
         <div class="user-actions">
           <router-link :to="`/user`" class="btn btn-sm btn-ghost"><i class="bi bi-person" /> 用户中心</router-link>
           <router-link :to="`/author/${user?.id}`" class="btn btn-sm btn-ghost"><i class="bi bi-person-square" /> 用户主页</router-link>
-          <button class="btn btn-sm btn-ghost" @click="userStore.logout"><i class="bi bi-box-arrow-right" /> 退出</button>
         </div>
         <div class="signin-entry">
           <button class="btn btn-sm btn-primary btn-block" @click="openCheckin">
             <i class="bi bi-calendar-check" /> 每日签到
           </button>
+          <button class="btn btn-sm btn-ghost btn-block" @click="userStore.logout"><i class="bi bi-box-arrow-right" />退出登录</button>
         </div>
       </template>
       <template v-else>
-        <img :src="defaultAvatar" class="user-avatar" />
+        <AvatarFrame :src="touxiang" :size="'80px'" alt="未登录头像" />
         <div class="user-name">未登录</div>
         <div class="user-desc">登录后享受更多功能</div>
         <div class="user-actions">
@@ -35,31 +38,56 @@
     <!-- 通知 -->
     <div v-if="userStore.isLogged" class="card card-pad-sm notify-card">
       <div class="card-title">
-        <span>消息中心</span>
-        <span v-if="notif.count > 0" class="badge">{{ notif.count }}</span>
+        <span class="notify-title">
+          消息通知
+          <span v-if="notif.count > 0" class="notif-badge">{{ notif.count > 99 ? '99+' : notif.count }}</span>
+        </span>
+        <router-link to="/user/notifications" class="more-link">查看全部 <i class="bi bi-arrow-right" /></router-link>
       </div>
-      <div class="notify-actions">
-        <router-link to="/user/notifications" class="btn btn-sm btn-block">查看全部</router-link>
-      </div>
+      <button
+        v-if="notif.latest"
+        class="notif-preview"
+        :class="{ unread: !notif.latest.is_read }"
+        @click="openLatest"
+      >
+        <span class="notif-preview-icon" :class="`type-${notif.latest.type}`">
+          <i :class="notifIcon(notif.latest.type)" />
+        </span>
+        <span class="notif-preview-body">
+          <span class="notif-preview-content">{{ notif.latest.content || notif.latest.title }}</span>
+          <span class="notif-preview-meta">
+            <span>{{ typeLabel(notif.latest.type) }}</span>
+            <span>·</span>
+            <span>{{ fromNow(notif.latest.create_time) }}</span>
+          </span>
+        </span>
+      </button>
+      <p v-else class="notif-empty">暂无消息</p>
     </div>
 
     <!-- 分类/导航 -->
     <div class="card card-pad-sm">
-      <div class="card-title"><span>分类导航</span></div>
-      <ul class="cat-list">
-        <li v-for="g in groups" :key="g.id">
-          <router-link :to="`/category/${g.id}`" class="cat-item">
-            <span class="cat-name">{{ g.name }}</span>
-            <span class="cat-count">{{ g.count || 0 }}</span>
-          </router-link>
-        </li>
-        <li v-if="!groups.length" class="empty" style="padding: 16px;">暂无分类</li>
-      </ul>
+      <div class="card-title">
+        <span>分类导航</span>
+        <router-link to="/categories" class="more-link">查看全部 <i class="bi bi-arrow-right" /></router-link>
+      </div>
+      <div class="tag-cloud">
+        <router-link
+          v-for="g in groups"
+          :key="g.id"
+          :to="`/category/${g.id}`"
+          class="tag tag-primary"
+        >{{ g.name }}</router-link>
+        <span v-if="!groups.length" class="empty" style="padding: 12px 0;">暂无分类</span>
+      </div>
     </div>
 
     <!-- 标签云 -->
     <div class="card card-pad-sm">
-      <div class="card-title"><span>标签云</span></div>
+      <div class="card-title">
+        <span>标签云</span>
+        <router-link to="/tags" class="more-link">查看全部 <i class="bi bi-arrow-right" /></router-link>
+      </div>
       <div class="tag-cloud">
         <router-link
           v-for="t in tags"
@@ -110,10 +138,15 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
-import { getArticleGroups, countArticlesByGroup } from '@/api/article'
+import { getArticleGroups } from '@/api/article'
+import { readNotification } from '@/api/tags'
 import { call } from '@/api/request'
-import { toast } from '@/utils/toast'
+import { fromNow } from '@/utils/time'
+
+import { useRouter } from 'vue-router'
 import CheckinDialog from '@/components/CheckinDialog.vue'
+import AvatarFrame from '@/components/AvatarFrame.vue'
+import touxiang from '@/assets/img/touxiang.webp'
 
 const userStore = useUserStore()
 const notif = useNotificationStore()
@@ -125,10 +158,6 @@ function openCheckin() {
 }
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
-
-function onAvatarError(e) {
-  e.target.src = defaultAvatar
-}
 
 const groups = ref([])
 const tags = ref([])
@@ -146,7 +175,7 @@ async function loadGroups() {
       list
         .filter((n) => n.pid === parentId)
         .forEach((n) => {
-          flat.push({ id: n.id, name: '— '.repeat(level) + n.name, count: n.article_count })
+          flat.push({ id: n.id, name: n.name })
           walk(n.id, level + 1)
         })
     }
@@ -154,21 +183,8 @@ async function loadGroups() {
     // 处理孤儿节点
     list
       .filter((n) => !flat.find((f) => f.id === n.id))
-      .forEach((n) => flat.push({ id: n.id, name: n.name, count: n.article_count }))
+      .forEach((n) => flat.push({ id: n.id, name: n.name }))
     groups.value = flat
-
-    // 后端 article-group 的 article_count 字段未维护（恒为 null），逐个统计真实文章数
-    await Promise.all(
-      flat.map(async (g) => {
-        try {
-          const c = await countArticlesByGroup(g.id)
-          g.count = c.data || 0
-        } catch {
-          g.count = 0
-        }
-      })
-    )
-    groups.value = [...flat]
   } catch {
     groups.value = []
   }
@@ -205,12 +221,43 @@ const runtimeDays = computed(() => {
   return Math.floor(diff / (1000 * 60 * 60 * 24)) + 1
 })
 
-async function markAll() {
-  if (notif.count === 0) return
-  try {
-    await notif.readAll()
-    toast.success('已全部标记为已读')
-  } catch {}
+const router = useRouter()
+
+const typeMap = {
+  comment: { icon: 'bi bi-chat-dots', label: '评论' },
+  like: { icon: 'bi bi-hand-thumbs-up', label: '点赞' },
+  follow: { icon: 'bi bi-people', label: '关注' },
+  collect: { icon: 'bi bi-star', label: '收藏' },
+  system: { icon: 'bi bi-megaphone', label: '系统' }
+}
+function typeLabel(t) {
+  return typeMap[t]?.label || '通知'
+}
+function notifIcon(t) {
+  return typeMap[t]?.icon || 'bi bi-bell'
+}
+
+async function openLatest() {
+  const n = notif.latest
+  if (!n) return
+  // 未读则先标记已读，并刷新侧边栏的最新消息/角标
+  if (!n.is_read) {
+    try {
+      await readNotification(n.id)
+      n.is_read = 1
+      await notif.refresh()
+    } catch {}
+  }
+  // 跳转关联内容
+  if (n.bind_type === 'article' && n.bind_id) {
+    router.push(`/archives/${n.bind_id}`)
+  } else if (n.bind_type === 'moments' && n.bind_id) {
+    router.push('/moments')
+  } else if (n.bind_type === 'user' && n.bind_id) {
+    router.push('/user/notifications')
+  } else {
+    router.push('/user/notifications')
+  }
 }
 
 onMounted(() => {
@@ -239,14 +286,6 @@ watch(
 .user-card {
   text-align: center;
 }
-.user-avatar {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  margin: 0 auto 12px;
-  object-fit: cover;
-  border: 2px solid var(--border);
-}
 .user-name {
   font-size: 16px;
   font-weight: 600;
@@ -266,6 +305,9 @@ watch(
 }
 .signin-entry {
   margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .card-title {
@@ -289,28 +331,13 @@ watch(
   text-align: center;
   padding: 0 6px;
 }
-
-.cat-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+.more-link {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: normal;
 }
-.cat-item {
-  display: flex;
-  justify-content: space-between;
-  padding: 8px 4px;
-  border-radius: var(--radius-sm);
-  font-size: 13px;
-  color: var(--text-soft);
-  transition: all 0.15s;
-}
-.cat-item:hover {
-  background: var(--bg-muted);
+.more-link:hover {
   color: var(--primary);
-}
-.cat-count {
-  font-size: 11px;
-  color: var(--text-light);
 }
 
 .tag-cloud {
@@ -349,13 +376,115 @@ watch(
   font-weight: 600;
 }
 
-.notify-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.notify-title {
+  position: relative;
 }
-
+.notif-badge {
+  position: absolute;
+  top: -8px;
+  left: calc(100% + 4px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 11px;
+  line-height: 18px;
+  text-align: center;
+  box-shadow: 0 0 0 2px var(--bg-card);
+  animation: notifPulse 2s ease-in-out infinite;
+}
+@keyframes notifPulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 0 rgba(217, 84, 77, 0.35);
+  }
+  50% {
+    box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 5px rgba(217, 84, 77, 0);
+  }
+}
 .notify-card {
   padding: 14px;
+}
+.notif-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 8px;
+  background: var(--bg-muted);
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s, background 0.15s;
+}
+.notif-preview:hover {
+  border-color: var(--primary);
+  background: var(--bg-card);
+}
+.notif-preview.unread {
+  background: rgba(184, 153, 104, 0.08);
+}
+.notif-preview-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  background: var(--bg-muted);
+}
+.notif-preview-icon.type-comment {
+  background: rgba(184, 153, 104, 0.14);
+  color: var(--primary-deep);
+}
+.notif-preview-icon.type-like {
+  background: rgba(217, 84, 77, 0.12);
+  color: var(--danger);
+}
+.notif-preview-icon.type-follow {
+  background: rgba(108, 154, 77, 0.12);
+  color: var(--success);
+}
+.notif-preview-icon.type-collect {
+  background: rgba(212, 161, 72, 0.12);
+  color: #c7902f;
+}
+.notif-preview-icon.type-system {
+  background: rgba(74, 144, 226, 0.12);
+  color: #4a90e2;
+}
+.notif-preview-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.notif-preview-content {
+  font-size: 12px;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.notif-preview.unread .notif-preview-content {
+  font-weight: 600;
+}
+.notif-preview-meta {
+  display: flex;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.notif-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 4px;
 }
 </style>

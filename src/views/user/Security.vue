@@ -120,7 +120,77 @@
     <div class="card card-pad">
       <h2 class="block-title danger-title">账号注销</h2>
       <p class="danger-tip">注销账号后，您的所有数据将被永久删除且无法恢复。</p>
-      <button class="btn btn-danger" @click="confirmDestroy">注销我的账号</button>
+      <button class="btn btn-danger" @click="openDestroy">注销我的账号</button>
+    </div>
+  </div>
+
+  <!-- 注销账户确认弹层 -->
+  <div v-if="destroyVisible" class="modal-mask" @click.self="closeDestroy">
+    <div class="modal-box">
+      <div class="modal-title">
+        <i class="bi bi-exclamation-triangle" /> 注销账户确认
+      </div>
+      <p class="modal-warn">
+        此操作将<strong>永久删除</strong>你的账号及所有数据，且不可恢复。请先通过验证码与密码完成身份验证。
+      </p>
+
+      <div class="field">
+        <label>验证码</label>
+        <div class="code-row">
+          <input
+            v-model.trim="destroyForm.code"
+            class="input"
+            type="text"
+            placeholder="请输入验证码"
+            :disabled="destroyLoading"
+          />
+          <button
+            class="btn btn-sm btn-ghost"
+            :disabled="destroyLoading || codeCountdown > 0"
+            @click="sendDestroyCode"
+          >
+            {{ codeCountdown > 0 ? codeCountdown + 's' : '获取验证码' }}
+          </button>
+        </div>
+        <span class="field-hint">验证码将发送至你绑定的手机或邮箱</span>
+      </div>
+
+      <div class="field">
+        <label>当前密码</label>
+        <input
+          v-model.trim="destroyForm.password"
+          class="input"
+          type="password"
+          placeholder="请输入当前登录密码"
+          :disabled="destroyLoading"
+        />
+        <span class="field-hint">为防止他人盗用验证码操作，需二次验证密码</span>
+      </div>
+
+      <div class="field">
+        <label>注销原因（选填）</label>
+        <textarea
+          v-model.trim="destroyForm.source"
+          class="input"
+          rows="2"
+          placeholder="可填写注销原因，默认 default"
+          :disabled="destroyLoading"
+        ></textarea>
+      </div>
+
+      <p v-if="destroyError" class="form-error">
+        <i class="bi bi-x-circle" /> {{ destroyError }}
+      </p>
+
+      <div class="modal-actions">
+        <button class="btn btn-sm btn-ghost" :disabled="destroyLoading" @click="closeDestroy">
+          取消
+        </button>
+        <button class="btn btn-sm btn-danger" :disabled="destroyLoading" @click="submitDestroy">
+          <span v-if="destroyLoading" class="spinner" />
+          {{ destroyLoading ? '注销中...' : '确认注销' }}
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -317,25 +387,74 @@ async function doResetPassword() {
 }
 
 // ===== 账号注销 =====
-async function confirmDestroy() {
-  if (!confirm('注销账号是不可恢复的操作，确定要继续吗？')) return
+// ===== 注销账户 =====
+const destroyVisible = ref(false)
+const destroyLoading = ref(false)
+const destroyError = ref('')
+const destroyForm = reactive({ code: '', password: '', source: '' })
+const codeCountdown = ref(0)
+let codeTimer = null
+
+function openDestroy() {
+  destroyForm.code = ''
+  destroyForm.password = ''
+  destroyForm.source = ''
+  destroyError.value = ''
+  destroyVisible.value = true
+}
+
+function closeDestroy() {
+  if (destroyLoading.value) return
+  destroyVisible.value = false
+  if (codeTimer) {
+    clearInterval(codeTimer)
+    codeTimer = null
+  }
+  codeCountdown.value = 0
+}
+
+function startCodeCountdown() {
+  codeCountdown.value = CONST.CODE_COOLDOWN
+  codeTimer = setInterval(() => {
+    codeCountdown.value--
+    if (codeCountdown.value <= 0) {
+      clearInterval(codeTimer)
+      codeTimer = null
+    }
+  }, 1000)
+}
+
+async function sendDestroyCode() {
+  destroyError.value = ''
   try {
     await destroySendCode()
-    toast.info('请输入您收到的验证码')
+    toast.success('验证码已发送，请查收手机或邮箱')
+    startCodeCountdown()
   } catch {
+    // 拦截器已提示
+  }
+}
+
+async function submitDestroy() {
+  destroyError.value = ''
+  if (!destroyForm.code) {
+    destroyError.value = '请输入验证码'
     return
   }
-  const code = prompt('请输入验证码：')
-  if (!code) return
-  const password = prompt('请输入您的登录密码：')
-  if (!password) return
+  if (!destroyForm.password) {
+    destroyError.value = '请输入当前登录密码'
+    return
+  }
+  destroyLoading.value = true
   try {
-    await destroy(code, password)
+    await destroy(destroyForm.code, destroyForm.password, destroyForm.source || 'default')
     userStore.clear()
     toast.success('账号已注销')
     router.replace('/')
-  } catch {
-    // 拦截器已提示
+  } catch (e) {
+    destroyError.value = e?.response?.data?.msg || '注销失败，请检查验证码与密码'
+  } finally {
+    destroyLoading.value = false
   }
 }
 
@@ -347,6 +466,7 @@ function fetchUserInfo() {
 onMounted(fetchUserInfo)
 onUnmounted(() => {
   if (countdownTimer) clearInterval(countdownTimer)
+  if (codeTimer) clearInterval(codeTimer)
 })
 </script>
 
@@ -431,5 +551,84 @@ onUnmounted(() => {
   padding: 12px;
   background: rgba(217, 84, 77, 0.08);
   border-radius: var(--radius);
+}
+
+/* 注销确认弹层 */
+.modal-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 16px;
+}
+.modal-box {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg);
+  border-radius: var(--radius);
+  padding: 24px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+.modal-title {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--danger);
+  margin-bottom: 12px;
+}
+.modal-warn {
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.6;
+  margin: 0 0 16px;
+}
+.modal-warn strong { color: var(--danger); }
+.field {
+  margin-bottom: 14px;
+}
+.field label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 6px;
+  color: var(--text);
+}
+.code-row {
+  display: flex;
+  gap: 8px;
+}
+.code-row .input { flex: 1; }
+.field-hint {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+.form-error {
+  font-size: 13px;
+  color: var(--danger);
+  margin: 4px 0 14px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  margin-right: 6px;
+  vertical-align: -2px;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 </style>

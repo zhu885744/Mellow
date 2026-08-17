@@ -1,6 +1,6 @@
 <template>
   <div>
-    <h2 class="title">欢迎回来 👋</h2>
+    <h2 class="title">欢迎回来！</h2>
     <p class="subtitle">登录以访问更多功能</p>
 
     <form class="auth-form" @submit.prevent="handleLogin">
@@ -35,6 +35,8 @@
       <button class="btn btn-primary btn-block btn-lg" :disabled="loading" type="submit">
         {{ loading ? '登录中...' : '登 录' }}
       </button>
+
+      <AuthAgreement />
     </form>
 
     <div class="auth-bottom">
@@ -49,6 +51,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { login } from '@/api/comm'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
+import AuthAgreement from '@/components/AuthAgreement.vue'
 
 const account = ref('')
 const password = ref('')

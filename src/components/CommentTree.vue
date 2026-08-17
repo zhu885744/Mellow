@@ -59,6 +59,7 @@ import { getCommentTree, createComment, removeComment } from '@/api/comment'
 import { likesCount, isLiked, like, unlike } from '@/api/tags'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
+import { pickCommentAuthor } from '@/utils/helper'
 
 const props = defineProps({
   bindId: { type: [String, Number], required: true },
@@ -82,49 +83,37 @@ const pageSize = 15
 const total = ref(0)
 const replyTo = ref(null)
 
-// 扁平评论按 pid 本地构树（参考 i-comment.vue / CommentList.vue）
-function buildTree(list) {
-  const map = new Map()
-  const roots = []
-  list.forEach((c) => {
-    map.set(c.id, { ...c, replies: [], parentName: '' })
-  })
-  list.forEach((c) => {
-    const node = map.get(c.id)
-    if (c.pid && map.has(Number(c.pid))) {
-      node.parentName = map.get(Number(c.pid)).user?.nickname || ''
-      map.get(Number(c.pid)).replies.push(node)
-    } else {
-      roots.push(node)
-    }
-  })
-  // 子回复按时间正序，父评论倒序
-  const sortRec = (arr) => {
-    arr.forEach((n) => sortRec(n.replies))
-  }
-  roots.sort((a, b) => b.create_time - a.create_time)
-  sortRec(roots)
-  return roots
-}
-
-// 拉取点赞数与已点赞状态
+// 拉取点赞数与已点赞状态（递归处理嵌套树里的所有评论，含子评论）
 //  - 已登录：逐项 is-liked，返回里同时带 count（用 count 填点赞数）
 //  - 未登录：批量 counts（target_ids 数组）
+function flattenTree(list) {
+  const result = []
+  const walk = (arr) => {
+    arr.forEach((c) => {
+      result.push(c)
+      if (c.replies?.length) walk(c.replies)
+    })
+  }
+  walk(list)
+  return result
+}
+
 async function loadLikes(list) {
-  if (!list.length) return
+  const flat = flattenTree(list)
+  if (!flat.length) return
   if (userStore.isLogged) {
     await Promise.all(
-      list.map(async (c) => {
+      flat.map(async (c) => {
         const r = await isLiked('comment', c.id).catch(() => null)
         c.liked = !!r?.data?.is_liked
         if (r?.data?.count !== undefined) c.likeCount = r.data.count
       })
     )
   } else {
-    const ids = list.map((c) => c.id)
+    const ids = flat.map((c) => c.id)
     const countsRes = await likesCount('comment', ids).catch(() => null)
     const countMap = countsRes?.data?.counts || {}
-    list.forEach((c) => {
+    flat.forEach((c) => {
       c.likeCount = countMap[c.id] ?? countMap[String(c.id)] ?? 0
     })
   }
@@ -141,7 +130,8 @@ async function load() {
     total.value = res.data?.count || list.length
     await loadLikes(list)
     rawList.value = list
-    tree.value = buildTree(list)
+    // 后端 comment/flat 已返回嵌套树（根评论带 replies 字段），无需前端再构树
+    tree.value = list
     emit('loaded', total.value)
   } catch {
     rawList.value = []
@@ -170,6 +160,8 @@ async function onLike(comment) {
     const r = await isLiked('comment', comment.id).catch(() => null)
     if (r?.data?.count !== undefined) comment.likeCount = r.data.count
     comment.liked = next
+    if (next) toast.success('点赞成功')
+    else toast.info('已取消点赞')
   } catch {
     comment.liked = !next
     comment.likeCount = prevCount
@@ -178,7 +170,7 @@ async function onLike(comment) {
 }
 
 function onReply(comment) {
-  replyTo.value = { id: comment.id, name: comment.user?.nickname || '匿名' }
+  replyTo.value = { id: comment.id, name: pickCommentAuthor(comment).nickname || '匿名' }
 }
 
 // 发表根评论

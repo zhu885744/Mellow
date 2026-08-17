@@ -9,12 +9,19 @@
         </div>
         <div class="time">{{ fromNow(moment.create_time) }}</div>
       </div>
-      <button
-        v-if="canDelete"
-        class="btn-icon"
-        @click="$emit('delete', moment)"
-        title="删除"
-      ><i class="bi bi-x-lg" /></button>
+      <div v-if="canManage" class="head-actions">
+        <button
+          class="btn-icon"
+          :class="{ active: moment.top }"
+          :title="moment.top ? '取消置顶' : '设为置顶'"
+          @click="toggleTop"
+        ><i class="bi" :class="moment.top ? 'bi-pin-fill' : 'bi-pin'" /></button>
+        <button
+          class="btn-icon danger"
+          title="删除"
+          @click="$emit('delete', moment)"
+        ><i class="bi bi-x-lg" /></button>
+      </div>
     </div>
     <div class="moment-content" v-html="renderedContent"></div>
     <div
@@ -37,11 +44,12 @@
     </div>
     <div class="moment-actions">
       <button
-        class="action-item"
+        ref="likeBtn"
+        class="action-item like-btn"
         :class="{ liked }"
         @click="toggleLike"
       >
-        <span class="like-heart"><i class="bi" :class="liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
+        <span class="like-heart"><i ref="likeHeart" class="bi" :class="liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
         <span class="like-count">{{ likeCount }}</span>
       </button>
       <button class="action-item" @click="toggleComments">
@@ -52,7 +60,7 @@
       <span class="action-item"><i class="bi bi-eye" /> {{ moment.views || 0 }}</span>
     </div>
 
-    <!-- 动态评论（参考 CommentList.vue，bind_type=moments） -->
+    <!-- 动态评论 -->
     <div v-if="showComments" class="moment-comments">
       <CommentTree
         :bind-id="moment.id"
@@ -75,12 +83,13 @@ import CommentTree from './CommentTree.vue'
 import { call } from '@/api/request'
 import { like, unlike, isLiked, likesCount } from '@/api/tags'
 import { openLightbox } from '@/utils/lightbox'
+import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
   moment: { type: Object, required: true }
 })
-defineEmits(['delete'])
+const emit = defineEmits(['delete', 'refresh'])
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -127,6 +136,15 @@ async function toggleLike() {
   const prevCount = likeCount.value
   liked.value = !prevLiked
   likeCount.value = Math.max(0, prevCount + (liked.value ? 1 : -1))
+  // 即时动画 + 消息提示
+  if (liked.value) {
+    popIcon(likeHeart.value)
+    burstHeart(likeBtn.value)
+    toast.success('点赞成功')
+  } else {
+    popOut(likeHeart.value)
+    toast.info('已取消点赞')
+  }
   try {
     if (liked.value) {
       await like('moment', props.moment.id)
@@ -181,6 +199,24 @@ const canDelete = computed(() => {
   return userStore.user?.id === props.moment.uid || helperIsAdmin(userStore.user)
 })
 
+// 仅管理员可置顶/删除（置顶按钮在删除按钮之前）
+const canManage = computed(() => helperIsAdmin(userStore.user))
+
+async function toggleTop() {
+  const next = props.moment.top ? 0 : 1
+  try {
+    await call('moments', 'set_top', {
+      method: 'PUT',
+      data: { ids: String(props.moment.id), top: next }
+    })
+    props.moment.top = next
+    toast.success(next ? '已设为置顶' : '已取消置顶')
+    emit('refresh')
+  } catch {
+    /* 拦截器已提示 */
+  }
+}
+
 function toggleComments() {
   showComments.value = !showComments.value
 }
@@ -234,15 +270,37 @@ function previewImage(i) {
   font-size: 12px;
   color: var(--text-muted);
 }
+.head-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
 .btn-icon {
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
   background: var(--bg-muted);
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 16px;
+  font-size: 15px;
   line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+.btn-icon:hover {
+  background: var(--primary);
+  color: #fff;
+}
+.btn-icon.danger:hover {
+  background: var(--danger);
+  color: #fff;
+}
+.btn-icon.active {
+  background: var(--accent);
+  color: #fff;
 }
 .btn-icon:hover {
   background: var(--danger);
@@ -321,6 +379,9 @@ function previewImage(i) {
 }
 .action-item:hover {
   color: var(--primary);
+}
+.like-btn {
+  position: relative;
 }
 .action-item .like-heart {
   display: inline-block;

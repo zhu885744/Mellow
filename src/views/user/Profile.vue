@@ -6,7 +6,14 @@
         <h2 class="block-title">头像设置</h2>
         <div class="avatar-top">
           <div class="avatar-preview">
-            <img :src="form.avatar || defaultAvatar" class="big-avatar" @error="onAvatarError" />
+            <AvatarFrame
+              :src="form.avatar"
+              :frame="form.frame"
+              :fallback="defaultAvatar"
+              :size="'75px'"
+              :frame-scale="1.6"
+              alt="头像预览"
+            />
           </div>
           <div class="avatar-controls">
             <button class="btn btn-sm btn-primary" :disabled="uploading" @click="handleUploadAvatar">
@@ -82,6 +89,19 @@
 
           <div class="form-item">
             <label class="form-label">头衔</label>
+            <!-- 当前头衔标签 -->
+            <div class="current-title-row">
+              <span class="current-title-label">当前头衔：</span>
+              <span
+                v-if="form.title"
+                :class="['current-title', getTitleColorClass(form.title), { 'is-custom': isCustomTitle }]"
+              >
+                {{ form.title }}
+                <i v-if="isCustomTitle" class="bi bi-patch-exclamation" title="自定义头衔（预设中不存在）" />
+              </span>
+              <span v-else class="current-title empty">未设置</span>
+              <button v-if="form.title" type="button" class="btn-link clear-title" @click="clearTitle">清除</button>
+            </div>
             <div class="preset-titles">
               <button
                 v-for="title in PRESET_TITLES"
@@ -89,8 +109,14 @@
                 type="button"
                 :class="['preset-title', getTitleColorClass(title), { selected: form.title === title }]"
                 @click="selectPresetTitle(title)"
-              >{{ title }}</button>
+              >
+                <i v-if="form.title === title" class="bi bi-check-circle-fill" />
+                {{ title }}
+              </button>
             </div>
+            <p v-if="isCustomTitle" class="hint custom-title-hint">
+              <i class="bi bi-info-circle" /> 当前为自定义头衔，不在上方预设列表中，保存后将继续保留。
+            </p>
           </div>
 
           <div class="form-item">
@@ -121,10 +147,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { updateUser, uploadAvatar } from '@/api/users'
 import { toast } from '@/utils/toast'
+import AvatarFrame from '@/components/AvatarFrame.vue'
 
 const userStore = useUserStore()
 
@@ -178,10 +205,6 @@ const form = reactive({
   frame: ''
 })
 const originalData = reactive({})
-
-function onAvatarError(e) {
-  e.target.src = defaultAvatar
-}
 
 function getTitleColorClass(title) {
   const map = {
@@ -265,6 +288,14 @@ function selectPresetTitle(title) {
   toast.success('头衔已应用，请点击「保存修改」完成更新')
 }
 
+// 当前头衔是否为预设之外的自定义头衔
+const isCustomTitle = computed(() => !!form.title && !PRESET_TITLES.includes(form.title))
+
+function clearTitle() {
+  form.title = ''
+  toast.info('已清除头衔，请点击「保存修改」完成更新')
+}
+
 function removeAvatar() {
   form.avatar = ''
   toast.info('头像已移除，请点击「保存修改」完成更新')
@@ -345,9 +376,6 @@ watch(() => userStore.user, (nu) => {
   display: flex;
   flex-direction: column;
   gap: 16px;
-}
-.avatar-card {
-  /* 上下堆叠布局，不再 sticky */
 }
 .avatar-top {
   display: flex;
@@ -457,8 +485,56 @@ watch(() => userStore.user, (nu) => {
   border-color: var(--primary);
 }
 .preset-title.selected {
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.5);
+  border-color: var(--primary-deep);
+  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.35);
   transform: translateY(-1px);
+  outline: 2px solid var(--primary-deep);
+  font-weight: 600;
+}
+.preset-title.selected i {
+  margin-right: 3px;
+  vertical-align: -1px;
+}
+/* 当前头衔标签 */
+.current-title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--bg-muted);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+}
+.current-title-label {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.current-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  border-radius: 999px;
+}
+.current-title.is-custom {
+  outline: 2px dashed rgba(255, 255, 255, 0.7);
+}
+.current-title.empty {
+  background: #6c757d;
+  color: #fff;
+  font-weight: 400;
+}
+.clear-title {
+  font-size: 12px;
+  margin-left: auto;
+}
+.custom-title-hint {
+  margin-top: 10px;
 }
 /* 头衔颜色 */
 .title-zhangmen { background: linear-gradient(135deg, #f6d365, #fda085); color: #5a3e00; }
