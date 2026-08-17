@@ -81,8 +81,6 @@ import { useRouter } from 'vue-router'
 import { register, registerSendCode } from '@/api/comm'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
-import { setCookie } from '@/utils/cookie'
-import { TOKEN_NAME } from '@/api/request'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -136,7 +134,7 @@ async function handleRegister() {
       const data = res.data || {}
       const validTime = Number(data.valid_time) > 0 ? Number(data.valid_time) : 15 * 24 * 60 * 60
       if (data.token) {
-        setCookie(TOKEN_NAME, data.token, validTime)
+        userStore.persistToken(data.token, validTime)
       }
       userStore.setUser(data.user, validTime)
       toast.success('注册成功，已自动登录')

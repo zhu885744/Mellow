@@ -12,6 +12,7 @@
         <div class="user-desc">{{ user?.description || '这个人很懒，什么都没留下' }}</div>
         <div class="user-actions">
           <router-link :to="`/user`" class="btn btn-sm btn-ghost">用户中心</router-link>
+          <router-link :to="`/author/${user?.id}`" class="btn btn-sm btn-ghost">用户主页</router-link>
           <button class="btn btn-sm btn-ghost" @click="userStore.logout">退出</button>
         </div>
         <div class="signin-entry">
@@ -259,6 +260,7 @@ watch(
 }
 .user-actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
   gap: 8px;
 }

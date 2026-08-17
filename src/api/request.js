@@ -8,6 +8,20 @@ import { getCookie } from '@/utils/cookie'
 // 与 stores/user.js、Login.vue、Register.vue 保持一致的 token cookie 名
 export const TOKEN_NAME = 'INIS_LOGIN_TOKEN'
 
+// 约定：token 同时存于 cookie（INIS_LOGIN_TOKEN）和 localStorage（mellow_token）两处，
+// 便于跨域/代理环境下稳定读取。优先读 cookie，回退读 localStorage。
+function readToken() {
+  const fromCookie = getCookie(TOKEN_NAME)
+  if (fromCookie) return fromCookie
+  try {
+    const fromLs = localStorage.getItem('mellow_token')
+    if (fromLs) return fromLs
+  } catch (e) {
+    // localStorage 不可用时忽略
+  }
+  return ''
+}
+
 // baseURL 优先取 .env 的 VITE_API_URI（指向真实后端），
 // 未配置时回退到 '/api'（配合 vite dev proxy 转发）
 const API_URI = import.meta.env.VITE_API_URI || ''
@@ -22,11 +36,23 @@ const service = axios.create({
   }
 })
 
-// 请求拦截器：注入登录 token（INIS 后端以 Authorization: Bearer <token> 鉴权）
+// dev 类接口（如 /dev/info/time）不走 /api 前缀，单独导出实例供调用
+export const devService = axios.create({
+  baseURL: API_URI ? API_URI.replace(/\/$/, '') : '',
+  timeout: 10000,
+  withCredentials: true,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// INIS 鉴权说明（参考 Cardify-inis 实现，实测 /api/comm/check-token 返回 "Authorization 不能为空！"）：
+// 后端校验的是请求头 Authorization: <token>（裸 JWT，不要加 "Bearer " 前缀）。
+// 登录/注册等匿名接口不带 token；check-token 等鉴权接口需要带 token（由拦截器统一注入）。
 service.interceptors.request.use((config) => {
-  const token = getCookie(TOKEN_NAME)
+  const token = readToken()
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`
+    config.headers.Authorization = token
   }
   return config
 })
@@ -60,10 +86,13 @@ service.interceptors.response.use(
       if (data.code === 204) {
         return { code: 204, data: null, msg: data.msg }
       }
-      // 401/412 未登录或 token 失效：静默清理本地状态，不弹错误
-      // （check-token 会返回原始码，由调用方处理）
+      // 401/412 未登录或 token 失效：清理本地状态
+      // 若调用方传了 skipAuthLogout（如 check-token 需要拿到原始码做本地状态清理），
+      // 则不触发全局登出，原样返回给调用方处理（参考 Cardify-inis 实现）
       if (data.code === 401 || data.code === 412) {
-        handleLogout()
+        if (!res.config?.skipAuthLogout) {
+          handleLogout()
+        }
         return Promise.reject({ ...data, code: data.code })
       }
       if (data.code === 403) {
@@ -104,11 +133,12 @@ export { cache }
  * @param {object} options.data POST/PUT body
  */
 export const call = (controller, method, options = {}) => {
-  const { method: httpMethod = 'GET', params, data } = options
+  const { method: httpMethod = 'GET', params, data, config } = options
   return service.request({
     url: `/${controller}/${method}`,
     method: httpMethod,
     params: httpMethod === 'GET' || httpMethod === 'DELETE' ? params : undefined,
-    data: httpMethod !== 'GET' && httpMethod !== 'DELETE' ? data : undefined
+    data: httpMethod !== 'GET' && httpMethod !== 'DELETE' ? data : undefined,
+    ...config
   })
 }

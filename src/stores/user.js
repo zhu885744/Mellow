@@ -10,6 +10,27 @@ import { TOKEN_NAME } from '@/api/request'
 const TOKEN_KEY = 'blog_user'
 const TOKEN_VALID = 'blog_token_valid'
 const USER_CACHE = 'user-info'
+const TOKEN_LS = 'mellow_token' // token 的 localStorage 兜底（与 request.js readToken 对应）
+
+// 统一持久化 token：cookie（INIS_LOGIN_TOKEN，供同域兜底）+ localStorage（跨域/代理环境兜底）
+function persistToken(token, valid) {
+  if (!token) return
+  try {
+    setCookie(TOKEN_NAME, token, valid)
+  } catch {}
+  try {
+    localStorage.setItem(TOKEN_LS, token)
+  } catch {}
+}
+
+function clearToken() {
+  try {
+    clearCookie(TOKEN_NAME)
+  } catch {}
+  try {
+    localStorage.removeItem(TOKEN_LS)
+  } catch {}
+}
 
 // 并发保护
 let checkingToken = false
@@ -102,9 +123,9 @@ export const useUserStore = defineStore('user', () => {
           login.value = { finish: true, user: u }
           const valid = Number(res.data?.valid_time) > 0 ? Number(res.data.valid_time) : 2 * 60 * 60
           tokenValid.value = valid
-          // 同步 token 到 cookie（刷新/续期）
+          // 同步 token 到 cookie + localStorage（刷新/续期）
           if (res.data?.token) {
-            setCookie(TOKEN_NAME, res.data.token, valid)
+            persistToken(res.data.token, valid)
           }
           cache.set(USER_CACHE, u, Math.ceil(valid / 60))
           save()
@@ -150,7 +171,7 @@ export const useUserStore = defineStore('user', () => {
         login.value = { finish: true, user: u }
         if (res.data?.valid_time) tokenValid.value = res.data.valid_time
         if (res.data?.token) {
-          setCookie(TOKEN_NAME, res.data.token, Number(res.data.valid_time) > 0 ? Number(res.data.valid_time) : 2 * 60 * 60)
+          persistToken(res.data.token, Number(res.data.valid_time) > 0 ? Number(res.data.valid_time) : 2 * 60 * 60)
         }
         save()
         return true
@@ -204,8 +225,8 @@ export const useUserStore = defineStore('user', () => {
       await apiLogout()
     } catch {}
     clear()
-    // 清除 token cookie
-    clearCookie(TOKEN_NAME)
+    // 清除 token（cookie + localStorage）
+    clearToken()
     toast.success('已退出登录')
   }
 
@@ -224,6 +245,8 @@ export const useUserStore = defineStore('user', () => {
     checkLoginState,
     ensureLogin,
     fetchSiteInfo,
-    logout
+    logout,
+    persistToken,
+    clearToken
   }
 })

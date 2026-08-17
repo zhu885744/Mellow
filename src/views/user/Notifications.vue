@@ -35,6 +35,7 @@
         :class="['notif', { unread: !n.is_read }]"
         @click="onClick(n)"
       >
+        <span v-if="!n.is_read" class="unread-dot" />
         <div class="notif-icon" :class="`type-${n.type}`">
           {{ iconOf(n.type) }}
         </div>
@@ -44,6 +45,9 @@
           <div class="notif-meta">
             <span>{{ fromNow(n.create_time) }}</span>
             <span class="notif-type">{{ typeLabel(n.type) }}</span>
+            <span class="read-status" :class="n.is_read ? 'read' : 'unread'">
+              {{ n.is_read ? '已读' : '未读' }}
+            </span>
           </div>
         </div>
       </li>
@@ -89,8 +93,10 @@ async function load() {
     if (filter.value.type) params.type = filter.value.type
     if (filter.value.is_read) params.is_read = filter.value.is_read
     const res = await listNotifications(params)
-    items.value = res.data?.data || []
-    total.value = res.data?.count || 0
+    // 后端返回结构: { code, data: { data: [...], count, page } }
+    const payload = res.data?.data
+    items.value = Array.isArray(payload) ? payload : (payload?.data || [])
+    total.value = payload?.count || res.data?.count || 0
     notif.refresh()
   } catch {
     items.value = []
@@ -173,9 +179,10 @@ onMounted(load)
   flex-direction: column;
 }
 .notif {
+  position: relative;
   display: flex;
   gap: 12px;
-  padding: 12px 8px;
+  padding: 12px 8px 12px 18px;
   border-bottom: 1px dashed var(--border-soft);
   cursor: pointer;
   transition: background 0.15s;
@@ -184,7 +191,21 @@ onMounted(load)
   background: var(--bg-muted);
 }
 .notif.unread {
-  background: rgba(184, 153, 104, 0.04);
+  background: rgba(184, 153, 104, 0.08);
+}
+.notif.unread .notif-title {
+  font-weight: 600;
+  color: var(--text);
+}
+.unread-dot {
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--danger);
 }
 .notif-icon {
   width: 36px;
@@ -227,6 +248,19 @@ onMounted(load)
   padding: 1px 6px;
   background: var(--bg-muted);
   border-radius: 3px;
+}
+.read-status {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+.read-status.unread {
+  color: #fff;
+  background: var(--danger);
+}
+.read-status.read {
+  color: var(--text-muted);
+  background: var(--bg-muted);
 }
 .loading {
   padding: 32px;

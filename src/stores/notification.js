@@ -9,7 +9,8 @@ export const useNotificationStore = defineStore('notification', () => {
   async function refresh() {
     try {
       const res = await unreadCount()
-      count.value = res.data || 0
+      // 后端返回结构: { code, data: { count } }
+      count.value = res.data?.data?.count || 0
     } catch {}
   }
 

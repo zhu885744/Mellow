@@ -41,11 +41,16 @@
     <div class="card card-pad">
       <div class="tab-bar">
         <button :class="['tab', tab === 'article' && 'active']" @click="switchTab('article')">TA的文章</button>
+        <button :class="['tab', tab === 'fans' && 'active']" @click="switchTab('fans')">TA的粉丝</button>
+        <button :class="['tab', tab === 'follow' && 'active']" @click="switchTab('follow')">TA的关注</button>
         <button :class="['tab', tab === 'like' && 'active']" @click="switchTab('like')">TA的点赞</button>
         <button :class="['tab', tab === 'collect' && 'active']" @click="switchTab('collect')">TA的收藏</button>
       </div>
 
       <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-else-if="denied" class="empty-row">
+        <EmptyState :text="deniedText" />
+      </div>
       <div v-else-if="!list.length" class="empty-row">
         <EmptyState :text="emptyText" />
       </div>
@@ -55,23 +60,47 @@
         <ArticleCard v-for="a in list" :key="a.id" :article="a" />
       </template>
 
-      <!-- 点赞 / 收藏列表 -->
-      <ul v-else class="like-list">
-        <li v-for="(i, k) in list" :key="k" class="like-item">
-          <router-link :to="targetLink(i)" class="like-link">
-            <span class="like-title">{{ i.result?.title || i.target?.title || formatText(i) }}</span>
-            <span class="like-type">{{ typeLabel(i.type) }}</span>
-            <span class="like-time">{{ fromNow(i.create_time) }}</span>
+      <!-- 粉丝 / 关注 列表（仅本人可见） -->
+      <ul v-else-if="tab === 'fans' || tab === 'follow'" class="user-list">
+        <li v-for="item in list" :key="item.id" class="user-item">
+          <router-link :to="`/author/${item.uid || item.user_id || item.id}`" class="user-link">
+            <img :src="item.avatar || defaultAvatar" class="user-avatar" @error="onImgError" />
+            <div class="user-info">
+              <span class="user-name">{{ item.nickname || item.name || '匿名用户' }}</span>
+              <span class="user-sub">{{ item.description || '' }}</span>
+            </div>
+            <span class="user-time">{{ fromNow(item.create_time) }}</span>
           </router-link>
         </li>
       </ul>
+
+      <!-- 点赞 / 收藏 列表（仅本人可见，含 文章/评论/动态 子分类） -->
+      <template v-else>
+        <div v-if="isSelf" class="sub-tab-bar">
+          <button
+            v-for="st in LIKE_TABS"
+            :key="st.key"
+            :class="['sub-tab', subTab === st.key && 'active']"
+            @click="switchSubTab(st.key)"
+          >{{ st.label }}</button>
+        </div>
+        <ul class="like-list">
+          <li v-for="(i, k) in list" :key="i.id || k" class="like-item" @click="goDetail(i)">
+            <div class="like-main">
+              <span class="like-badge" :class="badgeClass(i.target_type)">{{ typeLabel(i.target_type) }}</span>
+              <span class="like-title">{{ detailTitle(i) }}</span>
+            </div>
+            <span class="like-time">{{ fromNow(i.create_time) }}</span>
+          </li>
+        </ul>
+      </template>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import ArticleCard from '@/components/ArticleCard.vue'
 import { getUser } from '@/api/users'
 import { getAuthorArticles, countArticlesByAuthor } from '@/api/article'
@@ -83,6 +112,7 @@ import { toast } from '@/utils/toast'
 import EmptyState from '@/components/EmptyState.vue'
 
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const uid = computed(() => Number(route.params.id))
 
@@ -97,27 +127,47 @@ const isSelf = computed(() => userStore.isLogged && Number(userStore.user?.id) =
 const tab = ref('article')
 const list = ref([])
 const loading = ref(false)
+const denied = ref(false)
 const page = ref(1)
 const pageSize = 10
 const finished = ref(false)
 
 const emptyText = computed(() => {
   if (tab.value === 'article') return 'TA还没有发布文章'
+  if (tab.value === 'fans') return 'TA还没有粉丝'
+  if (tab.value === 'follow') return 'TA还没有关注任何人'
   if (tab.value === 'like') return 'TA还没有点赞内容'
   return 'TA还没有收藏内容'
 })
+
+const deniedText = computed(() => '仅本人可见')
 
 function onImgError(e) {
   e.target.src = defaultAvatar
 }
 
 function switchTab(t) {
-  if (t === 'follow' || t === 'fans') {
-    toast.info('关注/粉丝列表暂不支持查看')
-    return
-  }
   if (tab.value === t) return
   tab.value = t
+  if (t !== 'like' && t !== 'collect') subTab.value = 'all'
+  page.value = 1
+  finished.value = false
+  denied.value = false
+  load()
+}
+
+// 点赞/收藏子分类（全部 / 文章 / 评论 / 动态），默认全部
+const LIKE_TABS = [
+  { key: 'all', label: '全部' },
+  { key: 'article', label: '文章' },
+  { key: 'comment', label: '评论' },
+  { key: 'moment', label: '动态' }
+]
+const subTab = ref('all')
+
+function switchSubTab(t) {
+  if (subTab.value === t) return
+  subTab.value = t
   page.value = 1
   finished.value = false
   load()
@@ -125,20 +175,96 @@ function switchTab(t) {
 
 function typeLabel(t) {
   if (t === 'article') return '文章'
+  if (t === 'comment') return '评论'
   if (t === 'moments' || t === 'moment') return '动态'
   if (t === 'page') return '页面'
+  if (t === 'users' || t === 'user') return '用户'
   return '内容'
 }
 
-function formatText(i) {
-  return (i.result?.content || i.target?.content || '').slice(0, 30) || '内容'
+function badgeClass(t) {
+  if (t === 'article') return 'badge-article'
+  if (t === 'comment') return 'badge-comment'
+  if (t === 'moment' || t === 'moments') return 'badge-moment'
+  return 'badge-other'
 }
 
-function targetLink(i) {
-  const type = i.type
+// 详情标题：优先 _detail（enrich 后），再回退 result.author.nickname（user 类型）
+function detailTitle(i) {
+  const d = i._detail
+  if (d) {
+    if (d.title) return d.title
+    if (d.content) return (d.content || '').slice(0, 40)
+  }
+  if (i.target_type === 'user' && i.result?.author?.nickname) {
+    return i.result.author.nickname
+  }
+  return '内容'
+}
+
+// 点击跳转（参考 Cardify-inis goToLikedContent）
+function goDetail(i) {
+  const type = i.target_type
   const id = i.target_id || i.id
-  if (type === 'moments' || type === 'moment') return `/moments`
-  return `/archives/${id}`
+  if (type === 'comment') {
+    const bind = i._detail?.bind_type || i.bind_type || i.result?.bind_type
+    const bid = i._detail?.bind_id || i.bind_id || i.result?.bind_id
+    if (bind === 'article' && bid) return router.push(`/archives/${bid}`)
+    if ((bind === 'moment' || bind === 'moments') && bid) return router.push(`/moments/${bid}`)
+    if (bind === 'page' && bid) return router.push(`/page/${bid}`)
+    return
+  }
+  if (type === 'moment' || type === 'moments') return router.push(`/moments/${id}`)
+  if (type === 'page') return router.push(`/page/${id}`)
+  return router.push(`/archives/${id}`)
+}
+
+// 点赞/收藏列表：按 target_type 批量补充被操作对象详情（参考 Cardify-inis fetchBatchDetails）
+const endpointMap = {
+  article: { ctrl: 'article', field: 'id,title,abstract,content,views,create_time' },
+  comment: { ctrl: 'comment', field: 'id,content,bind_id,bind_type,uid,create_time' },
+  moment: { ctrl: 'moments', field: 'id,content,images,location,uid,create_time' },
+  page: { ctrl: 'article', field: 'id,title,content,views,create_time' }
+}
+
+async function enrichTargets(items) {
+  const grouped = {}
+  for (const it of items) {
+    const type = it.target_type
+    const id = it.target_id
+    if (!type || !id) continue
+    ;(grouped[type] = grouped[type] || []).push(id)
+  }
+  const detailMaps = {}
+  await Promise.all(
+    Object.entries(grouped).map(async ([type, ids]) => {
+      const meta = endpointMap[type]
+      if (!meta) return
+      const uniq = [...new Set(ids.map(Number).filter(Boolean))]
+      try {
+        const res = await call(meta.ctrl, 'all', {
+          method: 'GET',
+          params: {
+            where: JSON.stringify({ id: { $in: uniq } }),
+            limit: uniq.length,
+            field: meta.field
+          }
+        })
+        const rows = res.data?.data || res.data?.list || []
+        const m = new Map()
+        for (const r of rows) if (r && r.id !== undefined) m.set(String(r.id), r)
+        detailMaps[type] = m
+      } catch {
+        // 单组失败不影响整体
+      }
+    })
+  )
+  for (const it of items) {
+    const m = detailMaps[it.target_type]
+    if (m && m.has(String(it.target_id))) {
+      it._detail = m.get(String(it.target_id))
+    }
+  }
 }
 
 async function loadProfile() {
@@ -155,17 +281,40 @@ async function loadProfile() {
     level.value = lv?.value || u.users_rating?.grade || u.grade || 0
     stats.value = {
       article: u.article_total || 0,
-      follow: u.follow || u.follow_count || 0,
-      fans: u.followed || u.followed_count || 0
+      follow: 0,
+      fans: 0
     }
     // 文章数单独统计（用户对象未直接提供或不可靠）
     try {
       const c = await countArticlesByAuthor(uid.value)
       stats.value.article = c.data || 0
     } catch {}
+    // 关注 / 粉丝数走 user-follows/counts 接口（参考 Cardify-inis）
+    loadFollowCounts()
   } catch {
     profile.value = { nickname: '用户不存在', avatar: '', description: '' }
   }
+}
+
+async function loadFollowCounts() {
+  try {
+    const [followingRes, followersRes] = await Promise.all([
+      call('user-follows', 'counts', {
+        method: 'GET',
+        params: { target_type: 'following', target_ids: [uid.value] }
+      }),
+      call('user-follows', 'counts', {
+        method: 'GET',
+        params: { target_type: 'followers', target_ids: [uid.value] }
+      })
+    ])
+    if (followingRes.data?.counts) {
+      stats.value.follow = followingRes.data.counts[uid.value] || 0
+    }
+    if (followersRes.data?.counts) {
+      stats.value.fans = followersRes.data.counts[uid.value] || 0
+    }
+  } catch {}
 }
 
 async function loadFollowState() {
@@ -197,46 +346,75 @@ async function toggleFollow() {
   } catch {}
 }
 
+// 粉丝 / 关注列表：隐私限制，仅本人可查看（参考 Cardify-inis）
+async function loadFollowList(kind) {
+  if (!isSelf.value) {
+    denied.value = true
+    list.value = []
+    finished.value = true
+    return
+  }
+  const res = await call('user-follows', kind === 'fans' ? 'followers' : 'following', {
+    method: 'GET',
+    params: { uid: uid.value, page: page.value, limit: pageSize }
+  })
+  // 参考 Cardify-inis：行含 result.follower（粉丝）/ result.followee（关注）
+  const data = res.data?.list || res.data?.data || []
+  const items = data.map((it) => {
+    const o = kind === 'fans' ? it.result?.follower : it.result?.followee
+    // 对方用户 id：粉丝列表用 item.uid，关注列表用 item.follow_uid（参考 Cardify-inis goToUser）
+    const targetUid = kind === 'fans' ? (it.uid || o?.uid) : (it.follow_uid || o?.uid)
+    return {
+      id: it.id,
+      uid: targetUid || o?.user_id || it.user_id,
+      nickname: o?.nickname,
+      avatar: o?.avatar,
+      description: o?.description || o?.remarks,
+      create_time: it.create_time
+    }
+  })
+  list.value = page.value === 1 ? items : [...list.value, ...items]
+  finished.value = items.length < pageSize
+}
+
 async function load() {
   loading.value = true
+  denied.value = false
   try {
     let res
     if (tab.value === 'article') {
       res = await getAuthorArticles(uid.value, { page: page.value, limit: pageSize })
       list.value = page.value === 1 ? (res.data?.data || []) : [...list.value, ...(res.data?.data || [])]
       finished.value = (res.data?.data || []).length < pageSize
+    } else if (tab.value === 'fans' || tab.value === 'follow') {
+      await loadFollowList(tab.value)
     } else if (tab.value === 'like') {
-      if (!userStore.isLogged) {
-        toast.info('登录后查看 TA 的点赞')
-        list.value = []
-        finished.value = true
-        return
-      }
-      res = await myLikes({ page: page.value, limit: pageSize, where: JSON.stringify({ login: uid.value }) })
-      list.value = page.value === 1 ? (res.data?.data || []) : [...list.value, ...(res.data?.data || [])]
-      finished.value = (res.data?.data || []).length < pageSize
+      // 点赞列表：仅本人可见（参考 Cardify-inis，非本人不发起请求）
+      if (!isSelf.value) { denied.value = true; list.value = []; finished.value = true; return }
+      // 按子分类传 target_type（article/comment/moment），参考 Cardify-inis
+      // 默认"全部"不传 target_type，查回所有类型；选具体分类再按 target_type 过滤
+      const likeParams = { page: page.value, limit: pageSize }
+      if (subTab.value !== 'all') likeParams.target_type = subTab.value
+      res = await myLikes(likeParams)
+      const items = res.data?.data || []
+      await enrichTargets(items)
+      list.value = page.value === 1 ? items : [...list.value, ...items]
+      finished.value = items.length < pageSize
     } else if (tab.value === 'collect') {
-      if (!userStore.isLogged) {
-        toast.info('登录后查看 TA 的收藏')
-        list.value = []
-        finished.value = true
-        return
-      }
-      res = await myCollects({ page: page.value, limit: pageSize, where: JSON.stringify({ login: uid.value }) })
-      list.value = page.value === 1 ? (res.data?.data || []) : [...list.value, ...(res.data?.data || [])]
-      finished.value = (res.data?.data || []).length < pageSize
+      if (!isSelf.value) { denied.value = true; list.value = []; finished.value = true; return }
+      const collectParams = { page: page.value, limit: pageSize }
+      if (subTab.value !== 'all') collectParams.target_type = subTab.value
+      res = await myCollects(collectParams)
+      const items = res.data?.data || []
+      await enrichTargets(items)
+      list.value = page.value === 1 ? items : [...list.value, ...items]
+      finished.value = items.length < pageSize
     }
   } catch {
     list.value = page.value === 1 ? [] : list.value
   } finally {
     loading.value = false
   }
-}
-
-function loadMore() {
-  if (loading.value || finished.value) return
-  page.value += 1
-  load()
 }
 
 onMounted(() => {
@@ -250,7 +428,9 @@ watch(() => route.params.id, () => {
   loadFollowState()
   page.value = 1
   finished.value = false
+  denied.value = false
   tab.value = 'article'
+  subTab.value = 'all'
   load()
 })
 </script>
@@ -327,6 +507,7 @@ watch(() => route.params.id, () => {
   gap: 8px;
   border-bottom: 1px solid var(--border-soft);
   margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 .tab {
   padding: 10px 14px;
@@ -347,6 +528,33 @@ watch(() => route.params.id, () => {
   font-weight: 600;
 }
 
+.sub-tab-bar {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.sub-tab {
+  padding: 6px 14px;
+  font-size: 13px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.sub-tab:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.sub-tab.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  font-weight: 600;
+}
+
 .loading {
   padding: 40px;
   text-align: center;
@@ -357,26 +565,35 @@ watch(() => route.params.id, () => {
   padding: 32px 0;
 }
 
-.like-list {
+.like-list,
+.user-list {
   display: flex;
   flex-direction: column;
 }
-.like-item {
+.like-item,
+.user-item {
   border-bottom: 1px dashed var(--border-soft);
 }
-.like-item:last-child {
+.like-item:last-child,
+.user-item:last-child {
   border-bottom: none;
 }
-.like-link {
+.like-item {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 14px 4px;
-  color: var(--text);
-  font-size: 14px;
+  cursor: pointer;
 }
-.like-link:hover .like-title {
+.like-item:hover .like-title {
   color: var(--primary);
+}
+.like-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 .like-title {
   flex: 1;
@@ -384,15 +601,69 @@ watch(() => route.params.id, () => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 14px;
 }
-.like-type {
+.like-badge {
+  flex-shrink: 0;
   font-size: 11px;
   padding: 2px 8px;
-  background: var(--bg-muted);
-  color: var(--text-soft);
   border-radius: 3px;
+  color: #fff;
+}
+.badge-article {
+  background: var(--primary);
+}
+.badge-comment {
+  background: #5b9bd5;
+}
+.badge-moment {
+  background: #6aa84f;
+}
+.badge-other {
+  background: var(--text-muted);
 }
 .like-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.user-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 4px;
+  color: var(--text);
+}
+.user-link:hover .user-name {
+  color: var(--primary);
+}
+.user-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.user-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.user-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+.user-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.user-time {
   font-size: 11px;
   color: var(--text-muted);
 }

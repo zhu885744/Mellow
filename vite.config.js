@@ -21,17 +21,30 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': {
           target: API_URI,
-          changeOrigin: true
+          changeOrigin: true,
+          // 后端登录写入的 Set-Cookie 带 Domain=cs.zhuxu.asia，
+          // 浏览器在 localhost 下会拒绝保存，需改写为空（即当前域），开发态才能保持登录态
+          cookieDomainRewrite: '',
+          cookiePathRewrite: '/'
         },
         // 静态资源（含表情图片、上传附件等）也转发到后端
         '/assets': {
           target: API_URI,
-          changeOrigin: true
+          changeOrigin: true,
+          cookieDomainRewrite: '',
+          cookiePathRewrite: '/'
         },
         '/socket': {
           target: SOCKET_URI,
           ws: true,
           changeOrigin: true
+        },
+        // dev 类接口（如 /dev/info/time 服务器时间，用于登录加密盐派生），不走 /api 前缀
+        '/dev': {
+          target: API_URI,
+          changeOrigin: true,
+          cookieDomainRewrite: '',
+          cookiePathRewrite: '/'
         }
       }
     },

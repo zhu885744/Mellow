@@ -49,8 +49,6 @@ import { useRouter, useRoute } from 'vue-router'
 import { login } from '@/api/comm'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
-import { setCookie } from '@/utils/cookie'
-import { TOKEN_NAME } from '@/api/request'
 
 const account = ref('')
 const password = ref('')
@@ -71,9 +69,9 @@ async function handleLogin() {
     if (res.code === 200 || res.code === 201) {
       const data = res.data || {}
       const validTime = Number(data.valid_time) > 0 ? Number(data.valid_time) : 15 * 24 * 60 * 60
-      // 关键：手动将 token 写入 cookie，后续请求才能通过鉴权
+      // 关键：持久化 token（cookie + localStorage），后续请求拦截器注入 Authorization 才能通过鉴权
       if (data.token) {
-        setCookie(TOKEN_NAME, data.token, validTime)
+        userStore.persistToken(data.token, validTime)
       }
       userStore.setUser(data.user, validTime)
       // 用 check-token 的权威结构刷新用户信息（确保 result.auth 等字段完整）
