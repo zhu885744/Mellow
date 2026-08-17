@@ -8,6 +8,13 @@
           <div class="site-card__subtitle">{{ site.description }}</div>
         </div>
 
+        <!-- 全局搜索按钮 -->
+        <button class="search-btn" @click="openSearch">
+          <i class="bi bi-search" />
+          <span>搜索</span>
+          <kbd class="search-kbd">Ctrl K</kbd>
+        </button>
+
         <nav class="site-nav">
           <router-link to="/" exact-active-class="active" class="nav-item">
             <span class="nav-zh">首页</span>
@@ -25,12 +32,19 @@
           >
             <span class="nav-zh">{{ p.title }}</span>
           </router-link>
-        </nav>
 
-        <!-- <div class="site-footer">
-          <p class="footer-line" v-if="site.copyCode">{{ site.copyCode }}</p>
-          <p class="footer-line" v-if="site.recordCode">{{ site.recordCode }}</p>
-        </div> -->
+          <!-- 自定义导航链接（来自 Mellow_functions.custom_nav_links） -->
+          <a
+            v-for="(link, i) in customNavLinks"
+            :key="'custom-' + i"
+            :href="link.url"
+            target="_blank"
+            rel="noopener noreferrer"
+            class="nav-item"
+          >
+            <span class="nav-zh">{{ link.name }}</span>
+          </a>
+        </nav>
       </aside>
 
       <!-- 中栏 - 内容 -->
@@ -43,14 +57,64 @@
         <SidebarRight />
       </aside>
     </div>
+
+    <!-- 全局页脚 -->
+    <footer class="layout-footer">
+      <template v-if="site.copyCode || site.policeCode">
+        <span v-if="site.copyCode" class="footer-line">
+          <a
+            v-if="site.copyLink"
+            :href="site.copyLink"
+            target="_blank"
+            rel="noopener noreferrer"
+          >{{ site.copyCode }}</a>
+          <template v-else>{{ site.copyCode }}</template>
+        </span>
+        <span v-if="site.policeCode" class="footer-line">
+          <a
+            v-if="site.policeLink"
+            :href="site.policeLink"
+            target="_blank"
+            rel="noopener noreferrer"
+          >{{ site.policeCode }}</a>
+          <template v-else>{{ site.policeCode }}</template>
+        </span>
+      </template>
+    </footer>
+
+    <!-- 全局搜索弹窗 -->
+    <SearchDialog ref="searchDialogRef" />
+
+    <!-- 全局图片灯箱 -->
+    <Lightbox />
+
+    <!-- 右侧悬浮按钮 -->
+    <FloatButtons />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import SidebarRight from '@/components/SidebarRight.vue'
+import SearchDialog from '@/components/SearchDialog.vue'
+import Lightbox from '@/components/Lightbox.vue'
+import FloatButtons from '@/components/FloatButtons.vue'
 import { call } from '@/api/request'
 import { getConfig } from '@/api/config'
+
+// 全局搜索弹窗
+const searchDialogRef = ref(null)
+function openSearch() {
+  searchDialogRef.value?.show()
+}
+function onGlobalKey(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+    e.preventDefault()
+    openSearch()
+  }
+}
+onMounted(() => window.addEventListener('keydown', onGlobalKey))
+onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
 
 // 站点信息（来自 /api/config/one?key=Mellow_functions）
 const siteConfig = ref({})
@@ -62,7 +126,10 @@ const site = computed(() => {
     title: c.title || '朱某的生活印记',
     description: c.description || '我从虚空中惊醒',
     copyCode: c.copy?.code || '',
-    recordCode: c.police?.code || ''
+    copyLink: c.copy?.link || '',
+    policeCode: c.police?.code || '',
+    recordCode: c.police?.code || '',
+    policeLink: c.police?.link || ''
   }
 })
 
@@ -102,6 +169,20 @@ function navTarget(p) {
   if (key === 'about') return '/about'
   return `/${p.key || p.id}`
 }
+
+// 解析自定义导航链接：格式 "跳转文字 || 跳转链接"，一行一个
+const customNavLinks = computed(() => {
+  const raw = siteConfig.value?.custom_nav_links || ''
+  return raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, url] = line.split('||').map((s) => s.trim())
+      return { name: name || '', url: url || '' }
+    })
+    .filter((item) => item.name && item.url)
+})
 
 onMounted(() => {
   loadSiteConfig()
@@ -147,6 +228,38 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-muted);
   letter-spacing: 1px;
+}
+
+.search-btn {
+  width: 100%;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 14px;
+  font-size: 13px;
+  color: var(--text-soft);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: all 0.2s;
+}
+.search-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: var(--bg-soft);
+}
+.search-kbd {
+  margin-left: auto;
+  padding: 1px 6px;
+  font-size: 11px;
+  color: var(--text-light);
+  border: 1px solid var(--border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--bg-soft);
+  font-family: var(--font-mono);
 }
 
 .site-nav {
@@ -195,6 +308,26 @@ onMounted(() => {
 
 .layout-main {
   min-width: 0;
+}
+
+.layout-footer {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 16px 24px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-soft);
+}
+.layout-footer a {
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+.layout-footer a:hover {
+  color: var(--primary);
 }
 
 .layout-right {

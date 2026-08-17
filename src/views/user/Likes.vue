@@ -13,7 +13,7 @@
         <span class="item-type">{{ typeLabel(i.target_type) }}</span>
         <span class="item-title">{{ i.result?.title || formatContent(i) }}</span>
         <span class="item-time">{{ fromNow(i.create_time) }}</span>
-        <button class="btn-icon" @click="remove(i)">×</button>
+        <button class="btn-icon" @click="remove(i)"><i class="bi bi-x" /></button>
       </li>
     </ul>
   </div>

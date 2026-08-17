@@ -15,20 +15,20 @@
     <!-- 顶部 Tab 导航 -->
     <nav class="tab-bar">
       <router-link to="/user/profile" class="tab-item">
-        <span class="tab-ico">👤</span> 个人资料
+        <span class="tab-ico"><i class="bi bi-person" /></span> 个人资料
       </router-link>
       <router-link to="/user/contact" class="tab-item">
-        <span class="tab-ico">📇</span> 联系方式
+        <span class="tab-ico"><i class="bi bi-person-vcard" /></span> 联系方式
       </router-link>
       <router-link to="/user/security" class="tab-item">
-        <span class="tab-ico">🔒</span> 账号安全
+        <span class="tab-ico"><i class="bi bi-shield-lock" /></span> 账号安全
       </router-link>
       <router-link to="/user/notifications" class="tab-item">
-        <span class="tab-ico">🔔</span> 消息通知
+        <span class="tab-ico"><i class="bi bi-bell" /></span> 消息通知
         <span v-if="notif.count > 0" class="badge">{{ notif.count }}</span>
       </router-link>
       <router-link v-if="isAdmin" to="/settings" class="tab-item">
-        <span class="tab-ico">🛠️</span> 站点配置
+        <span class="tab-ico"><i class="bi bi-tools" /></span> 站点配置
       </router-link>
     </nav>
 

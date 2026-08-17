@@ -1,6 +1,9 @@
 <template>
   <div class="empty">
-    <div class="empty-icon">{{ icon }}</div>
+    <div class="empty-icon">
+      <i v-if="icon.startsWith('bi ')" :class="icon" />
+      <template v-else>{{ icon }}</template>
+    </div>
     <div class="empty-text">{{ text }}</div>
   </div>
 </template>
@@ -24,6 +27,9 @@ defineProps({
   font-family: serif;
   margin-bottom: 8px;
   opacity: 0.4;
+}
+.empty-icon i {
+  font-family: inherit;
 }
 .empty-text {
   font-size: 13px;

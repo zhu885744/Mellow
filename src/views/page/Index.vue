@@ -6,7 +6,13 @@
       <span class="spinner" /> 加载中...
     </div>
 
-    <article v-else-if="page" class="page-content card card-pad markdown-body" v-html="contentHtml" />
+    <article
+      v-else-if="page"
+      ref="contentRef"
+      class="page-content card card-pad markdown-body"
+      v-html="contentHtml"
+      @click="onContentClick"
+    />
 
     <EmptyState v-else text="页面不存在" />
   </div>
@@ -19,6 +25,7 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { call } from '@/api/request'
 import { renderMarkdown } from '@/utils/markdown'
+import { openLightbox } from '@/utils/lightbox'
 
 const props = defineProps({
   key: { type: String, default: '' },
@@ -30,6 +37,17 @@ const loading = ref(false)
 const page = ref(null)
 
 const contentHtml = computed(() => renderMarkdown(page.value?.content || ''))
+const contentRef = ref(null)
+
+// 点击页面内容中的图片时打开灯箱（事件委托，兼容 v-html 渲染的图片）
+function onContentClick(e) {
+  const img = e.target.closest('img')
+  if (!img || !img.src) return
+  const srcs = Array.from(contentRef.value?.querySelectorAll('img') || [])
+    .map((el) => el.src)
+    .filter(Boolean)
+  openLightbox(srcs, srcs.indexOf(img.src))
+}
 
 async function load() {
   loading.value = true

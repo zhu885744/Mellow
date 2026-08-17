@@ -5,8 +5,8 @@
         <div class="checkin-dialog">
           <!-- 头部 -->
           <div class="checkin-header">
-            <span class="checkin-title">📅 每日签到</span>
-            <button class="close-btn" @click="hide()">×</button>
+            <span class="checkin-title"><i class="bi bi-calendar-check" /> 每日签到</span>
+            <button class="close-btn" @click="hide()"><i class="bi bi-x-lg" /></button>
           </div>
 
           <!-- Tab -->
@@ -25,7 +25,7 @@
           <div v-show="state.activeTab === 'checkin'" class="checkin-panel">
             <div class="status-card">
               <div :class="['status-icon', { checked: state.checkinStatus.checked }]">
-                {{ state.checkinStatus.checked ? '✓' : '📅' }}
+                <i class="bi" :class="state.checkinStatus.checked ? 'bi-check-lg' : 'bi-calendar-check'" />
               </div>
               <div class="status-info">
                 <div class="status-title">{{ state.checkinStatus.checked ? '今日已签到' : '今日未签到' }}</div>
@@ -75,7 +75,7 @@
               <span>加载中...</span>
             </div>
             <div v-else-if="state.rankList.length === 0" class="rank-empty">
-              <div class="empty-icon">🏆</div>
+              <div class="empty-icon"><i class="bi bi-trophy" /></div>
               <p>暂无排行数据</p>
             </div>
             <div v-else class="rank-list">
@@ -85,14 +85,16 @@
                 :class="['rank-item', { top: index < 3 }]"
               >
                 <div class="rank-num" :class="`rank-${item.rank}`">
-                  <span v-if="item.rank <= 3">{{ ['🥇', '🥈', '🥉'][item.rank - 1] }}</span>
+                  <span v-if="item.rank <= 3">
+                    <i class="bi" :class="['bi-1-circle-fill', 'bi-2-circle-fill', 'bi-3-circle-fill'][item.rank - 1]" />
+                  </span>
                   <span v-else>{{ item.rank }}</span>
                 </div>
                 <img :src="item.avatar || defaultAvatar" class="rank-avatar" />
                 <div class="rank-info">
                   <span class="rank-name">{{ item.nickname || '匿名用户' }}</span>
                   <span class="rank-stats">
-                    📅 {{ item.check_in_count || 0 }}次 · ⭐ {{ item.total_exp || 0 }}经验
+                    <i class="bi bi-calendar-check" /> {{ item.check_in_count || 0 }}次 · <i class="bi bi-star" /> {{ item.total_exp || 0 }}经验
                   </span>
                 </div>
               </div>

@@ -24,7 +24,7 @@
     <div v-if="loading" class="comment-loading">
       <span class="spinner" /> 加载中...
     </div>
-    <EmptyState v-else-if="!tree.length" icon="💬" text="还没有评论，快来抢沙发~" />
+    <EmptyState v-else-if="!tree.length" icon="bi bi-chat-dots" text="还没有评论，快来抢沙发~" />
     <template v-else>
       <CommentItem
         v-for="c in tree"

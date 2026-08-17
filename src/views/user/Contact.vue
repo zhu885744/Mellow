@@ -70,10 +70,10 @@
     <div class="card card-pad">
       <h2 class="block-title">安全提示</h2>
       <ul class="tip-list">
-        <li>🛡️ 邮箱和手机号用于账号找回和安全验证</li>
-        <li>🕐 验证码有效期为 5 分钟，请及时输入</li>
-        <li>⚠️ 请勿将验证码透露给他人</li>
-        <li>🔒 修改联系方式后，系统会自动同步用户信息</li>
+        <li><i class="bi bi-shield-check" /> 邮箱和手机号用于账号找回和安全验证</li>
+        <li><i class="bi bi-clock" /> 验证码有效期为 5 分钟，请及时输入</li>
+        <li><i class="bi bi-exclamation-triangle" /> 请勿将验证码透露给他人</li>
+        <li><i class="bi bi-lock" /> 修改联系方式后，系统会自动同步用户信息</li>
       </ul>
     </div>
   </div>

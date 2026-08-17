@@ -5,7 +5,7 @@
       <router-link to="/" class="auth-logo">朱某的生活印记</router-link>
       <router-view />
       <div class="auth-footer">
-        <router-link to="/">← 返回首页</router-link>
+        <router-link to="/"><i class="bi bi-arrow-left" /> 返回首页</router-link>
       </div>
     </div>
   </div>

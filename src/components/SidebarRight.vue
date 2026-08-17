@@ -11,13 +11,13 @@
         <div class="user-name">{{ user?.nickname }}</div>
         <div class="user-desc">{{ user?.description || '这个人很懒，什么都没留下' }}</div>
         <div class="user-actions">
-          <router-link :to="`/user`" class="btn btn-sm btn-ghost">用户中心</router-link>
-          <router-link :to="`/author/${user?.id}`" class="btn btn-sm btn-ghost">用户主页</router-link>
-          <button class="btn btn-sm btn-ghost" @click="userStore.logout">退出</button>
+          <router-link :to="`/user`" class="btn btn-sm btn-ghost"><i class="bi bi-person" /> 用户中心</router-link>
+          <router-link :to="`/author/${user?.id}`" class="btn btn-sm btn-ghost"><i class="bi bi-person-square" /> 用户主页</router-link>
+          <button class="btn btn-sm btn-ghost" @click="userStore.logout"><i class="bi bi-box-arrow-right" /> 退出</button>
         </div>
         <div class="signin-entry">
           <button class="btn btn-sm btn-primary btn-block" @click="openCheckin">
-            ✨ 每日签到
+            <i class="bi bi-calendar-check" /> 每日签到
           </button>
         </div>
       </template>

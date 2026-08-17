@@ -102,8 +102,8 @@
           <div class="form-item">
             <label class="form-label">联系方式</label>
             <div class="contact-readonly">
-              <div class="input disabled">📱 {{ userStore.user?.phone || '未设置' }}</div>
-              <div class="input disabled">✉️ {{ userStore.user?.email || '未设置' }}</div>
+              <div class="input disabled"><i class="bi bi-phone" /> {{ userStore.user?.phone || '未设置' }}</div>
+              <div class="input disabled"><i class="bi bi-envelope" /> {{ userStore.user?.email || '未设置' }}</div>
             </div>
             <p class="hint">手机号和邮箱可在「联系方式」标签页中修改</p>
           </div>

@@ -14,7 +14,7 @@
       </div>
 
       <div v-if="showAccountEdit" class="edit-box">
-        <p class="warn-tip">⚠️ 修改账号后将影响登录，请谨慎操作</p>
+        <p class="warn-tip"><i class="bi bi-exclamation-triangle" /> 修改账号后将影响登录，请谨慎操作</p>
         <div class="form-item">
           <label class="form-label">新账号</label>
           <input
@@ -109,10 +109,10 @@
     <div class="card card-pad">
       <h2 class="block-title">安全提示</h2>
       <ul class="tip-list">
-        <li>🛡️ 建议使用字母、数字和特殊字符组合的密码</li>
-        <li>🕐 定期更换密码，建议每 3 个月更换一次</li>
-        <li>⚠️ 不要在多个网站使用相同的密码</li>
-        <li>🔒 不要将密码告诉他人，包括网站客服</li>
+        <li><i class="bi bi-shield-check" /> 建议使用字母、数字和特殊字符组合的密码</li>
+        <li><i class="bi bi-clock" /> 定期更换密码，建议每 3 个月更换一次</li>
+        <li><i class="bi bi-exclamation-triangle" /> 不要在多个网站使用相同的密码</li>
+        <li><i class="bi bi-lock" /> 不要将密码告诉他人，包括网站客服</li>
       </ul>
     </div>
 

@@ -16,7 +16,7 @@
           <option value="0">未读</option>
           <option value="1">已读</option>
         </select>
-        <button class="btn btn-sm" @click="readAll" :disabled="notif.count === 0">
+        <button class="btn btn-sm" @click="readAll">
           全部已读
         </button>
       </div>
@@ -35,9 +35,8 @@
         :class="['notif', { unread: !n.is_read }]"
         @click="onClick(n)"
       >
-        <span v-if="!n.is_read" class="unread-dot" />
         <div class="notif-icon" :class="`type-${n.type}`">
-          {{ iconOf(n.type) }}
+          <i :class="iconOf(n.type)" />
         </div>
         <div class="notif-body">
           <div class="notif-title">{{ n.title }}</div>
@@ -118,12 +117,16 @@ function typeLabel(t) {
 }
 
 function iconOf(t) {
-  return ({ comment: '💬', like: '👍', follow: '👥', collect: '⭐', system: '📢' })[t] || '🔔'
+  return ({ comment: 'bi bi-chat-dots', like: 'bi bi-hand-thumbs-up', follow: 'bi bi-people', collect: 'bi bi-star', system: 'bi bi-megaphone' })[t] || 'bi bi-bell'
 }
 
 async function readAll() {
-  await notif.readAll()
-  toast.success('已全部标记为已读')
+  try {
+    await notif.readAll()
+    toast.success('已全部标记为已读')
+  } catch {
+    toast.error('操作失败，请重试')
+  }
   load()
 }
 
@@ -196,16 +199,6 @@ onMounted(load)
 .notif.unread .notif-title {
   font-weight: 600;
   color: var(--text);
-}
-.unread-dot {
-  position: absolute;
-  left: 6px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--danger);
 }
 .notif-icon {
   width: 36px;

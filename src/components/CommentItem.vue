@@ -15,11 +15,11 @@
 
       <div class="c-actions">
         <button class="c-action" :class="{ active: comment.liked }" @click="$emit('like', comment)">
-          <span class="c-icon">{{ comment.liked ? '♥' : '♡' }}</span>
+          <span class="c-icon"><i class="bi" :class="comment.liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
           <span>{{ comment.likeCount || 0 }}</span>
         </button>
         <button class="c-action" @click="$emit('reply', comment)">
-          <span class="c-icon">💬</span> 回复
+          <span class="c-icon"><i class="bi bi-chat-dots" /></span> 回复
         </button>
       </div>
 

@@ -9,7 +9,7 @@
 
     <!-- 权限检查 -->
     <div v-if="!isAdmin" class="card card-pad">
-      <EmptyState icon="🔒" text="您没有权限访问此页面，请联系管理员" />
+      <EmptyState icon="bi bi-lock" text="您没有权限访问此页面，请联系管理员" />
     </div>
 
     <!-- 配置内容 -->
@@ -22,7 +22,7 @@
           :class="['tab-item', { active: activeTab === t.key }]"
           @click="activeTab = t.key"
         >
-          <span class="tab-icon">{{ t.icon }}</span>
+          <span class="tab-icon"><i :class="t.icon" /></span>
           {{ t.label }}
         </button>
       </div>
@@ -148,13 +148,6 @@
                   <span class="switch-slider"></span>
                 </label>
               </div>
-              <div class="switch-row compact">
-                <label class="field-label">显示公告按钮</label>
-                <label class="switch">
-                  <input type="checkbox" v-model="globalConfig.float_buttons.show_notice" />
-                  <span class="switch-slider"></span>
-                </label>
-              </div>
               <div class="field">
                 <label class="field-label">按钮样式</label>
                 <select v-model="globalConfig.float_buttons.style" class="input">
@@ -174,14 +167,14 @@
               <div class="float-btn-manager">
                 <div class="manager-head">
                   <span class="field-label">悬浮按钮管理</span>
-                  <button class="btn btn-sm" @click="addFloatButton">＋ 添加</button>
+                  <button class="btn btn-sm" @click="addFloatButton"><i class="bi bi-plus-lg" /> 添加</button>
                 </div>
                 <div v-for="(button, index) in globalConfig.float_buttons.buttons" :key="button.id" class="float-btn-item">
                   <div class="float-btn-head">
                     <strong>{{ button.name }}</strong>
                     <div class="float-btn-actions">
-                      <button class="btn btn-sm" @click="moveFloatButton(index, 'up')" :disabled="index === 0">↑</button>
-                      <button class="btn btn-sm" @click="moveFloatButton(index, 'down')" :disabled="index === globalConfig.float_buttons.buttons.length - 1">↓</button>
+                      <button class="btn btn-sm" @click="moveFloatButton(index, 'up')" :disabled="index === 0"><i class="bi bi-arrow-up" /></button>
+                      <button class="btn btn-sm" @click="moveFloatButton(index, 'down')" :disabled="index === globalConfig.float_buttons.buttons.length - 1"><i class="bi bi-arrow-down" /></button>
                       <button class="btn btn-sm btn-danger" @click="removeFloatButton(index)">删除</button>
                     </div>
                   </div>
@@ -444,10 +437,10 @@ function clearFunctionsCache() {
 
 // Tab
 const tabs = [
-  { key: 'global', label: '全局设置', icon: '🌐' },
-  { key: 'comment', label: '评论设置', icon: '💬' },
-  { key: 'article', label: '文章设置', icon: '📄' },
-  { key: 'custom', label: '自定义代码', icon: '⚙️' }
+  { key: 'global', label: '全局设置', icon: 'bi bi-globe' },
+  { key: 'comment', label: '评论设置', icon: 'bi bi-chat-dots' },
+  { key: 'article', label: '文章设置', icon: 'bi bi-file-text' },
+  { key: 'custom', label: '自定义代码', icon: 'bi bi-gear' }
 ]
 const activeTab = ref('global')
 
@@ -474,7 +467,7 @@ const globalConfig = ref({
   favicon: '',
   date: Math.floor(Date.now() / 1000).toString(),
   custom_nav_links: '',
-  copy: { code: '', link: 'http://beian.miit.gov.cn/' },
+  copy: { code: '', link: 'https://beian.miit.gov.cn/#/Integrated/index' },
   police: { code: '', link: 'https://beian.mps.gov.cn/#/query/webSearch' },
   auth_dialog_agreement: {
     enabled: true,
@@ -486,7 +479,6 @@ const globalConfig = ref({
     style: 'rounded',
     position: 'center',
     show_back_to_top: true,
-    show_notice: true,
     buttons: []
   },
   reward: { enabled: true, wechat: '', alipay: '' }
@@ -562,7 +554,6 @@ async function getGlobalConfig() {
         style: config.float_buttons?.style || 'rounded',
         position: config.float_buttons?.position || 'center',
         show_back_to_top: config.float_buttons?.show_back_to_top !== false,
-        show_notice: config.float_buttons?.show_notice !== false,
         buttons: config.float_buttons?.buttons || []
       },
       reward: {
@@ -692,7 +683,7 @@ function resetGlobalConfig() {
     copy: { code: '', link: 'http://beian.miit.gov.cn/' },
     police: { code: '', link: 'https://beian.mps.gov.cn/#/query/webSearch' },
     auth_dialog_agreement: { enabled: true, user_agreement_content: '', privacy_agreement_content: '' },
-    float_buttons: { enabled: true, style: 'rounded', position: 'center', show_back_to_top: true, show_notice: true, buttons: [] },
+    float_buttons: { enabled: true, style: 'rounded', position: 'center', show_back_to_top: true, buttons: [] },
     reward: { enabled: true, wechat: '', alipay: '' }
   }
 }

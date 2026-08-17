@@ -15,7 +15,7 @@
           <span class="item-type">{{ typeLabel(i.type) }}</span>
           <span class="item-time">{{ fromNow(i.create_time) }}</span>
         </router-link>
-        <button class="btn-icon" @click="uncollect(i)">×</button>
+        <button class="btn-icon" @click="uncollect(i)"><i class="bi bi-x" /></button>
       </li>
     </ul>
   </div>

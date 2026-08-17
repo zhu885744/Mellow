@@ -3,7 +3,7 @@
     <!-- 最新文章 -->
     <SectionTitle title="最新文章">
       <template #extra>
-        <router-link to="/articles" class="more-link">查看全部 →</router-link>
+        <router-link to="/articles" class="more-link">查看全部 <i class="bi bi-arrow-right" /></router-link>
       </template>
     </SectionTitle>
 
