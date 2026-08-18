@@ -7,7 +7,7 @@ const routes = [
     children: [
       { path: '', name: 'home', component: () => import('@/views/home/Index.vue') },
       { path: 'articles', name: 'articles', component: () => import('@/views/article/List.vue') },
-      { path: 'archives/:id', name: 'article-detail', component: () => import('@/views/article/Detail.vue'), props: true },
+      { path: 'archives/:id', name: 'article-detail', component: () => import('@/views/article/Detail.vue') },
       { path: 'archives', name: 'archives', component: () => import('@/views/article/Archives.vue') },
       { path: 'tags', name: 'tags', component: () => import('@/views/article/TagList.vue') },
       { path: 'tag/:key', name: 'tag', component: () => import('@/views/article/TagDetail.vue'), props: true },

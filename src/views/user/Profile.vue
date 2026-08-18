@@ -536,17 +536,17 @@ watch(() => userStore.user, (nu) => {
 .custom-title-hint {
   margin-top: 10px;
 }
-/* 头衔颜色 */
-.title-zhangmen { background: linear-gradient(135deg, #f6d365, #fda085); color: #5a3e00; }
-.title-zhanglao { background: #8e44ad; }
-.title-hufa { background: #c0392b; }
-.title-neimen { background: #2980b9; }
-.title-waimen { background: #16a085; }
-.title-lianqi { background: #27ae60; }
-.title-zhuji { background: #8bc34a; color: #1a3d00; }
-.title-jiedan { background: #e67e22; }
-.title-yuanying { background: #6c5ce7; }
-.title-huashen { background: #00b894; }
+/* 头衔颜色（与评论/动态/作者主页统一） */
+.title-zhangmen { background: linear-gradient(135deg, #c8a04a, #b07d2e); }
+.title-zhanglao { background: linear-gradient(135deg, #8e6f3e, #6c4f24); }
+.title-hufa { background: linear-gradient(135deg, #c0392b, #a93226); }
+.title-neimen { background: linear-gradient(135deg, #2980b9, #1f618d); }
+.title-waimen { background: linear-gradient(135deg, #16a085, #117a65); }
+.title-lianqi { background: linear-gradient(135deg, #27ae60, #1e8449); }
+.title-zhuji { background: linear-gradient(135deg, #7cb342, #558b2f); }
+.title-jiedan { background: linear-gradient(135deg, #e67e22, #ca6f1e); }
+.title-yuanying { background: linear-gradient(135deg, #6c5ce7, #5a3fd4); }
+.title-huashen { background: linear-gradient(135deg, #f6d365, #fda085); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
 .title-default { background: #6c757d; }
 
 .radio-row {

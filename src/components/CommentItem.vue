@@ -5,13 +5,16 @@
     </div>
     <div class="c-body">
       <div class="c-head">
-        <span class="c-name">{{ author.nickname }}</span>
+        <span v-if="authorLink" class="c-name c-name-link" @click="goAuthor">{{ author.nickname }}</span>
+        <span v-else class="c-name">{{ author.nickname }}</span>
+        <span v-if="author.level" class="c-level">Lv.{{ author.level }}</span>
+        <span v-if="author.title" :class="['c-title', titleClass]">{{ author.title }}</span>
         <span v-if="author.id === authorId" class="c-badge">作者</span>
         <span class="c-time">{{ formatDate(comment.create_time) }}</span>
         <button v-if="canDelete" class="c-del" @click="$emit('remove', comment)">删除</button>
       </div>
 
-      <div class="c-content" v-html="renderedContent"></div>
+      <div class="c-content" :class="{ 'c-content-link': authorLink }" v-html="renderedContent" @click="goAuthor"></div>
 
       <div class="c-actions">
         <button ref="likeBtn" class="c-action like-btn" :class="{ active: comment.liked }" @click="$emit('like', comment)">
@@ -57,9 +60,10 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/time'
 import { useUserStore } from '@/stores/user'
-import { isAdmin, pickCommentAuthor } from '@/utils/helper'
+import { isAdmin, pickCommentAuthor, getTitleColorClass } from '@/utils/helper'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import EmojiEditor from './EmojiEditor.vue'
@@ -75,12 +79,25 @@ const props = defineProps({
 const emit = defineEmits(['like', 'reply', 'submit', 'remove'])
 
 const userStore = useUserStore()
+const router = useRouter()
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
 const replyText = ref('')
 
 // 后端把评论作者放在 result.author
 const author = computed(() => pickCommentAuthor(props.comment))
 const renderedContent = computed(() => renderEmojiWithBreaks(props.comment.content))
+
+// 作者主页链接（作者 id 存在时才可点击）
+const authorLink = computed(() => {
+  const id = author.value?.id
+  return id ? `/author/${id}` : ''
+})
+function goAuthor() {
+  if (authorLink.value) router.push(authorLink.value)
+}
+
+// 头衔配色（复用作者主页映射）
+const titleClass = computed(() => getTitleColorClass(author.value.title))
 
 const parentName = computed(() => props.comment.parentName || '')
 
@@ -154,6 +171,43 @@ function submitReply() {
   font-weight: 500;
   color: var(--text);
 }
+.c-name-link {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.c-name-link:hover {
+  color: var(--primary);
+}
+.c-level {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(184, 153, 104, 0.14);
+  color: var(--primary-deep);
+  flex-shrink: 0;
+}
+.c-title {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+/* 头衔配色（与 Profile 页 10 个头衔一致） */
+.title-zhangmen { background: linear-gradient(135deg, #c8a04a, #b07d2e); }
+.title-zhanglao { background: linear-gradient(135deg, #8e6f3e, #6c4f24); }
+.title-hufa { background: linear-gradient(135deg, #c0392b, #a93226); }
+.title-neimen { background: linear-gradient(135deg, #2980b9, #1f618d); }
+.title-waimen { background: linear-gradient(135deg, #16a085, #117a65); }
+.title-lianqi { background: linear-gradient(135deg, #27ae60, #1e8449); }
+.title-zhuji { background: linear-gradient(135deg, #7cb342, #558b2f); }
+.title-jiedan { background: linear-gradient(135deg, #e67e22, #ca6f1e); }
+.title-yuanying { background: linear-gradient(135deg, #6c5ce7, #5a3fd4); }
+.title-huashen { background: linear-gradient(135deg, #f6d365, #fda085); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
+.title-xiake { background: linear-gradient(135deg, #4a9e6f, #2f7d52); }
+.title-xuetu { background: linear-gradient(135deg, #9aa0a6, #6c757d); }
+.title-default { background: #6c757d; }
 .c-badge {
   font-size: 10px;
   padding: 0 5px;
@@ -182,6 +236,13 @@ function submitReply() {
   color: var(--text-soft);
   margin: 6px 0;
   word-break: break-word;
+}
+.c-content-link {
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.c-content-link:hover {
+  color: var(--primary);
 }
 .c-reply-to {
   color: var(--primary);

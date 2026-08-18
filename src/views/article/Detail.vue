@@ -38,6 +38,9 @@
       <button v-if="rewardEnabled" class="btn btn-sm" @click="openReward">
         打赏
       </button>
+      <button class="btn btn-sm share-btn" @click="shareArticle">
+        <i class="bi bi-share" /> 分享
+      </button>
     </div>
 
     <!-- 作者 -->
@@ -126,6 +129,7 @@ import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/time'
 import { renderMarkdown } from '@/utils/markdown'
 import { toast } from '@/utils/toast'
+import { copyText } from '@/utils/helper'
 import { openLightbox } from '@/utils/lightbox'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 
@@ -185,6 +189,8 @@ function closeReward() {
 
 const contentHtml = computed(() => renderMarkdown(article.value?.content || ''))
 const contentRef = ref(null)
+const likeBtn = ref(null)
+const likeIcon = ref(null)
 
 // 点击文章内容中的图片时打开灯箱（事件委托，兼容 v-html 渲染的图片）
 function onContentClick(e) {
@@ -290,6 +296,18 @@ async function toggleCollect() {
   } catch {}
 }
 
+// 分享：复制「文章标题 + 当前链接」
+async function shareArticle() {
+  if (!article.value) return
+  const text = `【${article.value.title}】${window.location.href}`
+  const ok = await copyText(text)
+  if (ok) {
+    toast.success('已复制链接和标题，去分享吧')
+  } else {
+    toast.error('复制失败，请手动复制')
+  }
+}
+
 watch(() => route.params.id, load)
 onMounted(() => {
   load()
@@ -349,6 +367,15 @@ onUnmounted(() => {
 }
 .like-btn {
   position: relative;
+}
+.share-btn {
+  color: var(--primary-deep);
+  border-color: rgba(184, 153, 104, 0.45);
+}
+.share-btn:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
 }
 .reward-btn {
   border-color: var(--danger);

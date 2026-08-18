@@ -2,8 +2,13 @@
   <div class="comment-tree">
     <!-- 发表评论（根评论） -->
     <div class="root-comment-box">
-      <img class="root-avatar" :src="userStore.user?.avatar || defaultAvatar" alt="" />
+      <img class="root-avatar" :src="userStore.user?.avatar || defaultAvatar" alt="" @click="goMe" />
       <div class="root-input">
+        <div v-if="userStore.isLogged" class="root-meta">
+          <span class="root-name" @click="goMe">{{ userStore.user.nickname || '我' }}</span>
+          <span v-if="myLevel" class="c-level">Lv.{{ myLevel }}</span>
+          <span v-if="myTitle" :class="['c-title', myTitleClass]">{{ myTitle }}</span>
+        </div>
         <EmojiEditor
           v-model="newComment"
           :disabled="!userStore.isLogged"
@@ -51,6 +56,7 @@
 
 <script setup>
 import { ref, watch, onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import CommentItem from './CommentItem.vue'
 import Pagination from './Pagination.vue'
 import EmptyState from './EmptyState.vue'
@@ -59,7 +65,7 @@ import { getCommentTree, createComment, removeComment } from '@/api/comment'
 import { likesCount, isLiked, like, unlike } from '@/api/tags'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
-import { pickCommentAuthor } from '@/utils/helper'
+import { pickCommentAuthor, pickUserLevel, pickUserTitle, getTitleColorClass } from '@/utils/helper'
 
 const props = defineProps({
   bindId: { type: [String, Number], required: true },
@@ -71,6 +77,16 @@ const props = defineProps({
 const emit = defineEmits(['loaded'])
 
 const userStore = useUserStore()
+const router = useRouter()
+
+// 当前登录用户信息（根评论框展示 + 跳转作者主页）
+const myLevel = computed(() => pickUserLevel(userStore.user))
+const myTitle = computed(() => pickUserTitle(userStore.user))
+const myTitleClass = computed(() => getTitleColorClass(myTitle.value))
+function goMe() {
+  const id = userStore.user?.id
+  if (userStore.isLogged && id) router.push(`/author/${id}`)
+}
 
 const rawList = ref([])
 const tree = ref([])
@@ -250,10 +266,58 @@ defineExpose({ load })
   border-radius: 50%;
   flex-shrink: 0;
   object-fit: cover;
+  cursor: pointer;
 }
 .root-input {
   flex: 1;
+  min-width: 0;
 }
+.root-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.root-name {
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  transition: color 0.2s;
+}
+.root-name:hover {
+  color: var(--primary);
+}
+.c-level {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: rgba(184, 153, 104, 0.14);
+  color: var(--primary-deep);
+  flex-shrink: 0;
+}
+.c-title {
+  font-size: 11px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: #fff;
+  flex-shrink: 0;
+}
+/* 头衔配色（与 Profile 页 10 个头衔一致） */
+.title-zhangmen { background: linear-gradient(135deg, #c8a04a, #b07d2e); }
+.title-zhanglao { background: linear-gradient(135deg, #8e6f3e, #6c4f24); }
+.title-hufa { background: linear-gradient(135deg, #c0392b, #a93226); }
+.title-neimen { background: linear-gradient(135deg, #2980b9, #1f618d); }
+.title-waimen { background: linear-gradient(135deg, #16a085, #117a65); }
+.title-lianqi { background: linear-gradient(135deg, #27ae60, #1e8449); }
+.title-zhuji { background: linear-gradient(135deg, #7cb342, #558b2f); }
+.title-jiedan { background: linear-gradient(135deg, #e67e22, #ca6f1e); }
+.title-yuanying { background: linear-gradient(135deg, #6c5ce7, #5a3fd4); }
+.title-huashen { background: linear-gradient(135deg, #f6d365, #fda085); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
+.title-xiake { background: linear-gradient(135deg, #4a9e6f, #2f7d52); }
+.title-xuetu { background: linear-gradient(135deg, #9aa0a6, #6c757d); }
+.title-default { background: #6c757d; }
 .root-input textarea {
   width: 100%;
   border: 1px solid var(--border, #e8e6dd);

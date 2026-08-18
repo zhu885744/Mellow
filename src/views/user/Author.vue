@@ -149,11 +149,18 @@ const website = computed(() => (profile.value?.json && profile.value.json.websit
 const frame = computed(() => (profile.value?.json && profile.value.json.frame) || '')
 
 // 头衔（与 Profile 页一致的颜色映射）
-const PRESET_TITLES = ['掌门', '长老', '护法', '侠客', '学徒']
+const PRESET_TITLES = ['掌门', '长老', '护法', '内门弟子', '外门弟子', '炼气修士', '筑基修士', '结丹修士', '元婴老祖', '化神大能']
 const titleColorMap = {
   '掌门': 'title-zhangmen',
   '长老': 'title-zhanglao',
   '护法': 'title-hufa',
+  '内门弟子': 'title-neimen',
+  '外门弟子': 'title-waimen',
+  '炼气修士': 'title-lianqi',
+  '筑基修士': 'title-zhuji',
+  '结丹修士': 'title-jiedan',
+  '元婴老祖': 'title-yuanying',
+  '化神大能': 'title-huashen',
   '侠客': 'title-xiake',
   '学徒': 'title-xuetu'
 }
@@ -514,10 +521,17 @@ watch(() => route.params.id, () => {
   font-weight: 600;
   color: #fff;
 }
-/* 头衔配色（与 Profile 页一致） */
+/* 头衔配色（与 Profile 页 10 个头衔一致） */
 .title-zhangmen { background: linear-gradient(135deg, #c8a04a, #b07d2e); }
 .title-zhanglao { background: linear-gradient(135deg, #8e6f3e, #6c4f24); }
-.title-hufa { background: linear-gradient(135deg, #4a7fb0, #2f5d86); }
+.title-hufa { background: linear-gradient(135deg, #c0392b, #a93226); }
+.title-neimen { background: linear-gradient(135deg, #2980b9, #1f618d); }
+.title-waimen { background: linear-gradient(135deg, #16a085, #117a65); }
+.title-lianqi { background: linear-gradient(135deg, #27ae60, #1e8449); }
+.title-zhuji { background: linear-gradient(135deg, #7cb342, #558b2f); }
+.title-jiedan { background: linear-gradient(135deg, #e67e22, #ca6f1e); }
+.title-yuanying { background: linear-gradient(135deg, #6c5ce7, #5a3fd4); }
+.title-huashen { background: linear-gradient(135deg, #f6d365, #fda085); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
 .title-xiake { background: linear-gradient(135deg, #4a9e6f, #2f7d52); }
 .title-xuetu { background: linear-gradient(135deg, #9aa0a6, #6c757d); }
 .title-default { background: #6c757d; }

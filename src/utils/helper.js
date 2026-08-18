@@ -10,6 +10,36 @@ export const debounce = (fn, wait = 300) => {
 }
 
 /**
+ * 复制文本到剪贴板（优先 Clipboard API，非安全上下文降级 execCommand）
+ * @returns {Promise<boolean>} 是否复制成功
+ */
+export async function copyText(text) {
+  try {
+    if (navigator.clipboard && window.isSecureContext) {
+      await navigator.clipboard.writeText(text)
+      return true
+    }
+  } catch {
+    /* 继续走降级方案 */
+  }
+  const ta = document.createElement('textarea')
+  ta.value = text
+  ta.style.position = 'fixed'
+  ta.style.left = '-9999px'
+  ta.style.top = '0'
+  document.body.appendChild(ta)
+  ta.select()
+  let ok = false
+  try {
+    ok = document.execCommand('copy')
+  } catch {
+    /* ignore */
+  }
+  document.body.removeChild(ta)
+  return ok
+}
+
+/**
  * 解析 tags 字段（格式 "1|2|3|" 或 字符串）
  */
 export const parseTagsField = (field) => {
@@ -63,8 +93,49 @@ export const pickCommentAuthor = (item) => {
   return {
     id: author?.id || item?.uid || null,
     nickname: author?.nickname || item?.nickname || '匿名',
-    avatar: author?.avatar || item?.avatar || ''
+    avatar: author?.avatar || item?.avatar || '',
+    title: pickUserTitle(author),
+    level: pickUserLevel(author)
   }
+}
+
+/**
+ * 提取用户等级（兼容 result.level.current / users_rating.users_grade / users_rating.grade / grade）
+ * 参考作者主页 Author.vue 的取值逻辑
+ */
+export const pickUserLevel = (user) => {
+  if (!user || typeof user !== 'object') return 0
+  const lv = user?.result?.level?.current || user?.users_rating?.users_grade
+  return lv?.value ?? user?.users_rating?.grade ?? user?.grade ?? 0
+}
+
+/**
+ * 提取用户头衔
+ */
+export const pickUserTitle = (user) => {
+  return user?.title || ''
+}
+
+/**
+ * 头衔配色映射（与 Profile 页 10 个头衔一致）
+ */
+const titleColorMap = {
+  '掌门': 'title-zhangmen',
+  '长老': 'title-zhanglao',
+  '护法': 'title-hufa',
+  '内门弟子': 'title-neimen',
+  '外门弟子': 'title-waimen',
+  '炼气修士': 'title-lianqi',
+  '筑基修士': 'title-zhuji',
+  '结丹修士': 'title-jiedan',
+  '元婴老祖': 'title-yuanying',
+  '化神大能': 'title-huashen',
+  // 兼容旧头衔
+  '侠客': 'title-xiake',
+  '学徒': 'title-xuetu'
+}
+export const getTitleColorClass = (title) => {
+  return titleColorMap[title] || 'title-default'
 }
 
 /**
