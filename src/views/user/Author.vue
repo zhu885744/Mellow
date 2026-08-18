@@ -54,8 +54,8 @@
             <router-link v-else to="/user/profile" class="btn btn-sm btn-ghost">编辑资料</router-link>
           </div>
         </div>
-        </div>
       </div>
+    </div>
 
     <!-- 内容区 -->
     <div class="card card-pad">
@@ -502,6 +502,7 @@ watch(() => route.params.id, () => {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 .author-name {
   font-size: 20px;
@@ -540,6 +541,7 @@ watch(() => route.params.id, () => {
   color: var(--text-soft);
   margin: 8px 0 14px;
   line-height: 1.6;
+  overflow-wrap: break-word;
 }
 .author-website {
   display: inline-flex;
@@ -745,5 +747,37 @@ watch(() => route.params.id, () => {
 .user-time {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+/* ========== 移动端适配 ========== */
+@media (max-width: 768px) {
+  /* 顶部 tab 栏改为横向滚动，避免 5 个 tab 在手机上换行堆叠 */
+  .tab-bar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar {
+    display: none;
+  }
+  .tab {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  /* 头像区更紧凑 */
+  .author-head {
+    gap: 14px;
+  }
+  .author-name {
+    font-size: 18px;
+  }
+  .author-stats {
+    gap: 22px;
+  }
+  /* 卡片内边距收紧，与移动端容器留白保持一致 */
+  .author-page > .card {
+    padding: 16px;
+  }
 }
 </style>

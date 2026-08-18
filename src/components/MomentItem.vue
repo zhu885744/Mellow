@@ -163,13 +163,19 @@ async function toggleLike() {
   }
 }
 
-// 后端 moments 列表不返回 comment_count，需单独调 moments/comment_count
+// 后端 moments 列表不返回 comment_count，需单独统计。
+// 不能用 moments/comment_count：它只统计一级评论（pid=0）。
+// 用 comment/count 统计全部评论（含二级及更深的回复），但注意：
+// 该接口的 bind_id/bind_type 快捷参数实测无效（会返回全站评论总数），
+// 必须走 where 条件过滤，与 countArticlesByAuthor 等先例一致
 const commentCount = ref(props.moment.comment_count || 0)
 async function loadCommentCount() {
   try {
-    const res = await call('moments', 'comment_count', {
+    const res = await call('comment', 'count', {
       method: 'GET',
-      params: { bind_id: props.moment.id }
+      params: {
+        where: { bind_id: props.moment.id, bind_type: 'moments' }
+      }
     })
     commentCount.value = res.data || 0
   } catch {

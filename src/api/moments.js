@@ -26,6 +26,14 @@ export const getMomentComments = (bind_id, params = {}) =>
 export const createMoment = (data) =>
   call('moments', 'create', { method: 'POST', data })
 
+// 上传动态图片（attachment/batch，multipart/form-data）
+export const uploadMomentImages = (formData) =>
+  call('attachment', 'batch', {
+    method: 'POST',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+
 // 删除动态
 export const removeMoment = (ids) =>
   call('moments', 'remove', { method: 'DELETE', params: { ids } })

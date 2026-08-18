@@ -11,7 +11,6 @@
         <span v-if="author.title" :class="['c-title', titleClass]">{{ author.title }}</span>
         <span v-if="author.id === authorId" class="c-badge">作者</span>
         <span class="c-time">{{ formatDate(comment.create_time) }}</span>
-        <button v-if="canDelete" class="c-del" @click="$emit('remove', comment)">删除</button>
       </div>
 
       <div class="c-content" :class="{ 'c-content-link': authorLink }" v-html="renderedContent" @click="goAuthor"></div>
@@ -24,6 +23,7 @@
         <button class="c-action" @click="$emit('reply', comment)">
           <span class="c-icon"><i class="bi bi-chat-dots" /></span> 回复
         </button>
+        <button v-if="canDelete" class="c-action c-del" @click="$emit('remove', comment)">删除</button>
       </div>
 
       <!-- 回复框 -->
@@ -166,6 +166,7 @@ function submitReply() {
   align-items: center;
   gap: 8px;
   font-size: 13px;
+  flex-wrap: wrap;
 }
 .c-name {
   font-weight: 500;
@@ -218,14 +219,12 @@ function submitReply() {
 .c-time {
   color: var(--text-muted);
   font-size: 12px;
+  flex-basis: 100%; /* 日期独占一行，显示在昵称下面 */
+  margin-top: 1px;
 }
 .c-del {
-  margin-left: auto;
-  border: none;
-  background: none;
   color: var(--text-muted);
   font-size: 12px;
-  cursor: pointer;
 }
 .c-del:hover {
   color: var(--accent);
@@ -287,5 +286,24 @@ function submitReply() {
   margin-top: 12px;
   padding-left: 14px;
   border-left: 2px solid var(--border);
+}
+
+/* ========== 移动端适配 ========== */
+@media (max-width: 768px) {
+  .comment-item {
+    gap: 10px;
+    padding: 14px 0;
+  }
+  .c-avatar img {
+    width: 36px;
+    height: 36px;
+  }
+  .c-time {
+    font-size: 11px;
+  }
+  /* 子评论缩进收紧，更适配窄屏 */
+  .c-children {
+    padding-left: 10px;
+  }
 }
 </style>

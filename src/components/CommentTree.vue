@@ -114,6 +114,20 @@ function flattenTree(list) {
   return result
 }
 
+// 递归统计全部评论数（含所有层级的子回复）
+// 后端 flat 返回的 count 只统计根评论，需前端补齐子评论
+function countAllComments(list) {
+  let n = 0
+  const walk = (arr) => {
+    arr.forEach((c) => {
+      n += 1
+      if (c.replies?.length) walk(c.replies)
+    })
+  }
+  walk(list)
+  return n
+}
+
 async function loadLikes(list) {
   const flat = flattenTree(list)
   if (!flat.length) return
@@ -148,7 +162,8 @@ async function load() {
     rawList.value = list
     // 后端 comment/flat 已返回嵌套树（根评论带 replies 字段），无需前端再构树
     tree.value = list
-    emit('loaded', total.value)
+    // 回传真实评论总数：后端 count 只含根评论，递归统计补齐子评论（取较大值兜底分页）
+    emit('loaded', Math.max(total.value, countAllComments(list)))
   } catch {
     rawList.value = []
     tree.value = []

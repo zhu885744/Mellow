@@ -15,9 +15,36 @@
       <EmojiEditor
         v-model="newContent"
         placeholder="此刻的想法..."
+      >
+        <template #extra>
+          <button
+            type="button"
+            class="pub-img-btn"
+            :disabled="uploading"
+            @click="triggerPick"
+          >
+            <i class="bi bi-image" /> {{ uploading ? '上传中...' : '图片' }}
+          </button>
+        </template>
+      </EmojiEditor>
+      <input
+        ref="fileInput"
+        type="file"
+        accept="image/*"
+        multiple
+        class="file-input"
+        @change="onPick"
       />
+      <div v-if="newImages.length" class="pub-images">
+        <div v-for="(img, i) in newImages" :key="img" class="pub-img-item">
+          <img :src="img" class="pub-img" alt="预览" />
+          <button type="button" class="img-remove" title="移除" @click="removeImage(i)">
+            <i class="bi bi-x-lg" />
+          </button>
+        </div>
+      </div>
       <div class="pub-actions">
-        <button class="btn btn-primary btn-sm" :disabled="publishing" @click="publish">
+        <button class="btn btn-primary btn-sm" :disabled="publishing || uploading" @click="publish">
           {{ publishing ? '发布中...' : '发布' }}
         </button>
       </div>
@@ -54,7 +81,7 @@ import MomentItem from '@/components/MomentItem.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import EmojiEditor from '@/components/EmojiEditor.vue'
-import { listMoments, createMoment, removeMoment } from '@/api/moments'
+import { listMoments, createMoment, removeMoment, uploadMomentImages } from '@/api/moments'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
 import { toast } from '@/utils/toast'
@@ -71,6 +98,58 @@ const page = ref(1)
 const pageSize = 15
 const newContent = ref('')
 const publishing = ref(false)
+const fileInput = ref(null)
+const newImages = ref([])
+const uploading = ref(false)
+
+function triggerPick() {
+  fileInput.value?.click()
+}
+
+// 选择图片后立即上传（attachment/batch），成功后记录 URL 用于预览
+async function onPick(e) {
+  const files = Array.from(e.target.files || [])
+  e.target.value = ''
+  if (!files.length || uploading.value) return
+  if (newImages.value.length + files.length > 9) {
+    toast.warning('最多上传 9 张图片')
+    return
+  }
+  const valid = files.filter((file) => {
+    if (file.size > 50 * 1024 * 1024) {
+      toast.warning(`图片「${file.name}」超过 50MB 限制`)
+      return false
+    }
+    if (!file.type.startsWith('image/')) {
+      toast.warning(`文件「${file.name}」不是图片`)
+      return false
+    }
+    return true
+  })
+  if (!valid.length) return
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    valid.forEach((file) => fd.append('files', file))
+    const res = await uploadMomentImages(fd)
+    const results = res.data?.results || []
+    const urls = results
+      .filter((r) => r.status !== 'fail' && r.full_url)
+      .map((r) => r.full_url)
+    newImages.value.push(...urls)
+    if (results.some((r) => r.status === 'fail')) {
+      toast.warning('部分图片上传失败')
+    }
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    uploading.value = false
+  }
+}
+
+function removeImage(i) {
+  newImages.value.splice(i, 1)
+}
 
 async function load() {
   loading.value = true
@@ -96,8 +175,14 @@ async function publish() {
   }
   publishing.value = true
   try {
-    await createMoment({ content: newContent.value, status: 1, audit: 1 })
+    await createMoment({
+      content: newContent.value,
+      images: newImages.value.join(','),
+      status: 1,
+      audit: 1
+    })
     newContent.value = ''
+    newImages.value = []
     toast.success('发布成功')
     page.value = 1
     load()
@@ -137,9 +222,76 @@ onMounted(load)
   font-size: 13px;
   font-weight: 500;
 }
+.file-input {
+  display: none;
+}
+.pub-img-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 12px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.pub-img-btn:hover:not(:disabled) {
+  color: var(--primary);
+  border-color: var(--primary);
+  background: rgba(184, 153, 104, 0.08);
+}
+.pub-img-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.pub-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+.pub-img-item {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  border: 1px solid var(--border-soft);
+}
+.pub-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.img-remove {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+.img-remove:hover {
+  background: var(--danger);
+}
 .pub-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
   margin-top: 8px;
 }
 .loading {
