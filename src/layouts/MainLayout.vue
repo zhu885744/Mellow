@@ -44,6 +44,16 @@
           >
             <span class="nav-zh">{{ link.name }}</span>
           </a>
+
+          <!-- 管理员入口 -->
+          <router-link
+            v-if="isAdmin(userStore.user)"
+            to="/admin"
+            active-class="active"
+            class="nav-item"
+          >
+            <span class="nav-zh">管理</span>
+          </router-link>
         </nav>
       </aside>
 
@@ -101,6 +111,10 @@ import Lightbox from '@/components/Lightbox.vue'
 import FloatButtons from '@/components/FloatButtons.vue'
 import { call } from '@/api/request'
 import { getConfig } from '@/api/config'
+import { useUserStore } from '@/stores/user'
+import { isAdmin } from '@/utils/helper'
+
+const userStore = useUserStore()
 
 // 全局搜索弹窗
 const searchDialogRef = ref(null)
