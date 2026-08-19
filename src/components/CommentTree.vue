@@ -2,26 +2,34 @@
   <div class="comment-tree">
     <!-- 发表评论（根评论） -->
     <div class="root-comment-box">
-      <img class="root-avatar" :src="userStore.user?.avatar || defaultAvatar" alt="" @click="goMe" />
+      <img v-if="userStore.isLogged" class="root-avatar" :src="userStore.user?.avatar || defaultAvatar" alt="" @click="goMe" />
       <div class="root-input">
         <div v-if="userStore.isLogged" class="root-meta">
           <span class="root-name" @click="goMe">{{ userStore.user.nickname || '我' }}</span>
           <span v-if="myLevel" class="c-level">Lv.{{ myLevel }}</span>
           <span v-if="myTitle" :class="['c-title', myTitleClass]">{{ myTitle }}</span>
         </div>
-        <EmojiEditor
-          v-model="newComment"
-          :disabled="!userStore.isLogged"
-          :placeholder="userStore.isLogged ? '写下你的评论…' : '登录后即可发表评论'"
-        />
-        <div class="root-actions">
-          <button
-            class="btn-primary"
-            :disabled="!userStore.isLogged || !newComment.trim()"
-            @click="submitRoot"
-          >
-            发表评论
-          </button>
+        <template v-if="userStore.isLogged">
+          <EmojiEditor
+            v-model="newComment"
+            placeholder="写下你的评论…"
+          />
+          <div class="root-actions">
+            <button
+              class="btn-primary"
+              :disabled="!newComment.trim()"
+              @click="submitRoot"
+            >
+              发表评论
+            </button>
+          </div>
+        </template>
+        <div v-else class="login-tip">
+          <span class="login-tip-text">登录后可参与回复讨论。</span>
+          <div class="login-tip-actions">
+            <RouterLink :to="{ name: 'login', query: { redirect: $route.fullPath } }" class="btn btn-sm btn-primary">登录</RouterLink>
+            <RouterLink :to="{ name: 'register' }" class="btn btn-sm">注册</RouterLink>
+          </div>
         </div>
       </div>
     </div>
@@ -38,6 +46,7 @@
         :bind-type="bindType"
         :author-id="authorId"
         :reply-to="replyTo"
+        :highlight-id="highlightId"
         @like="onLike"
         @reply="onReply"
         @submit="onSubmit"
@@ -55,8 +64,8 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, watch, onMounted, computed, nextTick } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import CommentItem from './CommentItem.vue'
 import Pagination from './Pagination.vue'
 import EmptyState from './EmptyState.vue'
@@ -70,7 +79,8 @@ import { pickCommentAuthor, pickUserLevel, pickUserTitle, getTitleColorClass } f
 const props = defineProps({
   bindId: { type: [String, Number], required: true },
   bindType: { type: String, default: 'article' },
-  authorId: { type: [String, Number], default: null }
+  authorId: { type: [String, Number], default: null },
+  highlightId: { type: [String, Number], default: null }
 })
 
 // 通知父组件真实评论总数（发表/删除后同步）
@@ -78,6 +88,7 @@ const emit = defineEmits(['loaded'])
 
 const userStore = useUserStore()
 const router = useRouter()
+const route = useRoute()
 
 // 当前登录用户信息（根评论框展示 + 跳转作者主页）
 const myLevel = computed(() => pickUserLevel(userStore.user))
@@ -171,6 +182,17 @@ async function load() {
     emit('loaded', 0)
   } finally {
     loading.value = false
+    // 从侧边栏等入口带 ?comment=xxx 跳转时，定位并高亮该评论
+    if (props.highlightId) {
+      nextTick(() => {
+        const el = document.getElementById(`comment-${props.highlightId}`)
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          el.classList.add('comment-flash')
+          setTimeout(() => el.classList.remove('comment-flash'), 2000)
+        }
+      })
+    }
   }
 }
 
@@ -259,6 +281,19 @@ defineExpose({ load })
 .comment-tree {
   margin-top: 8px;
 }
+/* 来自侧边栏等入口的评论定位高亮 */
+:deep(.comment-item.comment-highlight) {
+  scroll-margin-top: 80px;
+}
+:deep(.comment-item.comment-flash) {
+  animation: comment-flash 2s ease;
+  border-radius: 12px;
+}
+@keyframes comment-flash {
+  0%, 100% { background: transparent; box-shadow: none; }
+  20% { background: rgba(184, 153, 104, 0.16); box-shadow: 0 0 0 2px rgba(184, 153, 104, 0.4); }
+}
+
 .comment-loading {
   padding: 32px;
   text-align: center;
@@ -293,6 +328,21 @@ defineExpose({ load })
   gap: 6px;
   margin-bottom: 6px;
   font-size: 13px;
+}
+.login-tip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.login-tip-text {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.login-tip-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 .root-name {
   font-weight: 600;
@@ -353,18 +403,5 @@ defineExpose({ load })
   display: flex;
   justify-content: flex-end;
   margin-top: 8px;
-}
-.btn-primary {
-  background: var(--accent, #c2a36b);
-  color: #fff;
-  border: none;
-  padding: 7px 18px;
-  border-radius: 8px;
-  font-size: 14px;
-  cursor: pointer;
-}
-.btn-primary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 </style>

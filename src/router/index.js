@@ -14,6 +14,7 @@ const routes = [
       { path: 'categories', name: 'categories', component: () => import('@/views/article/CategoryList.vue') },
       { path: 'category/:key', name: 'category', component: () => import('@/views/article/CategoryDetail.vue'), props: true },
       { path: 'moments', name: 'moments', component: () => import('@/views/moments/Index.vue') },
+      { path: 'moments/:id', name: 'moment-detail', component: () => import('@/views/moments/Detail.vue'), props: true },
       { path: 'links', name: 'links', component: () => import('@/views/links/Index.vue') },
       { path: 'settings', name: 'settings', component: () => import('@/views/functions.vue'), meta: { auth: true } },
       { path: 'about', name: 'about', component: () => import('@/views/page/Index.vue'), props: { key: 'about' } },

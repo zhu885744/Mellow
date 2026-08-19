@@ -61,6 +61,9 @@
         <span v-else>评论</span>
       </button>
       <span class="action-item"><i class="bi bi-eye" /> {{ moment.views || 0 }}</span>
+      <button class="action-item" @click="copyLink">
+        <i class="bi bi-share"></i> 分享
+      </button>
     </div>
 
     <!-- 动态评论 -->
@@ -69,6 +72,7 @@
         :bind-id="moment.id"
         bind-type="moments"
         :author-id="moment.uid"
+        :highlight-id="highlightId"
         @loaded="(n) => commentCount = n"
       />
     </div>
@@ -76,7 +80,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { fromNow } from '@/utils/time'
 import { isAdmin as helperIsAdmin, pickUserLevel, pickUserTitle, getTitleColorClass } from '@/utils/helper'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
@@ -90,7 +94,9 @@ import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
-  moment: { type: Object, required: true }
+  moment: { type: Object, required: true },
+  highlightId: { type: [String, Number], default: null },
+  forceOpen: { type: Boolean, default: false }
 })
 const emit = defineEmits(['delete', 'refresh'])
 
@@ -100,6 +106,13 @@ const router = useRouter()
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
 
 const showComments = ref(false)
+
+// 详情页（forceOpen）或带 ?comment 跳入时，自动展开该动态评论区
+onMounted(() => {
+  if (props.forceOpen || props.highlightId) {
+    showComments.value = true
+  }
+})
 const likeBtn = ref(null)
 const likeHeart = ref(null)
 
@@ -241,6 +254,28 @@ async function toggleTop() {
 
 function toggleComments() {
   showComments.value = !showComments.value
+}
+
+// 分享：复制动态详情页链接
+async function copyLink() {
+  const url = `${window.location.origin}/moments/${props.moment.id}`
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(url)
+    } else {
+      const ta = document.createElement('textarea')
+      ta.value = url
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      document.execCommand('copy')
+      document.body.removeChild(ta)
+    }
+    toast.success('链接已复制')
+  } catch {
+    toast.error('复制失败，请手动复制')
+  }
 }
 
 function previewImage(i) {

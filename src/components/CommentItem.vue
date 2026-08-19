@@ -1,5 +1,5 @@
 <template>
-  <div class="comment-item" :class="{ 'is-child': isChild }">
+  <div class="comment-item" :id="`comment-${comment.id}`" :class="{ 'is-child': isChild, 'comment-highlight': highlightId && String(highlightId) === String(comment.id) }">
     <div class="c-avatar">
       <img :src="author.avatar || defaultAvatar" :alt="author.nickname" @error="onImgError" />
     </div>
@@ -48,6 +48,7 @@
           :is-child="true"
           :author-id="authorId"
           :reply-to="replyTo"
+          :highlight-id="highlightId"
           @like="$emit('like', $event)"
           @reply="$emit('reply', $event)"
           @submit="$emit('submit', $event)"
@@ -73,7 +74,8 @@ const props = defineProps({
   bindType: { type: String, default: 'article' },
   isChild: { type: Boolean, default: false },
   authorId: { type: [String, Number], default: null },
-  replyTo: { type: Object, default: null }
+  replyTo: { type: Object, default: null },
+  highlightId: { type: [String, Number], default: null }
 })
 
 const emit = defineEmits(['like', 'reply', 'submit', 'remove'])

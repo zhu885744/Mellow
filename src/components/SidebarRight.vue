@@ -65,6 +65,42 @@
       <p v-else class="notif-empty">暂无消息</p>
     </div>
 
+    <!-- 随机文章 -->
+    <div class="card card-pad-sm">
+      <div class="card-title"><span><i class="bi bi-shuffle" /> 随机文章</span></div>
+      <ul class="rank-list" v-if="randomArticles.length">
+        <li v-for="(a, i) in randomArticles" :key="a.id" class="rank-item">
+          <router-link :to="`/archives/${a.id}`" class="rank-link">
+            <span class="rank-num" :class="`rank-${i + 1}`">{{ i + 1 }}</span>
+            <span class="rank-title">{{ a.title }}</span>
+          </router-link>
+        </li>
+      </ul>
+      <p v-else class="empty">暂无文章</p>
+    </div>
+
+    <!-- 最新评论 -->
+    <div class="card card-pad-sm">
+      <div class="card-title"><span><i class="bi bi-chat-dots" /> 最新评论</span></div>
+      <ul class="comment-mini-list" v-if="latestComments.length">
+        <li v-for="c in latestComments" :key="c.id" class="comment-mini-item">
+          <router-link :to="commentLink(c)" class="comment-mini-link">
+            <img v-if="c._avatar" :src="c._avatar" class="comment-mini-avatar" :alt="c._nickname" @error="onAvatarError" />
+            <span v-else class="comment-mini-dot" :style="{ background: c._color }">
+              {{ (c._nickname || '匿').charAt(0).toUpperCase() }}
+            </span>
+            <span class="comment-mini-body">
+              <span class="comment-mini-text">
+                <strong>{{ c._nickname }}</strong>：<span v-html="c._summary"></span>
+              </span>
+              <span class="comment-mini-date">{{ formatMd(c.create_time) }}</span>
+            </span>
+          </router-link>
+        </li>
+      </ul>
+      <p v-else class="empty">暂无评论</p>
+    </div>
+
     <!-- 分类/导航 -->
     <div class="card card-pad-sm">
       <div class="card-title">
@@ -114,6 +150,7 @@
 
     <!-- 站点信息 -->
     <div class="card card-pad-sm stats-card">
+      <div class="card-title"><span>站点信息</span></div>
       <div class="stat-row">
         <span>文章</span>
         <strong>{{ stats.article }}</strong>
@@ -123,8 +160,20 @@
         <strong>{{ stats.moment }}</strong>
       </div>
       <div class="stat-row">
+        <span>标签</span>
+        <strong>{{ tagCount }}</strong>
+      </div>
+      <div class="stat-row">
         <span>友链</span>
         <strong>{{ stats.link }}</strong>
+      </div>
+      <div class="stat-row">
+        <span>已运行</span>
+        <strong>{{ runtimeDays }} 天</strong>
+      </div>
+      <div class="stat-row">
+        <span>建站时间</span>
+        <strong>{{ siteDateText }}</strong>
       </div>
     </div>
 
@@ -141,7 +190,10 @@ import { useNotificationStore } from '@/stores/notification'
 import { getArticleGroups } from '@/api/article'
 import { readNotification } from '@/api/tags'
 import { call } from '@/api/request'
+import { getSiteFunctions } from '@/api/config'
 import { fromNow } from '@/utils/time'
+import { pickCommentAuthor } from '@/utils/helper'
+import { renderEmoji } from '@/utils/emoji'
 
 import { useRouter } from 'vue-router'
 import CheckinDialog from '@/components/CheckinDialog.vue'
@@ -161,9 +213,101 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
 
 const groups = ref([])
 const tags = ref([])
+const tagCount = ref(0)
 const totalCount = ref(0)
 const stats = ref({ article: 0, moment: 0, link: 0 })
 const startTime = ref(Date.now())
+const siteDateText = ref('')
+const randomArticles = ref([])
+const latestComments = ref([])
+
+const commentColors = ['#b89968', '#6c9a4d', '#d4a148', '#4a90e2', '#d9544d', '#9b59b6']
+function colorFor(str) {
+  let hash = 0
+  for (let i = 0; i < (str || '').length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash)
+  const idx = Math.abs(hash) % commentColors.length
+  return commentColors[idx]
+}
+function stripHtml(html) {
+  return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+}
+// 生成评论摘要：以 [emoji:url] 占位符为整体单位截断，避免把 URL 切碎导致图片破损
+function buildSummary(content, max = 30) {
+  const plain = stripHtml(content).trim()
+  if (!plain) return ''
+  const parts = plain.split(/(\[emoji:[^\]]+\])/g)
+  // 纯表情评论：直接完整渲染，不受长度限制
+  const emojiOnly = parts.every(p => !p || p.startsWith('[emoji:'))
+  if (emojiOnly) return renderEmoji(plain)
+  let out = ''
+  for (const p of parts) {
+    if (!p) continue
+    if (out.length + p.length > max) {
+      // 占位符被切断则直接丢弃，不显示半截图片
+      if (p.startsWith('[emoji:')) continue
+      out += p.slice(0, Math.max(0, max - out.length))
+      break
+    }
+    out += p
+  }
+  out = out.trim()
+  return out ? renderEmoji(out) : ''
+}
+function parseTime(t) {
+  if (!t) return null
+  if (typeof t === 'number') return t > 1e10 ? t / 1000 : t
+  const d = new Date(t)
+  return isNaN(d) ? null : d.getTime() / 1000
+}
+function formatMd(t) {
+  const ts = parseTime(t)
+  if (!ts) return ''
+  const d = new Date(ts * 1000)
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${m}/${day}`
+}
+function commentLink(c) {
+  if (c.bind_type === 'article' && c.bind_id) return `/archives/${c.bind_id}?comment=${c.id}`
+  if (c.bind_type === 'page' && c.bind_id) return `/page/${c.bind_id}?comment=${c.id}`
+  if (c.bind_type === 'moments' && c.bind_id) return `/moments/${c.bind_id}?comment=${c.id}`
+  return '/archives'
+}
+function onAvatarError(e) {
+  e.target.style.display = 'none'
+}
+async function loadRandomArticles() {
+  try {
+    const res = await call('article', 'rand', {
+      method: 'GET',
+      params: { limit: 6, field: 'id,title' }
+    })
+    randomArticles.value = Array.isArray(res?.data) ? res.data : (res?.data?.data || [])
+  } catch { randomArticles.value = [] }
+}
+async function loadLatestComments() {
+  try {
+    const res = await call('comment', 'all', {
+      method: 'GET',
+      params: {
+        limit: 6,
+        order: 'create_time desc'
+      }
+    })
+    const data = res?.data?.data || []
+    latestComments.value = data.map(c => {
+      const author = pickCommentAuthor(c)
+      const summary = buildSummary(c.content, 30)
+      return {
+        ...c,
+        _nickname: author.nickname || '匿名',
+        _avatar: author.avatar || '',
+        _summary: summary,
+        _color: colorFor(author.nickname || String(c.uid))
+      }
+    })
+  } catch { latestComments.value = [] }
+}
 
 async function loadGroups() {
   try {
@@ -197,6 +341,27 @@ async function loadTags() {
       params: { limit: 20, order: 'create_time desc', field: 'id,name' }
     })
     tags.value = res.data?.data || []
+  } catch {}
+}
+
+// 站点信息：建站日期（来自 Mellow_functions 配置的 date 字段，秒级时间戳）+ 标签总数
+async function loadSiteInfo() {
+  try {
+    const res = await getSiteFunctions()
+    const cfg = res?.data?.data?.json || res?.data?.json || {}
+    const dateTs = cfg.date ? Number(cfg.date) : 0
+    if (dateTs > 0) {
+      startTime.value = dateTs * 1000
+      const d = new Date(dateTs * 1000)
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      siteDateText.value = `${y}-${m}-${day}`
+    }
+  } catch {}
+  try {
+    const res = await call('tags', 'count', { method: 'GET' })
+    tagCount.value = res?.data?.data || res?.data || 0
   } catch {}
 }
 
@@ -264,6 +429,9 @@ onMounted(() => {
   loadGroups()
   loadTags()
   loadStats()
+  loadSiteInfo()
+  loadRandomArticles()
+  loadLatestComments()
   if (userStore.isLogged) notif.startPolling()
 })
 
@@ -483,6 +651,122 @@ watch(
   color: var(--text-muted);
 }
 .notif-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+  padding: 8px 4px;
+}
+
+/* 随机文章 */
+.rank-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rank-item {
+  counter-increment: rank;
+}
+.rank-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+.rank-link:hover { color: var(--primary); }
+.rank-num {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--text-muted);
+}
+.rank-num.rank-1 { background: #d9544d; }
+.rank-num.rank-2 { background: #d4a148; }
+.rank-num.rank-3 { background: #4a90e2; }
+.rank-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 最新评论 */
+.comment-mini-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.comment-mini-link {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  color: var(--text-soft);
+}
+.comment-mini-link:hover { color: var(--primary); }
+.comment-mini-dot {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+  text-shadow: 0 1px 1px rgba(0,0,0,.2);
+}
+.comment-mini-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.comment-mini-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.comment-mini-text strong { color: var(--text); font-weight: 600; }
+.comment-mini-text :deep(img.inline-emoji) {
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+  display: inline-block;
+  object-fit: contain;
+  margin: 0 1px;
+}
+.comment-mini-avatar {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.comment-mini-date {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.empty {
   font-size: 12px;
   color: var(--text-muted);
   padding: 8px 4px;

@@ -62,6 +62,7 @@
       :bind-id="article.id"
       bind-type="article"
       :author-id="article.result?.author?.id"
+      :highlight-id="route.query.comment"
       @loaded="(n) => commentsCount = n"
     />
   </div>
