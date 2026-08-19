@@ -78,6 +78,12 @@
       <!-- 文章列表 -->
       <template v-else-if="tab === 'article'">
         <ArticleCard v-for="a in list" :key="a.id" :article="a" :abstract-limit="50" />
+        <div v-if="list.length && !finished" class="load-more">
+          <button class="btn btn-ghost btn-sm" :disabled="loading" @click="loadMore">
+            {{ loading ? '加载中...' : '加载更多' }}
+          </button>
+        </div>
+        <p v-else-if="list.length && finished" class="list-end">没有更多了</p>
       </template>
 
       <!-- 粉丝 / 关注 列表（仅本人可见） -->
@@ -467,6 +473,13 @@ async function load() {
   }
 }
 
+// 文章列表加载更多（翻页）
+function loadMore() {
+  if (loading.value || finished.value) return
+  page.value += 1
+  load()
+}
+
 onMounted(() => {
   loadProfile()
   loadFollowState()
@@ -693,6 +706,17 @@ watch(() => route.params.id, () => {
 }
 .badge-article {
   background: var(--primary);
+}
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 16px;
+}
+.list-end {
+  text-align: center;
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 .badge-comment {
   background: #5b9bd5;

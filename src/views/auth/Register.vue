@@ -30,16 +30,6 @@
       </div>
 
       <div class="form-item">
-        <label class="form-label">账号 *</label>
-        <input v-model="form.account" class="input" />
-      </div>
-
-      <div class="form-item">
-        <label class="form-label">昵称 *</label>
-        <input v-model="form.nickname" class="input" />
-      </div>
-
-      <div class="form-item">
         <label class="form-label">密码 *</label>
         <input
           v-model="form.password"
@@ -66,7 +56,7 @@
 
       <AuthAgreement v-model="agreed" ref="agreeRef" required />
 
-      <button class="btn btn-primary btn-block btn-lg" :disabled="loading" type="submit">
+      <button class="btn btn-primary btn-block btn-lg register-btn" :disabled="loading" type="submit">
         {{ loading ? '注册中...' : '注 册' }}
       </button>
     </form>
@@ -91,8 +81,6 @@ const userStore = useUserStore()
 const form = ref({
   social: '',
   code: '',
-  account: '',
-  nickname: '',
   password: '',
   password2: ''
 })
@@ -139,7 +127,7 @@ async function handleRegister() {
   }
   loading.value = true
   try {
-    const res = await register(form.value.social, form.value.code, form.value.password, form.value.account, form.value.nickname)
+    const res = await register(form.value.social, form.value.code, form.value.password)
     if (res.code === 200) {
       const data = res.data || {}
       const validTime = Number(data.valid_time) > 0 ? Number(data.valid_time) : 15 * 24 * 60 * 60
@@ -183,5 +171,8 @@ onUnmounted(() => clearInterval(timer))
   margin-top: 16px;
   font-size: 13px;
   color: var(--text-muted);
+}
+.register-btn {
+  margin-top: 18px;
 }
 </style>

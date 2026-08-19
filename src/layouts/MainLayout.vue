@@ -70,6 +70,9 @@
 
     <!-- 全局页脚 -->
     <footer class="layout-footer">
+      <span class="footer-line">
+        © {{ year }} {{ site.title }}. 保留所有权利.
+      </span>
       <template v-if="site.copyCode || site.policeCode">
         <span v-if="site.copyCode" class="footer-line">
           <a
@@ -133,6 +136,7 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
 // 站点信息（来自 /api/config/one?key=Mellow_functions）
 const siteConfig = ref({})
 const pages = ref([])
+const year = new Date().getFullYear()
 
 const site = computed(() => {
   const c = siteConfig.value || {}
@@ -343,7 +347,6 @@ onMounted(() => {
 .layout-footer a:hover {
   color: var(--primary);
 }
-
 .layout-right {
   position: sticky;
   top: 32px;
