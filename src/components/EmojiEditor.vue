@@ -161,7 +161,7 @@ defineExpose({ clear, focus: () => editorRef.value?.focus() })
   min-height: 100px;
   max-height: 300px;
   overflow-y: auto;
-  padding: 10px 12px;
+  padding: 10px 12px 40px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -183,10 +183,16 @@ defineExpose({ clear, focus: () => editorRef.value?.focus() })
   pointer-events: none;
 }
 .editor-toolbar {
+  position: absolute;
+  left: 12px;
+  bottom: 8px;
+  z-index: 1;
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
+  padding: 4px 6px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
 }
 .emoji-btn {
   display: inline-flex;

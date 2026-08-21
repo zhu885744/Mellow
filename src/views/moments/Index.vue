@@ -44,7 +44,7 @@
         </div>
       </div>
       <div class="pub-actions">
-        <button class="btn btn-primary btn-sm" :disabled="publishing || uploading" @click="publish">
+        <button class="btn btn-primary btn-sm btn-block" :disabled="publishing || uploading" @click="publish">
           {{ publishing ? '发布中...' : '发布' }}
         </button>
       </div>

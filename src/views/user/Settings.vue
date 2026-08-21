@@ -44,22 +44,6 @@
         </div>
       </div>
 
-      <!-- 通知设置 -->
-      <div class="card card-pad">
-        <h2 class="block-title">通知设置</h2>
-
-        <div class="form-item" v-for="n in notifyList" :key="n.key">
-          <div class="switch-row">
-            <div class="switch-text">
-              <span class="switch-title">{{ n.label }}</span>
-            </div>
-            <button :class="['switch', { on: notify[n.key] === 1 }]" @click="notify[n.key] = notify[n.key] === 1 ? 0 : 1">
-              <span class="knob" />
-            </button>
-          </div>
-        </div>
-      </div>
-
       <div class="btn-row">
         <button class="btn btn-primary" :disabled="loading" @click="save">
           {{ loading ? '保存中...' : '保存设置' }}
@@ -85,14 +69,7 @@ const followsOptions = [
   { value: 'none', label: '全部私密' }
 ]
 
-const notifyList = [
-  { key: 'like_collect', label: '赞和收藏' },
-  { key: 'follow', label: '新的关注' },
-  { key: 'comment', label: '评论通知' }
-]
-
 const privacy = reactive({ follows: 'all', collects: 0, likes: 0 })
-const notify = reactive({ like_collect: 1, follow: 1, comment: 1 })
 const loading = ref(false)
 
 function loadFromStore() {
@@ -103,30 +80,23 @@ function loadFromStore() {
       privacy.collects = setting.privacy.collects === 1 ? 1 : 0
       privacy.likes = setting.privacy.likes === 1 ? 1 : 0
     }
-    if (setting.notify) {
-      notify.like_collect = setting.notify.like_collect === 1 ? 1 : 0
-      notify.follow = setting.notify.follow === 1 ? 1 : 0
-      notify.comment = setting.notify.comment === 1 ? 1 : 0
-    }
   }
 }
 
 const defaultSetting = () => ({
-  privacy: { follows: 'all', collects: 0, likes: 0 },
-  notify: { like_collect: 1, follow: 1, comment: 1 }
+  privacy: { follows: 'all', collects: 0, likes: 0 }
 })
 
 function reset() {
   const d = defaultSetting()
   Object.assign(privacy, d.privacy)
-  Object.assign(notify, d.notify)
   toast.info('已重置为默认设置')
 }
 
 async function save() {
   loading.value = true
   try {
-    // 合并既有 json（保留 frame 等），再写入隐私/通知设置
+    // 合并既有 json（保留 frame 等），再写入隐私设置
     const currentJson = (userStore.user?.json && typeof userStore.user.json === 'object')
       ? { ...userStore.user.json }
       : {}
@@ -136,11 +106,6 @@ async function save() {
         follows: privacy.follows,
         collects: privacy.collects,
         likes: privacy.likes
-      },
-      notify: {
-        like_collect: notify.like_collect,
-        follow: notify.follow,
-        comment: notify.comment
       }
     }
 

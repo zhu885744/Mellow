@@ -16,7 +16,7 @@
           />
           <div class="root-actions">
             <button
-              class="btn-primary"
+              class="btn btn-primary btn-sm btn-block"
               :disabled="!newComment.trim()"
               @click="submitRoot"
             >

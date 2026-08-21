@@ -173,10 +173,11 @@ onUnmounted(() => {
 }
 .emoji-cats {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 4px;
   padding: 8px;
   border-bottom: 1px solid var(--border-soft);
-  overflow-x: auto;
   flex-shrink: 0;
 }
 .emoji-cat {

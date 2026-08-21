@@ -100,9 +100,9 @@
         </li>
       </ul>
 
-      <!-- 点赞 / 收藏 列表（仅本人可见，含 文章/评论/动态 子分类） -->
+      <!-- 点赞 / 收藏 列表（本人与他人可见，含 文章/评论/动态 子分类） -->
       <template v-else>
-        <div v-if="isSelf" class="sub-tab-bar">
+        <div class="sub-tab-bar">
           <button
             v-for="st in LIKE_TABS"
             :key="st.key"
@@ -492,7 +492,7 @@ async function load() {
         }
         const likeParams = { page: page.value, limit: pageSize, uid: uid.value }
         if (subTab.value !== 'all') likeParams.target_type = subTab.value
-        res = await myLikes({ method: 'GET', params: likeParams })
+        res = await myLikes(likeParams)
         if (res?.data?.private) {
           denied.value = true
           deniedText.value = '对方设置了私密，无法查看'
@@ -511,7 +511,7 @@ async function load() {
       const likeParams = { page: page.value, limit: pageSize }
       if (subTab.value !== 'all') likeParams.target_type = subTab.value
       res = await myLikes(likeParams)
-      const items = res.data?.data || []
+      const items = res.data?.list || res.data?.data || []
       await enrichTargets(items)
       list.value = page.value === 1 ? items : [...list.value, ...items]
       finished.value = items.length < pageSize
@@ -528,7 +528,7 @@ async function load() {
         }
         const collectParams = { page: page.value, limit: pageSize, uid: uid.value }
         if (subTab.value !== 'all') collectParams.target_type = subTab.value
-        res = await myCollects({ method: 'GET', params: collectParams })
+        res = await myCollects(collectParams)
         if (res?.data?.private) {
           denied.value = true
           deniedText.value = '对方设置了私密，无法查看'
@@ -545,7 +545,7 @@ async function load() {
       const collectParams = { page: page.value, limit: pageSize }
       if (subTab.value !== 'all') collectParams.target_type = subTab.value
       res = await myCollects(collectParams)
-      const items = res.data?.data || []
+      const items = res.data?.list || res.data?.data || []
       await enrichTargets(items)
       list.value = page.value === 1 ? items : [...list.value, ...items]
       finished.value = items.length < pageSize
