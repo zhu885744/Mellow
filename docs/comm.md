@@ -42,6 +42,11 @@
 
 > `valid_time` 为登录会话有效期（秒），由后端 `jwt.expire` 配置决定，默认 `15 * 24 * 60 * 60`（15 天）。前端应据此设置 cookie 与本地缓存的有效期。
 
+> **多端登录说明**：
+> - 系统**支持同一账号在多处同时登录**，不会因其他站点登录而踢掉已有会话。
+> - Token 校验仅验证签名有效性、有效期与账号状态（冻结/封禁），**不再校验密码哈希**，因此一个站点登录不会使其他已登录站点的会话失效。
+> - 注意：若多个前端部署在**同一域名**下，浏览器只会保留一份同名登录 Cookie（`INIS_LOGIN_TOKEN`），新登录会覆盖旧 Cookie，导致旧页面后续请求使用新 token（属浏览器正常现象，旧页面刷新后会用新会话）。若需严格隔离，请将不同站点部署到不同域名或子域。
+
 #### 2. 用户注册
 - **请求方式**: `POST`
 - **请求路径**: `/api/comm/register`
@@ -156,6 +161,59 @@
 #### 5. 退出登录
 - **请求方式**: `DELETE`
 - **请求路径**: `/api/comm/logout`
+
+#### 6. 隐私与通知设置
+
+设置数据存储在 `users.json` 字段中，通过 **用户更新接口** `PUT /api/users/update` 传入 `json` 参数整体保存（map 类型会自动编码为 JSON 字符串）。
+
+- **请求方式**: `PUT`
+- **请求路径**: `/api/users/update`
+- **参数**:
+  | 参数名 | 类型 | 必填 | 说明 |
+  | :--- | :--- | :--- | :--- |
+  | id | int | 是 | 用户 ID（仅能修改自己的） |
+  | json | object | 否 | 用户扩展设置，结构如下 |
+
+- **json 结构**：
+  ```json
+  {
+    "privacy": {
+      "follows": "all",   // 关注与粉丝列表可见范围：all=全部公开 / following=仅公开关注 / followers=仅公开粉丝 / none=全部私密
+      "collects": 0,      // 是否公开我的收藏：1=公开 / 0=私密（默认）
+      "likes": 0          // 是否公开我的点赞：1=公开 / 0=私密（默认）
+    },
+    "notify": {
+      "like_collect": 1,  // 赞和收藏通知：1=开 / 0=关（默认开）
+      "follow": 1,        // 新的关注通知：1=开 / 0=关（默认开）
+      "comment": 1        // 评论通知：1=开 / 0=关（默认开）
+    }
+  }
+  ```
+
+- **读取方式**：任意返回用户数据的接口（如 `/api/users/one`、`/api/comm/check-token` 的 `user`）中，`result.setting` 字段会带上解析后的 `privacy` 与 `notify`（缺省使用默认值）。
+
+- **隐私生效位置**（查看**他人**数据时触发，自己的数据始终可见）：
+  | 接口 | 方法 | 隐私规则 |
+  | :--- | :--- | :--- |
+  | `/api/user-follows/following?uid=目标ID` | 关注列表 | `follows=none` 或 `follows=followers` 时返回私密（data 为空 + `private:true`） |
+  | `/api/user-follows/followers?uid=目标ID` | 粉丝列表 | `follows=none` 或 `follows=following` 时返回私密 |
+  | `/api/user-collects/collects?uid=目标ID` | 收藏列表 | `privacy.collects ≠ 1` 时返回私密 |
+  | `/api/user-likes/likes?uid=目标ID` | 点赞列表 | `privacy.likes ≠ 1` 时返回私密 |
+
+- **私密时的响应**：
+  ```json
+  {
+    "code": 200,
+    "msg": "对方设置了私密，无法查看！",
+    "data": [],
+    "count": 0,
+    "page": 0,
+    "private": true
+  }
+  ```
+  > 前端可根据 `private: true` 展示「该用户设置了私密」提示，而非空列表。
+
+- **通知设置说明**：`notify` 用于前端决定是否展示对应通知入口/推送；后端在生成通知（赞、收藏、关注、评论）时读取该配置决定是否落库或推送（具体由通知模块消费，本版仅提供设置存储与读取）。
 
 ### 特殊说明
 - 登录支持密码密文解密（通过X-Gorgon、X-Khronos、X-Argus请求头）
