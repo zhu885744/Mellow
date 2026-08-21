@@ -17,6 +17,9 @@
       <router-link to="/user/profile" class="tab-item">
         <span class="tab-ico"><i class="bi bi-person" /></span> 个人资料
       </router-link>
+      <router-link to="/user/settings" class="tab-item">
+        <span class="tab-ico"><i class="bi bi-gear" /></span> 隐私设置
+      </router-link>
       <router-link to="/user/contact" class="tab-item">
         <span class="tab-ico"><i class="bi bi-person-vcard" /></span> 联系方式
       </router-link>

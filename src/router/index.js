@@ -29,6 +29,7 @@ const routes = [
         children: [
           { path: '', redirect: '/user/profile' },
           { path: 'profile', name: 'user-profile', component: () => import('@/views/user/Profile.vue') },
+          { path: 'settings', name: 'user-settings', component: () => import('@/views/user/Settings.vue') },
           { path: 'contact', name: 'user-contact', component: () => import('@/views/user/Contact.vue') },
           { path: 'security', name: 'user-security', component: () => import('@/views/user/Security.vue') },
           { path: 'collections', name: 'user-collections', component: () => import('@/views/user/Collections.vue') },

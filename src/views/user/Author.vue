@@ -114,7 +114,7 @@
           <li v-for="(i, k) in list" :key="i.id || k" class="like-item" @click="goDetail(i)">
             <div class="like-main">
               <span class="like-badge" :class="badgeClass(i.target_type)">{{ typeLabel(i.target_type) }}</span>
-              <span class="like-title">{{ detailTitle(i) }}</span>
+              <span class="like-title" v-html="detailTitleHtml(i)" />
             </div>
             <span class="like-time">{{ fromNow(i.create_time) }}</span>
           </li>
@@ -136,6 +136,7 @@ import { call } from '@/api/request'
 import { useUserStore } from '@/stores/user'
 import { fromNow } from '@/utils/time'
 import { toast } from '@/utils/toast'
+import { renderEmoji } from '@/utils/emoji'
 import EmptyState from '@/components/EmptyState.vue'
 
 const route = useRoute()
@@ -194,7 +195,7 @@ const emptyText = computed(() => {
   return 'TA还没有收藏内容'
 })
 
-const deniedText = computed(() => '仅本人可见')
+const deniedText = ref('仅本人可见')
 
 function onImgError(e) {
   e.target.src = defaultAvatar
@@ -248,12 +249,19 @@ function detailTitle(i) {
   const d = i._detail
   if (d) {
     if (d.title) return d.title
-    if (d.content) return (d.content || '').slice(0, 40)
+    // 动态/评论取完整 content（不截断），避免切断 [emoji:url] 表情标记，
+    // 显示截断交由 CSS 单行省略处理
+    if (d.content) return d.content
   }
   if (i.target_type === 'user' && i.result?.author?.nickname) {
     return i.result.author.nickname
   }
   return '内容'
+}
+
+// 标题 HTML（含 [emoji:url] 表情渲染）
+function detailTitleHtml(i) {
+  return renderEmoji(detailTitle(i), { size: 18 })
 }
 
 // 点击跳转（参考 Cardify-inis goToLikedContent）
@@ -402,18 +410,45 @@ async function toggleFollow() {
   } catch {}
 }
 
-// 粉丝 / 关注列表：隐私限制，仅本人可查看（参考 Cardify-inis）
+// 获取目标用户的隐私设置（默认全部公开）
+function getTargetPrivacy() {
+  const p = profile.value?.json?.privacy
+  return {
+    follows: p?.follows || 'all',
+    collects: p?.collects === 1 ? 1 : 0,
+    likes: p?.likes === 1 ? 1 : 0
+  }
+}
+
+// 粉丝 / 关注列表：受目标用户隐私设置控制（参考 Cardify-inis）
 async function loadFollowList(kind) {
   if (!isSelf.value) {
-    denied.value = true
-    list.value = []
-    finished.value = true
-    return
+    // 非本人：依据隐私设置判断是否可见
+    const privacy = getTargetPrivacy()
+    // 关注列表受 following 限制；粉丝列表受 followers 限制
+    const visible = kind === 'follow'
+      ? (privacy.follows === 'all' || privacy.follows === 'following')
+      : (privacy.follows === 'all' || privacy.follows === 'followers')
+    if (!visible) {
+      denied.value = true
+      deniedText.value = '对方设置了私密，无法查看'
+      list.value = []
+      finished.value = true
+      return
+    }
   }
   const res = await call('user-follows', kind === 'fans' ? 'followers' : 'following', {
     method: 'GET',
     params: { uid: uid.value, page: page.value, limit: pageSize }
   })
+  // 后端私密拦截时返回 private:true
+  if (res.data?.private) {
+    denied.value = true
+    deniedText.value = '对方设置了私密，无法查看'
+    list.value = []
+    finished.value = true
+    return
+  }
   // 参考 Cardify-inis：行含 result.follower（粉丝）/ result.followee（关注）
   const data = res.data?.list || res.data?.data || []
   const items = data.map((it) => {
@@ -445,8 +480,32 @@ async function load() {
     } else if (tab.value === 'fans' || tab.value === 'follow') {
       await loadFollowList(tab.value)
     } else if (tab.value === 'like') {
-      // 点赞列表：仅本人可见（参考 Cardify-inis，非本人不发起请求）
-      if (!isSelf.value) { denied.value = true; list.value = []; finished.value = true; return }
+      if (!isSelf.value) {
+        // 非本人：依据隐私设置判断是否可见
+        const privacy = getTargetPrivacy()
+        if (privacy.likes !== 1) {
+          denied.value = true
+          deniedText.value = '对方设置了私密，无法查看'
+          list.value = []
+          finished.value = true
+          return
+        }
+        const likeParams = { page: page.value, limit: pageSize, uid: uid.value }
+        if (subTab.value !== 'all') likeParams.target_type = subTab.value
+        res = await myLikes({ method: 'GET', params: likeParams })
+        if (res?.data?.private) {
+          denied.value = true
+          deniedText.value = '对方设置了私密，无法查看'
+          list.value = []
+          finished.value = true
+          return
+        }
+        const items = res.data?.list || res.data?.data || []
+        await enrichTargets(items)
+        list.value = page.value === 1 ? items : [...list.value, ...items]
+        finished.value = items.length < pageSize
+        return
+      }
       // 按子分类传 target_type（article/comment/moment），参考 Cardify-inis
       // 默认"全部"不传 target_type，查回所有类型；选具体分类再按 target_type 过滤
       const likeParams = { page: page.value, limit: pageSize }
@@ -457,7 +516,32 @@ async function load() {
       list.value = page.value === 1 ? items : [...list.value, ...items]
       finished.value = items.length < pageSize
     } else if (tab.value === 'collect') {
-      if (!isSelf.value) { denied.value = true; list.value = []; finished.value = true; return }
+      if (!isSelf.value) {
+        // 非本人：依据隐私设置判断是否可见
+        const privacy = getTargetPrivacy()
+        if (privacy.collects !== 1) {
+          denied.value = true
+          deniedText.value = '对方设置了私密，无法查看'
+          list.value = []
+          finished.value = true
+          return
+        }
+        const collectParams = { page: page.value, limit: pageSize, uid: uid.value }
+        if (subTab.value !== 'all') collectParams.target_type = subTab.value
+        res = await myCollects({ method: 'GET', params: collectParams })
+        if (res?.data?.private) {
+          denied.value = true
+          deniedText.value = '对方设置了私密，无法查看'
+          list.value = []
+          finished.value = true
+          return
+        }
+        const items = res.data?.list || res.data?.data || []
+        await enrichTargets(items)
+        list.value = page.value === 1 ? items : [...list.value, ...items]
+        finished.value = items.length < pageSize
+        return
+      }
       const collectParams = { page: page.value, limit: pageSize }
       if (subTab.value !== 'all') collectParams.target_type = subTab.value
       res = await myCollects(collectParams)
@@ -466,8 +550,16 @@ async function load() {
       list.value = page.value === 1 ? items : [...list.value, ...items]
       finished.value = items.length < pageSize
     }
-  } catch {
-    list.value = page.value === 1 ? [] : list.value
+  } catch (e) {
+    // 接口返回了错误信息（如「请先登录！」）时，显示接口返回的提示，而非空状态文案
+    if (e?.msg) {
+      denied.value = true
+      deniedText.value = e.msg
+      list.value = []
+      finished.value = true
+    } else {
+      list.value = page.value === 1 ? [] : list.value
+    }
   } finally {
     loading.value = false
   }
