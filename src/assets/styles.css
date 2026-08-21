@@ -661,3 +661,139 @@ h1, h2, h3, h4, h5, h6 {
   font-size: 0.85em;
   font-family: var(--font-mono);
 }
+
+/* ========== 富文本内容渲染（editor 为 wangeditor/quill 等富文本时使用） ==========
+ * 富文本 HTML 自带编辑器内联样式，这里只提供基础排版与响应式兜底。
+ */
+.rich-text {
+  font-size: 15px;
+  line-height: 1.8;
+  color: var(--text);
+  word-break: break-word;
+  overflow-wrap: anywhere;
+}
+.rich-text h1,
+.rich-text h2,
+.rich-text h3,
+.rich-text h4,
+.rich-text h5,
+.rich-text h6 {
+  margin: 1.6em 0 0.8em;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--text);
+}
+.rich-text h1 { font-size: 1.7em; }
+.rich-text h2 { font-size: 1.4em; padding-bottom: 0.3em; border-bottom: 1px solid var(--border-soft); }
+.rich-text h3 { font-size: 1.2em; }
+.rich-text h4 { font-size: 1.05em; }
+.rich-text h5 { font-size: 0.95em; color: var(--text-soft); }
+.rich-text h6 { font-size: 0.88em; color: var(--text-muted); }
+
+.rich-text p {
+  margin: 0.85em 0;
+}
+.rich-text strong {
+  font-weight: 600;
+}
+.rich-text a {
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s, color 0.2s;
+}
+.rich-text a:hover {
+  color: var(--link-hover);
+  border-bottom-color: var(--link-hover);
+}
+.rich-text hr {
+  border: none;
+  border-top: 1px solid var(--border-soft);
+  margin: 2em 0;
+}
+
+/* 富文本保留编辑器原生列表样式，仅做基础间距 */
+.rich-text ul,
+.rich-text ol {
+  margin: 0.8em 0;
+  padding-left: 1.6em;
+}
+.rich-text li {
+  margin: 0.35em 0;
+}
+
+.rich-text blockquote {
+  border-left: 4px solid var(--primary-soft);
+  padding: 6px 16px;
+  margin: 1em 0;
+  color: var(--text-muted);
+  background: var(--bg-soft);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.rich-text code {
+  background: var(--bg-muted);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.88em;
+  font-family: var(--font-mono);
+  color: var(--primary-deep);
+  word-break: break-all;
+}
+.rich-text pre {
+  background: #2c2a26;
+  color: #f0eee5;
+  padding: 16px;
+  border-radius: var(--radius);
+  overflow-x: auto;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 1em 0;
+}
+.rich-text pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+  color: inherit;
+  word-break: normal;
+}
+
+.rich-text img {
+  display: block;
+  max-width: 100%;
+  margin: 1em auto;
+  border-radius: var(--radius);
+  cursor: zoom-in;
+}
+.rich-text video {
+  display: block;
+  max-width: 100%;
+  margin: 1em auto;
+  border-radius: var(--radius);
+}
+.rich-text iframe {
+  max-width: 100%;
+}
+
+.rich-text table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+  font-size: 0.9em;
+  overflow: hidden;
+  border-radius: var(--radius);
+}
+.rich-text th,
+.rich-text td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+.rich-text thead th {
+  background: var(--bg-muted);
+  font-weight: 600;
+}
+.rich-text tbody tr:nth-child(even) {
+  background: var(--bg-soft);
+}

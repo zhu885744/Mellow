@@ -13,7 +13,7 @@
 
     <article
       ref="contentRef"
-      class="content markdown-body"
+      :class="['content', isRichText ? 'rich-text' : 'markdown-body']"
       v-html="contentHtml"
       @click="onContentClick"
     />
@@ -129,6 +129,7 @@ import { useUserStore } from '@/stores/user'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/time'
 import { renderMarkdown } from '@/utils/markdown'
+import { sanitizeHtml, isRichTextEditor } from '@/utils/html'
 import { toast } from '@/utils/toast'
 import { copyText } from '@/utils/helper'
 import { openLightbox } from '@/utils/lightbox'
@@ -188,7 +189,14 @@ function closeReward() {
   document.body.style.overflow = ''
 }
 
-const contentHtml = computed(() => renderMarkdown(article.value?.content || ''))
+const isRichText = computed(() => isRichTextEditor(article.value?.editor))
+
+// 富文本：content 本身是 HTML，清洗后原样渲染；markdown（vditor 等）：走 markdown 渲染
+const contentHtml = computed(() => {
+  const content = article.value?.content || ''
+  if (!content) return ''
+  return isRichText.value ? sanitizeHtml(content) : renderMarkdown(content)
+})
 const contentRef = ref(null)
 const likeBtn = ref(null)
 const likeIcon = ref(null)
