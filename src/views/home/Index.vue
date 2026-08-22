@@ -369,6 +369,8 @@ onBeforeUnmount(stop)
   font-size: 14px;
   line-height: 1.8;
   color: var(--text-soft);
+  white-space: pre-line;
+  word-break: break-word;
 }
 .placard-dialog-body :deep(img) {
   max-width: 100%;

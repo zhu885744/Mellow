@@ -286,24 +286,27 @@ onMounted(() => {
   margin: 24px 0;
 }
 .nav-item {
-  padding: 10px 0;
+  padding: 9px 14px;
   text-align: center;
   color: var(--text-soft);
   font-size: 14px;
   position: relative;
-  transition: color 0.2s;
+  border-radius: var(--radius-sm);
+  transition: color 0.2s, background 0.2s;
 }
 .nav-item:hover {
   color: var(--primary);
+  background: var(--bg-muted);
 }
 .nav-item.active {
   color: var(--primary);
-  font-weight: 500;
+  font-weight: 600;
+  background: rgba(184, 153, 104, 0.12);
 }
 .nav-item.active::before {
   content: '';
   position: absolute;
-  left: -16px;
+  left: 0;
   top: 50%;
   transform: translateY(-50%);
   width: 3px;
@@ -376,6 +379,7 @@ onMounted(() => {
     justify-content: space-around;
     margin: 16px 0;
     flex-wrap: wrap;
+    gap: 4px;
   }
   .nav-item.active::before {
     display: none;
