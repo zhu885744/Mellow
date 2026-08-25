@@ -243,5 +243,21 @@ onUnmounted(() => {
   .emoji-grid { gap: 4px; padding: 6px; }
   .emoji-item { min-width: 28px; min-height: 28px; font-size: 12px; }
   .img-emoji img { width: 24px; height: 24px; }
+  /* 极小屏：分类导航可能折成 2~4 行，限制高度并内部滚动，避免挤压表情网格导致溢出 */
+  .emoji-cats {
+    max-height: 84px;
+    overflow-y: auto;
+    align-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .emoji-picker-panel { min-width: 0; width: calc(100vw - 24px); }
+  .emoji-cats {
+    max-height: 96px;
+    overflow-y: auto;
+    align-content: flex-start;
+  }
+  .emoji-grid { max-height: 180px; }
 }
 </style>

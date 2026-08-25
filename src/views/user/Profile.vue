@@ -4,6 +4,8 @@
       <!-- 头像设置 -->
       <div class="card card-pad avatar-card">
         <h2 class="block-title">头像设置</h2>
+
+        <!-- 头像预览 + 操作 -->
         <div class="avatar-top">
           <div class="avatar-preview">
             <AvatarFrame
@@ -16,29 +18,24 @@
             />
           </div>
           <div class="avatar-controls">
-            <button class="btn btn-sm btn-primary" :disabled="uploading" @click="handleUploadAvatar">
-              {{ uploading ? '上传中...' : '上传头像' }}
-            </button>
-            <button class="btn btn-sm" @click="showAvatarUrlInput = !showAvatarUrlInput">
-              自定义链接
-            </button>
-            <button v-if="form.avatar" class="btn btn-sm btn-danger" @click="removeAvatar">
-              移除头像
-            </button>
-            <p class="hint">
-              支持 JPG、PNG、GIF 格式，建议 1:1 比例。上传头像后请点击「保存修改」才能生效。
-            </p>
+            <label class="btn btn-sm btn-primary">
+              <i class="bi bi-cloud-upload" /> {{ uploading ? '上传中...' : '上传头像' }}
+              <input
+                v-if="!uploading"
+                type="file"
+                accept="image/*"
+                hidden
+                @change="onAvatarFileChange"
+              />
+            </label>
+            <p class="hint">支持 JPG、PNG、GIF，建议 1:1 比例；修改后点「保存修改」生效。</p>
           </div>
-        </div>
-        <div v-if="showAvatarUrlInput" class="url-input-row">
-          <input v-model="customAvatarUrl" class="input" placeholder="请输入头像图片链接" @keyup.enter="applyCustomAvatar" />
-          <button class="btn btn-sm" :disabled="!customAvatarUrl.trim()" @click="applyCustomAvatar">应用</button>
         </div>
 
         <!-- 头像框 -->
         <div class="preset-section">
           <div class="preset-label">
-            <span>头像框</span>
+            <span><i class="bi bi-border-style" /> 头像框</span>
             <button v-if="form.frame" class="btn-link" @click="form.frame = ''">移除</button>
           </div>
           <div class="frame-grid">
@@ -55,7 +52,7 @@
 
         <!-- 默认头像 -->
         <div class="preset-section">
-          <div class="preset-label"><span>默认头像</span></div>
+          <div class="preset-label"><span><i class="bi bi-people" /> 默认头像</span></div>
           <div class="frame-grid">
             <button
               v-for="(url, idx) in DEFAULT_AVATARS"
@@ -222,27 +219,22 @@ function getTitleColorClass(title) {
   return map[title] || 'title-default'
 }
 
-function handleUploadAvatar() {
-  if (uploading.value) return
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = 'image/*'
-  input.addEventListener('change', async () => {
-    const file = input.files?.[0]
-    if (!file) return
-    if (file.size > 10 * 1024 * 1024) {
-      toast.warning('图片大小不能超过 10MB')
-      return
-    }
-    if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
-      toast.warning('请选择 JPG、PNG、GIF 或 WebP 格式的图片')
-      return
-    }
-    uploading.value = true
-    try {
-      const params = new FormData()
-      params.append('file', file, file.name)
-      const res = await uploadAvatar(params)
+function onAvatarFileChange(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  if (file.size > 10 * 1024 * 1024) {
+    toast.warning('图片大小不能超过 10MB')
+    return
+  }
+  if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+    toast.warning('请选择 JPG、PNG、GIF 或 WebP 格式的图片')
+    return
+  }
+  uploading.value = true
+  const params = new FormData()
+  params.append('file', file, file.name)
+  uploadAvatar(params)
+    .then((res) => {
       const url = res.data?.results?.[0]?.full_url || res.data?.results?.[0]?.url || ''
       if (url) {
         form.avatar = url
@@ -250,14 +242,14 @@ function handleUploadAvatar() {
       } else {
         toast.error('上传失败，请重试')
       }
-    } catch {
+    })
+    .catch(() => {
       toast.error('上传失败，请稍后重试')
-    } finally {
+    })
+    .finally(() => {
       uploading.value = false
-      input.value = ''
-    }
-  })
-  input.click()
+      e.target.value = ''
+    })
 }
 
 function applyCustomAvatar() {
@@ -379,13 +371,24 @@ watch(() => userStore.user, (nu) => {
 }
 .avatar-top {
   display: flex;
-  align-items: flex-start;
-  gap: 24px;
+  align-items: center;
+  gap: 20px;
+  padding: 16px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
   margin-bottom: 16px;
 }
 .avatar-preview {
   flex-shrink: 0;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 75px;
+  height: 75px;
+  background: var(--bg-card);
+  border-radius: 50%;
+  border: 1px dashed var(--border);
 }
 .big-avatar {
   width: 100px;
@@ -399,7 +402,11 @@ watch(() => userStore.user, (nu) => {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 8px;
+  gap: 10px;
+}
+.avatar-controls .btn {
+  min-width: 116px;
+  justify-content: center;
 }
 .url-input-row {
   display: flex;
@@ -417,8 +424,13 @@ watch(() => userStore.user, (nu) => {
   align-items: center;
   justify-content: space-between;
   font-size: 13px;
+  font-weight: 600;
   color: var(--text-soft);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+}
+.preset-label i {
+  margin-right: 6px;
+  color: var(--primary);
 }
 .btn-link {
   background: none;
@@ -431,15 +443,15 @@ watch(() => userStore.user, (nu) => {
 .frame-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
-  gap: 8px;
+  gap: 10px;
 }
 .frame-item {
   position: relative;
   aspect-ratio: 1;
-  padding: 0;
-  background: none;
+  padding: 6px;
+  background: var(--bg-card);
   border: 2px solid var(--border);
-  border-radius: 50%;
+  border-radius: var(--radius);
   cursor: pointer;
   overflow: hidden;
   transition: all 0.2s;
@@ -447,12 +459,12 @@ watch(() => userStore.user, (nu) => {
 .frame-item img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
 }
 .frame-item:hover {
   border-color: var(--primary);
-  transform: scale(1.08);
+  transform: translateY(-2px);
 }
 .frame-item.selected {
   border-color: var(--primary);
@@ -462,7 +474,7 @@ watch(() => userStore.user, (nu) => {
   font-size: 11px;
   color: var(--text-muted);
   line-height: 1.6;
-  margin-top: 12px;
+  margin-top: 0;
 }
 
 .preset-titles {
