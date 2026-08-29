@@ -5,6 +5,7 @@
   --bg-soft: #f5f5ee;
   --bg-card: #ffffff;
   --bg-muted: #f0efe8;
+  --bg-alt: #f5f5ee;
   --bg-overlay: rgba(255, 255, 255, 0.85);
 
   --text: #2a2a2a;
@@ -45,6 +46,41 @@
   --font-serif: "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC",
     "SimSun", serif;
   --font-mono: "SF Mono", Menlo, Consolas, monospace;
+}
+
+/* ========== 暗色主题（data-theme="dark" 时生效） ========== */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --bg: #191714;
+  --bg-soft: #201d19;
+  --bg-card: #262320;
+  --bg-muted: #2e2a24;
+  --bg-alt: #201d19;
+  --bg-overlay: rgba(25, 23, 20, 0.85);
+
+  --text: #e8e4da;
+  --text-soft: #c9c4b6;
+  --text-muted: #918b7d;
+  --text-light: #6e695e;
+
+  --border: #3a352c;
+  --border-soft: #2f2b24;
+
+  --primary: #cbaa72;
+  --primary-soft: #8a744e;
+  --primary-deep: #d6bc8a;
+  --accent: #e06c5f;
+  --link: #d6bc8a;
+  --link-hover: #e5cd9d;
+
+  --success: #8dbd70;
+  --danger: #e26b62;
+  --warning: #e2b967;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.25);
+  --shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 8px 28px rgba(0, 0, 0, 0.4);
 }
 
 /* ========== Reset ========== */
@@ -796,4 +832,43 @@ h1, h2, h3, h4, h5, h6 {
 }
 .rich-text tbody tr:nth-child(even) {
   background: var(--bg-soft);
+}
+
+/* ========== 骨架屏 ========== */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-muted);
+  border-radius: var(--radius-sm);
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.35),
+    transparent
+  );
+  animation: skeleton-shimmer 1.4s infinite;
+}
+:root[data-theme='dark'] .skeleton::after {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.06),
+    transparent
+  );
+}
+@keyframes skeleton-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    animation: none;
+  }
 }

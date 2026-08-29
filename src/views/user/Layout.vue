@@ -23,6 +23,9 @@
       <router-link to="/user/contact" class="tab-item">
         <span class="tab-ico"><i class="bi bi-person-vcard" /></span> 联系方式
       </router-link>
+      <router-link to="/user/reward" class="tab-item">
+        <span class="tab-ico"><i class="bi bi-cash-coin" /></span> 打赏设置
+      </router-link>
       <router-link to="/user/security" class="tab-item">
         <span class="tab-ico"><i class="bi bi-shield-lock" /></span> 账号安全
       </router-link>

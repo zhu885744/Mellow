@@ -23,9 +23,9 @@
     </div>
 
     <div class="article-list">
-      <div v-if="loading" class="loading">
-        <span class="spinner" /> 加载中...
-      </div>
+      <template v-if="loading">
+        <ArticleSkeleton v-for="i in pageSize" :key="'sk-' + i" :cover="i % 2 === 1" />
+      </template>
       <ArticleCard v-for="a in articles" :key="a.id" :article="a" :abstract-limit="50" />
       <EmptyState v-if="!loading && !articles.length" text="没有找到文章" />
     </div>
@@ -44,6 +44,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
 import ArticleCard from '@/components/ArticleCard.vue'
+import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listArticles } from '@/api/article'

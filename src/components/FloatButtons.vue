@@ -18,6 +18,16 @@
       <img v-if="btn.image_url" class="float-btn-preview" :src="btn.image_url" alt="" />
     </div>
 
+    <!-- 主题切换 -->
+    <div
+      class="float-btn-item"
+      title="切换主题"
+      aria-label="切换主题"
+      @click="themeStore.cycle()"
+    >
+      <i :class="themeIcon" />
+    </div>
+
     <!-- 返回顶部 -->
     <div
       v-if="config.show_back_to_top !== false && scrolled"
@@ -34,6 +44,15 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { getConfig } from '@/api/config'
 import { openLightbox } from '@/utils/lightbox'
+import { useThemeStore } from '@/stores/theme'
+
+const themeStore = useThemeStore()
+
+const themeIcon = computed(() => {
+  if (themeStore.mode === 'dark') return 'bi bi-moon-stars-fill'
+  if (themeStore.mode === 'light') return 'bi bi-sun-fill'
+  return 'bi bi-circle-half'
+})
 
 const config = ref({
   enabled: true,

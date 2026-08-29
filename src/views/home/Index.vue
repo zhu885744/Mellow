@@ -47,16 +47,16 @@
     </SectionTitle>
 
     <div class="article-list">
+      <template v-if="loading">
+        <ArticleSkeleton v-for="i in 4" :key="'sk-' + i" :cover="i % 2 === 1" />
+      </template>
       <ArticleCard
         v-for="a in articles"
         :key="a.id"
         :article="a"
         :abstract-limit="50"
       />
-      <div v-if="loading" class="loading">
-        <span class="spinner" /> 加载中...
-      </div>
-      <EmptyState v-else-if="!articles.length" text="还没有文章" />
+      <EmptyState v-if="!loading && !articles.length" text="还没有文章" />
     </div>
 
     <!-- 公告详情弹窗 -->
@@ -92,6 +92,7 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import SectionTitle from '@/components/SectionTitle.vue'
 import ArticleCard from '@/components/ArticleCard.vue'
+import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listArticles } from '@/api/article'
 import { call } from '@/api/request'

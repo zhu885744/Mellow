@@ -25,11 +25,12 @@ function getContainer() {
 function showToast(message, type = 'info', duration = 2400) {
   const c = getContainer()
   const el = document.createElement('div')
+  // 使用 CSS 变量，自动适配明暗主题
   const colors = {
-    info: { bg: '#fff', border: '#e8e6dd', color: '#2a2a2a' },
-    success: { bg: '#f0f7eb', border: '#c2d9b3', color: '#3d6b2c' },
-    error: { bg: '#fbecec', border: '#f0c2c2', color: '#a3362f' },
-    warning: { bg: '#fff5e0', border: '#e8d3a0', color: '#8a6e44' }
+    info: { bg: 'var(--bg-card)', border: 'var(--border)', color: 'var(--text)' },
+    success: { bg: 'var(--bg-card)', border: 'var(--success)', color: 'var(--success)' },
+    error: { bg: 'var(--bg-card)', border: 'var(--danger)', color: 'var(--danger)' },
+    warning: { bg: 'var(--bg-card)', border: 'var(--warning)', color: 'var(--warning)' }
   }
   const c1 = colors[type] || colors.info
   el.style.cssText = `
@@ -38,7 +39,7 @@ function showToast(message, type = 'info', duration = 2400) {
     border: 1px solid ${c1.border};
     border-radius: 8px;
     color: ${c1.color};
-    box-shadow: 0 4px 16px rgba(60, 50, 30, 0.08);
+    box-shadow: var(--shadow);
     font-size: 14px;
     max-width: 360px;
     pointer-events: auto;

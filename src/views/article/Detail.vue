@@ -120,7 +120,7 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import CommentTree from '@/components/CommentTree.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { getArticle } from '@/api/article'
-import { getConfig } from '@/api/config'
+import { getUser } from '@/api/users'
 import {
   like, unlike, isLiked,
   collect, uncollect, isCollected
@@ -149,14 +149,13 @@ const likeCount = ref(0)
 const collectCount = ref(0)
 const commentsCount = ref(0)
 
-// 打赏配置（来自 Mellow_functions）
-const reward = ref({ enabled: false, wechat: '', alipay: '' })
+// 打赏配置：读取文章作者的收款码（作者在 /user/reward 中设置，存于 user.json.reward）
+// 优先用文章详情返回的 author.json；若作者对象未带 json，回退用 users/one 单独拉取
+const reward = ref({ wechat: '', alipay: '' })
 const rewardVisible = ref(false)
 const rewardTab = ref('wechat')
 
-const rewardEnabled = computed(() =>
-  reward.value.enabled && (reward.value.wechat || reward.value.alipay)
-)
+const rewardEnabled = computed(() => !!(reward.value.wechat || reward.value.alipay))
 const rewardTabs = computed(() => {
   const tabs = []
   if (reward.value.wechat) tabs.push({ key: 'wechat', label: '微信' })
@@ -165,13 +164,20 @@ const rewardTabs = computed(() => {
 })
 
 async function loadReward() {
+  const authorData = article.value?.result?.author
+  if (!authorData?.id) return
   try {
-    const res = await getConfig('Mellow_functions')
-    const config = res.data?.json || {}
-    reward.value = {
-      enabled: config.reward?.enabled !== false,
-      wechat: config.reward?.wechat || '',
-      alipay: config.reward?.alipay || ''
+    // 优先使用文章详情里自带的 author.json.reward
+    const fromArticle = authorData.json?.reward
+    if (fromArticle && (fromArticle.wechat || fromArticle.alipay)) {
+      reward.value = { wechat: fromArticle.wechat || '', alipay: fromArticle.alipay || '' }
+      return
+    }
+    // 回退：单独拉取作者信息（后端文章详情可能裁剪了 json 字段）
+    const res = await getUser(authorData.id, 'id,json')
+    const json = res?.data?.json
+    if (json && typeof json === 'object' && json.reward) {
+      reward.value = { wechat: json.reward.wechat || '', alipay: json.reward.alipay || '' }
     }
   } catch {
     // 读取失败时静默，不阻塞文章加载
@@ -232,6 +238,9 @@ async function load() {
   } finally {
     loading.value = false
   }
+
+  // 加载作者的打赏收款码（依赖 article 已就绪）
+  loadReward()
 
   // 点赞 / 收藏状态
   try {
@@ -320,7 +329,6 @@ async function shareArticle() {
 watch(() => route.params.id, load)
 onMounted(() => {
   load()
-  loadReward()
 })
 onUnmounted(() => {
   document.body.style.overflow = ''

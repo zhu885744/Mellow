@@ -210,7 +210,7 @@ onMounted(load)
   text-decoration: none;
   color: inherit;
   background: var(--bg-card, #fff);
-  border: 1px solid var(--border-color, #e5e7eb);
+  border: 1px solid var(--border, #e8e6dd);
   border-radius: var(--radius, 8px);
   padding: 16px 18px;
   transition: all 0.3s ease;

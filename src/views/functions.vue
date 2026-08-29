@@ -3,7 +3,7 @@
     <!-- 页面头部 -->
     <SectionTitle title="站点配置">
       <template #extra>
-        <span class="text-muted">管理网站全局设置、评论配置、自定义代码</span>
+        <span class="text-muted">管理网站全局设置、评论配置</span>
       </template>
     </SectionTitle>
 
@@ -320,78 +320,6 @@
             <button class="btn" :disabled="saving" @click="resetCommentConfig">重置</button>
           </div>
         </div>
-
-        <!-- ========== 文章设置 ========== -->
-        <div v-show="activeTab === 'article'">
-          <div class="section">
-            <h3 class="section-title">打赏设置</h3>
-            <div class="switch-row">
-              <div>
-                <div class="field-label">启用打赏功能</div>
-                <div class="field-hint">开启或关闭文章打赏功能</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" v-model="globalConfig.reward.enabled" />
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-            <div class="field">
-              <label class="field-label">微信收款码</label>
-              <input v-model="globalConfig.reward.wechat" class="input" placeholder="输入微信收款码图片链接" />
-            </div>
-            <div class="field">
-              <label class="field-label">支付宝收款码</label>
-              <input v-model="globalConfig.reward.alipay" class="input" placeholder="输入支付宝收款码图片链接" />
-            </div>
-          </div>
-
-          <div class="save-actions">
-            <button class="btn btn-primary" :disabled="saving" @click="saveGlobalConfig">
-              {{ saving ? '保存中...' : '保存文章设置' }}
-            </button>
-          </div>
-        </div>
-
-        <!-- ========== 自定义代码 ========== -->
-        <div v-show="activeTab === 'custom'">
-          <div class="section">
-            <h3 class="section-title">CSS 代码</h3>
-            <div class="field">
-              <textarea v-model="customCodeConfig.css" class="textarea code-textarea" rows="5" placeholder="自定义 CSS 样式，会全局生效"></textarea>
-            </div>
-          </div>
-          <div class="section">
-            <h3 class="section-title">JavaScript 代码</h3>
-            <div class="field">
-              <textarea v-model="customCodeConfig.js" class="textarea code-textarea" rows="5" placeholder="自定义 JavaScript 脚本，会在页面加载时执行"></textarea>
-            </div>
-          </div>
-          <div class="section">
-            <h3 class="section-title">头部 HTML 代码</h3>
-            <div class="field">
-              <textarea v-model="customCodeConfig.header" class="textarea code-textarea" rows="4" placeholder="会被插入到 HTML 的 head 标签中"></textarea>
-            </div>
-          </div>
-          <div class="section">
-            <h3 class="section-title">底部 HTML 代码</h3>
-            <div class="field">
-              <textarea v-model="customCodeConfig.footer" class="textarea code-textarea" rows="4" placeholder="会被插入到 HTML 的 body 标签末尾"></textarea>
-            </div>
-          </div>
-          <div class="section">
-            <h3 class="section-title">网站统计代码</h3>
-            <div class="field">
-              <textarea v-model="customCodeConfig.analytics" class="textarea code-textarea" rows="4" placeholder="会被插入到 HTML 的 body 标签末尾"></textarea>
-            </div>
-          </div>
-
-          <div class="save-actions">
-            <button class="btn btn-primary" :disabled="saving" @click="saveCustomCodeConfig">
-              {{ saving ? '保存中...' : '保存自定义代码' }}
-            </button>
-            <button class="btn" :disabled="saving" @click="resetCustomCodeConfig">重置</button>
-          </div>
-        </div>
       </div>
     </template>
   </div>
@@ -438,9 +366,7 @@ function clearFunctionsCache() {
 // Tab
 const tabs = [
   { key: 'global', label: '全局设置', icon: 'bi bi-globe' },
-  { key: 'comment', label: '评论设置', icon: 'bi bi-chat-dots' },
-  { key: 'article', label: '文章设置', icon: 'bi bi-file-text' },
-  { key: 'custom', label: '自定义代码', icon: 'bi bi-gear' }
+  { key: 'comment', label: '评论设置', icon: 'bi bi-chat-dots' }
 ]
 const activeTab = ref('global')
 
@@ -480,11 +406,9 @@ const globalConfig = ref({
     position: 'center',
     show_back_to_top: true,
     buttons: []
-  },
-  reward: { enabled: true, wechat: '', alipay: '' }
+  }
 })
 
-const customCodeConfig = ref({ css: '', js: '', header: '', footer: '', analytics: '' })
 const saving = ref(false)
 
 // 格式化日期
@@ -555,25 +479,10 @@ async function getGlobalConfig() {
         position: config.float_buttons?.position || 'center',
         show_back_to_top: config.float_buttons?.show_back_to_top !== false,
         buttons: config.float_buttons?.buttons || []
-      },
-      reward: {
-        enabled: config.reward?.enabled !== false,
-        wechat: config.reward?.wechat || '',
-        alipay: config.reward?.alipay || ''
       }
     }
   } catch {
     toast.error('获取全局配置失败')
-  }
-}
-
-// 获取自定义代码配置
-async function getCustomCodeConfig() {
-  try {
-    const config = await getFunctionsConfig()
-    customCodeConfig.value = config.custom_code || { css: '', js: '', header: '', footer: '', analytics: '' }
-  } catch {
-    toast.error('获取自定义代码配置失败')
   }
 }
 
@@ -617,22 +526,6 @@ async function saveGlobalConfig() {
     clearFunctionsCache()
   } catch {
     toast.error('全局配置保存失败')
-  } finally {
-    saving.value = false
-  }
-}
-
-// 保存自定义代码
-async function saveCustomCodeConfig() {
-  saving.value = true
-  try {
-    const current = await getFunctionsConfig()
-    const updated = { ...current, custom_code: customCodeConfig.value }
-    await saveConfig(CONFIG_KEY, updated)
-    toast.success('自定义代码保存成功')
-    clearFunctionsCache()
-  } catch {
-    toast.error('自定义代码保存失败')
   } finally {
     saving.value = false
   }
@@ -683,19 +576,14 @@ function resetGlobalConfig() {
     copy: { code: '', link: 'http://beian.miit.gov.cn/' },
     police: { code: '', link: 'https://beian.mps.gov.cn/#/query/webSearch' },
     auth_dialog_agreement: { enabled: true, user_agreement_content: '', privacy_agreement_content: '' },
-    float_buttons: { enabled: true, style: 'rounded', position: 'center', show_back_to_top: true, buttons: [] },
-    reward: { enabled: true, wechat: '', alipay: '' }
+    float_buttons: { enabled: true, style: 'rounded', position: 'center', show_back_to_top: true, buttons: [] }
   }
-}
-
-function resetCustomCodeConfig() {
-  customCodeConfig.value = { css: '', js: '', header: '', footer: '', analytics: '' }
 }
 
 onMounted(async () => {
   await userStore.verifyToken(true)
   if (isAdmin.value) {
-    await Promise.all([getCommentConfig(), getGlobalConfig(), getCustomCodeConfig()])
+    await Promise.all([getCommentConfig(), getGlobalConfig()])
   }
 })
 </script>
