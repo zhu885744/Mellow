@@ -89,6 +89,23 @@ const { user } = storeToRefs(userStore)
 const collapsed = ref(false)
 const isAdmin = computed(() => helperIsAdmin(user.value))
 
+// 等级与经验（来自 user.result.level / user.exp）
+const levelInfo = computed(() => user.value?.result?.level || null)
+const levelName = computed(() => levelInfo.value?.current?.name || '')
+const levelValue = computed(() => levelInfo.value?.current?.value ?? null)
+const exp = computed(() => Number(user.value?.exp) || 0)
+const expPercent = computed(() => {
+  const cur = Number(levelInfo.value?.current?.exp) || 0
+  const next = Number(levelInfo.value?.next?.exp) || 0
+  if (!next || next <= cur) return 100
+  const p = ((exp.value - cur) / (next - cur)) * 100
+  return Math.max(0, Math.min(100, Math.round(p)))
+})
+const expText = computed(() => {
+  const next = Number(levelInfo.value?.next?.exp) || 0
+  return next ? `${exp.value} / ${next} EXP` : `${exp.value} EXP`
+})
+
 const menuGroups = computed(() => [
   {
     label: '账户',
@@ -97,7 +114,8 @@ const menuGroups = computed(() => [
       { path: '/user/settings', name: '隐私设置', icon: 'bi bi-gear' },
       { path: '/user/contact', name: '联系方式', icon: 'bi bi-person-vcard' },
       { path: '/user/reward', name: '打赏设置', icon: 'bi bi-cash-coin' },
-      { path: '/user/security', name: '账号安全', icon: 'bi bi-shield-lock' }
+      { path: '/user/security', name: '账号安全', icon: 'bi bi-shield-lock' },
+      { path: '/user/exp', name: '等级经验', icon: 'bi bi-stars' }
     ]
   },
   {
@@ -185,12 +203,55 @@ watch(() => route.path, () => {
   white-space: nowrap;
 }
 .user-card-level {
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--primary-deep);
+  margin-top: 3px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
   overflow: hidden;
-  text-overflow: ellipsis;
   white-space: nowrap;
+}
+.level-badge {
+  padding: 1px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+  border-radius: 999px;
+}
+.level-value {
+  font-size: 11px;
+  color: var(--primary-deep);
+  font-weight: 600;
+}
+.user-exp-card {
+  margin: 0 12px 12px;
+  padding: 10px 12px;
+  background: var(--bg-muted);
+  border-radius: var(--radius);
+}
+.user-exp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.user-exp-num {
+  color: var(--primary-deep);
+  font-weight: 600;
+}
+.user-exp-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.user-exp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--primary-deep));
+  border-radius: 999px;
+  transition: width 0.3s ease;
 }
 
 .user-nav {
@@ -338,6 +399,7 @@ watch(() => route.path, () => {
 .sidebar-collapsed .user-nav-text,
 .sidebar-collapsed .user-nav-group,
 .sidebar-collapsed .user-card-info,
+.sidebar-collapsed .user-exp-card,
 .sidebar-collapsed .user-nav-badge,
 .sidebar-collapsed .user-nav-ext-ico {
   display: none;
@@ -378,6 +440,9 @@ watch(() => route.path, () => {
   .sidebar-collapsed .user-nav-badge,
   .sidebar-collapsed .user-nav-ext-ico {
     display: inline;
+  }
+  .sidebar-collapsed .user-exp-card {
+    display: block;
   }
   .sidebar-collapsed .user-nav-item,
   .sidebar-collapsed .user-logout {

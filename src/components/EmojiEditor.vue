@@ -27,6 +27,7 @@
     <EmojiPicker
       v-if="showPicker"
       v-model="showPicker"
+      :inline="inlinePicker"
       @select="insertEmoji"
     />
   </div>
@@ -38,7 +39,9 @@ import EmojiPicker from './EmojiPicker.vue'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
-  placeholder: { type: String, default: '说点什么吧...' }
+  placeholder: { type: String, default: '说点什么吧...' },
+  // 内联表情面板（弹窗等需要自适应高度的场景设为 true）
+  inlinePicker: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue'])

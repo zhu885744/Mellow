@@ -36,6 +36,7 @@ const routes = [
       { path: 'contact', name: 'user-contact', component: () => import('@/views/user/Contact.vue') },
       { path: 'reward', name: 'user-reward', component: () => import('@/views/user/Reward.vue') },
       { path: 'security', name: 'user-security', component: () => import('@/views/user/Security.vue') },
+      { path: 'exp', name: 'user-exp', component: () => import('@/views/user/Exp.vue') },
       { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
       // 站点配置（管理员）：原 /settings 已迁移到用户中心下
       { path: 'site', name: 'user-site', component: () => import('@/views/functions.vue'), meta: { auth: true } }

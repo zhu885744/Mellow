@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="emoji-picker-panel">
+  <div v-if="show" class="emoji-picker-panel" :class="{ 'is-inline': inline }">
     <!-- 分类导航 -->
     <div class="emoji-cats">
       <button
@@ -46,7 +46,9 @@ import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { fetchEmojiCategories, getFullUrl } from '@/utils/emoji'
 
 const props = defineProps({
-  modelValue: { type: Boolean, default: false }
+  modelValue: { type: Boolean, default: false },
+  // 内联模式：表情面板以文档流方式展开（撑大父容器），用于弹窗等需要自适应高度的场景
+  inline: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['update:modelValue', 'select'])
@@ -170,6 +172,16 @@ onUnmounted(() => {
 @keyframes emojiFadeIn {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
+}
+/* 内联模式：占据文档流，撑大父容器（用于弹窗自适应高度） */
+.emoji-picker-panel.is-inline {
+  position: static;
+  width: 100%;
+  min-width: 0;
+  max-width: none;
+  margin-top: 8px;
+  box-shadow: none;
+  border-color: var(--border-soft);
 }
 .emoji-cats {
   display: flex;

@@ -32,13 +32,13 @@
         <i ref="likeIcon" class="bi" :class="liked ? 'bi-star-fill' : 'bi-star'" /> 点赞 <span v-if="likeCount">({{ likeCount }})</span>
       </button>
       <button class="btn btn-sm" @click="toggleCollect">
-        {{ collected ? '收藏' : '收藏' }}
+        <i ref="collectIcon" class="bi" :class="collected ? 'bi-bookmark-fill' : 'bi-bookmark'" /> {{ collected ? '已收藏' : '收藏' }}
         <span v-if="collectCount">({{ collectCount }})</span>
       </button>
-      <button v-if="rewardEnabled" class="btn btn-outline-danger btn-sm" @click="openReward">
-        打赏
+      <button v-if="rewardEnabled" class="btn btn-sm like-btn" @click="openReward">
+        <i class="bi bi-coin"></i>打赏
       </button>
-      <button class="btn btn-outline btn-sm" @click="shareArticle">
+      <button class="btn btn-sm like-btn" @click="shareArticle">
         <i class="bi bi-share" /> 分享
       </button>
     </div>

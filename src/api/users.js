@@ -38,3 +38,7 @@ export const checkInRank = (params = {}) =>
 
 export const expActive = (params = {}) =>
   call('exp', 'active', { method: 'GET', params })
+
+// 等级体系列表
+export const getLevels = (params = {}) =>
+  call('level', 'all', { method: 'GET', params: { page: 1, limit: 100, order: 'exp asc', ...params } })

@@ -121,6 +121,7 @@
               <EmojiEditor
                 v-model="editForm.content"
                 placeholder="此刻的想法..."
+                inline-picker
               >
                 <template #extra>
                   <button
@@ -154,13 +155,16 @@
                 </div>
               </div>
 
-              <input
-                v-model="editForm.location"
-                class="search-input location-input"
-                type="text"
-                placeholder="位置（可选）"
-                maxlength="64"
-              />
+              <div class="location-box">
+                <i class="bi bi-geo-alt" />
+                <input
+                  v-model="editForm.location"
+                  class="search-input"
+                  type="text"
+                  placeholder="位置（可选）"
+                  maxlength="64"
+                />
+              </div>
 
               <label class="switch-row">
                 <input v-model="editForm.status" type="checkbox" :true-value="1" :false-value="0" />
@@ -687,8 +691,18 @@ onMounted(() => {
   padding: 12px 16px;
   border-top: 1px solid var(--border-soft);
 }
-.location-input {
+.location-box {
+  position: relative;
   margin-top: 10px;
+}
+.location-box .bi {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: var(--text-light);
+  pointer-events: none;
 }
 .switch-row {
   display: flex;

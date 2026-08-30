@@ -1,199 +1,303 @@
 <template>
-  <div class="card card-pad">
-    <h2 class="block-title">每日签到</h2>
-
-    <div class="sign-card">
-      <div class="sign-main">
-        <div class="sign-title">连续签到</div>
-        <div class="sign-count">{{ user?.exp?.continuous_days || 0 }} <span>天</span></div>
-        <div class="sign-tip">
-          已累计经验值 <strong>{{ user?.exp?.total || 0 }}</strong>
+  <div class="exp-page">
+    <!-- 用户信息与等级 -->
+    <div class="card card-pad">
+      <div class="profile-hero">
+        <img :src="user?.avatar || defaultAvatar" class="profile-avatar" alt="avatar" />
+        <div class="profile-main">
+          <div class="profile-name-row">
+            <span class="profile-name">{{ user?.nickname || '未登录' }}</span>
+            <span v-if="genderText" class="profile-gender">{{ genderText }}</span>
+            <span v-if="levelName" class="level-badge">{{ levelName }} · Lv.{{ levelValue ?? 0 }}</span>
+          </div>
+          <p class="profile-desc">{{ user?.description || '这个人很懒，什么都没留下' }}</p>
+          <div class="exp-total">当前经验值 <strong>{{ exp }}</strong></div>
+          <div class="exp-bar">
+            <div class="exp-bar-fill" :style="{ width: expPercent + '%' }" />
+          </div>
+          <div class="exp-meta">{{ expText }}</div>
         </div>
-        <button class="btn btn-primary btn-lg" :disabled="checked || signing" @click="checkIn">
-          {{ checked ? '今日已签到' : (signing ? '签到中...' : '签到 +10') }}
-        </button>
       </div>
     </div>
 
-    <h3 class="subtitle">经验值规则</h3>
-    <ul class="rule-list">
-      <li v-for="r in rules" :key="r.type">
-        <span class="rule-name">{{ r.name }}</span>
-        <span class="rule-value">+{{ r.value }} / {{ r.limit > 0 ? `每日 ${r.limit} 次` : '无限制' }}</span>
-      </li>
-    </ul>
+    <!-- 经验获取途径 -->
+    <div class="card card-pad">
+      <h3 class="block-title">经验获取途径</h3>
+      <div v-if="loadingRules" class="loading"><span class="spinner" /> 加载中...</div>
+      <table v-else-if="rules.length" class="data-table">
+        <thead>
+          <tr>
+            <th>获取途径</th>
+            <th>经验值</th>
+            <th>每日上限</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="r in rules" :key="r.type">
+            <td>{{ r.name }}</td>
+            <td class="td-num">+{{ r.value }}</td>
+            <td>{{ r.daily_limit > 0 ? `${r.daily_limit} 次` : '不限' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="empty-text">暂无经验规则</p>
+    </div>
 
-    <h3 class="subtitle">活跃榜</h3>
-    <ol class="rank-list">
-      <li v-for="(u, idx) in rank" :key="u.id" class="rank-item">
-        <span :class="['rank-num', `top${idx + 1}`]">{{ idx + 1 }}</span>
-        <img :src="u.avatar || defaultAvatar" class="rank-avatar" />
-        <span class="rank-name">{{ u.nickname }}</span>
-        <span class="rank-exp">{{ u.exp }} EXP</span>
-      </li>
-    </ol>
+    <!-- 等级体系 -->
+    <div class="card card-pad">
+      <h3 class="block-title">等级体系</h3>
+      <div v-if="loadingLevels" class="loading"><span class="spinner" /> 加载中...</div>
+      <table v-else-if="levels.length" class="data-table">
+        <thead>
+          <tr>
+            <th>等级</th>
+            <th>等级值</th>
+            <th>所需经验</th>
+            <th>说明</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="lv in levels" :key="lv.id" :class="{ 'row-current': lv.value === levelValue }">
+            <td>{{ lv.name }}</td>
+            <td>Lv.{{ lv.value }}</td>
+            <td class="td-num">{{ lv.exp }}</td>
+            <td class="td-desc">{{ lv.description || '—' }}</td>
+          </tr>
+        </tbody>
+      </table>
+      <p v-else class="empty-text">暂无等级数据</p>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { checkIn, checkInStatus } from '@/api/users'
-import { call } from '@/api/request'
-import { expActive } from '@/api/tags'
+import { ref, computed, onMounted } from 'vue'
+import { getLevels } from '@/api/users'
+import { getConfig } from '@/api/config'
 import { useUserStore } from '@/stores/user'
-import { toast } from '@/utils/toast'
+import { storeToRefs } from 'pinia'
 
 const userStore = useUserStore()
-const user = computed(() => userStore.user)
+const { user } = storeToRefs(userStore)
 
-const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
+const rules = ref([])
+const levels = ref([])
+const loadingRules = ref(false)
+const loadingLevels = ref(false)
 
-const checked = ref(false)
-const signing = ref(false)
-const rank = ref([])
+const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 
-const rules = ref([
-  { type: 'login', name: '每日登录', value: 5, limit: 1 },
-  { type: 'check-in', name: '每日签到', value: 10, limit: 1 },
-  { type: 'visit', name: '访问文章', value: 1, limit: 10 },
-  { type: 'share', name: '分享内容', value: 1, limit: 10 },
-  { type: 'moments', name: '发布动态', value: 50, limit: 1 },
-  { type: 'article-create', name: '发布文章', value: 5, limit: 10 },
-  { type: 'comment-create', name: '发表评论', value: 5, limit: 10 },
-  { type: 'article-like', name: '内容获赞', value: 5, limit: 10 },
-  { type: 'article-collect', name: '内容被收藏', value: 5, limit: 10 }
-])
+// 性别映射（boy/girl -> 男/女）
+const genderText = computed(() => {
+  const g = user.value?.gender
+  if (g === 'boy' || g === 1) return '男'
+  if (g === 'girl' || g === 2) return '女'
+  return ''
+})
 
-async function load() {
+// 等级与经验（来自登录态 user.result.level / user.exp）
+const levelInfo = computed(() => user.value?.result?.level || null)
+const levelName = computed(() => levelInfo.value?.current?.name || '')
+const levelValue = computed(() => levelInfo.value?.current?.value ?? null)
+const exp = computed(() => Number(user.value?.exp) || 0)
+const expPercent = computed(() => {
+  const cur = Number(levelInfo.value?.current?.exp) || 0
+  const next = Number(levelInfo.value?.next?.exp) || 0
+  if (!next || next <= cur) return 100
+  const p = ((exp.value - cur) / (next - cur)) * 100
+  return Math.max(0, Math.min(100, Math.round(p)))
+})
+const expText = computed(() => {
+  const next = Number(levelInfo.value?.next?.exp) || 0
+  return next ? `${exp.value} / ${next} EXP` : `${exp.value} EXP`
+})
+
+async function loadRules() {
+  loadingRules.value = true
   try {
-    const res = await checkInStatus()
-    checked.value = !!res.data?.today
-  } catch {}
-
-  try {
-    const r = await expActive()
-    rank.value = r.data?.slice(0, 10) || []
-  } catch {}
-}
-
-async function checkInFn() {
-  signing.value = true
-  try {
-    const res = await checkIn()
-    toast.success(res.msg || '签到成功 +10 EXP')
-    checked.value = true
-    // 刷新用户信息
-    await userStore.verifyToken(true)
-  } catch {} finally {
-    signing.value = false
+    const res = await getConfig('SYSTEM_EXP_RULES')
+    let data = res.data?.json || res.data || {}
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data) } catch { data = {} }
+    }
+    const arr = Object.entries(data).map(([type, r]) => ({
+      type,
+      name: r?.name || type,
+      value: Number(r?.value) || 0,
+      daily_limit: Number(r?.daily_limit) || 0
+    }))
+    arr.sort((a, b) => b.value - a.value)
+    rules.value = arr
+  } catch {
+    rules.value = []
+  } finally {
+    loadingRules.value = false
   }
 }
 
-onMounted(load)
+async function loadLevels() {
+  loadingLevels.value = true
+  try {
+    const res = await getLevels()
+    levels.value = res.data?.data || []
+  } catch {
+    levels.value = []
+  } finally {
+    loadingLevels.value = false
+  }
+}
+
+onMounted(() => {
+  loadRules()
+  loadLevels()
+})
 </script>
 
 <style scoped>
+.exp-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 .block-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
+  margin: 0 0 14px;
+  padding-bottom: 10px;
   border-bottom: 1px solid var(--border-soft);
 }
-.subtitle {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 24px 0 12px;
-  color: var(--text);
-}
 
-.sign-card {
-  background: linear-gradient(135deg, #fdf3e2, #fbe8c8);
-  border-radius: var(--radius-lg);
-  padding: 32px;
-  text-align: center;
-}
-.sign-title {
-  font-size: 13px;
-  color: var(--primary-deep);
-  margin-bottom: 8px;
-}
-.sign-count {
-  font-size: 48px;
-  font-weight: 600;
-  color: var(--primary-deep);
-  line-height: 1;
-}
-.sign-count span {
-  font-size: 16px;
-  color: var(--text-muted);
-  font-weight: normal;
-  margin-left: 4px;
-}
-.sign-tip {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin: 12px 0 16px;
-}
-.sign-tip strong {
-  color: var(--primary);
-}
-
-.rule-list {
+/* 用户信息卡片 */
+.profile-hero {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 16px;
 }
-.rule-list li {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px 16px;
-  background: var(--bg-muted);
-  border-radius: var(--radius);
-}
-.rule-name { font-size: 13px; }
-.rule-value { font-size: 12px; color: var(--primary); font-weight: 500; }
-
-.rank-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.rank-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
-  background: var(--bg-muted);
-  border-radius: var(--radius);
-  font-size: 13px;
-}
-.rank-num {
-  display: inline-flex;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--border);
-  color: var(--text-soft);
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  font-weight: 600;
-}
-.rank-num.top1 { background: #f4c025; color: #fff; }
-.rank-num.top2 { background: #b4b4b4; color: #fff; }
-.rank-num.top3 { background: #c69464; color: #fff; }
-.rank-avatar {
-  width: 28px;
-  height: 28px;
+.profile-avatar {
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid var(--border);
 }
-.rank-name {
+.profile-main {
   flex: 1;
+  min-width: 0;
 }
-.rank-exp {
+.profile-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.profile-name {
+  font-size: 17px;
+  font-weight: 700;
+}
+.profile-gender {
+  font-size: 11px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-soft);
+}
+.level-badge {
+  padding: 2px 10px;
   font-size: 12px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+  border-radius: 999px;
+}
+.profile-desc {
+  margin: 6px 0 12px;
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.6;
+}
+.exp-total {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.exp-total strong {
   color: var(--primary-deep);
+  font-size: 16px;
+}
+.exp-bar {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+.exp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--primary-deep));
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+.exp-meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* 数据表格 */
+.loading {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.empty-text {
+  padding: 20px;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.data-table th,
+.data-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-soft);
+}
+.data-table thead th {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: var(--bg-muted);
+  white-space: nowrap;
+}
+.data-table thead th:first-child {
+  border-top-left-radius: var(--radius-sm);
+}
+.data-table thead th:last-child {
+  border-top-right-radius: var(--radius-sm);
+}
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+.data-table tbody tr:hover {
+  background: var(--bg-muted);
+}
+.data-table .td-num {
+  color: var(--primary-deep);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.data-table .td-desc {
+  color: var(--text-muted);
+}
+.data-table .row-current {
+  background: rgba(184, 153, 104, 0.1);
+}
+.data-table .row-current td:first-child {
+  color: var(--primary-deep);
+  font-weight: 600;
 }
 </style>

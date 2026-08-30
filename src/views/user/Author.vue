@@ -71,46 +71,56 @@
       <div v-else-if="denied" class="empty-row">
         <EmptyState :text="deniedText" />
       </div>
-      <div v-else-if="!list.length" class="empty-row">
-        <EmptyState :text="emptyText" />
-      </div>
 
       <!-- 文章列表 -->
       <template v-else-if="tab === 'article'">
-        <ArticleCard v-for="a in list" :key="a.id" :article="a" :abstract-limit="50" />
-        <div v-if="list.length && !finished" class="load-more">
-          <button class="btn btn-ghost btn-sm" :disabled="loading" @click="loadMore">
-            {{ loading ? '加载中...' : '加载更多' }}
-          </button>
+        <div v-if="!list.length" class="empty-row">
+          <EmptyState :text="emptyText" />
         </div>
-        <p v-else-if="list.length && finished" class="list-end">没有更多了</p>
+        <template v-else>
+          <ArticleCard v-for="a in list" :key="a.id" :article="a" :abstract-limit="50" />
+          <div v-if="!finished" class="load-more">
+            <button class="btn btn-ghost btn-sm" :disabled="loading" @click="loadMore">
+              {{ loading ? '加载中...' : '加载更多' }}
+            </button>
+          </div>
+          <p v-else class="list-end">没有更多了</p>
+        </template>
       </template>
 
       <!-- 粉丝 / 关注 列表（仅本人可见） -->
-      <ul v-else-if="tab === 'fans' || tab === 'follow'" class="user-list">
-        <li v-for="item in list" :key="item.id" class="user-item">
-          <router-link :to="`/author/${item.uid || item.user_id || item.id}`" class="user-link">
-            <img :src="item.avatar || defaultAvatar" class="user-avatar" @error="onImgError" />
-            <div class="user-info">
-              <span class="user-name">{{ item.nickname || item.name || '匿名用户' }}</span>
-              <span class="user-sub">{{ item.description || '' }}</span>
-            </div>
-            <span class="user-time">{{ fromNow(item.create_time) }}</span>
-          </router-link>
-        </li>
-      </ul>
+      <template v-else-if="tab === 'fans' || tab === 'follow'">
+        <div v-if="!list.length" class="empty-row">
+          <EmptyState :text="emptyText" />
+        </div>
+        <ul v-else class="user-list">
+          <li v-for="item in list" :key="item.id" class="user-item">
+            <router-link :to="`/author/${item.uid || item.user_id || item.id}`" class="user-link">
+              <img :src="item.avatar || defaultAvatar" class="user-avatar" @error="onImgError" />
+              <div class="user-info">
+                <span class="user-name">{{ item.nickname || item.name || '匿名用户' }}</span>
+                <span class="user-sub">{{ item.description || '' }}</span>
+              </div>
+              <span class="user-time">{{ fromNow(item.create_time) }}</span>
+            </router-link>
+          </li>
+        </ul>
+      </template>
 
       <!-- 点赞 / 收藏 列表（本人与他人可见，含 文章/评论/动态 子分类） -->
       <template v-else>
         <div class="sub-tab-bar">
           <button
-            v-for="st in LIKE_TABS"
+            v-for="st in currentSubTabs"
             :key="st.key"
             :class="['sub-tab', subTab === st.key && 'active']"
             @click="switchSubTab(st.key)"
           >{{ st.label }}</button>
         </div>
-        <ul class="like-list">
+        <div v-if="!list.length" class="empty-row">
+          <EmptyState :text="emptyText" />
+        </div>
+        <ul v-else class="like-list">
           <li v-for="(i, k) in list" :key="i.id || k" class="like-item" @click="goDetail(i)">
             <div class="like-main">
               <span class="like-badge" :class="badgeClass(i.target_type)">{{ typeLabel(i.target_type) }}</span>
@@ -204,21 +214,29 @@ function onImgError(e) {
 function switchTab(t) {
   if (tab.value === t) return
   tab.value = t
-  if (t !== 'like' && t !== 'collect') subTab.value = 'all'
+  subTab.value = 'all'
   page.value = 1
   finished.value = false
   denied.value = false
   load()
 }
 
-// 点赞/收藏子分类（全部 / 文章 / 评论 / 动态），默认全部
+// 点赞子分类（点赞支持 文章/评论/动态），默认全部
 const LIKE_TABS = [
   { key: 'all', label: '全部' },
   { key: 'article', label: '文章' },
   { key: 'comment', label: '评论' },
   { key: 'moment', label: '动态' }
 ]
+// 收藏子分类（收藏不支持评论，仅 文章/动态），默认全部
+const COLLECT_TABS = [
+  { key: 'all', label: '全部' },
+  { key: 'article', label: '文章' },
+  { key: 'moment', label: '动态' }
+]
 const subTab = ref('all')
+// 根据当前是点赞还是收藏，返回对应的子分类
+const currentSubTabs = computed(() => (tab.value === 'collect' ? COLLECT_TABS : LIKE_TABS))
 
 function switchSubTab(t) {
   if (subTab.value === t) return

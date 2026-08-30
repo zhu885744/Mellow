@@ -264,10 +264,12 @@ defineExpose({ show, hide })
 .checkin-dialog {
   width: 100%;
   max-width: 460px;
+  max-height: 88vh;
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-md);
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 .checkin-header {
   display: flex;
@@ -443,8 +445,6 @@ defineExpose({ show, hide })
   font-size: 13px;
 }
 .rank-list {
-  max-height: 360px;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
