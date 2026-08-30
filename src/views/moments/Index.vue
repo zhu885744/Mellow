@@ -19,7 +19,8 @@
         <template #extra>
           <button
             type="button"
-            class="pub-img-btn"
+            class="btn btn-secondary btn-sm"
+            :class="{ 'is-loading': uploading }"
             :disabled="uploading"
             @click="triggerPick"
           >
@@ -224,28 +225,6 @@ onMounted(load)
 }
 .file-input {
   display: none;
-}
-.pub-img-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 12px;
-  font-size: 13px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
-  color: var(--text-soft);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.pub-img-btn:hover:not(:disabled) {
-  color: var(--primary);
-  border-color: var(--primary);
-  background: rgba(184, 153, 104, 0.08);
-}
-.pub-img-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
 }
 .pub-images {
   display: flex;

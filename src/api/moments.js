@@ -28,11 +28,11 @@ export const createMoment = (data) =>
 
 // 上传动态图片（attachment/batch，multipart/form-data）
 export const uploadMomentImages = (formData) =>
-  call('attachment', 'batch', {
-    method: 'POST',
-    data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  call('attachment', 'batch', { method: 'POST', data: formData })
+
+// 更新动态（可改 content/images/location/status 等）
+export const updateMoment = (data) =>
+  call('moments', 'update', { method: 'PUT', data })
 
 // 删除动态
 export const removeMoment = (ids) =>

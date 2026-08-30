@@ -36,8 +36,8 @@
             <button
               v-for="s in scopes"
               :key="s.key"
-              class="scope-btn"
-              :class="{ active: scope === s.key }"
+              class="btn btn-sm btn-pill"
+              :class="scope === s.key ? 'btn-primary' : 'btn-ghost'"
               @click="changeScope(s.key)"
             >{{ s.label }}</button>
           </div>
@@ -506,26 +506,6 @@ defineExpose({ show, hide })
   gap: 6px;
   margin-top: 12px;
 }
-.scope-btn {
-  padding: 5px 12px;
-  font-size: 12px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--text-soft);
-  background: transparent;
-  transition: all 0.15s;
-}
-.scope-btn:hover {
-  color: var(--primary);
-  border-color: var(--primary);
-}
-.scope-btn.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-  font-weight: 500;
-}
-
 .search-body {
   flex: 1;
   overflow-y: auto;

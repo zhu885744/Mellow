@@ -7,11 +7,7 @@ export const updateUser = (data) =>
   call('users', 'update', { method: 'PUT', data })
 
 export const uploadAvatar = (formData) =>
-  call('attachment', 'batch', {
-    method: 'POST',
-    data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  call('attachment', 'batch', { method: 'POST', data: formData })
 
 // 修改邮箱（发验证码 / 提交验证码）
 export const updateEmail = (data) =>

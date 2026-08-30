@@ -35,10 +35,10 @@
         {{ collected ? '收藏' : '收藏' }}
         <span v-if="collectCount">({{ collectCount }})</span>
       </button>
-      <button v-if="rewardEnabled" class="btn btn-sm" @click="openReward">
+      <button v-if="rewardEnabled" class="btn btn-outline-danger btn-sm" @click="openReward">
         打赏
       </button>
-      <button class="btn btn-sm share-btn" @click="shareArticle">
+      <button class="btn btn-outline btn-sm" @click="shareArticle">
         <i class="bi bi-share" /> 分享
       </button>
     </div>
@@ -79,7 +79,7 @@
         <div class="reward-dialog">
           <div class="reward-header">
             <span class="reward-title">感谢支持</span>
-            <button class="close-btn" @click="closeReward"><i class="bi bi-x-lg" /></button>
+            <button class="btn btn-icon btn-sm btn-round" @click="closeReward"><i class="bi bi-x-lg" /></button>
           </div>
           <div v-if="rewardTabs.length > 1" class="reward-tabs">
             <button
@@ -385,24 +385,6 @@ onUnmounted(() => {
 .like-btn {
   position: relative;
 }
-.share-btn {
-  color: var(--primary-deep);
-  border-color: rgba(184, 153, 104, 0.45);
-}
-.share-btn:hover {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-}
-.reward-btn {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-.reward-btn:hover {
-  background: var(--danger);
-  color: #fff;
-}
-
 /* 打赏弹窗 */
 .reward-overlay {
   position: fixed;

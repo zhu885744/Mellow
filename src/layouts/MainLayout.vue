@@ -9,7 +9,7 @@
         </div>
 
         <!-- 全局搜索按钮 -->
-        <button class="search-btn" @click="openSearch">
+        <button class="btn btn-ghost btn-sm btn-block" @click="openSearch">
           <i class="bi bi-search" />
           <span>搜索</span>
           <kbd class="search-kbd">Ctrl K</kbd>
@@ -248,26 +248,6 @@ onMounted(() => {
   letter-spacing: 1px;
 }
 
-.search-btn {
-  width: 100%;
-  margin-top: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  padding: 9px 14px;
-  font-size: 13px;
-  color: var(--text-soft);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  transition: all 0.2s;
-}
-.search-btn:hover {
-  color: var(--primary);
-  border-color: var(--primary);
-  background: var(--bg-soft);
-}
 .search-kbd {
   margin-left: auto;
   padding: 1px 6px;

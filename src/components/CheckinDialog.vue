@@ -6,7 +6,7 @@
           <!-- 头部 -->
           <div class="checkin-header">
             <span class="checkin-title"><i class="bi bi-calendar-check" /> 每日签到</span>
-            <button class="close-btn" @click="hide()"><i class="bi bi-x-lg" /></button>
+            <button class="btn btn-icon btn-sm btn-round" @click="hide()"><i class="bi bi-x-lg" /></button>
           </div>
 
           <!-- Tab -->
@@ -47,8 +47,8 @@
             </div>
 
             <button
-              class="checkin-btn"
-              :class="{ disabled: state.loading || state.checkinStatus.checked }"
+              class="btn btn-primary btn-lg btn-block checkin-btn"
+              :class="{ 'is-loading': state.loading }"
               :disabled="state.loading || state.checkinStatus.checked"
               @click="performCheckin"
             >
@@ -282,24 +282,6 @@ defineExpose({ show, hide })
   font-weight: 600;
   color: var(--text);
 }
-.close-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--bg-muted);
-  color: var(--text-muted);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.close-btn:hover {
-  background: var(--danger);
-  color: #fff;
-}
-
 .checkin-tabs {
   display: flex;
   border-bottom: 2px solid var(--border-soft);
@@ -402,29 +384,12 @@ defineExpose({ show, hide })
 }
 
 .checkin-btn {
-  width: 100%;
-  padding: 14px 24px;
-  border: none;
-  border-radius: var(--radius);
+  /* 保留渐变作为签到按钮的专属视觉标识，其余尺寸/状态全部复用全局 .btn */
   background: linear-gradient(135deg, var(--primary), var(--primary-deep));
-  color: #fff;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.25s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
 }
-.checkin-btn:hover:not(.disabled) {
+.checkin-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   filter: brightness(1.05);
-}
-.checkin-btn.disabled {
-  background: var(--border);
-  color: var(--text-muted);
-  cursor: not-allowed;
 }
 .checkin-btn .spinner {
   width: 16px;

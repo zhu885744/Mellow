@@ -13,11 +13,40 @@
           <EmojiEditor
             v-model="newComment"
             placeholder="写下你的评论…"
+          >
+            <template #extra>
+              <button
+                type="button"
+                class="btn btn-secondary btn-sm"
+                :class="{ 'is-loading': uploading }"
+                title="插入图片"
+                @click="fileInput?.click()"
+              >
+                <i class="bi bi-image" />
+                {{ uploading ? '上传中…' : '图片' }}
+              </button>
+            </template>
+          </EmojiEditor>
+          <!-- 已选图片预览 -->
+          <div v-if="newImages.length" class="img-preview">
+            <div v-for="(img, i) in newImages" :key="img" class="img-thumb">
+              <img :src="img" alt="" />
+              <span class="img-del" title="移除" @click="removeImage(i)">×</span>
+            </div>
+          </div>
+          <input
+            ref="fileInput"
+            type="file"
+            accept="image/*"
+            multiple
+            class="hidden-file"
+            @change="onPickImages"
           />
           <div class="root-actions">
+            <span v-if="newImages.length" class="img-tip">已选 {{ newImages.length }} 张图片</span>
             <button
               class="btn btn-primary btn-sm btn-block"
-              :disabled="!newComment.trim()"
+              :disabled="(!newComment.trim() && !newImages.length) || uploading"
               @click="submitRoot"
             >
               发表评论
@@ -70,7 +99,12 @@ import CommentItem from './CommentItem.vue'
 import Pagination from './Pagination.vue'
 import EmptyState from './EmptyState.vue'
 import EmojiEditor from './EmojiEditor.vue'
-import { getCommentTree, createComment, removeComment } from '@/api/comment'
+import {
+  getCommentTree,
+  createComment,
+  removeComment,
+  uploadCommentImages
+} from '@/api/comment'
 import { likesCount, isLiked, like, unlike } from '@/api/tags'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
@@ -226,15 +260,66 @@ function onReply(comment) {
   replyTo.value = { id: comment.id, name: pickCommentAuthor(comment).nickname || '匿名' }
 }
 
+const newImages = ref([])
+const uploading = ref(false)
+const fileInput = ref(null)
+
+// 选择图片后立即上传，仅保存返回的 URL
+async function onPickImages(e) {
+  const files = Array.from(e.target.files || [])
+  // 清空 value，避免连续选择同一文件时不再触发 change
+  e.target.value = ''
+  if (!files.length) return
+
+  if (newImages.value.length + files.length > 9) {
+    toast.warning('最多只能上传 9 张图片')
+    return
+  }
+  const valid = files.filter((file) => {
+    if (!file.type.startsWith('image/')) {
+      toast.warning(`文件「${file.name}」不是图片`)
+      return false
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.warning(`图片「${file.name}」超过 10MB 限制`)
+      return false
+    }
+    return true
+  })
+  if (!valid.length) return
+
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    valid.forEach((file) => fd.append('files', file))
+    const res = await uploadCommentImages(fd)
+    const results = res.data?.results || []
+    const urls = results
+      .filter((r) => r.status !== 'fail' && r.full_url)
+      .map((r) => r.full_url)
+    newImages.value.push(...urls)
+    if (results.some((r) => r.status === 'fail')) toast.warning('部分图片上传失败')
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    uploading.value = false
+  }
+}
+
+function removeImage(i) {
+  newImages.value.splice(i, 1)
+}
+
 // 发表根评论
 async function submitRoot() {
   const content = newComment.value.trim()
-  if (!content) return
-  await onSubmit({ content, pid: 0 })
+  if (!content && !newImages.value.length) return
+  await onSubmit({ content, images: [...newImages.value], pid: 0 })
   newComment.value = ''
+  newImages.value = []
 }
 
-async function onSubmit({ content, pid }) {
+async function onSubmit({ content, images, pid }) {
   if (!userStore.isLogged) {
     toast.warning('请先登录')
     return
@@ -245,6 +330,8 @@ async function onSubmit({ content, pid }) {
       bind_type: props.bindType,
       pid: pid || 0,
       content,
+      // 后端 processFieldValue 会把数组转为逗号分隔字符串
+      images: images || [],
       status: 1,
       audit: 1
     })
@@ -401,7 +488,54 @@ defineExpose({ load })
 }
 .root-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
+  gap: 10px;
   margin-top: 8px;
+}
+.hidden-file {
+  display: none;
+}
+.img-tip {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+/* 已选图片预览 */
+.img-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.img-thumb {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border, #e8e6dd);
+}
+.img-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.img-del {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  line-height: 15px;
+  text-align: center;
+  font-size: 13px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 0 0 0 6px;
+  cursor: pointer;
+}
+.img-del:hover {
+  background: var(--accent, #c0392b);
 }
 </style>

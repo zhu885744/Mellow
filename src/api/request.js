@@ -54,6 +54,16 @@ service.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = token
   }
+  // 上传文件：手动设置的 "multipart/form-data" 不带 boundary，Go 后端无法解析
+  // （报错：request Content-Type isn't multipart/form-data）。
+  // 这里统一移除该请求头，改由浏览器自动生成带 boundary 的 multipart/form-data。
+  if (config.data instanceof FormData) {
+    const headers = config.headers
+    if (headers) {
+      if (typeof headers.delete === 'function') headers.delete('Content-Type')
+      else delete headers['Content-Type']
+    }
+  }
   return config
 })
 

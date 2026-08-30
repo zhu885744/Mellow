@@ -14,7 +14,10 @@
         :key="t.id"
         :to="`/tag/${t.id}`"
         class="tag-chip"
-      >#{{ t.name }}</router-link>
+      >
+        #{{ t.name }}
+        <span class="tag-count">{{ t.article_count ?? 0 }}</span>
+      </router-link>
       <EmptyState v-if="!allTags.length" text="暂无标签" />
     </div>
   </div>
@@ -38,7 +41,7 @@ async function loadAllTags() {
     const res = await call('tags', 'all', {
       method: 'GET',
       params: {
-        field: 'id,name,avatar,description',
+        field: 'id,name,avatar,description,article_count',
         order: 'create_time desc',
         limit: 100
       }
@@ -82,5 +85,20 @@ onMounted(loadAllTags)
   border-color: var(--primary);
   color: var(--primary);
   background: rgba(184, 153, 104, 0.08);
+}
+.tag-count {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+  text-align: center;
+  transition: all 0.2s;
+}
+.tag-chip:hover .tag-count {
+  background: rgba(184, 153, 104, 0.18);
+  color: var(--primary);
 }
 </style>

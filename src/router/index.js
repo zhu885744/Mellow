@@ -36,6 +36,7 @@ const routes = [
           { path: 'security', name: 'user-security', component: () => import('@/views/user/Security.vue') },
           { path: 'collections', name: 'user-collections', component: () => import('@/views/user/Collections.vue') },
           { path: 'likes', name: 'user-likes', component: () => import('@/views/user/Likes.vue') },
+          { path: 'moments', name: 'user-moments', component: () => import('@/views/user/Moments.vue') },
           { path: 'posts', name: 'user-posts', component: () => import('@/views/user/Posts.vue') },
           { path: 'posts/write', name: 'user-post-write', component: () => import('@/views/user/PostWrite.vue') },
           { path: 'posts/edit/:id', name: 'user-post-edit', component: () => import('@/views/user/PostWrite.vue') },

@@ -192,18 +192,33 @@ h1, h2, h3, h4, h5, h6 {
   overflow: hidden;
 }
 
-/* ========== 按钮 ========== */
+/* ========== 按钮 ==========
+   规范：基础 .btn + [尺寸] + [变体] + [形状] + [状态]，可自由组合
+   尺寸：.btn-xs .btn-sm （默认 md） .btn-lg .btn-xl
+   变体：默认(中性描边) .btn-primary .btn-secondary .btn-soft .btn-outline
+         .btn-ghost .btn-link .btn-danger .btn-success .btn-warning
+   形状：.btn-block(块状) .btn-pill(全圆角) .btn-icon(图标方形) .btn-round(圆形)
+   状态：:disabled / .is-disabled（禁用）、.is-loading（加载中）
+   示例：<button class="btn btn-primary btn-lg btn-block">提交</button>
+         <button class="btn btn-ghost btn-icon btn-round btn-sm"><i class="bi bi-x" /></button>
+================================================================ */
 .btn {
+  /* 加载指示器的颜色，实心变体自行覆盖为白色 */
+  --btn-spinner: var(--text-muted);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 8px 16px;
   border-radius: var(--radius);
   font-size: 14px;
+  font-family: inherit;
+  line-height: 1.5;
+  white-space: nowrap;
   transition: all 0.2s;
   border: 1px solid var(--border);
   background: var(--bg-card);
   color: var(--text-soft);
+  text-decoration: none;
   cursor: pointer;
   user-select: none;
   gap: 6px;
@@ -212,24 +227,20 @@ h1, h2, h3, h4, h5, h6 {
   border-color: var(--primary);
   color: var(--primary);
 }
-.btn-primary {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
+.btn:active {
+  transform: translateY(1px);
 }
-.btn-primary:hover {
-  background: var(--primary-deep);
-  border-color: var(--primary-deep);
-  color: #fff;
+.btn:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
 }
-.btn-ghost {
-  border-color: var(--border);
-  background: transparent;
-}
-.btn-ghost:hover {
-  background: var(--bg-muted);
-  color: var(--text);
-  border-color: var(--border);
+
+/* ---------- 尺寸 ---------- */
+.btn-xs {
+  padding: 2px 8px;
+  font-size: 11px;
+  gap: 4px;
+  border-radius: var(--radius-sm);
 }
 .btn-sm {
   padding: 4px 10px;
@@ -239,19 +250,235 @@ h1, h2, h3, h4, h5, h6 {
   padding: 12px 24px;
   font-size: 16px;
 }
-.btn-block {
-  display: flex;
-  width: 100%;
+.btn-xl {
+  padding: 14px 32px;
+  font-size: 17px;
+  border-radius: var(--radius-lg);
 }
+
+/* ---------- 变体：主色（主要操作） ---------- */
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  --btn-spinner: #fff;
+}
+.btn-primary:hover {
+  background: var(--primary-deep);
+  border-color: var(--primary-deep);
+  color: #fff;
+}
+
+/* 变体：浅色填充（次要操作，视觉弱于默认描边） */
+.btn-secondary {
+  background: var(--bg-muted);
+  border-color: transparent;
+  color: var(--text-soft);
+}
+.btn-secondary:hover {
+  background: var(--border);
+  border-color: transparent;
+  color: var(--text);
+}
+.btn-secondary.is-active,
+.btn-secondary.active {
+  background: rgba(184, 153, 104, 0.12);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* 变体：主色浅底（强调但非主要操作） */
+.btn-soft {
+  background: rgba(184, 153, 104, 0.12);
+  border-color: transparent;
+  color: var(--primary-deep);
+}
+.btn-soft:hover {
+  background: rgba(184, 153, 104, 0.2);
+  border-color: transparent;
+  color: var(--primary-deep);
+}
+
+/* 变体：主色描边（比默认中性描边更强调） */
+.btn-outline,
+.btn-outline-primary {
+  background: transparent;
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.btn-outline:hover,
+.btn-outline-primary:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+/* 变体：危险描边 */
+.btn-outline-danger {
+  background: transparent;
+  border-color: var(--danger);
+  color: var(--danger);
+  --btn-spinner: #fff;
+}
+.btn-outline-danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+/* 变体：成功描边 */
+.btn-outline-success {
+  background: transparent;
+  border-color: var(--success);
+  color: var(--success);
+  --btn-spinner: #fff;
+}
+.btn-outline-success:hover {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+}
+
+/* 变体：警告描边 */
+.btn-outline-warning {
+  background: transparent;
+  border-color: var(--warning);
+  color: var(--warning);
+  --btn-spinner: #fff;
+}
+.btn-outline-warning:hover {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: #fff;
+}
+
+/* 变体：幽灵（透明底，hover 才出背景，适合工具栏） */
+.btn-ghost {
+  border-color: var(--border);
+  background: transparent;
+}
+.btn-ghost:hover {
+  background: var(--bg-muted);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+/* 变体：文字按钮（无边框无背景） */
+.btn-link {
+  padding-left: 4px;
+  padding-right: 4px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--link);
+}
+.btn-link:hover {
+  border-color: transparent;
+  color: var(--link-hover);
+  text-decoration: underline;
+}
+
+/* 变体：危险操作 */
 .btn-danger {
   background: var(--danger);
   border-color: var(--danger);
   color: #fff;
+  --btn-spinner: #fff;
 }
 .btn-danger:hover {
   background: #b9463e;
   border-color: #b9463e;
   color: #fff;
+}
+
+/* 变体：成功 */
+.btn-success {
+  background: var(--success);
+  border-color: var(--success);
+  color: #fff;
+  --btn-spinner: #fff;
+}
+.btn-success:hover {
+  filter: brightness(0.94);
+  color: #fff;
+}
+
+/* 变体：警告 */
+.btn-warning {
+  background: var(--warning);
+  border-color: var(--warning);
+  color: #fff;
+  --btn-spinner: #fff;
+}
+.btn-warning:hover {
+  filter: brightness(0.94);
+  color: #fff;
+}
+
+/* ---------- 形状 / 布局 ---------- */
+.btn-block {
+  display: flex;
+  width: 100%;
+}
+.btn-pill {
+  border-radius: 999px;
+}
+/* 图标按钮：正方形，padding 与宽高随尺寸类变化 */
+.btn-icon {
+  padding: 8px;
+  width: 36px;
+  height: 36px;
+}
+.btn-icon.btn-xs {
+  padding: 2px;
+  width: 22px;
+  height: 22px;
+}
+.btn-icon.btn-sm {
+  padding: 4px;
+  width: 28px;
+  height: 28px;
+}
+.btn-icon.btn-lg {
+  padding: 12px;
+  width: 46px;
+  height: 46px;
+}
+.btn-round {
+  border-radius: 50%;
+}
+
+/* ---------- 状态 ---------- */
+.btn:disabled,
+.btn.is-disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  pointer-events: none;
+  box-shadow: none;
+}
+/* 加载中：隐藏内容并居中显示旋转指示器 */
+.btn.is-loading {
+  position: relative;
+  pointer-events: none;
+  color: transparent;
+}
+.btn.is-loading > * {
+  opacity: 0;
+}
+.btn.is-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 1em;
+  height: 1em;
+  margin: -0.5em 0 0 -0.5em;
+  border: 2px solid var(--btn-spinner);
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: btn-spin 0.6s linear infinite;
+}
+@keyframes btn-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ========== 卡片 ========== */

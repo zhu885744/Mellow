@@ -25,7 +25,7 @@
           <div class="agree-dialog">
             <div class="agree-header">
               <span class="agree-title"><i class="bi bi-file-text" /> {{ dialog.title }}</span>
-              <button class="close-btn" @click="close"><i class="bi bi-x-lg" /></button>
+              <button class="btn btn-icon btn-sm btn-round" @click="close"><i class="bi bi-x-lg" /></button>
             </div>
             <div class="agree-body">{{ dialog.content }}</div>
           </div>
@@ -167,24 +167,6 @@ defineExpose({ validate })
   font-size: 16px;
   font-weight: 600;
   color: var(--text);
-}
-.close-btn {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--bg-muted);
-  color: var(--text-muted);
-  font-size: 18px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-}
-.close-btn:hover {
-  background: var(--danger);
-  color: #fff;
 }
 .agree-body {
   padding: 20px;

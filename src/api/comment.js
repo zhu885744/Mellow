@@ -14,3 +14,10 @@ export const createComment = (data) =>
 // 删除评论
 export const removeComment = (ids) =>
   call('comment', 'remove', { method: 'DELETE', params: { ids } })
+
+// 上传评论图片（attachment/batch，multipart/form-data）
+// 返回 res.data.results：数组项含 status 与 full_url
+// 注意：不要手动设置 Content-Type，request 拦截器会移除它，
+// 由浏览器自动生成带 boundary 的 multipart/form-data
+export const uploadCommentImages = (formData) =>
+  call('attachment', 'batch', { method: 'POST', data: formData })

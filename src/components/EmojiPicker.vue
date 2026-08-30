@@ -122,7 +122,7 @@ async function loadApiEmojis() {
 
 function handleClickOutside(event) {
   const picker = event.target.closest('.emoji-picker-panel')
-  const emojiButton = event.target.closest('[title="插入表情"], .emoji-btn')
+  const emojiButton = event.target.closest('[title="插入表情"]')
   if (!picker && !emojiButton) {
     close()
   }

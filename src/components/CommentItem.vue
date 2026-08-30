@@ -15,6 +15,20 @@
 
       <div class="c-content" :class="{ 'c-content-link': authorLink }" v-html="renderedContent" @click="goAuthor"></div>
 
+      <!-- 评论图片 -->
+      <div v-if="images.length" class="c-images">
+        <img
+          v-for="(img, i) in images"
+          :key="img"
+          class="c-img"
+          :src="img"
+          alt="评论图片"
+          loading="lazy"
+          @click="preview(i)"
+          @error="onImgError"
+        />
+      </div>
+
       <div class="c-actions">
         <button ref="likeBtn" class="c-action like-btn" :class="{ active: comment.liked }" @click="$emit('like', comment)">
           <span class="c-icon"><i ref="likeIcon" class="bi" :class="comment.liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
@@ -31,10 +45,44 @@
         <EmojiEditor
           v-model="replyText"
           :placeholder="`回复 @${replyTo.name}：`"
+        >
+          <template #extra>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              :class="{ 'is-loading': uploading }"
+              title="插入图片"
+              @click="fileInput?.click()"
+            >
+              <i class="bi bi-image" />
+              {{ uploading ? '上传中…' : '图片' }}
+            </button>
+          </template>
+        </EmojiEditor>
+        <div v-if="replyImages.length" class="c-reply-images">
+          <div v-for="(img, i) in replyImages" :key="img" class="reply-thumb">
+            <img :src="img" alt="" />
+            <span class="img-del" title="移除" @click="removeImage(i)">×</span>
+          </div>
+        </div>
+        <input
+          ref="fileInput"
+          type="file"
+          accept="image/*"
+          multiple
+          class="hidden-file"
+          @change="onPickImages"
         />
         <div class="c-reply-actions">
+          <span v-if="replyImages.length" class="img-tip">已选 {{ replyImages.length }} 张</span>
           <button class="btn btn-sm" @click="cancelReply">取消</button>
-          <button class="btn btn-primary btn-sm" :disabled="!replyText.trim()" @click="submitReply">发送</button>
+          <button
+            class="btn btn-primary btn-sm"
+            :disabled="(!replyText.trim() && !replyImages.length) || uploading"
+            @click="submitReply"
+          >
+            发送
+          </button>
         </div>
       </div>
 
@@ -68,6 +116,9 @@ import { isAdmin, pickCommentAuthor, getTitleColorClass } from '@/utils/helper'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import EmojiEditor from './EmojiEditor.vue'
+import { uploadCommentImages } from '@/api/comment'
+import { openLightbox } from '@/utils/lightbox'
+import { toast } from '@/utils/toast'
 
 const props = defineProps({
   comment: { type: Object, required: true },
@@ -88,6 +139,19 @@ const replyText = ref('')
 // 后端把评论作者放在 result.author
 const author = computed(() => pickCommentAuthor(props.comment))
 const renderedContent = computed(() => renderEmojiWithBreaks(props.comment.content))
+
+// 评论图片：后端以逗号分隔字符串存储，这里统一解析为数组，兼容数组形式
+const images = computed(() => {
+  const raw = props.comment.images
+  if (!raw) return []
+  const list = Array.isArray(raw) ? raw : String(raw).split(',')
+  return list.map((s) => String(s).trim()).filter(Boolean)
+})
+
+// 点击图片打开系统全局灯箱（支持左右切换、缩放、键盘操作）
+function preview(index) {
+  openLightbox(images.value, index)
+}
 
 // 作者主页链接（作者 id 存在时才可点击）
 const authorLink = computed(() => {
@@ -130,15 +194,69 @@ watch(
   }
 )
 
+const replyImages = ref([])
+const uploading = ref(false)
+const fileInput = ref(null)
+
+async function onPickImages(e) {
+  const files = Array.from(e.target.files || [])
+  e.target.value = ''
+  if (!files.length) return
+
+  if (replyImages.value.length + files.length > 9) {
+    toast.warning('最多只能上传 9 张图片')
+    return
+  }
+  const valid = files.filter((file) => {
+    if (!file.type.startsWith('image/')) {
+      toast.warning(`文件「${file.name}」不是图片`)
+      return false
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast.warning(`图片「${file.name}」超过 10MB 限制`)
+      return false
+    }
+    return true
+  })
+  if (!valid.length) return
+
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    valid.forEach((file) => fd.append('files', file))
+    const res = await uploadCommentImages(fd)
+    const results = res.data?.results || []
+    const urls = results
+      .filter((r) => r.status !== 'fail' && r.full_url)
+      .map((r) => r.full_url)
+    replyImages.value.push(...urls)
+    if (results.some((r) => r.status === 'fail')) toast.warning('部分图片上传失败')
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    uploading.value = false
+  }
+}
+
+function removeImage(i) {
+  replyImages.value.splice(i, 1)
+}
+
 function cancelReply() {
   replyText.value = ''
+  replyImages.value = []
   emit('reply', { id: null })
 }
 
 function submitReply() {
-  if (!replyText.value.trim()) return
-  emit('submit', { content: replyText.value.trim(), pid: props.comment.id })
+  if (!replyText.value.trim() && !replyImages.value.length) return
+  emit('submit', {
+    content: replyText.value.trim(),
+    images: [...replyImages.value],
+    pid: props.comment.id
+  })
   replyText.value = ''
+  replyImages.value = []
 }
 </script>
 
@@ -280,9 +398,78 @@ function submitReply() {
 }
 .c-reply-actions {
   display: flex;
+  align-items: center;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 6px;
+}
+
+/* ===== 评论图片 ===== */
+.c-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.c-img {
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.c-img:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* ===== 回复框图片上传 ===== */
+.hidden-file {
+  display: none;
+}
+.img-tip {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin-right: auto;
+}
+.c-reply-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.reply-thumb {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border, #e8e6dd);
+}
+.reply-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.img-del {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  line-height: 15px;
+  text-align: center;
+  font-size: 13px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 0 0 0 6px;
+  cursor: pointer;
+}
+.img-del:hover {
+  background: var(--accent, #c0392b);
 }
 .c-children {
   margin-top: 12px;

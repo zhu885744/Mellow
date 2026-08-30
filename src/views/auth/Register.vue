@@ -172,7 +172,5 @@ onUnmounted(() => clearInterval(timer))
   font-size: 13px;
   color: var(--text-muted);
 }
-.register-btn {
-  margin-top: 18px;
-}
+
 </style>

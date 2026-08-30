@@ -9,7 +9,7 @@
         <div class="name">{{ user?.nickname }}</div>
         <div class="level">{{ user?.title || '普通用户' }}</div>
       </div>
-      <button class="logout-btn" @click="userStore.logout">退出登录</button>
+      <button class="btn btn-outline-danger btn-sm" @click="userStore.logout">退出登录</button>
     </div>
 
     <!-- 顶部 Tab 导航 -->
@@ -28,6 +28,9 @@
       </router-link>
       <router-link to="/user/security" class="tab-item">
         <span class="tab-ico"><i class="bi bi-shield-lock" /></span> 账号安全
+      </router-link>
+      <router-link to="/user/moments" class="tab-item">
+        <span class="tab-ico"><i class="bi bi-chat-square-dots" /></span> 我的动态
       </router-link>
       <router-link to="/user/posts" class="tab-item" :class="{ 'is-active': isPostsRoute && !isWriteRoute }">
         <span class="tab-ico"><i class="bi bi-file-earmark-text" /></span> 我的文章
@@ -101,20 +104,6 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
   font-size: 12px;
   color: var(--primary-deep);
   margin-top: 2px;
-}
-.logout-btn {
-  flex-shrink: 0;
-  padding: 7px 14px;
-  font-size: 13px;
-  color: var(--danger);
-  background: transparent;
-  border: 1px solid var(--danger);
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.logout-btn:hover {
-  background: rgba(217, 84, 77, 0.08);
 }
 .tab-bar {
   display: flex;

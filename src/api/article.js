@@ -45,12 +45,9 @@ export const getAuthorArticles = (uid, params = {}) =>
   })
 
 // 上传文章图片（封面 / 正文配图），走 attachment/batch，multipart/form-data
+// 不要手动设置 Content-Type，request 拦截器会移除它，由浏览器自动补 boundary
 export const uploadArticleImage = (formData) =>
-  call('attachment', 'batch', {
-    method: 'POST',
-    data: formData,
-    headers: { 'Content-Type': 'multipart/form-data' }
-  })
+  call('attachment', 'batch', { method: 'POST', data: formData })
 
 // 我的文章列表（分页；status 传 0 草稿 / 1 已发布 / 不传则全部）
 export const getMyArticles = (uid, params = {}) =>

@@ -74,23 +74,35 @@ function tagLike(tagId) {
   return `tags||${tagId}|`
 }
 
-// 获取标签信息（tags/all?field=...&where={"id":key} 单独查询，分页也能命中）
+// 路由 /tag/:key 的 key 可能是标签 id，也可能是标签名（支持中文名访问）
+function isId(key) {
+  return /^\d+$/.test(String(key))
+}
+
+// 获取标签信息
+// 数字 ID：走 tags/one，后端支持返回 article_count（精确 count，与 article/count 同效），可省一次请求
+// 非数字（标签名）：走 tags/all 按 name 匹配，此时数量仍由 article/count 统计
+// 注意：这里不能用 tags/all 取 article_count —— all 会全表扫描统计所有标签，单标签查询反而更慢
 async function loadTag() {
   const key = route.params.key
   try {
-    // 优先按 id 精确查询
-    let res = await call('tags', 'all', {
-      method: 'GET',
-      params: {
-        field: 'id,name,avatar,description',
-        where: JSON.stringify({ id: key }),
-        limit: 1
-      }
-    })
-    let matched = res.data?.data?.[0]
+    let matched = null
+
+    // 优先按 id 精确查询（tags/one 返回的是对象，不是数组）
+    if (isId(key)) {
+      const res = await call('tags', 'one', {
+        method: 'GET',
+        params: {
+          id: key,
+          field: 'id,name,avatar,description,article_count'
+        }
+      })
+      matched = res.data
+    }
+
     // 兜底：按 name 匹配（支持中文名访问）
     if (!matched) {
-      res = await call('tags', 'all', {
+      const res = await call('tags', 'all', {
         method: 'GET',
         params: {
           field: 'id,name,avatar,description',
@@ -159,7 +171,14 @@ async function init() {
   error.value = false
   const matched = await loadTag()
   if (matched) {
-    await Promise.all([loadArticleCount(matched.id), loadArticles()])
+    const tasks = [loadArticles()]
+    // tags/one 已返回文章数时无需再请求 article/count
+    if (matched.article_count === undefined) {
+      tasks.unshift(loadArticleCount(matched.id))
+    } else {
+      articleCount.value = Number(matched.article_count) || 0
+    }
+    await Promise.all(tasks)
   }
   loading.value = false
 }

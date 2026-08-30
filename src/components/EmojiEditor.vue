@@ -15,8 +15,8 @@
     <div class="editor-toolbar">
       <button
         type="button"
-        class="emoji-btn"
-        :class="{ active: showPicker }"
+        class="btn btn-secondary btn-sm"
+        :class="{ 'is-active': showPicker }"
         @click="togglePicker"
         title="插入表情"
       >😊 表情</button>
@@ -194,23 +194,5 @@ defineExpose({ clear, focus: () => editorRef.value?.focus() })
   background: var(--bg-card);
   border-radius: var(--radius-sm);
 }
-.emoji-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 5px 12px;
-  font-size: 13px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
-  color: var(--text-soft);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.emoji-btn:hover,
-.emoji-btn.active {
-  color: var(--primary);
-  border-color: var(--primary);
-  background: rgba(184, 153, 104, 0.08);
-}
+
 </style>
