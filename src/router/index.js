@@ -51,7 +51,8 @@ const routes = [
       { path: 'moments', name: 'manage-moments', component: () => import('@/views/manage/Moments.vue') },
       { path: 'posts', name: 'manage-posts', component: () => import('@/views/manage/Posts.vue') },
       { path: 'posts/write', name: 'manage-post-write', component: () => import('@/views/manage/PostWrite.vue') },
-      { path: 'posts/edit/:id', name: 'manage-post-edit', component: () => import('@/views/manage/PostWrite.vue') }
+      { path: 'posts/edit/:id', name: 'manage-post-edit', component: () => import('@/views/manage/PostWrite.vue') },
+      { path: 'links', name: 'manage-links', component: () => import('@/views/manage/Links.vue') }
     ]
   },
   {

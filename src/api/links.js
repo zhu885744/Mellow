@@ -12,6 +12,10 @@ export const listLinks = (params = {}) =>
 export const createLink = (data) =>
   call('links', 'create', { method: 'POST', data })
 
+// 更新友链
+export const updateLink = (data) =>
+  call('links', 'update', { method: 'PUT', data })
+
 // 删除友链
 export const removeLink = (ids) =>
   call('links', 'remove', { method: 'DELETE', params: { ids } })

@@ -44,6 +44,14 @@
           <i class="bi bi-chat-square-dots" />
           <span class="manage-nav-text">我的动态</span>
         </RouterLink>
+        <RouterLink
+          to="/manage/links"
+          class="manage-nav-item"
+          :class="{ active: isLinks }"
+        >
+          <i class="bi bi-link-45deg" />
+          <span class="manage-nav-text">友链管理</span>
+        </RouterLink>
       </nav>
 
       <div class="manage-sidebar-footer">
@@ -95,12 +103,14 @@ const collapsed = ref(false)
 const isWrite = computed(() => /^\/manage\/posts\/(write|edit)/.test(route.path))
 const isPosts = computed(() => route.path === '/manage/posts')
 const isMoments = computed(() => route.path.startsWith('/manage/moments'))
+const isLinks = computed(() => route.path.startsWith('/manage/links'))
 const isOverview = computed(() => route.path === '/manage' || route.path === '/manage/')
 
 const currentTitle = computed(() => {
   if (isWrite.value) return '写文章'
   if (isPosts.value) return '我的文章'
   if (isMoments.value) return '我的动态'
+  if (isLinks.value) return '友链管理'
   return '创作中心'
 })
 

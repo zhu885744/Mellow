@@ -79,7 +79,6 @@
               <i class="bi bi-geo-alt" /> {{ item.location }}
             </span>
             <span class="meta-text"><i class="bi bi-eye" /> {{ item.views || 0 }}</span>
-            <span class="meta-text"><i class="bi bi-heart" /> {{ item.likes || 0 }}</span>
             <span class="meta-text"><i class="bi bi-clock" /> {{ fromNow(item.create_time) }}</span>
           </div>
         </div>
@@ -193,6 +192,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmojiEditor from '@/components/EmojiEditor.vue'
 import { listMoments, updateMoment, removeMoment, uploadMomentImages } from '@/api/moments'
+import { likesCount } from '@/api/tags'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
 import { openLightbox } from '@/utils/lightbox'
 import { useUserStore } from '@/stores/user'
@@ -223,6 +223,23 @@ const tabs = [
   { label: '已发布', value: 1 },
   { label: '草稿', value: 0 }
 ]
+
+// 批量统计点赞数
+// 参考前台 MomentItem.vue：点赞数以 user-likes 记录为准，走 counts 批量接口一次性查回，
+// 不依赖后端 moments.likes 冗余字段（后端点赞时并未回写该字段，值不可靠）
+async function loadLikes(list) {
+  if (!list || !list.length) return
+  try {
+    const ids = list.map((m) => m.id)
+    const res = await likesCount('moment', ids)
+    const counts = res?.data?.counts || res?.data?.data?.counts || {}
+    list.forEach((m) => {
+      m.likeCount = counts[m.id] ?? counts[String(m.id)] ?? 0
+    })
+  } catch {
+    list.forEach((m) => { m.likeCount = m.likeCount ?? 0 })
+  }
+}
 
 // 渲染动态正文：[emoji:url] -> <img>，并保留换行
 function renderContent(item) {
@@ -262,6 +279,7 @@ async function load() {
     const res = await listMoments(params)
     list.value = res.data?.data || []
     total.value = res.data?.count || 0
+    await loadLikes(list.value)
   } catch {
     list.value = []
     total.value = 0

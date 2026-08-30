@@ -6,6 +6,7 @@ import { cache } from '@/utils/cache'
 import { toast } from '@/utils/toast'
 import { getCookie, setCookie, clearCookie } from '@/utils/cookie'
 import { TOKEN_NAME } from '@/api/request'
+import router from '@/router'
 
 const TOKEN_KEY = 'blog_user'
 const TOKEN_VALID = 'blog_token_valid'
@@ -228,6 +229,8 @@ export const useUserStore = defineStore('user', () => {
     // 清除 token（cookie + localStorage）
     clearToken()
     toast.success('已退出登录')
+    // 退出后立即跳转首页
+    router.replace('/')
   }
 
   return {
