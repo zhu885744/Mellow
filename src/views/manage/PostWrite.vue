@@ -2,7 +2,7 @@
   <div class="card card-pad">
     <header class="write-head">
       <h2 class="block-title">{{ isEdit ? '编辑文章' : '撰写文章' }}</h2>
-      <router-link to="/user/posts" class="btn btn-ghost btn-sm">
+      <router-link to="/manage/posts" class="btn btn-ghost btn-sm">
         <i class="bi bi-arrow-left" /> 返回列表
       </router-link>
     </header>
@@ -320,7 +320,7 @@ async function submit(status) {
     savedTip.value = status === 1 ? '已保存' : '草稿已保存'
     toast.success(status === 1 ? (isEdit.value ? '修改已保存' : '发布成功') : '草稿已保存')
     if (!isEdit.value && id) {
-      router.replace(`/user/posts/edit/${id}`)
+      router.replace(`/manage/posts/edit/${id}`)
     }
   } catch {
     /* 拦截器已提示 */
@@ -352,14 +352,14 @@ async function loadArticle() {
     const item = res.data
     if (!item) {
       toast.error('文章不存在或已被删除')
-      router.replace('/user/posts')
+      router.replace('/manage/posts')
       return
     }
     // 非管理员只能编辑自己的文章
     const mine = Number(item.uid) === Number(user.value?.id)
     if (!mine) {
       toast.error('只能编辑自己的文章')
-      router.replace('/user/posts')
+      router.replace('/manage/posts')
       return
     }
     form.title = item.title || ''
@@ -384,7 +384,7 @@ async function loadArticle() {
     return
   } catch {
     toast.error('文章加载失败')
-    router.replace('/user/posts')
+    router.replace('/manage/posts')
   } finally {
     loading.value = false
   }

@@ -17,32 +17,41 @@ const routes = [
       { path: 'moments', name: 'moments', component: () => import('@/views/moments/Index.vue') },
       { path: 'moments/:id', name: 'moment-detail', component: () => import('@/views/moments/Detail.vue'), props: true },
       { path: 'links', name: 'links', component: () => import('@/views/links/Index.vue') },
-      { path: 'settings', name: 'settings', component: () => import('@/views/functions.vue'), meta: { auth: true } },
       { path: 'about', name: 'about', component: () => import('@/views/page/Index.vue'), props: { key: 'about' } },
       // 用户主页 /author/:id（必须在 /:key 之前，避免被兜底路由拦截）
       { path: 'author/:id', name: 'author', component: () => import('@/views/user/Author.vue'), props: true },
       // 独立页面 /:key（必须放在最后，避免与其他固定路径冲突）
       { path: ':key', name: 'page', component: () => import('@/views/page/Index.vue'), props: true },
-      {
-        path: 'user',
-        component: () => import('@/views/user/Layout.vue'),
-        meta: { auth: true },
-        children: [
-          { path: '', redirect: '/user/profile' },
-          { path: 'profile', name: 'user-profile', component: () => import('@/views/user/Profile.vue') },
-          { path: 'settings', name: 'user-settings', component: () => import('@/views/user/Settings.vue') },
-          { path: 'contact', name: 'user-contact', component: () => import('@/views/user/Contact.vue') },
-          { path: 'reward', name: 'user-reward', component: () => import('@/views/user/Reward.vue') },
-          { path: 'security', name: 'user-security', component: () => import('@/views/user/Security.vue') },
-          { path: 'collections', name: 'user-collections', component: () => import('@/views/user/Collections.vue') },
-          { path: 'likes', name: 'user-likes', component: () => import('@/views/user/Likes.vue') },
-          { path: 'moments', name: 'user-moments', component: () => import('@/views/user/Moments.vue') },
-          { path: 'posts', name: 'user-posts', component: () => import('@/views/user/Posts.vue') },
-          { path: 'posts/write', name: 'user-post-write', component: () => import('@/views/user/PostWrite.vue') },
-          { path: 'posts/edit/:id', name: 'user-post-edit', component: () => import('@/views/user/PostWrite.vue') },
-          { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') }
-        ]
-      }
+    ]
+  },
+  // 用户中心：与 /admin 一样是独立于前台 MainLayout 的顶级路由，拥有自己的完整布局
+  {
+    path: '/user',
+    component: () => import('@/views/user/Layout.vue'),
+    meta: { auth: true },
+    children: [
+      { path: '', redirect: '/user/profile' },
+      { path: 'profile', name: 'user-profile', component: () => import('@/views/user/Profile.vue') },
+      { path: 'settings', name: 'user-settings', component: () => import('@/views/user/Settings.vue') },
+      { path: 'contact', name: 'user-contact', component: () => import('@/views/user/Contact.vue') },
+      { path: 'reward', name: 'user-reward', component: () => import('@/views/user/Reward.vue') },
+      { path: 'security', name: 'user-security', component: () => import('@/views/user/Security.vue') },
+      { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
+      // 站点配置（管理员）：原 /settings 已迁移到用户中心下
+      { path: 'site', name: 'user-site', component: () => import('@/views/functions.vue'), meta: { auth: true } }
+    ]
+  },
+  // 创作中心：与 /admin 一样是独立于前台 MainLayout 的顶级路由，拥有自己的完整布局
+  {
+    path: '/manage',
+    component: () => import('@/views/manage/Layout.vue'),
+    meta: { auth: true },
+    children: [
+      { path: '', name: 'manage', component: () => import('@/views/manage/Index.vue') },
+      { path: 'moments', name: 'manage-moments', component: () => import('@/views/manage/Moments.vue') },
+      { path: 'posts', name: 'manage-posts', component: () => import('@/views/manage/Posts.vue') },
+      { path: 'posts/write', name: 'manage-post-write', component: () => import('@/views/manage/PostWrite.vue') },
+      { path: 'posts/edit/:id', name: 'manage-post-edit', component: () => import('@/views/manage/PostWrite.vue') }
     ]
   },
   {

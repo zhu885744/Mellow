@@ -1,5 +1,7 @@
 <template>
   <div class="admin" :class="{ 'sidebar-collapsed': collapsed }">
+    <!-- 移动端遮罩：点击空白处收起侧边栏 -->
+    <div v-if="collapsed" class="admin-mask" @click="collapsed = false" />
     <aside class="admin-sidebar">
       <div class="admin-brand">
         <i class="bi bi-shield-lock" />
@@ -60,7 +62,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
@@ -180,6 +182,11 @@ if (!isAdmin(user.value)) {
 onMounted(async () => {
   await authPagesStore.ensureLoaded()
   authReady.value = true
+})
+
+// 移动端：路由变化后自动收起抽屉（桌面端保持用户选择的折叠状态不变）
+watch(() => route.path, () => {
+  if (window.innerWidth <= 768) collapsed.value = false
 })
 </script>
 
@@ -321,6 +328,10 @@ onMounted(async () => {
   flex: 1;
 }
 
+/* 移动端遮罩：桌面端不显示，仅窄屏通过媒体查询启用 */
+.admin-mask {
+  display: none;
+}
 .sidebar-collapsed .admin-sidebar {
   width: 64px;
 }
@@ -335,6 +346,13 @@ onMounted(async () => {
 }
 
 @media (max-width: 768px) {
+  .admin-mask {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 25;
+    background: rgba(0, 0, 0, 0.4);
+  }
   .admin-sidebar {
     position: fixed;
     z-index: 30;

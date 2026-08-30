@@ -6,7 +6,7 @@
         <h2 class="block-title">我的文章</h2>
         <p class="block-desc">管理自己发布的文章与草稿</p>
       </div>
-      <router-link to="/user/posts/write" class="btn btn-primary btn-sm">
+      <router-link to="/manage/posts/write" class="btn btn-primary btn-sm">
         <i class="bi bi-pencil-square" /> 写文章
       </router-link>
     </header>
@@ -47,7 +47,7 @@
     <div v-else-if="!list.length" class="empty-row">
       <EmptyState :text="keyword ? '没有匹配的文章' : '还没有文章，去写一篇吧'" />
       <div class="empty-action">
-        <router-link to="/user/posts/write" class="btn btn-primary btn-sm">写文章</router-link>
+        <router-link to="/manage/posts/write" class="btn btn-primary btn-sm">写文章</router-link>
       </div>
     </div>
 
@@ -84,7 +84,7 @@
           <button class="btn btn-ghost btn-sm" title="查看" @click="viewArticle(item)">
             <i class="bi bi-eye" />
           </button>
-          <router-link :to="`/user/posts/edit/${item.id}`" class="btn btn-ghost btn-sm" title="编辑">
+          <router-link :to="`/manage/posts/edit/${item.id}`" class="btn btn-ghost btn-sm" title="编辑">
             <i class="bi bi-pencil" />
           </router-link>
           <button class="btn btn-ghost btn-sm danger" title="删除" @click="confirmRemove(item)">
@@ -248,7 +248,7 @@ function viewArticle(item) {
   if (item.status === 1) {
     router.push(`/archives/${item.id}`)
   } else {
-    router.push(`/user/posts/edit/${item.id}`)
+    router.push(`/manage/posts/edit/${item.id}`)
   }
 }
 
