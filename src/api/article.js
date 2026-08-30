@@ -44,6 +44,45 @@ export const getAuthorArticles = (uid, params = {}) =>
     }
   })
 
+// 上传文章图片（封面 / 正文配图），走 attachment/batch，multipart/form-data
+export const uploadArticleImage = (formData) =>
+  call('attachment', 'batch', {
+    method: 'POST',
+    data: formData,
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })
+
+// 我的文章列表（分页；status 传 0 草稿 / 1 已发布 / 不传则全部）
+export const getMyArticles = (uid, params = {}) =>
+  call('article', 'all', {
+    method: 'GET',
+    params: {
+      where: JSON.stringify({ uid }),
+      order: 'create_time desc',
+      page: 1,
+      limit: 10,
+      field: 'id,uid,title,abstract,views,status,covers,group,tags,create_time,update_time,publish_time',
+      ...params
+    }
+  })
+
+// 统计我的文章数量（count 接口不附加 audit 条件，可用于统计待审核数量）
+export const countMyArticles = (uid, extra = {}) =>
+  call('article', 'count', {
+    method: 'GET',
+    params: { where: JSON.stringify({ uid, ...extra }) }
+  })
+
+// 获取文章详情（编辑用，含 content）
+export const getArticleForEdit = (id) =>
+  call('article', 'one', {
+    method: 'GET',
+    params: {
+      id,
+      field: 'id,uid,title,abstract,content,covers,group,tags,status,editor,create_time,update_time,publish_time'
+    }
+  })
+
 // 创建文章
 export const createArticle = (data) =>
   call('article', 'save', { method: 'POST', data })

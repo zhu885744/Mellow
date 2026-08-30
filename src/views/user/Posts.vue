@@ -1,0 +1,514 @@
+<template>
+  <div class="card card-pad">
+    <!-- 头部 -->
+    <header class="posts-head">
+      <div>
+        <h2 class="block-title">我的文章</h2>
+        <p class="block-desc">管理自己发布的文章与草稿</p>
+      </div>
+      <router-link to="/user/posts/write" class="btn btn-primary btn-sm">
+        <i class="bi bi-pencil-square" /> 写文章
+      </router-link>
+    </header>
+
+    <!-- 筛选栏 -->
+    <div class="posts-filter">
+      <div class="status-tabs">
+        <button
+          v-for="tab in tabs"
+          :key="tab.value"
+          type="button"
+          class="status-tab"
+          :class="{ active: status === tab.value }"
+          @click="switchTab(tab.value)"
+        >{{ tab.label }}</button>
+      </div>
+      <div class="search-box">
+        <i class="bi bi-search" />
+        <input
+          v-model="keyword"
+          class="search-input"
+          type="search"
+          placeholder="搜索标题…"
+          @input="doSearch"
+        />
+      </div>
+    </div>
+
+    <p v-if="pendingCount > 0" class="audit-tip">
+      <i class="bi bi-info-circle" /> 有 {{ pendingCount }} 篇文章正在等待审核，审核通过后会显示在这里。
+    </p>
+
+    <!-- 列表 -->
+    <div v-if="loading" class="loading">
+      <span class="spinner" /> 加载中...
+    </div>
+
+    <div v-else-if="!list.length" class="empty-row">
+      <EmptyState :text="keyword ? '没有匹配的文章' : '还没有文章，去写一篇吧'" />
+      <div class="empty-action">
+        <router-link to="/user/posts/write" class="btn btn-primary btn-sm">写文章</router-link>
+      </div>
+    </div>
+
+    <ul v-else class="post-list">
+      <li v-for="item in list" :key="item.id" class="post-row">
+        <div class="post-cover" @click="viewArticle(item)">
+          <img v-if="coverOf(item)" :src="coverOf(item)" :alt="item.title" loading="lazy" />
+          <i v-else class="bi bi-file-richtext" />
+        </div>
+
+        <div class="post-main">
+          <h3 class="post-title">
+            <a href="javascript:;" @click="viewArticle(item)">{{ item.title || '无标题' }}</a>
+            <span class="post-status" :class="item.status === 1 ? 'is-pub' : 'is-draft'">
+              {{ item.status === 1 ? '已发布' : '草稿' }}
+            </span>
+          </h3>
+
+          <p class="post-abstract">{{ item.abstract || '暂无摘要' }}</p>
+
+          <div class="post-meta">
+            <span v-if="groupNameOf(item)" class="meta-chip">
+              <i class="bi bi-folder2" /> {{ groupNameOf(item) }}
+            </span>
+            <span v-for="t in tagNamesOf(item)" :key="t" class="meta-chip">
+              <i class="bi bi-tag" /> {{ t }}
+            </span>
+            <span class="meta-text"><i class="bi bi-eye" /> {{ item.views || 0 }}</span>
+            <span class="meta-text"><i class="bi bi-clock" /> {{ fromNow(item.create_time) }}</span>
+          </div>
+        </div>
+
+        <div class="post-actions">
+          <button class="btn btn-ghost btn-sm" title="查看" @click="viewArticle(item)">
+            <i class="bi bi-eye" />
+          </button>
+          <router-link :to="`/user/posts/edit/${item.id}`" class="btn btn-ghost btn-sm" title="编辑">
+            <i class="bi bi-pencil" />
+          </router-link>
+          <button class="btn btn-ghost btn-sm danger" title="删除" @click="confirmRemove(item)">
+            <i class="bi bi-trash" />
+          </button>
+        </div>
+      </li>
+    </ul>
+
+    <Pagination
+      v-if="!loading && total > pageSize"
+      :current="page"
+      :total="total"
+      :page-size="pageSize"
+      @update:current="changePage"
+    />
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, watch, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import EmptyState from '@/components/EmptyState.vue'
+import Pagination from '@/components/Pagination.vue'
+import { getMyArticles, countMyArticles, removeArticle, getArticleGroups } from '@/api/article'
+import { listAllTags } from '@/api/tags'
+import { useUserStore } from '@/stores/user'
+import { storeToRefs } from 'pinia'
+import { fromNow } from '@/utils/time'
+import { parseIdField, debounce } from '@/utils/helper'
+import { toast } from '@/utils/toast'
+
+const router = useRouter()
+const userStore = useUserStore()
+const { user } = storeToRefs(userStore)
+
+const uid = computed(() => user.value?.id || 0)
+
+const pageSize = 10
+const list = ref([])
+const total = ref(0)
+const page = ref(1)
+const loading = ref(false)
+const pendingCount = ref(0)
+
+const status = ref('')
+const keyword = ref('')
+const searchKey = ref('')
+
+const groups = ref([])
+const tags = ref([])
+
+const tabs = [
+  { label: '全部', value: '' },
+  { label: '已发布', value: 1 },
+  { label: '草稿', value: 0 }
+]
+
+const groupMap = computed(() => {
+  const map = {}
+  groups.value.forEach((g) => { map[g.id] = g.name })
+  return map
+})
+
+const tagMap = computed(() => {
+  const map = {}
+  tags.value.forEach((t) => { map[t.id] = t.name })
+  return map
+})
+
+function coverOf(item) {
+  const c = item.covers
+  if (!c) return ''
+  if (Array.isArray(c)) return c[0] || ''
+  return String(c).split(',')[0] || ''
+}
+
+function groupNameOf(item) {
+  const ids = parseIdField(item.group)
+  return ids.length ? groupMap.value[ids[0]] || '' : ''
+}
+
+function tagNamesOf(item) {
+  return parseIdField(item.tags)
+    .map((id) => tagMap.value[id])
+    .filter(Boolean)
+    .slice(0, 3)
+}
+
+async function load() {
+  if (!uid.value) return
+  loading.value = true
+  try {
+    const where = { uid: uid.value }
+    if (status.value !== '') where.status = status.value
+    const params = {
+      page: page.value,
+      limit: pageSize,
+      where: JSON.stringify(where)
+    }
+    // like 使用后端支持的「字段名|搜索值」格式，并剔除危险字符
+    const kw = searchKey.value.replace(/['"\\%_|]/g, '').trim()
+    if (kw) params.like = `title|${kw}`
+
+    const res = await getMyArticles(uid.value, params)
+    list.value = res.data?.data || []
+    total.value = res.data?.count || 0
+  } catch {
+    list.value = []
+    total.value = 0
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadPending() {
+  if (!uid.value) return
+  try {
+    const res = await countMyArticles(uid.value, { audit: 0 })
+    pendingCount.value = Number(res.data) || 0
+  } catch {
+    pendingCount.value = 0
+  }
+}
+
+async function loadMeta() {
+  try {
+    const res = await getArticleGroups()
+    groups.value = res.data?.data || []
+  } catch {
+    groups.value = []
+  }
+  try {
+    const res = await listAllTags()
+    tags.value = res.data?.data || []
+  } catch {
+    tags.value = []
+  }
+}
+
+function switchTab(val) {
+  if (status.value === val) return
+  status.value = val
+  page.value = 1
+  load()
+}
+
+const doSearch = debounce(() => {
+  searchKey.value = keyword.value
+  page.value = 1
+  load()
+}, 350)
+
+function changePage(p) {
+  if (p < 1 || p === page.value) return
+  page.value = p
+  load()
+}
+
+function viewArticle(item) {
+  if (item.status === 1) {
+    router.push(`/archives/${item.id}`)
+  } else {
+    router.push(`/user/posts/edit/${item.id}`)
+  }
+}
+
+function confirmRemove(item) {
+  if (!window.confirm(`确定删除《${item.title || '无标题'}》吗？删除后可在回收站找回。`)) return
+  removeArticle(item.id)
+    .then(() => {
+      toast.success('已删除')
+      // 最后一页只剩一条时回退一页
+      if (list.value.length === 1 && page.value > 1) page.value -= 1
+      load()
+    })
+    .catch(() => {})
+}
+
+// 清空关键词时立即恢复完整列表
+watch(keyword, (val) => {
+  if (!val) {
+    searchKey.value = ''
+    page.value = 1
+    load()
+  }
+})
+
+onMounted(() => {
+  loadMeta()
+  load()
+  loadPending()
+})
+</script>
+
+<style scoped>
+.posts-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.block-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+.block-desc {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.posts-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.status-tabs {
+  display: flex;
+  gap: 6px;
+}
+.status-tab {
+  padding: 5px 14px;
+  font-size: 13px;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  background: var(--bg-muted);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.status-tab:hover {
+  color: var(--primary);
+}
+.status-tab.active {
+  background: var(--primary);
+  color: #fff;
+}
+.search-box {
+  position: relative;
+  margin-left: auto;
+  width: 200px;
+}
+.search-box .bi {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: var(--text-light);
+}
+.search-input {
+  width: 100%;
+  padding: 7px 12px 7px 30px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-card);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.12);
+}
+
+.audit-tip {
+  margin: 12px 0 0;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--warning);
+  background: rgba(212, 161, 72, 0.1);
+  border-radius: var(--radius-sm);
+}
+
+.loading {
+  padding: 40px;
+  text-align: center;
+  color: var(--text-muted);
+}
+.empty-row {
+  padding: 24px 0;
+  text-align: center;
+}
+.empty-action {
+  margin-top: 12px;
+}
+
+.post-list {
+  display: flex;
+  flex-direction: column;
+}
+.post-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 0;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.post-row:last-child {
+  border-bottom: none;
+}
+.post-cover {
+  width: 108px;
+  height: 72px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--bg-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-light);
+  font-size: 22px;
+  cursor: pointer;
+}
+.post-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+.post-cover:hover img {
+  transform: scale(1.05);
+}
+.post-main {
+  flex: 1;
+  min-width: 0;
+}
+.post-title {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.post-title a {
+  color: var(--text);
+}
+.post-title a:hover {
+  color: var(--primary);
+}
+.post-status {
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 400;
+  border-radius: 3px;
+}
+.post-status.is-pub {
+  background: rgba(108, 154, 77, 0.12);
+  color: var(--success);
+}
+.post-status.is-draft {
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+.post-abstract {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+  line-height: 1.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.post-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.meta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 8px;
+  background: var(--bg-muted);
+  border-radius: 3px;
+}
+.meta-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.post-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.post-actions .danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+@media (max-width: 640px) {
+  .posts-filter {
+    gap: 8px;
+  }
+  .search-box {
+    width: 100%;
+    margin-left: 0;
+  }
+  .post-row {
+    flex-wrap: wrap;
+  }
+  .post-cover {
+    width: 84px;
+    height: 60px;
+  }
+  .post-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+</style>

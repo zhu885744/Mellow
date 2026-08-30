@@ -49,6 +49,32 @@ export const parseTagsField = (field) => {
 }
 
 /**
+ * 解析 group / tags 的 id 字段（"|1|2|"、"1,2"、数组 均兼容）
+ * @returns {number[]} id 数组
+ */
+export const parseIdField = (field) => {
+  if (field === null || field === undefined || field === '') return []
+  if (Array.isArray(field)) {
+    return field.map((i) => parseInt(i, 10)).filter((i) => !Number.isNaN(i))
+  }
+  return String(field)
+    .split(/[|,]/)
+    .map((i) => parseInt(i.trim(), 10))
+    .filter((i) => !Number.isNaN(i))
+}
+
+/**
+ * 把 id 数组转成后端存储格式 "|1|2|"
+ */
+export const toIdField = (ids) => {
+  const list = (Array.isArray(ids) ? ids : [ids])
+    .map((i) => parseInt(i, 10))
+    .filter((i) => !Number.isNaN(i) && i > 0)
+  if (!list.length) return ''
+  return `|${list.join('|')}|`
+}
+
+/**
  * 字符串截断
  */
 export const truncate = (str, len = 80) => {

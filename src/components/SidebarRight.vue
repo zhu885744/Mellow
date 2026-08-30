@@ -16,6 +16,7 @@
         <div class="user-actions">
           <router-link :to="`/user`" class="btn btn-sm btn-ghost"><i class="bi bi-person" /> 用户中心</router-link>
           <router-link :to="`/author/${user?.id}`" class="btn btn-sm btn-ghost"><i class="bi bi-person-square" /> 用户主页</router-link>
+          <router-link to="/user/posts/write" class="btn btn-sm btn-ghost"><i class="bi bi-pencil-square" /> 写文章</router-link>
         </div>
         <div class="signin-entry">
           <button class="btn btn-sm btn-primary btn-block" @click="openCheckin">

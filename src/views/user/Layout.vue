@@ -29,6 +29,12 @@
       <router-link to="/user/security" class="tab-item">
         <span class="tab-ico"><i class="bi bi-shield-lock" /></span> 账号安全
       </router-link>
+      <router-link to="/user/posts" class="tab-item" :class="{ 'is-active': isPostsRoute && !isWriteRoute }">
+        <span class="tab-ico"><i class="bi bi-file-earmark-text" /></span> 我的文章
+      </router-link>
+      <router-link to="/user/posts/write" class="tab-item" :class="{ 'is-active': isWriteRoute }">
+        <span class="tab-ico"><i class="bi bi-pencil-square" /></span> 写文章
+      </router-link>
       <router-link to="/user/notifications" class="tab-item">
         <span class="tab-ico"><i class="bi bi-bell" /></span> 消息通知
         <span v-if="notif.count > 0" class="badge">{{ notif.count }}</span>
@@ -47,17 +53,24 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRoute } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
 import { storeToRefs } from 'pinia'
 import { isAdmin as helperIsAdmin } from '@/utils/helper'
 
+const route = useRoute()
 const userStore = useUserStore()
 const notif = useNotificationStore()
 const { user } = storeToRefs(userStore)
 
 const isAdmin = computed(() => helperIsAdmin(user.value))
+
+// 文章管理下的子页面（撰写/编辑）也高亮「我的文章」
+const isPostsRoute = computed(() => route.path.startsWith('/user/posts'))
+// 撰写/编辑时只高亮「写文章」
+const isWriteRoute = computed(() => /^\/user\/posts\/(write|edit)/.test(route.path))
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/></svg>'
 </script>
@@ -130,7 +143,8 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
   background: var(--bg-base);
   color: var(--primary);
 }
-.tab-item.router-link-active {
+.tab-item.router-link-exact-active,
+.tab-item.is-active {
   background: var(--primary);
   color: #fff;
   font-weight: 600;

@@ -6,6 +6,17 @@ export const listTags = (params = {}) =>
 export const getTag = (id) =>
   call('tags', 'one', { method: 'GET', params: { id } })
 
+// 全量标签（供文章编辑选择标签时使用）
+export const listAllTags = (params = {}) =>
+  call('tags', 'all', {
+    method: 'GET',
+    params: { page: 1, limit: 100, order: 'create_time desc', ...params }
+  })
+
+// 新建标签
+export const createTag = (name) =>
+  call('tags', 'create', { method: 'POST', data: { name } })
+
 // 点赞
 export const like = (target_type, target_id) =>
   call('user-likes', 'like', { method: 'POST', data: { target_type, target_id } })
