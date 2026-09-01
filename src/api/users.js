@@ -26,6 +26,18 @@ export const destroySendCode = () =>
 export const destroy = (code, password, source = 'default') =>
   call('users', 'destroy', { method: 'DELETE', params: { code, password, source } })
 
+// ===== 小黑屋（封禁公示） =====
+// 后端已对封禁用户昵称脱敏；默认只查生效中的封禁（status=0）
+export const getBlackroom = (params = {}) =>
+  call('users', 'blackroom', {
+    method: 'GET',
+    params: { page: 1, limit: 20, order: 'create_time desc', ...params }
+  })
+
+// 提交封禁申诉（需登录，record_id 为当前生效的封禁记录 ID）
+export const submitAppeal = (recordId, content) =>
+  call('users', 'appeal', { method: 'POST', data: { record_id: recordId, content } })
+
 // ===== 签到 =====
 export const checkIn = () =>
   call('exp', 'check-in', { method: 'POST' })

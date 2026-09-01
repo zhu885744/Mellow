@@ -45,6 +45,11 @@
             <span class="nav-zh">{{ link.name }}</span>
           </a>
 
+          <!-- 小黑屋（封禁公示，必须在独立页面 /:key 之前注册路由） -->
+          <router-link to="/blackroom" active-class="active" class="nav-item">
+            <span class="nav-zh">小黑屋</span>
+          </router-link>
+
           <!-- 管理员入口 -->
           <router-link
             v-if="isAdmin(userStore.user)"
@@ -98,6 +103,9 @@
     <!-- 全局搜索弹窗 -->
     <SearchDialog ref="searchDialogRef" />
 
+    <!-- 全局封禁申诉弹窗（当前用户被封禁时自动弹出） -->
+    <BanAppealDialog ref="banDialogRef" />
+
     <!-- 全局图片灯箱 -->
     <Lightbox />
 
@@ -107,11 +115,12 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import SidebarRight from '@/components/SidebarRight.vue'
 import SearchDialog from '@/components/SearchDialog.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import FloatButtons from '@/components/FloatButtons.vue'
+import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import { call } from '@/api/request'
 import { getConfig } from '@/api/config'
 import { useUserStore } from '@/stores/user'
@@ -202,9 +211,27 @@ const customNavLinks = computed(() => {
     .filter((item) => item.name && item.url)
 })
 
+// 封禁检测：当前用户被封禁时自动弹出申诉弹窗（同一会话只弹一次）
+const banDialogRef = ref(null)
+const banShown = ref(false)
+
+function checkBan() {
+  const banned = userStore.user?.result?.ban?.is_banned
+  if (banned && !banShown.value) {
+    banShown.value = true
+    banDialogRef.value?.show()
+  }
+  if (!banned) banShown.value = false
+}
+
+// 登录态刷新后（登录/解封/申诉）同步检测
+watch(() => userStore.user?.result?.ban?.is_banned, checkBan)
+
 onMounted(() => {
   loadSiteConfig()
   loadPages()
+  // 先同步登录态（含封禁状态）再检测，避免读到未就绪的 user
+  userStore.ensureLogin().then(checkBan)
 })
 </script>
 

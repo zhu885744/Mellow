@@ -32,6 +32,21 @@
           </div>
         </div>
 
+        <!-- 默认头像 -->
+        <div class="preset-section">
+          <div class="preset-label"><span><i class="bi bi-people" /> 默认头像</span></div>
+          <div class="frame-grid">
+            <button
+              v-for="(url, idx) in DEFAULT_AVATARS"
+              :key="idx"
+              :class="['frame-item', { selected: form.avatar === url }]"
+              @click="selectDefaultAvatar(url)"
+            >
+              <img :src="url" :alt="`默认头像 ${idx + 1}`" />
+            </button>
+          </div>
+        </div>
+
         <!-- 头像框 -->
         <div class="preset-section">
           <div class="preset-label">
@@ -46,21 +61,6 @@
               @click="form.frame = form.frame === url ? '' : url"
             >
               <img :src="url" :alt="`头像框 ${idx + 1}`" />
-            </button>
-          </div>
-        </div>
-
-        <!-- 默认头像 -->
-        <div class="preset-section">
-          <div class="preset-label"><span><i class="bi bi-people" /> 默认头像</span></div>
-          <div class="frame-grid">
-            <button
-              v-for="(url, idx) in DEFAULT_AVATARS"
-              :key="idx"
-              :class="['frame-item', { selected: form.avatar === url }]"
-              @click="selectDefaultAvatar(url)"
-            >
-              <img :src="url" :alt="`默认头像 ${idx + 1}`" />
             </button>
           </div>
         </div>

@@ -8,6 +8,39 @@
         <span class="user-brand-text">用户中心</span>
       </div>
 
+      <div class="user-card">
+        <img :src="user?.avatar || defaultAvatar" class="user-card-avatar" alt="avatar" />
+        <div class="user-card-info">
+          <div class="user-card-name">{{ user?.nickname || '未登录' }}</div>
+          <div class="user-card-level">
+            <span v-if="levelName" class="level-badge">{{ levelName }}</span>
+            <span v-if="levelValue !== null" class="level-value">Lv.{{ levelValue }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div v-if="isBanned" class="user-ban-banner">
+        <span class="user-ban-text">
+          <i class="bi bi-exclamation-octagon" />
+          账号已被封禁
+        </span>
+        <button type="button" class="user-ban-appeal" title="提交封禁申诉" @click="banAppealRef?.show()">
+          <i class="bi bi-chat-dots" />
+          申诉
+        </button>
+      </div>
+
+      <div class="user-exp-card">
+        <div class="user-exp-head">
+          <span>经验值</span>
+          <span class="user-exp-num">{{ exp }} EXP</span>
+        </div>
+        <div class="user-exp-bar">
+          <div class="user-exp-fill" :style="{ width: expPercent + '%' }" />
+        </div>
+        <div class="user-exp-meta">{{ expText }}</div>
+      </div>
+
       <nav class="user-nav">
         <template v-for="group in menuGroups" :key="group.label">
           <div class="user-nav-group">{{ group.label }}</div>
@@ -68,6 +101,9 @@
         <RouterView />
       </main>
     </div>
+
+    <!-- 封禁申诉弹窗（侧边栏按钮触发） -->
+    <BanAppealDialog ref="banAppealRef" />
   </div>
 </template>
 
@@ -78,6 +114,7 @@ import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
 import { isAdmin as helperIsAdmin } from '@/utils/helper'
+import BanAppealDialog from '@/components/BanAppealDialog.vue'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 
@@ -88,6 +125,10 @@ const { user } = storeToRefs(userStore)
 
 const collapsed = ref(false)
 const isAdmin = computed(() => helperIsAdmin(user.value))
+
+// 封禁申诉：侧边栏按钮 + 弹窗
+const banAppealRef = ref(null)
+const isBanned = computed(() => !!user.value?.result?.ban?.is_banned)
 
 // 等级与经验（来自 user.result.level / user.exp）
 const levelInfo = computed(() => user.value?.result?.level || null)
@@ -253,6 +294,53 @@ watch(() => route.path, () => {
   border-radius: 999px;
   transition: width 0.3s ease;
 }
+.user-exp-meta {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* 封禁横幅与申诉按钮 */
+.user-ban-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 12px 12px;
+  padding: 8px 10px;
+  background: rgba(217, 84, 77, 0.08);
+  border: 1px solid rgba(217, 84, 77, 0.25);
+  border-radius: var(--radius);
+}
+.user-ban-text {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger);
+  white-space: nowrap;
+  overflow: hidden;
+}
+.user-ban-appeal {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: none;
+  border-radius: 999px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.user-ban-appeal:hover {
+  filter: brightness(1.08);
+}
 
 .user-nav {
   flex: 1;
@@ -400,9 +488,14 @@ watch(() => route.path, () => {
 .sidebar-collapsed .user-nav-group,
 .sidebar-collapsed .user-card-info,
 .sidebar-collapsed .user-exp-card,
+.sidebar-collapsed .user-ban-text,
 .sidebar-collapsed .user-nav-badge,
 .sidebar-collapsed .user-nav-ext-ico {
   display: none;
+}
+.sidebar-collapsed .user-ban-banner {
+  justify-content: center;
+  padding: 8px 6px;
 }
 .sidebar-collapsed .user-nav-item,
 .sidebar-collapsed .user-logout {
@@ -437,12 +530,21 @@ watch(() => route.path, () => {
   .sidebar-collapsed .user-nav-text,
   .sidebar-collapsed .user-nav-group,
   .sidebar-collapsed .user-card-info,
+  .sidebar-collapsed .user-ban-text,
   .sidebar-collapsed .user-nav-badge,
   .sidebar-collapsed .user-nav-ext-ico {
     display: inline;
   }
   .sidebar-collapsed .user-exp-card {
     display: block;
+  }
+  .sidebar-collapsed .user-ban-banner {
+    justify-content: flex-start;
+    padding: 8px 10px;
+  }
+  .sidebar-collapsed .user-card {
+    justify-content: flex-start;
+    padding: 10px;
   }
   .sidebar-collapsed .user-nav-item,
   .sidebar-collapsed .user-logout {
