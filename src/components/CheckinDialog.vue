@@ -30,8 +30,49 @@
               <div class="status-info">
                 <div class="status-title">{{ state.checkinStatus.checked ? '今日已签到' : '今日未签到' }}</div>
                 <div class="status-desc">
-                  {{ state.checkinStatus.checked ? `已获得 ${state.checkinStatus.value} 经验值` : '每日签到获得经验值' }}
+                  <template v-if="state.checkinStatus.checked">
+                    已获得 {{ state.checkinStatus.value }} 经验值
+                    <span v-if="state.checkinStatus.bonus > 0" class="desc-bonus">（含连续加成 +{{ state.checkinStatus.bonus }}）</span>
+                  </template>
+                  <template v-else>连续签到第 {{ state.checkinStatus.streak + 1 }} 天，奖励更高</template>
                 </div>
+              </div>
+            </div>
+
+            <!-- 签到日历 -->
+            <div class="calendar-card">
+              <div class="calendar-head">
+                <span class="calendar-title">{{ state.calendar.year }}年{{ state.calendar.month }}月</span>
+                <span class="calendar-count">本月已签到 {{ state.calendar.total }} 天</span>
+              </div>
+              <div class="calendar-grid">
+                <span v-for="w in weekLabels" :key="w" class="calendar-cell calendar-week">{{ w }}</span>
+                <span v-for="i in calendarBlank" :key="'blank-' + i" class="calendar-cell calendar-blank"></span>
+                <span
+                  v-for="d in state.calendar.days"
+                  :key="d.day"
+                  :class="['calendar-cell', 'calendar-day', { checked: d.checked, today: d.day === state.calendar.today }]"
+                >
+                  {{ d.day }}
+                </span>
+              </div>
+            </div>
+
+            <!-- 连续签到奖励 -->
+            <div class="reward-card">
+              <div class="reward-head">
+                <span class="reward-streak"><i class="bi bi-fire" /> 连续签到 {{ state.checkinStatus.streak || 0 }} 天</span>
+                <span v-if="state.checkinStatus.bonus > 0" class="reward-bonus">今日加成 +{{ state.checkinStatus.bonus }}</span>
+              </div>
+              <div v-if="nextMilestone" class="milestone-tip">
+                <i class="bi bi-gift-fill" />
+                再签到 {{ nextMilestone.day - (state.checkinStatus.streak || 0) }} 天，可额外获得 {{ nextMilestone.reward }} 经验
+              </div>
+              <div v-else class="milestone-tip all-done">
+                <i class="bi bi-trophy-fill" /> 已达成全部连续签到里程碑
+              </div>
+              <div class="milestone-bar">
+                <div class="milestone-fill" :style="{ width: milestoneProgress + '%' }"></div>
               </div>
             </div>
 
@@ -107,8 +148,8 @@
 </template>
 
 <script setup>
-import { reactive, onUnmounted } from 'vue'
-import { checkIn, checkInStatus, checkInRank } from '@/api/users'
+import { reactive, computed, onUnmounted } from 'vue'
+import { checkIn, checkInStatus, checkInRank, checkInCalendar } from '@/api/users'
 import { toast } from '@/utils/toast'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
@@ -118,6 +159,8 @@ const timeRangeOptions = [
   { key: 'week', label: '本周' },
   { key: 'month', label: '本月' }
 ]
+
+const weekLabels = ['日', '一', '二', '三', '四', '五', '六']
 
 const state = reactive({
   visible: false,
@@ -129,10 +172,35 @@ const state = reactive({
   checkinStatus: {
     checked: false,
     value: 0,
+    base: 0,
+    bonus: 0,
+    milestone: 0,
     check_in_time: 0,
     streak: 0,
-    today: 0
+    today: 0,
+    next_milestone: null
+  },
+  calendar: {
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
+    days: [],
+    total: 0,
+    today: new Date().getDate()
   }
+})
+
+// 当月 1 号是星期几（用于日历空白占位）
+const calendarBlank = computed(() => new Date(state.calendar.year, state.calendar.month - 1, 1).getDay())
+
+// 下一个里程碑
+const nextMilestone = computed(() => state.checkinStatus.next_milestone || null)
+
+// 里程碑进度百分比
+const milestoneProgress = computed(() => {
+  const nm = nextMilestone.value
+  if (!nm) return 100
+  const streak = state.checkinStatus.streak || 0
+  return Math.min(100, Math.max(0, Math.round((streak / nm.day) * 100)))
 })
 
 const show = () => {
@@ -141,6 +209,7 @@ const show = () => {
   state.rankList = []
   document.body.style.overflow = 'hidden'
   loadCheckinStatus()
+  loadCalendar()
 }
 
 const hide = () => {
@@ -194,8 +263,29 @@ const loadCheckinStatus = async () => {
       state.checkinStatus = {
         checked: res.data.checked || false,
         value: res.data.value || 0,
+        base: res.data.base || 0,
+        bonus: res.data.bonus || 0,
+        milestone: res.data.milestone || 0,
         check_in_time: res.data.check_in_time || 0,
         streak: res.data.streak || 0,
+        today: res.data.today || 0,
+        next_milestone: res.data.next_milestone || null
+      }
+    }
+  } catch {
+    // 静默
+  }
+}
+
+const loadCalendar = async () => {
+  try {
+    const res = await checkInCalendar()
+    if (res.code === 200 && res.data) {
+      state.calendar = {
+        year: res.data.year || state.calendar.year,
+        month: res.data.month || state.calendar.month,
+        days: res.data.days || [],
+        total: res.data.total || 0,
         today: res.data.today || 0
       }
     }
@@ -210,10 +300,18 @@ const performCheckin = async () => {
   try {
     const res = await checkIn()
     if (res.code === 200 && res.data) {
-      toast.success(`签到成功！获得 ${res.data.value} 经验值`)
+      const { value, base, bonus, milestone, streak } = res.data
+      const parts = [`签到成功！获得 ${value} 经验值`]
+      if (bonus > 0) parts.push(`连续加成 +${bonus}`)
+      if (milestone > 0) parts.push(`里程碑奖励 +${milestone}`)
+      toast.success(parts.join('，'))
       state.checkinStatus.checked = true
-      state.checkinStatus.value = res.data.value || 10
-      state.checkinStatus.streak = (state.checkinStatus.streak || 0) + 1
+      state.checkinStatus.value = value || 0
+      state.checkinStatus.base = base || 0
+      state.checkinStatus.bonus = bonus || 0
+      state.checkinStatus.milestone = milestone || 0
+      state.checkinStatus.streak = streak || 0
+      loadCalendar()
     } else if (res.code === 202) {
       toast.info(res.msg || '今日已签到')
       state.checkinStatus.checked = true
@@ -359,6 +457,126 @@ defineExpose({ show, hide })
 .status-desc {
   font-size: 13px;
   color: var(--text-muted);
+}
+.status-desc .desc-bonus {
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* 签到日历 */
+.calendar-card {
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.calendar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.calendar-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.calendar-count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+.calendar-cell {
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  border-radius: 6px;
+}
+.calendar-week {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+.calendar-blank {
+  visibility: hidden;
+}
+.calendar-day {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  color: var(--text-muted);
+  cursor: default;
+  transition: all 0.15s;
+}
+.calendar-day.checked {
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+  color: #fff;
+  border-color: transparent;
+  font-weight: 600;
+}
+.calendar-day.today {
+  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 700;
+}
+.calendar-day.today.checked {
+  color: #fff;
+}
+
+/* 连续签到奖励 */
+.reward-card {
+  background: linear-gradient(135deg, rgba(212, 161, 72, 0.12), rgba(184, 153, 104, 0.05));
+  border: 1px solid rgba(212, 161, 72, 0.3);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  margin-bottom: 12px;
+}
+.reward-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.reward-streak {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.reward-streak .bi-fire {
+  color: #ff7a45;
+}
+.reward-bonus {
+  font-size: 12px;
+  color: var(--primary-deep);
+  font-weight: 600;
+}
+.milestone-tip {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 8px;
+}
+.milestone-tip .bi-gift-fill,
+.milestone-tip.all-done .bi-trophy-fill {
+  color: #e6a23c;
+}
+.milestone-bar {
+  height: 6px;
+  background: var(--bg-card);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.milestone-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #e6a23c, var(--primary-deep));
+  border-radius: 3px;
+  transition: width 0.3s ease;
 }
 
 .stats-row {

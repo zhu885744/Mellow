@@ -18,11 +18,11 @@ const routes = [
       { path: 'moments/:id', name: 'moment-detail', component: () => import('@/views/moments/Detail.vue'), props: true },
       { path: 'links', name: 'links', component: () => import('@/views/links/Index.vue') },
       { path: 'blackroom', name: 'blackroom', component: () => import('@/views/Blackroom.vue') },
-      { path: 'about', name: 'about', component: () => import('@/views/page/Index.vue'), props: { key: 'about' } },
+      { path: 'about', name: 'about', component: () => import('@/views/page/Index.vue'), props: { pageKey: 'about' } },
       // 用户主页 /author/:id（必须在 /:key 之前，避免被兜底路由拦截）
       { path: 'author/:id', name: 'author', component: () => import('@/views/user/Author.vue'), props: true },
       // 独立页面 /:key（必须放在最后，避免与其他固定路径冲突）
-      { path: ':key', name: 'page', component: () => import('@/views/page/Index.vue'), props: true },
+      { path: ':key', name: 'page', component: () => import('@/views/page/Index.vue'), props: (route) => ({ pageKey: route.params.key }) },
     ]
   },
   // 用户中心：与 /admin 一样是独立于前台 MainLayout 的顶级路由，拥有自己的完整布局

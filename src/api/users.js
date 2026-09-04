@@ -48,6 +48,9 @@ export const checkInStatus = () =>
 export const checkInRank = (params = {}) =>
   call('exp', 'check-in-rank', { method: 'GET', params })
 
+export const checkInCalendar = (params = {}) =>
+  call('exp', 'check-in-calendar', { method: 'GET', params })
+
 export const expActive = (params = {}) =>
   call('exp', 'active', { method: 'GET', params })
 

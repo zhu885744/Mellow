@@ -28,7 +28,7 @@ import { renderMarkdown } from '@/utils/markdown'
 import { openLightbox } from '@/utils/lightbox'
 
 const props = defineProps({
-  key: { type: String, default: '' },
+  pageKey: { type: String, default: '' },
   id: { type: [String, Number], default: '' }
 })
 
@@ -52,7 +52,7 @@ function onContentClick(e) {
 async function load() {
   loading.value = true
   page.value = null
-  const key = props.key || route.params.key || props.id || route.params.id
+  const key = props.pageKey || route.params.key || props.id || route.params.id
   try {
     const res = await call('pages', 'one', {
       method: 'GET',
@@ -66,7 +66,7 @@ async function load() {
   }
 }
 
-watch(() => [props.key, route.params.key, route.params.id], load)
+watch(() => [props.pageKey, route.params.key, route.params.id], load)
 onMounted(load)
 </script>
 

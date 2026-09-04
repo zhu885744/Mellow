@@ -22,8 +22,8 @@
           <thead>
             <tr>
               <th>用户</th>
-              <th>限制范围</th>
               <th>封禁原因</th>
+              <th>限制范围</th>
               <th>时长</th>
               <th>封禁时间</th>
             </tr>
@@ -36,13 +36,13 @@
                   <span class="ban-name">{{ item.result?.user?.nickname || '匿名用户' }}</span>
                 </div>
               </td>
+              <td class="td-desc">{{ item.reason || '未说明' }}</td>
               <td>
                 <span v-for="t in (item.result?.ban_types || [])" :key="t.bit" class="type-tag">
                   {{ t.name }}
                 </span>
                 <span v-if="!(item.result?.ban_types || []).length" class="text-muted">全面封禁</span>
               </td>
-              <td class="td-desc">{{ item.reason || '未说明' }}</td>
               <td class="td-num">{{ durationText(item) }}</td>
               <td>{{ formatDate(item.ban_time) }}</td>
             </tr>
@@ -86,11 +86,9 @@ function durationText(item) {
 async function load() {
   loading.value = true
   try {
-    // 仅展示生效中的封禁（status=0）
     const res = await getBlackroom({
       page: page.value,
-      limit: pageSize,
-      where: JSON.stringify({ status: 0 })
+      limit: pageSize
     })
     list.value = res.data?.data || []
     total.value = res.data?.count || 0
@@ -196,9 +194,9 @@ onMounted(load)
 }
 
 @media (max-width: 768px) {
-  /* 窄屏隐藏次要列，避免横向溢出 */
-  .data-table thead th:nth-child(3),
-  .data-table tbody td:nth-child(3),
+  /* 窄屏隐藏次要列（封禁原因、封禁时间），避免横向溢出 */
+  .data-table thead th:nth-child(2),
+  .data-table tbody td:nth-child(2),
   .data-table thead th:nth-child(5),
   .data-table tbody td:nth-child(5) {
     display: none;
