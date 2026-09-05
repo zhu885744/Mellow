@@ -45,9 +45,9 @@
             <span class="nav-zh">{{ link.name }}</span>
           </a>
 
-          <!-- 小黑屋（封禁公示，必须在独立页面 /:key 之前注册路由） -->
-          <router-link to="/blackroom" active-class="active" class="nav-item">
-            <span class="nav-zh">小黑屋</span>
+          <!-- 积分商城 -->
+          <router-link to="/goods" active-class="active" class="nav-item">
+            <span class="nav-zh">商城</span>
           </router-link>
 
           <!-- 管理员入口 -->
@@ -75,6 +75,12 @@
 
     <!-- 全局页脚 -->
     <footer class="layout-footer">
+      <span class="footer-line">
+        <!-- 小黑屋（封禁公示） -->
+        <router-link to="/blackroom" active-class="active">
+          <span class="nav-zh">小黑屋</span>
+        </router-link>
+      </span>
       <span class="footer-line">
         © {{ year }} {{ site.title }}. 保留所有权利.
       </span>

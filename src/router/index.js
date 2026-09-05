@@ -18,6 +18,7 @@ const routes = [
       { path: 'moments/:id', name: 'moment-detail', component: () => import('@/views/moments/Detail.vue'), props: true },
       { path: 'links', name: 'links', component: () => import('@/views/links/Index.vue') },
       { path: 'blackroom', name: 'blackroom', component: () => import('@/views/Blackroom.vue') },
+      { path: 'goods', name: 'goods', component: () => import('@/views/goods/Index.vue') },
       { path: 'about', name: 'about', component: () => import('@/views/page/Index.vue'), props: { pageKey: 'about' } },
       // 用户主页 /author/:id（必须在 /:key 之前，避免被兜底路由拦截）
       { path: 'author/:id', name: 'author', component: () => import('@/views/user/Author.vue'), props: true },
@@ -38,6 +39,7 @@ const routes = [
       { path: 'reward', name: 'user-reward', component: () => import('@/views/user/Reward.vue') },
       { path: 'security', name: 'user-security', component: () => import('@/views/user/Security.vue') },
       { path: 'exp', name: 'user-exp', component: () => import('@/views/user/Exp.vue') },
+      { path: 'integral', name: 'user-integral', component: () => import('@/views/user/Integral.vue') },
       { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
       // 站点配置（管理员）：原 /settings 已迁移到用户中心下
       { path: 'site', name: 'user-site', component: () => import('@/views/functions.vue'), meta: { auth: true } }

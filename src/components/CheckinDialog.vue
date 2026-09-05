@@ -23,19 +23,23 @@
 
           <!-- 签到面板 -->
           <div v-show="state.activeTab === 'checkin'" class="checkin-panel">
-            <div class="status-card">
-              <div :class="['status-icon', { checked: state.checkinStatus.checked }]">
+            <div class="hero-card">
+              <div :class="['hero-icon', { checked: state.checkinStatus.checked }]">
                 <i class="bi" :class="state.checkinStatus.checked ? 'bi-check-lg' : 'bi-calendar-check'" />
               </div>
-              <div class="status-info">
-                <div class="status-title">{{ state.checkinStatus.checked ? '今日已签到' : '今日未签到' }}</div>
-                <div class="status-desc">
+              <div class="hero-info">
+                <div class="hero-title">{{ state.checkinStatus.checked ? '今日已签到' : '今日未签到' }}</div>
+                <div class="hero-desc">
                   <template v-if="state.checkinStatus.checked">
-                    已获得 {{ state.checkinStatus.value }} 经验值
-                    <span v-if="state.checkinStatus.bonus > 0" class="desc-bonus">（含连续加成 +{{ state.checkinStatus.bonus }}）</span>
+                    已获得 {{ state.checkinStatus.value }} 经验<span v-if="state.checkInPoints > 0" class="desc-points"> · {{ state.checkInPoints }} 积分</span>
+                    <span v-if="state.checkinStatus.bonus > 0" class="desc-bonus">（加成 +{{ state.checkinStatus.bonus }} 经验）</span>
                   </template>
                   <template v-else>连续签到第 {{ state.checkinStatus.streak + 1 }} 天，奖励更高</template>
                 </div>
+              </div>
+              <div class="hero-streak">
+                <div class="hero-streak-num">{{ state.checkinStatus.streak || 0 }}</div>
+                <div class="hero-streak-label">连续天数</div>
               </div>
             </div>
 
@@ -58,33 +62,25 @@
               </div>
             </div>
 
-            <!-- 连续签到奖励 -->
+            <!-- 里程碑奖励 -->
             <div class="reward-card">
-              <div class="reward-head">
-                <span class="reward-streak"><i class="bi bi-fire" /> 连续签到 {{ state.checkinStatus.streak || 0 }} 天</span>
-                <span v-if="state.checkinStatus.bonus > 0" class="reward-bonus">今日加成 +{{ state.checkinStatus.bonus }}</span>
-              </div>
               <div v-if="nextMilestone" class="milestone-tip">
                 <i class="bi bi-gift-fill" />
                 再签到 {{ nextMilestone.day - (state.checkinStatus.streak || 0) }} 天，可额外获得 {{ nextMilestone.reward }} 经验
               </div>
               <div v-else class="milestone-tip all-done">
-                <i class="bi bi-trophy-fill" /> 已达成全部连续签到里程碑
+                <i class="bi bi-trophy-fill" /> 已达成全部签到里程碑
               </div>
               <div class="milestone-bar">
                 <div class="milestone-fill" :style="{ width: milestoneProgress + '%' }"></div>
               </div>
             </div>
 
-            <div class="stats-row">
-              <div class="stat-item">
-                <div class="stat-value">{{ state.checkinStatus.streak || 0 }}</div>
-                <div class="stat-label">连续签到[天]</div>
-              </div>
-              <div class="stat-item">
-                <div class="stat-value">{{ state.checkinStatus.value || 0 }}</div>
-                <div class="stat-label">今日获得[经验]</div>
-              </div>
+            <!-- 积分提示 -->
+            <div class="points-tip">
+              <i class="bi bi-coin" />
+              <span>签到可得 <strong>+{{ state.checkInPoints }}</strong> 积分</span>
+              <router-link to="/goods" class="points-link">去兑换 <i class="bi bi-arrow-right" /></router-link>
             </div>
 
             <button
@@ -150,6 +146,7 @@
 <script setup>
 import { reactive, computed, onUnmounted } from 'vue'
 import { checkIn, checkInStatus, checkInRank, checkInCalendar } from '@/api/users'
+import { getIntegralRules } from '@/api/goods'
 import { toast } from '@/utils/toast'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
@@ -186,7 +183,8 @@ const state = reactive({
     days: [],
     total: 0,
     today: new Date().getDate()
-  }
+  },
+  checkInPoints: 5
 })
 
 // 当月 1 号是星期几（用于日历空白占位）
@@ -210,6 +208,7 @@ const show = () => {
   document.body.style.overflow = 'hidden'
   loadCheckinStatus()
   loadCalendar()
+  loadIntegralRules()
 }
 
 const hide = () => {
@@ -294,6 +293,19 @@ const loadCalendar = async () => {
   }
 }
 
+const loadIntegralRules = async () => {
+  try {
+    const res = await getIntegralRules()
+    const list = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    const checkInRule = list.find((r) => r.type === 'check-in')
+    if (checkInRule) {
+      state.checkInPoints = Number(checkInRule.value) || 0
+    }
+  } catch {
+    // 静默，使用默认值
+  }
+}
+
 const performCheckin = async () => {
   if (state.loading || state.checkinStatus.checked) return
   state.loading = true
@@ -304,6 +316,7 @@ const performCheckin = async () => {
       const parts = [`签到成功！获得 ${value} 经验值`]
       if (bonus > 0) parts.push(`连续加成 +${bonus}`)
       if (milestone > 0) parts.push(`里程碑奖励 +${milestone}`)
+      if (state.checkInPoints > 0) parts.push(`积分 +${state.checkInPoints}`)
       toast.success(parts.join('，'))
       state.checkinStatus.checked = true
       state.checkinStatus.value = value || 0
@@ -420,47 +433,67 @@ defineExpose({ show, hide })
   padding: 20px;
 }
 
-.status-card {
+.hero-card {
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px;
-  background: var(--bg-muted);
-  border: 1px solid var(--border-soft);
+  gap: 14px;
+  padding: 18px;
+  background: linear-gradient(135deg, rgba(184, 153, 104, 0.14), rgba(184, 153, 104, 0.05));
+  border: 1px solid rgba(212, 161, 72, 0.28);
   border-radius: var(--radius);
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
-.status-icon {
-  width: 52px;
-  height: 52px;
+.hero-icon {
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--primary), var(--primary-deep));
   color: #fff;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 22px;
   flex-shrink: 0;
 }
-.status-icon.checked {
+.hero-icon.checked {
   background: linear-gradient(135deg, var(--success), #5a8a3a);
 }
-.status-info {
+.hero-info {
   flex: 1;
   min-width: 0;
 }
-.status-title {
+.hero-title {
   font-size: 15px;
   font-weight: 700;
   margin-bottom: 4px;
 }
-.status-desc {
-  font-size: 13px;
+.hero-desc {
+  font-size: 12px;
   color: var(--text-muted);
 }
-.status-desc .desc-bonus {
+.hero-desc .desc-bonus {
   color: var(--primary);
   font-weight: 600;
+}
+.hero-desc .desc-points {
+  color: #d4a148;
+  font-weight: 600;
+}
+.hero-streak {
+  flex-shrink: 0;
+  text-align: center;
+  padding-left: 14px;
+  border-left: 1px solid var(--border-soft);
+}
+.hero-streak-num {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--primary-deep);
+  line-height: 1.1;
+}
+.hero-streak-label {
+  font-size: 11px;
+  color: var(--text-muted);
 }
 
 /* 签到日历 */
@@ -535,25 +568,6 @@ defineExpose({ show, hide })
   padding: 12px 14px;
   margin-bottom: 12px;
 }
-.reward-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 6px;
-}
-.reward-streak {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-}
-.reward-streak .bi-fire {
-  color: #ff7a45;
-}
-.reward-bonus {
-  font-size: 12px;
-  color: var(--primary-deep);
-  font-weight: 600;
-}
 .milestone-tip {
   font-size: 12px;
   color: var(--text-muted);
@@ -579,28 +593,38 @@ defineExpose({ show, hide })
   transition: width 0.3s ease;
 }
 
-.stats-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 20px;
-}
-.stat-item {
-  text-align: center;
-  padding: 16px 8px;
-  background: var(--bg-muted);
-  border: 1px solid var(--border-soft);
+/* 积分提示 */
+.points-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  margin-bottom: 12px;
+  background: linear-gradient(135deg, rgba(212, 161, 72, 0.14), rgba(184, 153, 104, 0.05));
+  border: 1px dashed rgba(212, 161, 72, 0.4);
   border-radius: var(--radius);
+  font-size: 13px;
+  color: var(--text-soft);
 }
-.stat-value {
-  font-size: 26px;
+.points-tip .bi-coin {
+  color: #d4a148;
+  font-size: 15px;
+}
+.points-tip strong {
+  color: #d4a148;
   font-weight: 700;
-  color: var(--primary-deep);
-  line-height: 1.2;
 }
-.stat-label {
+.points-link {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--primary);
+  text-decoration: none;
+}
+.points-link:hover {
+  text-decoration: underline;
 }
 
 .checkin-btn {

@@ -54,6 +54,10 @@ export const checkInCalendar = (params = {}) =>
 export const expActive = (params = {}) =>
   call('exp', 'active', { method: 'GET', params })
 
+// 经验任务规则
+export const getExpRules = () =>
+  call('exp', 'rules', { method: 'GET' })
+
 // 等级体系列表
 export const getLevels = (params = {}) =>
   call('level', 'all', { method: 'GET', params: { page: 1, limit: 100, order: 'exp asc', ...params } })

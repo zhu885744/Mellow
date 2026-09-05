@@ -72,8 +72,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getLevels } from '@/api/users'
-import { getConfig } from '@/api/config'
+import { getLevels, getExpRules } from '@/api/users'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
 
@@ -115,19 +114,10 @@ const expText = computed(() => {
 async function loadRules() {
   loadingRules.value = true
   try {
-    const res = await getConfig('SYSTEM_EXP_RULES')
-    let data = res.data?.json || res.data || {}
-    if (typeof data === 'string') {
-      try { data = JSON.parse(data) } catch { data = {} }
-    }
-    const arr = Object.entries(data).map(([type, r]) => ({
-      type,
-      name: r?.name || type,
-      value: Number(r?.value) || 0,
-      daily_limit: Number(r?.daily_limit) || 0
-    }))
-    arr.sort((a, b) => b.value - a.value)
-    rules.value = arr
+    const res = await getExpRules()
+    const data = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    data.sort((a, b) => Number(b.value) - Number(a.value))
+    rules.value = data
   } catch {
     rules.value = []
   } finally {
