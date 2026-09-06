@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="emoji-picker-panel" :class="{ 'is-inline': inline }">
+  <div v-if="show" ref="panelRef" class="emoji-picker-panel" :class="{ 'is-inline': inline, 'drop-up': dropUp }">
     <!-- 分类导航 -->
     <div class="emoji-cats">
       <button
@@ -42,7 +42,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { fetchEmojiCategories, getFullUrl } from '@/utils/emoji'
 
 const props = defineProps({
@@ -55,6 +55,19 @@ const emit = defineEmits(['update:modelValue', 'select'])
 
 const show = ref(props.modelValue)
 const apiCategories = ref([])
+const panelRef = ref(null)
+// 下方空间不足时向上展开（移动端编辑器常位于屏幕下半部，向下展开会超出视口）
+const dropUp = ref(false)
+
+// 展开后检测面板是否超出视口底部，超出则改为向上展开
+async function checkDropDirection() {
+  if (props.inline) return
+  await nextTick()
+  const el = panelRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  dropUp.value = rect.bottom > window.innerHeight - 8 && rect.top > rect.height
+}
 
 // 本地颜文字（精简内置，作为 API 表情的补充）
 const LOCAL_EMOJIS = {
@@ -134,6 +147,7 @@ watch(
   () => props.modelValue,
   (val) => {
     show.value = val
+    if (val) checkDropDirection()
   }
 )
 
@@ -172,6 +186,13 @@ onUnmounted(() => {
 @keyframes emojiFadeIn {
   from { opacity: 0; transform: translateY(-5px); }
   to { opacity: 1; transform: translateY(0); }
+}
+/* 下方空间不足时向上展开 */
+.emoji-picker-panel.drop-up {
+  top: auto;
+  bottom: 100%;
+  margin-top: 0;
+  margin-bottom: 4px;
 }
 /* 内联模式：占据文档流，撑大父容器（用于弹窗自适应高度） */
 .emoji-picker-panel.is-inline {
@@ -252,24 +273,50 @@ onUnmounted(() => {
 }
 
 @media (max-width: 768px) {
-  .emoji-grid { gap: 4px; padding: 6px; }
-  .emoji-item { min-width: 28px; min-height: 28px; font-size: 12px; }
-  .img-emoji img { width: 24px; height: 24px; }
-  /* 极小屏：分类导航可能折成 2~4 行，限制高度并内部滚动，避免挤压表情网格导致溢出 */
-  .emoji-cats {
-    max-height: 84px;
-    overflow-y: auto;
-    align-content: flex-start;
+  /* 面板宽度严格跟随编辑器容器，绝不超出容器/屏幕 */
+  .emoji-picker-panel {
+    left: 0;
+    right: 0;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    max-height: min(320px, 60vh);
   }
+  /* 分类导航：单行横向滚动（不换行），避免折行吃掉表情网格空间 */
+  .emoji-cats {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    max-height: none;
+    padding: 6px 8px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .emoji-cats::-webkit-scrollbar { display: none; }
+  .emoji-cat {
+    flex-shrink: 0;
+    padding: 4px 10px;
+  }
+  .emoji-grid {
+    flex: 1;
+    max-height: none; /* 高度由面板整体约束 */
+    gap: 4px;
+    padding: 8px;
+    justify-content: space-between;
+  }
+  .emoji-item {
+    min-width: 34px;
+    min-height: 34px;
+    padding: 4px 6px;
+    font-size: 13px;
+  }
+  .img-emoji img { width: 26px; height: 26px; }
 }
 
 @media (max-width: 480px) {
-  .emoji-picker-panel { min-width: 0; width: calc(100vw - 24px); }
-  .emoji-cats {
-    max-height: 96px;
-    overflow-y: auto;
-    align-content: flex-start;
-  }
-  .emoji-grid { max-height: 180px; }
+  /* 不再使用 calc(100vw - 24px)：面板相对编辑器容器定位，
+     按视口宽度计算会在容器偏右时溢出屏幕 */
+  .emoji-grid { gap: 3px; padding: 6px; }
+  .emoji-item { min-width: 32px; min-height: 32px; font-size: 12px; }
 }
 </style>

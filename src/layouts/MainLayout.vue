@@ -1,5 +1,38 @@
 <template>
   <div class="layout">
+    <!-- 移动端顶栏（仅手机端显示） -->
+    <div class="mobile-topbar">
+      <span class="mobile-brand">{{ site.title }}</span>
+      <div class="mobile-actions">
+        <button
+          class="btn btn-sm"
+          :class="userStore.isLogged ? 'btn-primary' : 'btn-ghost'"
+          @click="onCheckinClick"
+        >
+          <i class="bi bi-calendar-check" /> 签到
+        </button>
+        <router-link
+          v-if="!userStore.isLogged"
+          to="/auth/login"
+          class="btn btn-sm btn-primary"
+        >登录</router-link>
+        <router-link
+          v-else
+          :to="userStore.user?.id ? `/author/${userStore.user.id}` : '/user'"
+          class="mobile-user"
+          :title="userStore.user?.nickname || '我的'"
+        >
+          <img
+            v-if="userStore.user?.avatar"
+            :src="userStore.user.avatar"
+            class="mobile-avatar"
+            alt="头像"
+          />
+          <span v-else class="mobile-user-fallback">我的</span>
+        </router-link>
+      </div>
+    </div>
+
     <div class="layout-body">
       <!-- 左栏 - 站点信息 + 导航 -->
       <aside class="layout-left">
@@ -106,6 +139,21 @@
       </template>
     </footer>
 
+    <!-- 移动端底部 Tab Bar（仅手机端显示） -->
+    <nav class="mobile-tabbar" aria-label="主导航">
+      <div
+        v-for="tab in tabs"
+        :key="tab.key"
+        class="tab-item"
+        :class="{ active: isActive(tab), highlight: tab.highlight }"
+        @click="goTab(tab)"
+      >
+        <span v-if="tab.badge" class="tab-badge">{{ tab.badge }}</span>
+        <i class="bi tab-icon" :class="tab.icon" />
+        <span class="tab-label">{{ tab.label }}</span>
+      </div>
+    </nav>
+
     <!-- 全局搜索弹窗 -->
     <SearchDialog ref="searchDialogRef" />
 
@@ -117,6 +165,9 @@
 
     <!-- 右侧悬浮按钮 -->
     <FloatButtons />
+
+    <!-- 签到弹窗（移动端顶栏使用） -->
+    <CheckinDialog ref="checkinDialogRef" />
   </div>
 </template>
 
@@ -127,12 +178,26 @@ import SearchDialog from '@/components/SearchDialog.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import FloatButtons from '@/components/FloatButtons.vue'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
+import CheckinDialog from '@/components/CheckinDialog.vue'
 import { call } from '@/api/request'
 import { getConfig } from '@/api/config'
 import { useUserStore } from '@/stores/user'
 import { isAdmin } from '@/utils/helper'
+import { useRouter, useRoute } from 'vue-router'
 
 const userStore = useUserStore()
+const router = useRouter()
+const route = useRoute()
+
+// 签到弹窗（移动端顶栏「签到」按钮）
+const checkinDialogRef = ref(null)
+function onCheckinClick() {
+  if (!userStore.isLogged) {
+    router.push('/auth/login')
+    return
+  }
+  checkinDialogRef.value?.show()
+}
 
 // 全局搜索弹窗
 const searchDialogRef = ref(null)
@@ -156,7 +221,7 @@ const year = new Date().getFullYear()
 const site = computed(() => {
   const c = siteConfig.value || {}
   return {
-    title: c.title || '朱某的生活印记',
+    title: c.title || 'Mellow',
     description: c.description || '我从虚空中惊醒',
     copyCode: c.copy?.code || '',
     copyLink: c.copy?.link || '',
@@ -203,6 +268,32 @@ function navTarget(p) {
   return `/${p.key || p.id}`
 }
 
+// 移动端底部 Tab 配置
+const tabs = computed(() => {
+  const uid = userStore.user?.id
+  return [
+    { key: 'home', to: '/', icon: 'bi-house-door-fill', label: '首页', exact: true },
+    { key: 'goods', to: '/goods', icon: 'bi-shop', label: '商城', badge: '新' },
+    { key: 'publish', to: '/manage/posts/write', icon: 'bi-plus-circle-fill', label: '发布', needLogin: true, highlight: true },
+    { key: 'notif', to: '/user/notifications', icon: 'bi-bell-fill', label: '消息', needLogin: true },
+    { key: 'mine', to: uid ? `/author/${uid}` : '/user', icon: 'bi-person-fill', label: '我的', needLogin: true }
+  ]
+})
+
+function isActive(tab) {
+  const p = route.path
+  if (tab.exact) return p === tab.to
+  return p === tab.to || p.startsWith(tab.to + '/')
+}
+
+function goTab(tab) {
+  if (tab.needLogin && !userStore.isLogged) {
+    router.push('/auth/login')
+    return
+  }
+  router.push(tab.to)
+}
+
 // 解析自定义导航链接：格式 "跳转文字 || 跳转链接"，一行一个
 const customNavLinks = computed(() => {
   const raw = siteConfig.value?.custom_nav_links || ''
@@ -245,6 +336,106 @@ onMounted(() => {
 .layout {
   min-height: 100vh;
   background: var(--bg);
+}
+
+/* 移动端顶栏（默认隐藏，仅手机端显示） */
+.mobile-topbar {
+  display: none;
+}
+.mobile-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.mobile-user {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--bg-soft);
+  color: var(--text-soft);
+  font-size: 12px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.mobile-avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 移动端底部 Tab Bar（默认隐藏） */
+.mobile-tabbar {
+  display: none;
+}
+.tab-item {
+  position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 2px 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+.tab-icon {
+  font-size: 21px;
+  line-height: 1;
+  margin-bottom: 3px;
+}
+.tab-label {
+  font-size: 11px;
+  line-height: 1;
+  letter-spacing: 1px;
+}
+.tab-badge {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + 6px);
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: var(--danger);
+  color: #fff;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  font-weight: 600;
+  border: 1.5px solid var(--bg-card);
+  box-sizing: border-box;
+}
+.tab-item.active {
+  color: var(--danger);
+}
+/* 中间「发布」按钮：凸起的圆形大按钮 */
+.tab-item.highlight {
+  justify-content: flex-start;
+}
+.tab-item.highlight .tab-icon {
+  width: 46px;
+  height: 46px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: -22px 0 4px;
+  font-size: 26px;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+  border-radius: 50%;
+  border: 3px solid var(--bg-card);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+}
+.tab-item.highlight .tab-label {
+  color: var(--text-soft);
 }
 
 .layout-body {
@@ -380,19 +571,68 @@ onMounted(() => {
 
 /* 响应式 - 手机 */
 @media (max-width: 640px) {
+  .mobile-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 16px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border-soft);
+    backdrop-filter: blur(8px);
+  }
+  .mobile-brand {
+    font-family: var(--font-serif);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 1px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+  /* 手机端隐藏左栏与底部 footer，由顶栏 + 底部 Tab Bar 接管导航 */
+  .layout-left,
+  .layout-footer {
+    display: none;
+  }
   .layout-body {
     grid-template-columns: 1fr;
-    padding: 16px;
+    padding: 16px 16px calc(72px + env(safe-area-inset-bottom));
   }
-  .layout-left {
-    position: static;
-  }
-  .site-nav {
-    flex-direction: row;
+  /* 底部 Tab Bar */
+  .mobile-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    display: flex;
+    align-items: stretch;
     justify-content: space-around;
-    margin: 16px 0;
-    flex-wrap: wrap;
-    gap: 4px;
+    height: calc(56px + env(safe-area-inset-bottom));
+    padding-bottom: env(safe-area-inset-bottom);
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-soft);
+    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
+  }
+  .tab-item {
+    padding-top: 8px;
+  }
+  .tab-item.active::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 22px;
+    height: 3px;
+    border-radius: 0 0 3px 3px;
+    background: var(--danger);
   }
   .nav-item.active::before {
     display: none;

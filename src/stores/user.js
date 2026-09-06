@@ -81,6 +81,10 @@ export const useUserStore = defineStore('user', () => {
     login.value = { finish: true, user: {} }
     save()
     cache.del(USER_CACHE)
+    // 必须同步清除 token 本体（cookie + localStorage）：
+    // 否则 request.js 的 readToken() 会再次读出失效 token 并附到后续所有请求上，
+    // 造成 401 → clear → 再 401 的死循环（表现为所有接口持续报错、页面无数据）
+    clearToken()
   }
 
   function save() {

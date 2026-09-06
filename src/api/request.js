@@ -4,6 +4,7 @@ import { useUserStore } from '@/stores/user'
 import router from '@/router'
 import { cache } from '@/utils/cache'
 import { getCookie } from '@/utils/cookie'
+import { showAuthDialog, clearLocalAuthData } from '@/utils/authDialog'
 
 // 与 stores/user.js、Login.vue、Register.vue 保持一致的 token cookie 名
 export const TOKEN_NAME = 'INIS_LOGIN_TOKEN'
@@ -83,6 +84,22 @@ const handleLogout = () => {
   setTimeout(() => { isLoggingOut = false }, 2000)
 }
 
+// 401 弹窗的确认动作：彻底清除本地登录信息（全部 cookie + localStorage + sessionStorage）并跳转登录页
+const confirmClearAndRelogin = () => {
+  // 先重置内存中的用户状态（store 的内存值不会因存储清空而自动重置）
+  useUserStore().clear()
+  // 再彻底清空当前域的 cookie 与本地/会话存储
+  clearLocalAuthData()
+  const current = router.currentRoute.value
+  router.push({ name: 'login', query: { redirect: current.fullPath } })
+}
+
+// 401 统一处理：自动清理登录态 + 弹窗提示（用户点击可彻底清除并重新登录）
+const handleUnauthorized = (msg) => {
+  handleLogout()
+  showAuthDialog(msg, confirmClearAndRelogin)
+}
+
 service.interceptors.response.use(
   (res) => {
     const data = res.data
@@ -96,12 +113,12 @@ service.interceptors.response.use(
       if (data.code === 204) {
         return { code: 204, data: null, msg: data.msg }
       }
-      // 401/412 未登录或 token 失效：清理本地状态
+      // 401/412 未登录或 token 失效：清理本地状态并弹窗提示
       // 若调用方传了 skipAuthLogout（如 check-token 需要拿到原始码做本地状态清理），
       // 则不触发全局登出，原样返回给调用方处理（参考 Cardify-inis 实现）
       if (data.code === 401 || data.code === 412) {
         if (!res.config?.skipAuthLogout) {
-          handleLogout()
+          handleUnauthorized(data.msg)
         }
         return Promise.reject({ ...data, code: data.code })
       }
@@ -117,7 +134,7 @@ service.interceptors.response.use(
   (err) => {
     if (err.response) {
       if (err.response.status === 401) {
-        handleLogout()
+        handleUnauthorized(err.response.data?.msg)
       } else {
         toast.error(err.response.data?.msg || `请求异常 (${err.response.status})`)
       }
