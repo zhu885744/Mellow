@@ -120,7 +120,7 @@ export function showAuthDialog(message, onConfirm) {
     word-break: break-all;
   `
   // textContent 赋值，防止后端 msg 注入 XSS
-  desc.textContent = `${message || '登录状态异常，请重新登录！'}（可点击下方按钮清除本地登录信息并重新登录）`
+  desc.textContent = `${message || '登录状态异常，请清除cookie后重新登录！'}（需要您自行手动清除）`
 
   const btnRow = document.createElement('div')
   btnRow.style.cssText = 'display: flex; gap: 10px; justify-content: center;'
@@ -139,7 +139,7 @@ export function showAuthDialog(message, onConfirm) {
     background: var(--primary, #3b82f6);
     color: #fff;
   `
-  confirmBtn.textContent = '清除并重新登录'
+  confirmBtn.textContent = '重新登录'
   confirmBtn.onmouseenter = () => (confirmBtn.style.opacity = '0.85')
   confirmBtn.onmouseleave = () => (confirmBtn.style.opacity = '1')
   confirmBtn.onclick = () => {
