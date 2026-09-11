@@ -22,9 +22,28 @@ function getContainer() {
   return container
 }
 
+// 避免批量请求失败时刷屏
+const MAX_TOASTS = 5
+// 相同内容短时间内的重复提示（如并发请求同时报错）只展示一次
+let lastMessage = ''
+let lastTime = 0
+
 function showToast(message, type = 'info', duration = 2400) {
   const c = getContainer()
+  const now = Date.now()
+  if (message === lastMessage && now - lastTime < 800) return
+  lastMessage = message
+  lastTime = now
+
   const el = document.createElement('div')
+  // 无障碍：错误/警告用 alert 实时播报，其它用 status
+  if (type === 'error' || type === 'warning') {
+    el.setAttribute('role', 'alert')
+    el.setAttribute('aria-live', 'assertive')
+  } else {
+    el.setAttribute('role', 'status')
+    el.setAttribute('aria-live', 'polite')
+  }
   // 使用 CSS 变量，自动适配明暗主题
   const colors = {
     info: { bg: 'var(--bg-card)', border: 'var(--border)', color: 'var(--text)' },
@@ -47,6 +66,10 @@ function showToast(message, type = 'info', duration = 2400) {
   `
   el.textContent = message
   c.appendChild(el)
+  // 超出上限时移除最早的提示
+  while (c.childElementCount > MAX_TOASTS) {
+    c.firstElementChild?.remove()
+  }
   setTimeout(() => {
     el.style.transition = 'opacity 0.3s, transform 0.3s'
     el.style.opacity = '0'

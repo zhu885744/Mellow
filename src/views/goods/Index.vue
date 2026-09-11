@@ -9,20 +9,24 @@
     <!-- 积分余额卡片 -->
     <div v-if="userStore.isLogged" class="card card-pad balance-card">
       <div class="balance-left">
-        <i class="bi bi-coin balance-icon" />
-        <div>
+        <i class="bi bi-coin balance-icon" aria-hidden="true" />
+        <div class="balance-info">
           <div class="balance-label">我的积分余额</div>
-          <div class="balance-value">{{ balance }} <span class="balance-unit">积分</span></div>
+          <div class="balance-value">
+            <span class="balance-num">{{ balance }}</span>
+            <span class="balance-unit">积分</span>
+          </div>
         </div>
       </div>
       <div class="balance-tip">
-        <i class="bi bi-lightbulb" /> 通过签到、发布内容等任务赚取积分
+        <i class="bi bi-lightbulb" aria-hidden="true" />
+        <span>通过签到、发布内容等任务赚取积分</span>
       </div>
     </div>
     <div v-else class="card card-pad balance-card">
       <div class="balance-left">
-        <i class="bi bi-coin balance-icon" />
-        <div>
+        <i class="bi bi-coin balance-icon" aria-hidden="true" />
+        <div class="balance-info">
           <div class="balance-label">登录后查看积分</div>
         </div>
       </div>
@@ -390,7 +394,9 @@ onMounted(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 16px;
+  /* 空间不足时提示文案自动换到下一排，避免被挤压成竖排文字 */
+  flex-wrap: wrap;
+  gap: 12px 16px;
   background: linear-gradient(135deg, rgba(212, 161, 72, 0.14), rgba(184, 153, 104, 0.06));
   border: 1px solid rgba(212, 161, 72, 0.28);
 }
@@ -398,8 +404,13 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0;
+}
+.balance-info {
+  min-width: 0;
 }
 .balance-icon {
+  flex-shrink: 0;
   font-size: 34px;
   color: #d4a148;
 }
@@ -408,9 +419,19 @@ onMounted(() => {
   color: var(--text-muted);
 }
 .balance-value {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 5px;
   font-size: 24px;
   font-weight: 700;
+  line-height: 1.25;
   color: var(--primary-deep);
+  /* 数字等宽，余额变化时不抖动 */
+  font-variant-numeric: tabular-nums;
+}
+.balance-num {
+  overflow-wrap: anywhere;
 }
 .balance-unit {
   font-size: 13px;
@@ -418,11 +439,16 @@ onMounted(() => {
   color: var(--text-muted);
 }
 .balance-tip {
-  font-size: 12px;
-  color: var(--text-muted);
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
+  min-width: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.balance-tip .bi {
+  flex-shrink: 0;
 }
 
 .loading {
@@ -786,5 +812,37 @@ onMounted(() => {
 .modal-fade-leave-to .modal-card {
   transform: scale(0.95) translateY(-8px);
   opacity: 0;
+}
+
+/* 手机端：余额与提示上下排列，提示文案独立一行，不再与余额争抢横向空间 */
+@media (max-width: 640px) {
+  .balance-card.card-pad {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+  }
+  .balance-left {
+    gap: 12px;
+  }
+  .balance-icon {
+    font-size: 30px;
+  }
+  .balance-value {
+    font-size: 22px;
+  }
+  .balance-tip {
+    align-items: flex-start;
+    padding-top: 11px;
+    border-top: 1px dashed rgba(212, 161, 72, 0.32);
+    line-height: 1.6;
+  }
+  .balance-tip .bi {
+    margin-top: 3px;
+  }
+  /* 未登录态：登录按钮占满整行，点击区域更大 */
+  .balance-card > .btn {
+    width: 100%;
+  }
 }
 </style>

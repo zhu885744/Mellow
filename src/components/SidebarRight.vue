@@ -87,7 +87,15 @@
       <ul class="comment-mini-list" v-if="latestComments.length">
         <li v-for="c in latestComments" :key="c.id" class="comment-mini-item">
           <router-link :to="commentLink(c)" class="comment-mini-link">
-            <img v-if="c._avatar" :src="c._avatar" class="comment-mini-avatar" :alt="c._nickname" @error="onAvatarError" />
+            <img
+              v-if="c._avatar"
+              :src="c._avatar"
+              class="comment-mini-avatar"
+              :alt="c._nickname"
+              loading="lazy"
+              decoding="async"
+              @error="onAvatarError"
+            />
             <span v-else class="comment-mini-dot" :style="{ background: c._color }">
               {{ (c._nickname || '匿').charAt(0).toUpperCase() }}
             </span>
@@ -192,7 +200,7 @@ import { useNotificationStore } from '@/stores/notification'
 import { getArticleGroups } from '@/api/article'
 import { readNotification } from '@/api/tags'
 import { call } from '@/api/request'
-import { getSiteFunctions } from '@/api/config'
+import { useSiteStore } from '@/stores/site'
 import { fromNow } from '@/utils/time'
 import { pickCommentAuthor } from '@/utils/helper'
 import { renderEmoji } from '@/utils/emoji'
@@ -204,6 +212,7 @@ import touxiang from '@/assets/img/touxiang.webp'
 
 const userStore = useUserStore()
 const notif = useNotificationStore()
+const siteStore = useSiteStore()
 const { user } = storeToRefs(userStore)
 
 const checkinDialog = ref(null)
@@ -349,9 +358,8 @@ async function loadTags() {
 // 站点信息：建站日期（来自 Mellow_functions 配置的 date 字段，秒级时间戳）+ 标签总数
 async function loadSiteInfo() {
   try {
-    const res = await getSiteFunctions()
-    const cfg = res?.data?.data?.json || res?.data?.json || {}
-    const dateTs = cfg.date ? Number(cfg.date) : 0
+    const cfg = await siteStore.load()
+    const dateTs = cfg?.date ? Number(cfg.date) : 0
     if (dateTs > 0) {
       startTime.value = dateTs * 1000
       const d = new Date(dateTs * 1000)

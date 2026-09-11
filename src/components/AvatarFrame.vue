@@ -1,14 +1,24 @@
 <template>
   <span class="avatar-frame" :style="{ width: size, height: size }">
     <!-- 底层圆形用户头像 -->
-    <img :src="currentSrc" :alt="alt" class="avatar-frame-img" @error="onError" />
+    <img
+      :src="currentSrc"
+      :alt="alt"
+      class="avatar-frame-img"
+      loading="lazy"
+      decoding="async"
+      @error="onError"
+    />
     <!-- 顶层头像框：放大渲染，容纳向外延伸的装饰 -->
     <img
-      v-if="frame"
+      v-if="frame && !frameFailed"
       :src="frame"
       class="avatar-frame-overlay"
       :style="{ transform: `translate(-50%, -50%) scale(${frameScale})` }"
-      alt="头像框"
+      alt=""
+      loading="lazy"
+      decoding="async"
+      @error="frameFailed = true"
     />
   </span>
 </template>
@@ -32,6 +42,7 @@ const props = defineProps({
 })
 
 const failed = ref(false)
+const frameFailed = ref(false)
 
 // 头像为空或加载失败时回退到 fallback
 const currentSrc = computed(() => {

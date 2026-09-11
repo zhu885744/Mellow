@@ -2,11 +2,14 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { unreadCount, listNotifications, readAllNotifications } from '@/api/tags'
 
+const POLL_INTERVAL = 60 * 1000
+
 export const useNotificationStore = defineStore('notification', () => {
   const count = ref(0)
   // 最新一条通知（优先取未读的最新一条，无未读时取已读的最新一条）
   const latest = ref(null)
   let timer = null
+  let visibilityBound = false
 
   const pickFirst = (res) => {
     const payload = res?.data?.data
@@ -19,23 +22,45 @@ export const useNotificationStore = defineStore('notification', () => {
       const res = await unreadCount()
       // 后端返回结构: { code, data: { count } }
       count.value = res.data?.data?.count || 0
-      const [unread, read] = await Promise.allSettled([
-        listNotifications({ page: 1, size: 1, order: 'create_time desc', is_read: 0 }),
-        listNotifications({ page: 1, size: 1, order: 'create_time desc', is_read: 1 })
-      ])
-      const latestUnread = unread.status === 'fulfilled' ? pickFirst(unread.value) : null
-      const latestRead = read.status === 'fulfilled' ? pickFirst(read.value) : null
-      // 至少一个列表请求成功才更新；都失败则保留旧值，避免误显示"暂无消息"
-      if (unread.status === 'fulfilled' || read.status === 'fulfilled') {
-        latest.value = latestUnread || latestRead
-      }
-    } catch {}
+      // 只拉取一条：有未读优先取未读最新，否则取全部最新（比原来两次列表请求少一次）
+      const params = { page: 1, size: 1, order: 'create_time desc' }
+      if (count.value > 0) params.is_read = 0
+      const list = await listNotifications(params)
+      const item = pickFirst(list)
+      // 请求成功但无数据时保留旧值，避免误显示“暂无消息”
+      if (item) latest.value = item
+    } catch {
+      // 失败时保留旧值
+    }
+  }
+
+  // 页面不可见时静默跳过，可见时立即补一次刷新
+  function onVisibilityChange() {
+    if (!timer) return
+    if (!document.hidden) refresh()
+  }
+
+  function bindVisibility() {
+    if (visibilityBound || typeof document === 'undefined') return
+    visibilityBound = true
+    document.addEventListener('visibilitychange', onVisibilityChange)
+  }
+
+  function unbindVisibility() {
+    if (!visibilityBound || typeof document === 'undefined') return
+    visibilityBound = false
+    document.removeEventListener('visibilitychange', onVisibilityChange)
   }
 
   function startPolling() {
     stopPolling()
     refresh()
-    timer = setInterval(refresh, 60 * 1000)
+    timer = setInterval(() => {
+      // 后台标签页不轮询，避免无效请求
+      if (typeof document !== 'undefined' && document.hidden) return
+      refresh()
+    }, POLL_INTERVAL)
+    bindVisibility()
   }
 
   function stopPolling() {
@@ -43,6 +68,7 @@ export const useNotificationStore = defineStore('notification', () => {
       clearInterval(timer)
       timer = null
     }
+    unbindVisibility()
   }
 
   function clearCount() {

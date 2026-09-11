@@ -6,46 +6,52 @@
     :class="[`float-pos-${config.position}`, `float-style-${config.style}`]"
   >
     <!-- 自定义按钮 -->
-    <div
+    <button
       v-for="(btn, i) in visibleButtons"
       :key="btn.id || 'fb-' + i"
+      type="button"
       class="float-btn-item"
       :title="btn.tooltip || btn.name"
+      :aria-label="btn.tooltip || btn.name"
       @click="onButtonClick(btn)"
     >
       <i v-if="isIconClass(btn.icon)" :class="btn.icon" />
       <span v-else class="float-btn-text">{{ btn.icon }}</span>
-      <img v-if="btn.image_url" class="float-btn-preview" :src="btn.image_url" alt="" />
-    </div>
+      <img v-if="btn.image_url" class="float-btn-preview" :src="btn.image_url" alt="" loading="lazy" />
+    </button>
 
     <!-- 主题切换 -->
-    <div
+    <button
+      type="button"
       class="float-btn-item"
       title="切换主题"
       aria-label="切换主题"
       @click="themeStore.cycle()"
     >
       <i :class="themeIcon" />
-    </div>
+    </button>
 
     <!-- 返回顶部 -->
-    <div
+    <button
       v-if="config.show_back_to_top !== false && scrolled"
+      type="button"
       class="float-btn-item"
       title="返回顶部"
+      aria-label="返回顶部"
       @click="scrollToTop"
     >
       <i class="bi bi-arrow-up" />
-    </div>
+    </button>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { getConfig } from '@/api/config'
+import { useSiteStore } from '@/stores/site'
 import { openLightbox } from '@/utils/lightbox'
 import { useThemeStore } from '@/stores/theme'
 
+const siteStore = useSiteStore()
 const themeStore = useThemeStore()
 
 const themeIcon = computed(() => {
@@ -54,12 +60,16 @@ const themeIcon = computed(() => {
   return 'bi bi-circle-half'
 })
 
-const config = ref({
-  enabled: true,
-  style: 'rounded',
-  position: 'center',
-  show_back_to_top: true,
-  buttons: []
+// 悬浮按钮配置来自站点配置（site store 统一缓存/去重）
+const config = computed(() => {
+  const fb = siteStore.config?.float_buttons || {}
+  return {
+    enabled: fb.enabled !== false,
+    style: fb.style || 'rounded',
+    position: fb.position || 'center',
+    show_back_to_top: fb.show_back_to_top !== false,
+    buttons: fb.buttons || []
+  }
 })
 const scrolled = ref(false)
 
@@ -88,33 +98,24 @@ function scrollToTop() {
   window.scrollTo({ top: 0, behavior: 'smooth' })
 }
 
+// 滚动状态用 rAF 节流，避免高频 scroll 事件触发多余的重渲染
+let rafId = 0
 function onScroll() {
-  scrolled.value = window.scrollY > 300
-}
-
-async function loadConfig() {
-  try {
-    const res = await getConfig('Mellow_functions')
-    const fb = res.data?.json?.float_buttons || {}
-    config.value = {
-      enabled: fb.enabled !== false,
-      style: fb.style || 'rounded',
-      position: fb.position || 'center',
-      show_back_to_top: fb.show_back_to_top !== false,
-      buttons: fb.buttons || []
-    }
-  } catch {
-    // 读取失败时保持默认配置
-  }
+  if (rafId) return
+  rafId = requestAnimationFrame(() => {
+    rafId = 0
+    scrolled.value = window.scrollY > 300
+  })
 }
 
 onMounted(() => {
-  loadConfig()
-  window.addEventListener('scroll', onScroll)
+  siteStore.load()
+  window.addEventListener('scroll', onScroll, { passive: true })
   onScroll()
 })
 onUnmounted(() => {
   window.removeEventListener('scroll', onScroll)
+  if (rafId) cancelAnimationFrame(rafId)
 })
 </script>
 

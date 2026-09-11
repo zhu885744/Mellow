@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { checkToken, logout as apiLogout } from '@/api/comm'
-import { call } from '@/api/request'
 import { cache } from '@/utils/cache'
 import { toast } from '@/utils/toast'
 import { getCookie, setCookie, clearCookie } from '@/utils/cookie'
 import { TOKEN_NAME } from '@/api/request'
+import { useSiteStore } from '@/stores/site'
 import router from '@/router'
 
 const TOKEN_KEY = 'blog_user'
@@ -36,8 +36,6 @@ function clearToken() {
 // 并发保护
 let checkingToken = false
 let checkTokenPromise = null
-let fetchingSiteInfo = false
-let fetchSiteInfoPromise = null
 
 // 规范化用户对象：确保 json 字段是对象（后端可能返回字符串）
 function normalizeUser(u) {
@@ -189,40 +187,15 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  // ===== 站点信息（参考主题 fetchSiteInfo）=====
+  // ===== 站点信息 =====
+  // 统一委托给 site store（并发去重 + 缓存），避免与布局/侧栏重复请求同一配置
   async function fetchSiteInfo(force = false) {
-    if (!force && fetchingSiteInfo && fetchSiteInfoPromise) {
-      return fetchSiteInfoPromise
+    const siteStore = useSiteStore()
+    const info = await siteStore.load(force)
+    if (info && typeof info === 'object') {
+      siteInfo.value = info
     }
-    fetchingSiteInfo = true
-    fetchSiteInfoPromise = (async () => {
-      const cacheName = 'Mellow_functions'
-      try {
-        if (!force) {
-          const cached = cache.get(cacheName)
-          if (cached && typeof cached === 'object') {
-            siteInfo.value = cached
-            return cached
-          }
-        }
-        const res = await call('config', 'one', { method: 'GET', params: { key: 'Mellow_functions' } })
-        if (res.code === 200 && res.data) {
-          let info = res.data.json || res.data
-          if (info && typeof info === 'object') {
-            siteInfo.value = info
-            cache.set(cacheName, info, 30)
-          }
-          return siteInfo.value
-        }
-      } catch (e) {
-        console.error('获取站点信息失败:', e)
-      } finally {
-        fetchingSiteInfo = false
-        fetchSiteInfoPromise = null
-      }
-      return siteInfo.value
-    })()
-    return fetchSiteInfoPromise
+    return siteInfo.value
   }
 
   async function logout() {

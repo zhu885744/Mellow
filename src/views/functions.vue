@@ -331,10 +331,12 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { getConfig, saveConfig } from '@/api/config'
 import { useUserStore } from '@/stores/user'
+import { useSiteStore } from '@/stores/site'
 import { toast } from '@/utils/toast'
 import { isAdmin as helperIsAdmin } from '@/utils/helper'
 
 const userStore = useUserStore()
+const siteStore = useSiteStore()
 
 const CONFIG_KEY = 'Mellow_functions'
 const COMMENT_KEY = 'COMMENT'
@@ -349,13 +351,11 @@ async function getFunctionsConfig() {
   if (cachedFunctionsConfig && (now - cachedFunctionsTime) < CACHE_EXPIRE) {
     return cachedFunctionsConfig
   }
-  const res = await getConfig(CONFIG_KEY)
-  if (res.code === 200 && res.data) {
-    cachedFunctionsConfig = res.data.json || {}
-    cachedFunctionsTime = now
-    return cachedFunctionsConfig
-  }
-  return {}
+  // 复用 site store 的请求去重与缓存，避免与前台布局重复请求同一配置
+  const cfg = await siteStore.load()
+  cachedFunctionsConfig = cfg || {}
+  cachedFunctionsTime = now
+  return cachedFunctionsConfig
 }
 
 function clearFunctionsCache() {
@@ -524,6 +524,8 @@ async function saveGlobalConfig() {
     await saveConfig(CONFIG_KEY, globalConfig.value)
     toast.success('全局配置保存成功')
     clearFunctionsCache()
+    // 同步失效 site store 缓存，保证前台立即读取到最新配置
+    siteStore.invalidate()
   } catch {
     toast.error('全局配置保存失败')
   } finally {

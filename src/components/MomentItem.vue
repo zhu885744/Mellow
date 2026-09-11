@@ -1,7 +1,15 @@
 <template>
   <div class="moment-card">
     <div class="moment-head">
-      <img :src="author?.avatar || defaultAvatar" class="avatar" :alt="author?.nickname" @click="goAuthor" />
+      <img
+        :src="author?.avatar || defaultAvatar"
+        class="avatar"
+        :alt="author?.nickname"
+        loading="lazy"
+        decoding="async"
+        @click="goAuthor"
+        @error="onAvatarError"
+      />
       <div class="info">
         <div class="name">
           <span v-if="authorLink" class="name-link" @click="goAuthor">{{ author?.nickname || '匿名' }}</span>
@@ -104,6 +112,15 @@ const userStore = useUserStore()
 const router = useRouter()
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
+
+// 头像加载失败时回退到默认图，避免出现破损图标
+function onAvatarError(e) {
+  const el = e.target
+  if (el && !el.dataset.fallback) {
+    el.dataset.fallback = '1'
+    el.src = defaultAvatar
+  }
+}
 
 const showComments = ref(false)
 

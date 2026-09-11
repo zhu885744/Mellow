@@ -89,12 +89,9 @@ export const truncate = (str, len = 80) => {
 export const clone = (obj) => JSON.parse(JSON.stringify(obj))
 
 /**
- * 获取 cookie
+ * 获取 cookie（统一复用 utils/cookie，避免实现分叉）
  */
-export const getCookie = (name) => {
-  const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'))
-  return match ? decodeURIComponent(match[2]) : ''
-}
+export { getCookie } from './cookie'
 
 /**
  * 提取 result.author.user 之类的关联数据

@@ -141,17 +141,20 @@
 
     <!-- 移动端底部 Tab Bar（仅手机端显示） -->
     <nav class="mobile-tabbar" aria-label="主导航">
-      <div
+      <button
         v-for="tab in tabs"
         :key="tab.key"
+        type="button"
         class="tab-item"
         :class="{ active: isActive(tab), highlight: tab.highlight }"
+        :aria-label="tab.label"
+        :aria-current="isActive(tab) ? 'page' : undefined"
         @click="goTab(tab)"
       >
         <span v-if="tab.badge" class="tab-badge">{{ tab.badge }}</span>
         <i class="bi tab-icon" :class="tab.icon" />
         <span class="tab-label">{{ tab.label }}</span>
-      </div>
+      </button>
     </nav>
 
     <!-- 全局搜索弹窗 -->
@@ -180,12 +183,13 @@ import FloatButtons from '@/components/FloatButtons.vue'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import CheckinDialog from '@/components/CheckinDialog.vue'
 import { call } from '@/api/request'
-import { getConfig } from '@/api/config'
 import { useUserStore } from '@/stores/user'
+import { useSiteStore } from '@/stores/site'
 import { isAdmin } from '@/utils/helper'
 import { useRouter, useRoute } from 'vue-router'
 
 const userStore = useUserStore()
+const siteStore = useSiteStore()
 const router = useRouter()
 const route = useRoute()
 
@@ -213,13 +217,12 @@ function onGlobalKey(e) {
 onMounted(() => window.addEventListener('keydown', onGlobalKey))
 onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
 
-// 站点信息（来自 /api/config/one?key=Mellow_functions）
-const siteConfig = ref({})
+// 站点信息（来自 /api/config/one?key=Mellow_functions，由 site store 统一去重缓存）
 const pages = ref([])
 const year = new Date().getFullYear()
 
 const site = computed(() => {
-  const c = siteConfig.value || {}
+  const c = siteStore.config || {}
   return {
     title: c.title || 'Mellow',
     description: c.description || '我从虚空中惊醒',
@@ -230,16 +233,6 @@ const site = computed(() => {
     policeLink: c.police?.link || ''
   }
 })
-
-// 获取站点配置（Mellow_functions）
-async function loadSiteConfig() {
-  try {
-    const res = await getConfig('Mellow_functions')
-    siteConfig.value = res.data?.json || {}
-  } catch {
-    siteConfig.value = {}
-  }
-}
 
 // 获取导航页（/api/pages/all）
 async function loadPages() {
@@ -296,7 +289,7 @@ function goTab(tab) {
 
 // 解析自定义导航链接：格式 "跳转文字 || 跳转链接"，一行一个
 const customNavLinks = computed(() => {
-  const raw = siteConfig.value?.custom_nav_links || ''
+  const raw = siteStore.config?.custom_nav_links || ''
   return raw
     .split('\n')
     .map((line) => line.trim())
@@ -325,7 +318,7 @@ function checkBan() {
 watch(() => userStore.user?.result?.ban?.is_banned, checkBan)
 
 onMounted(() => {
-  loadSiteConfig()
+  siteStore.load()
   loadPages()
   // 先同步登录态（含封禁状态）再检测，避免读到未就绪的 user
   userStore.ensureLogin().then(checkBan)

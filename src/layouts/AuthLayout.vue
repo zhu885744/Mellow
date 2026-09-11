@@ -12,31 +12,20 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { getConfig } from '@/api/config'
+import { computed, onMounted } from 'vue'
+import { useSiteStore } from '@/stores/site'
 
-// 站点信息（来自 /api/config/one?key=Mellow_functions）
-const siteConfig = ref({})
+const siteStore = useSiteStore()
 
 const site = computed(() => {
-  const c = siteConfig.value || {}
+  const c = siteStore.config || {}
   return {
     title: c.title || 'Mellow'
   }
 })
 
-// 获取站点配置（Mellow_functions）
-async function loadSiteConfig() {
-  try {
-    const res = await getConfig('Mellow_functions')
-    siteConfig.value = res.data?.json || {}
-  } catch {
-    siteConfig.value = {}
-  }
-}
-
 onMounted(() => {
-  loadSiteConfig()
+  siteStore.load()
 })
 </script>
 

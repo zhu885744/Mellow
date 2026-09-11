@@ -1,13 +1,17 @@
 <template>
-  <nav v-if="pageCount > 1" class="pager">
+  <nav v-if="pageCount > 1" class="pager" aria-label="分页导航">
     <button
+      type="button"
       class="btn btn-icon btn-sm"
+      aria-label="上一页"
       :disabled="current === 1"
       @click="$emit('update:current', current - 1)"
     >‹</button>
-    <span class="pager-info">{{ current }} / {{ pageCount }}</span>
+    <span class="pager-info" aria-live="polite">{{ current }} / {{ pageCount }}</span>
     <button
+      type="button"
       class="btn btn-icon btn-sm"
+      aria-label="下一页"
       :disabled="current === pageCount"
       @click="$emit('update:current', current + 1)"
     >›</button>

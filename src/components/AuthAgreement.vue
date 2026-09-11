@@ -37,7 +37,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { getConfig } from '@/api/config'
+import { useSiteStore } from '@/stores/site'
+
+const siteStore = useSiteStore()
 
 const props = defineProps({
   required: { type: Boolean, default: false },
@@ -61,8 +63,8 @@ const conf = ref({ user: DEFAULT_USER, privacy: DEFAULT_PRIVACY })
 
 async function load() {
   try {
-    const res = await getConfig('Mellow_functions')
-    const a = res.data?.json?.auth_dialog_agreement || {}
+    const cfg = await siteStore.load()
+    const a = cfg?.auth_dialog_agreement || {}
     // 后台关闭了协议提示则不显示
     if (a.enabled === false) return
     conf.value = {

@@ -122,6 +122,10 @@ service.interceptors.response.use(
         }
         return Promise.reject({ ...data, code: data.code })
       }
+      // config.silent 为 true 时不弹全局提示，交调用方自行处理（如列表页局部错误态）
+      if (res.config?.silent) {
+        return Promise.reject(data)
+      }
       if (data.code === 403) {
         toast.error(data.msg || '没有权限')
         return Promise.reject(data)
@@ -132,6 +136,13 @@ service.interceptors.response.use(
     return data
   },
   (err) => {
+    // 已主动取消的请求（如组件卸载/切换筛选）不提示
+    if (err.code === 'ERR_CANCELED') {
+      return Promise.reject(err)
+    }
+    if (err.config?.silent) {
+      return Promise.reject(err)
+    }
     if (err.response) {
       if (err.response.status === 401) {
         handleUnauthorized(err.response.data?.msg)
@@ -140,7 +151,7 @@ service.interceptors.response.use(
       }
     } else if (err.request) {
       toast.error('网络异常，请检查连接')
-    } else if (err.code !== 'ERR_CANCELED') {
+    } else {
       toast.error(err.message || '请求失败')
     }
     return Promise.reject(err)
@@ -151,6 +162,37 @@ export default service
 export { cache }
 
 /**
+ * 并发去重：同一时刻发起的「完全相同」的 GET 请求复用同一个 Promise，
+ * 避免侧栏/布局中多个组件同时拉取同一接口造成重复请求。
+ * 仅对进行中的请求去重（请求结束后即释放），因此不会出现数据陈旧问题。
+ */
+const inflight = new Map()
+
+/** 稳定序列化查询参数（对象按 key 排序，保证同等参数生成同一 key） */
+function serializeParams(params) {
+  if (!params) return ''
+  return Object.keys(params)
+    .sort()
+    .map((k) => {
+      const v = params[k]
+      const val = v !== null && typeof v === 'object' ? JSON.stringify(v) : String(v ?? '')
+      return `${k}=${val}`
+    })
+    .join('&')
+}
+
+function dedupeRequest(key, factory) {
+  const running = inflight.get(key)
+  if (running) return running
+  const promise = factory().finally(() => {
+    // 仅当仍是自己时删除，避免覆盖后到的同 key 请求
+    if (inflight.get(key) === promise) inflight.delete(key)
+  })
+  inflight.set(key, promise)
+  return promise
+}
+
+/**
  * INIS 控制器通用调用方法
  * @param {string} controller 控制器名,如 'article'
  * @param {string} method 方法名,如 'all'
@@ -158,14 +200,22 @@ export { cache }
  * @param {string} options.method HTTP 方法,默认 GET
  * @param {object} options.params GET 参数（where 可直接传对象）
  * @param {object} options.data POST/PUT body
+ * @param {object} options.config 额外 axios 配置（silent: 静默错误；dedupe: false 关闭去重）
  */
 export const call = (controller, method, options = {}) => {
   const { method: httpMethod = 'GET', params, data, config } = options
-  return service.request({
-    url: `/${controller}/${method}`,
+  const url = `/${controller}/${method}`
+  const requestConfig = {
+    url,
     method: httpMethod,
     params: httpMethod === 'GET' || httpMethod === 'DELETE' ? params : undefined,
     data: httpMethod !== 'GET' && httpMethod !== 'DELETE' ? data : undefined,
     ...config
-  })
+  }
+  // GET 且未显式关闭去重时启用
+  if (httpMethod === 'GET' && requestConfig.dedupe !== false) {
+    const key = `${baseURL}${url}?${serializeParams(requestConfig.params)}`
+    return dedupeRequest(key, () => service.request(requestConfig))
+  }
+  return service.request(requestConfig)
 }
