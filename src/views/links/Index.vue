@@ -34,6 +34,14 @@
                 <div class="link-name">{{ link.nickname }}</div>
                 <div class="link-url">{{ host(link.url) }}</div>
               </div>
+              <span
+                v-if="link.checked"
+                class="link-status"
+                :class="link.online ? 'is-online' : 'is-offline'"
+                :title="link.online ? `响应耗时 ${link.responseTime}ms` : '链接检测未通过'"
+              >
+                <i class="link-status-dot" />{{ link.online ? '在线' : '离线' }}
+              </span>
             </div>
             <p class="link-desc">{{ link.description || '期待与您的互换链接' }}</p>
           </a>
@@ -93,6 +101,7 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listLinks, createLink } from '@/api/links'
 import { call } from '@/api/request'
+import { cache } from '@/utils/cache'
 import { renderMarkdown } from '@/utils/markdown'
 import { toast } from '@/utils/toast'
 
@@ -139,26 +148,94 @@ const form = ref({
   target: '_blank'
 })
 
+// 链接状态缓存键与有效期（12 小时 = 720 分钟）
+const STATUS_CACHE_KEY = 'mellow_links_status'
+const STATUS_CACHE_MINUTES = 12 * 60
+
+// 列表查询参数（检测状态时复用，保证前后两次返回的集合一致）
+const linkQuery = {
+  page: 1,
+  limit: 200,
+  where: { audit: 1 },
+  field: 'id,nickname,url,description,avatar,group'
+}
+
+let statusChecking = false
+
+// 读取状态缓存：{ [url]: { online, responseTime } }
+function readStatusCache() {
+  const data = cache.get(STATUS_CACHE_KEY)
+  return data && typeof data === 'object' ? data : null
+}
+
+// 把检测结果合并到友链对象上（checked 为 true 才在卡片上展示状态）
+function applyStatus(list, statusMap) {
+  if (!statusMap) return
+  list.forEach((link) => {
+    const item = statusMap[link.url]
+    if (!item) return
+    link.online = item.online === true
+    link.responseTime = Number(item.responseTime) || 0
+    link.checked = true
+  })
+}
+
+// 当前已渲染的全部友链（检测结果返回后就地刷新卡片状态）
+function currentLinks() {
+  return groups.value.flatMap((g) => g.list || [])
+}
+
+// 检测链接状态：结果写入 12 小时缓存，缓存内不再重复检测
+async function checkLinksStatus() {
+  if (statusChecking) return
+  statusChecking = true
+  try {
+    const res = await listLinks({ ...linkQuery, status: true })
+    const list = res.data?.data || []
+    const statusMap = {}
+    list.forEach((link) => {
+      if (!link.url) return
+      statusMap[link.url] = {
+        online: link.online === true,
+        responseTime: Number(link.responseTime) || 0
+      }
+    })
+    if (!Object.keys(statusMap).length) return
+    cache.set(STATUS_CACHE_KEY, statusMap, STATUS_CACHE_MINUTES)
+    applyStatus(currentLinks(), statusMap)
+  } catch {
+    // 检测失败不打断列表展示
+  } finally {
+    statusChecking = false
+  }
+}
+
+function toGroups(list) {
+  const map = new Map()
+  list.forEach((link) => {
+    const g = link.result?.group || {}
+    const gid = g.id ?? 0
+    if (!map.has(gid)) {
+      map.set(gid, { id: gid, name: g.name || '默认分组', description: g.description || '', list: [] })
+    }
+    map.get(gid).list.push(link)
+  })
+  return [...map.values()]
+}
+
 async function load() {
   loading.value = true
   try {
-    const res = await listLinks({
-      page: 1,
-      limit: 200,
-      where: { audit: 1 },
-      field: 'id,nickname,url,description,avatar,group'
-    })
+    const res = await listLinks(linkQuery)
     const linksData = res.data?.data || []
-    const map = new Map()
-    linksData.forEach((link) => {
-      const g = link.result?.group || {}
-      const gid = g.id ?? 0
-      if (!map.has(gid)) {
-        map.set(gid, { id: gid, name: g.name || '默认分组', description: g.description || '', list: [] })
-      }
-      map.get(gid).list.push(link)
-    })
-    groups.value = [...map.values()]
+    const statusCache = readStatusCache()
+    // 优先使用 12 小时内的缓存，避免每次进入页面都触发后端检测
+    applyStatus(linksData, statusCache)
+    groups.value = toGroups(linksData)
+    // 无缓存或缓存未覆盖全部友链时，异步检测一次（不阻塞首屏）
+    if (linksData.some((link) => link.url && !statusCache?.[link.url])) {
+      checkLinksStatus()
+    }
   } catch {
     groups.value = []
   } finally {
@@ -256,6 +333,37 @@ onMounted(load)
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* --- 链接检测状态 --- */
+.link-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  align-self: flex-start;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--bg-muted, #f3f4f6);
+  color: var(--text-muted, #6b7280);
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.link-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.link-status.is-online {
+  color: var(--success, #6c9a4d);
+}
+
+.link-status.is-offline {
+  color: var(--danger, #d9544d);
 }
 
 .link-desc {

@@ -51,7 +51,12 @@
               :class="following ? 'btn-ghost' : 'btn-primary'"
               @click="toggleFollow"
             >{{ following ? '已关注' : '关注' }}</button>
-            <router-link v-else to="/user/profile" class="btn btn-sm btn-ghost">编辑资料</router-link>
+            <template v-else>
+              <router-link to="/user/profile" class="btn btn-sm btn-ghost">编辑资料</router-link>
+              <button class="btn btn-sm btn-outline-danger" @click="userStore.logout">
+                <i class="bi bi-box-arrow-right" /> 退出登录
+              </button>
+            </template>
           </div>
         </div>
       </div>
@@ -703,7 +708,9 @@ watch(() => route.params.id, () => {
 }
 .author-actions {
   display: flex;
+  align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
 }
 
 .tab-bar {
