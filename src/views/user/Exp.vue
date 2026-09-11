@@ -67,14 +67,50 @@
       </table>
       <p v-else class="empty-text">暂无等级数据</p>
     </div>
+
+    <!-- 经验明细 -->
+    <div class="card card-pad">
+      <h3 class="block-title">经验明细</h3>
+      <div v-if="loadingLogs" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-else-if="!logs.length" class="empty-text">暂无经验记录</div>
+      <template v-else>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>说明</th>
+              <th>变动</th>
+              <th>时间</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="l in logs" :key="l.id">
+              <td class="td-desc">
+                <span>{{ l.description || typeName(l.type) }}</span>
+                <span v-if="logExtra(l)" class="log-extra">{{ logExtra(l) }}</span>
+              </td>
+              <td class="td-num" :class="{ minus: Number(l.value) < 0 }">
+                {{ Number(l.value) > 0 ? '+' : '' }}{{ l.value }}
+              </td>
+              <td class="td-time">{{ formatTime(l.create_time) }}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div v-if="hasMore" class="load-more">
+          <button class="btn btn-sm btn-ghost" :disabled="loadingMore" @click="loadMoreLogs">
+            {{ loadingMore ? '加载中...' : '加载更多' }}
+          </button>
+        </div>
+      </template>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
-import { getLevels, getExpRules } from '@/api/users'
+import { ref, computed, onMounted, watch } from 'vue'
+import { getLevels, getExpRules, getExpLogs } from '@/api/users'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
+import { formatTime } from '@/utils/time'
 
 const userStore = useUserStore()
 const { user } = storeToRefs(userStore)
@@ -83,6 +119,47 @@ const rules = ref([])
 const levels = ref([])
 const loadingRules = ref(false)
 const loadingLevels = ref(false)
+
+// 经验明细
+const logs = ref([])
+const loadingLogs = ref(false)
+const loadingMore = ref(false)
+const logPage = ref(1)
+const logLimit = 20
+const logCount = ref(0)
+const hasMore = computed(() => logs.value.length < logCount.value)
+
+// 经验类型 -> 中文说明（与后端 model/exp.go 默认规则一致）
+const typeMap = {
+  'like': '点赞',
+  'collect': '收藏',
+  'visit': '访问',
+  'share': '分享',
+  'login': '登录',
+  'comment': '评论',
+  'check-in': '签到',
+  'moments': '发布动态',
+  'article-create': '发布文章',
+  'article-like': '内容获赞',
+  'article-collect': '内容被收藏',
+  'comment-create': '发表评论',
+  'comment-like': '评论获赞'
+}
+
+function typeName(t) {
+  return typeMap[t] || t || '经验变动'
+}
+
+// 签到记录的奖励构成（基础值之外的连续签到加成 / 里程碑奖励）
+function logExtra(l) {
+  const j = l.json
+  if (!j || typeof j !== 'object') return ''
+  const parts = []
+  if (Number(j.bonus) > 0) parts.push(`连续签到加成 +${j.bonus}`)
+  if (Number(j.milestone) > 0) parts.push(`里程碑奖励 +${j.milestone}`)
+  if (Number(j.streak) > 0) parts.push(`已连续签到 ${j.streak} 天`)
+  return parts.join(' · ')
+}
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 
@@ -137,9 +214,51 @@ async function loadLevels() {
   }
 }
 
+async function loadLogs(more = false) {
+  const uid = Number(user.value?.id) || 0
+  if (!uid) {
+    logs.value = []
+    return
+  }
+  if (more) loadingMore.value = true
+  else loadingLogs.value = true
+  try {
+    const res = await getExpLogs({
+      page: logPage.value,
+      limit: logLimit,
+      // exp/all 是通用查询接口，用 where 限定为当前用户
+      where: JSON.stringify({ uid }),
+      field: 'id,value,type,description,json,create_time'
+    })
+    const items = res.data?.data || []
+    logs.value = more ? [...logs.value, ...items] : items
+    logCount.value = Number(res.data?.count) || logs.value.length
+  } catch {
+    if (!more) logs.value = []
+  } finally {
+    loadingLogs.value = false
+    loadingMore.value = false
+  }
+}
+
+function loadMoreLogs() {
+  if (loadingMore.value || !hasMore.value) return
+  logPage.value += 1
+  loadLogs(true)
+}
+
 onMounted(() => {
   loadRules()
   loadLevels()
+  loadLogs()
+})
+
+// 登录态就绪后再拉取明细，避免刷新时 uid 尚未加载导致空列表
+watch(() => user.value?.id, (id) => {
+  if (id && !logs.value.length) {
+    logPage.value = 1
+    loadLogs()
+  }
 })
 </script>
 
@@ -280,8 +399,26 @@ onMounted(() => {
   font-weight: 600;
   white-space: nowrap;
 }
+.data-table .td-num.minus {
+  color: var(--danger);
+}
 .data-table .td-desc {
   color: var(--text-muted);
+}
+.data-table .td-time {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.log-extra {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.load-more {
+  display: flex;
+  justify-content: center;
+  margin-top: 14px;
 }
 .data-table .row-current {
   background: rgba(184, 153, 104, 0.1);

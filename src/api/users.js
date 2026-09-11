@@ -58,6 +58,10 @@ export const expActive = (params = {}) =>
 export const getExpRules = () =>
   call('exp', 'rules', { method: 'GET' })
 
+// 经验明细（登录用户，where 传 { uid } 的 JSON 字符串）
+export const getExpLogs = (params = {}) =>
+  call('exp', 'all', { method: 'GET', params: { page: 1, limit: 20, order: 'create_time desc', ...params } })
+
 // 等级体系列表
 export const getLevels = (params = {}) =>
   call('level', 'all', { method: 'GET', params: { page: 1, limit: 100, order: 'exp asc', ...params } })
