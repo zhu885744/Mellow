@@ -40,7 +40,17 @@
       <h2 class="block-title">重置密码</h2>
       <form @submit.prevent="handleResetPasswordSubmit">
         <div class="form-item">
-          <label class="form-label">邮箱 / 手机号</label>
+          <div class="label-row">
+            <label class="form-label">邮箱 / 手机号</label>
+            <button
+              v-if="canSwitchContact"
+              type="button"
+              class="switch-link"
+              @click="switchContact"
+            >
+              切换为{{ nextContactLabel }}
+            </button>
+          </div>
           <input
             v-model="resetForm.contact"
             class="input"
@@ -48,6 +58,7 @@
             @input="validateContact"
           />
           <p v-if="errors.contact" class="form-error">{{ errors.contact }}</p>
+          <p v-else-if="contactHint" class="field-tip">{{ contactHint }}</p>
         </div>
 
         <div class="form-item">
@@ -196,7 +207,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { updateUser, destroy, destroySendCode } from '@/api/users'
@@ -272,6 +283,42 @@ let countdownTimer = null
 const resetForm = reactive({ contact: '', code: '', password: '', verifyPwd: '' })
 const errors = reactive({ contact: '', code: '', password: '', verifyPwd: '' })
 const valid = reactive({ contact: false, code: false, password: false, verifyPwd: false })
+
+// 已绑定的联系方式（邮箱优先），用于自动填充
+const contactOptions = computed(() => {
+  const u = userStore.user || {}
+  return [u.email, u.phone].filter(Boolean)
+})
+const canSwitchContact = computed(() => contactOptions.value.length > 1)
+const nextContactLabel = computed(() => (resetForm.contact.trim() === (userStore.user || {}).email ? '手机号' : '邮箱'))
+const contactHint = computed(() => {
+  const u = userStore.user || {}
+  const cur = resetForm.contact.trim()
+  // 仅在当前值与绑定值一致（即自动填充的结果）时提示，手动输入时不打扰
+  if (!cur || (cur !== u.email && cur !== u.phone)) return ''
+  return canSwitchContact.value
+    ? '已自动填入你绑定的联系方式，可切换或手动修改'
+    : '已自动填入你绑定的联系方式，可手动修改'
+})
+
+// 自动填充：优先邮箱，其次手机号（已有输入内容时不覆盖）
+function fillContact() {
+  const u = userStore.user || {}
+  const contact = u.email || u.phone || ''
+  if (contact && !resetForm.contact) {
+    resetForm.contact = contact
+    validateContact()
+  }
+}
+
+// 邮箱 / 手机号切换
+function switchContact() {
+  const list = contactOptions.value
+  if (list.length < 2) return
+  const idx = list.indexOf(resetForm.contact.trim())
+  resetForm.contact = list[(idx + 1) % list.length]
+  validateContact()
+}
 
 function validateContact() {
   const val = resetForm.contact.trim()
@@ -461,9 +508,13 @@ async function submitDestroy() {
 function fetchUserInfo() {
   const u = userStore.user
   if (u) currentAccount.value = u.account || ''
+  // 重置密码：自动填入当前绑定的邮箱或手机号
+  fillContact()
 }
 
 onMounted(fetchUserInfo)
+// 刷新页面时 user 可能晚于组件挂载，登录态就绪后补填一次
+watch(() => userStore.user?.id, () => fetchUserInfo())
 onUnmounted(() => {
   if (countdownTimer) clearInterval(countdownTimer)
   if (codeTimer) clearInterval(codeTimer)
@@ -505,6 +556,32 @@ onUnmounted(() => {
 .btn-row {
   display: flex;
   gap: 8px;
+}
+.label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.label-row .form-label {
+  margin-bottom: 0;
+}
+.switch-link {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: 12px;
+  color: var(--primary);
+  cursor: pointer;
+}
+.switch-link:hover {
+  text-decoration: underline;
+}
+.field-tip {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 .pwd-strength {
   margin-top: 4px;
