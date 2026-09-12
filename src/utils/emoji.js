@@ -1,20 +1,13 @@
 import { call } from '@/api/request'
+// 表情图片为后端静态资源，统一复用运行时地址解析（见 @/utils/runtimeConfig）
+import { getFullUrl } from '@/utils/runtimeConfig'
 
 /**
  * 表情渲染工具
  * 后端规范：[emoji:表情链接] -> <img>
  */
 
-// 表情图片 URL 前缀（后端静态资源，使用 VITE_API_URI 补全完整地址）
-const BASE_URL = import.meta.env.VITE_API_URI || ''
-
-// 获取完整 URL（相对路径补全）
-export const getFullUrl = (url) => {
-  if (!url) return ''
-  if (/^https?:\/\//.test(url)) return url
-  if (url.startsWith('//')) return url
-  return `${BASE_URL}${url.startsWith('/') ? url : '/' + url}`
-}
+export { getFullUrl }
 
 /**
  * 渲染含 [emoji:url] 的文本为 HTML

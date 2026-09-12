@@ -44,9 +44,20 @@
           </button>
         </div>
       </div>
+      <div class="pub-loc">
+        <i class="bi bi-geo-alt" />
+        <input
+          v-model="newLocation"
+          class="pub-loc-input"
+          type="text"
+          maxlength="64"
+          placeholder="所在位置（可选）"
+          @keyup.enter="publish"
+        />
+      </div>
       <div class="pub-actions">
         <button class="btn btn-primary btn-sm btn-block" :disabled="publishing || uploading" @click="publish">
-          {{ publishing ? '发布中...' : '发布' }}
+          {{ publishing ? '发布中...' : '发布「待审核」' }}
         </button>
       </div>
     </div>
@@ -102,6 +113,7 @@ const publishing = ref(false)
 const fileInput = ref(null)
 const newImages = ref([])
 const uploading = ref(false)
+const newLocation = ref('')
 
 function triggerPick() {
   fileInput.value?.click()
@@ -170,6 +182,7 @@ async function load() {
 }
 
 async function publish() {
+  if (publishing.value || uploading.value) return
   if (!newContent.value.trim()) {
     toast.warning('内容不能为空')
     return
@@ -179,11 +192,13 @@ async function publish() {
     await createMoment({
       content: newContent.value,
       images: newImages.value.join(','),
+      location: newLocation.value.trim(),
       status: 1,
       audit: 1
     })
     newContent.value = ''
     newImages.value = []
+    newLocation.value = ''
     toast.success('发布成功')
     page.value = 1
     load()
@@ -266,6 +281,34 @@ onMounted(load)
 }
 .img-remove:hover {
   background: var(--danger);
+}
+.pub-loc {
+  position: relative;
+  margin-top: 10px;
+}
+.pub-loc .bi {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 13px;
+  color: var(--text-light);
+  pointer-events: none;
+}
+.pub-loc-input {
+  width: 100%;
+  padding: 7px 12px 7px 30px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.pub-loc-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.12);
 }
 .pub-actions {
   display: flex;

@@ -5,6 +5,7 @@ import router from '@/router'
 import { cache } from '@/utils/cache'
 import { getCookie } from '@/utils/cookie'
 import { showAuthDialog, clearLocalAuthData } from '@/utils/authDialog'
+import { API_BASE_URL, API_ROOT_URL } from '@/utils/runtimeConfig'
 
 // 与 stores/user.js、Login.vue、Register.vue 保持一致的 token cookie 名
 export const TOKEN_NAME = 'INIS_LOGIN_TOKEN'
@@ -23,10 +24,9 @@ function readToken() {
   return ''
 }
 
-// baseURL 优先取 .env 的 VITE_API_URI（指向真实后端），
-// 未配置时回退到 '/api'（配合 vite dev proxy 转发）
-const API_URI = import.meta.env.VITE_API_URI || ''
-const baseURL = API_URI ? `${API_URI.replace(/\/$/, '')}/api` : '/api'
+// baseURL 由 @/utils/runtimeConfig 统一解析：
+// 运行时配置（public/runtime-config.js）> 打包时 .env 的 VITE_API_URI > 同源 '/api'
+const baseURL = API_BASE_URL
 
 const service = axios.create({
   baseURL,
@@ -39,7 +39,7 @@ const service = axios.create({
 
 // dev 类接口（如 /dev/info/time）不走 /api 前缀，单独导出实例供调用
 export const devService = axios.create({
-  baseURL: API_URI ? API_URI.replace(/\/$/, '') : '',
+  baseURL: API_ROOT_URL,
   timeout: 10000,
   withCredentials: true,
   headers: {
