@@ -76,9 +76,10 @@
               <a
                 v-if="activePlacard.url"
                 :href="activePlacard.url"
-                target="_blank"
-                rel="noopener"
+                :target="placardLinkTarget(activePlacard)"
+                :rel="placardLinkTarget(activePlacard) === '_blank' ? 'noopener' : null"
                 class="btn btn-primary btn-sm"
+                @click="onPlacardLinkClick($event, activePlacard)"
               >查看原文</a>
             </div>
           </div>
@@ -90,6 +91,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useRouter } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
 import ArticleCard from '@/components/ArticleCard.vue'
 import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
@@ -118,6 +120,23 @@ function closePlacard() {
 }
 function typeLabel(type) {
   return { notice: '公告', warning: '警告', info: '提示' }[type] || '公告'
+}
+
+const router = useRouter()
+
+// 公告原文跳转方式：仅支持 _blank（新窗口）/ _self（当前窗口），其他值回退为新窗口
+function placardLinkTarget(p) {
+  return p?.target === '_self' ? '_self' : '_blank'
+}
+
+// _self 且为站内路径时走路由跳转，避免整页刷新；外链交由浏览器默认行为处理
+function onPlacardLinkClick(e, p) {
+  if (placardLinkTarget(p) !== '_self') return
+  const url = p?.url || ''
+  // 排除协议相对地址（//example.com）与带协议的绝对地址
+  if (!url.startsWith('/') || url.startsWith('//')) return
+  e.preventDefault()
+  router.push(url)
 }
 
 function next() {

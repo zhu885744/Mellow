@@ -57,8 +57,9 @@
       </div>
       <div class="pub-actions">
         <button class="btn btn-primary btn-sm btn-block" :disabled="publishing || uploading" @click="publish">
-          {{ publishing ? '发布中...' : '发布「待审核」' }}
+          {{ publishing ? '发布中...' : '发布' }}
         </button>
+        <span class="pub-tip">「发布后请耐心等待管理员审核，待审核通过后即可显示动态内容」</span>
       </div>
     </div>
 
@@ -312,9 +313,15 @@ onMounted(load)
 }
 .pub-actions {
   display: flex;
-  justify-content: flex-end;
-  align-items: center;
+  flex-direction: column;
+  gap: 6px;
   margin-top: 8px;
+}
+.pub-tip {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+  text-align: center;
 }
 .loading {
   padding: 32px;
