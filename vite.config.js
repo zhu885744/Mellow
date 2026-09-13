@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => {
     plugins: [vue()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, './src')
+        // 使用 import.meta.dirname（Node 20.11+），替代 Vite 8 原生配置加载器不支持的 __dirname
+        '@': path.resolve(import.meta.dirname, './src')
       }
     },
     server: {

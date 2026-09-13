@@ -2,17 +2,20 @@
   <div class="security-wrap">
     <!-- 账号设置 -->
     <div class="card card-pad">
-      <h2 class="block-title">账号设置</h2>
+      <h2 class="block-title">账号设置「当前禁止修改」</h2>
       <div class="form-item">
         <label class="form-label">当前账号</label>
         <div class="input-row">
           <input class="input" :value="currentAccount" disabled />
+          <!-- 账号修改功能暂时关闭，仅保留账号显示
           <button class="btn" :disabled="accountLoading" @click="toggleAccountEdit">
             {{ showAccountEdit ? '取消' : '修改' }}
           </button>
+          -->
         </div>
       </div>
 
+      <!-- 账号修改表单暂时关闭
       <div v-if="showAccountEdit" class="edit-box">
         <p class="warn-tip"><i class="bi bi-exclamation-triangle" /> 修改账号后将影响登录，请谨慎操作</p>
         <div class="form-item">
@@ -33,6 +36,8 @@
           <button class="btn" :disabled="accountLoading" @click="cancelAccountEdit">取消</button>
         </div>
       </div>
+      -->
+      
     </div>
 
     <!-- 重置密码 -->
@@ -184,7 +189,7 @@
           v-model.trim="destroyForm.source"
           class="input"
           rows="2"
-          placeholder="可填写注销原因，默认 default"
+          placeholder="可填写注销原因"
           :disabled="destroyLoading"
         ></textarea>
       </div>
@@ -210,7 +215,8 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-import { updateUser, destroy, destroySendCode } from '@/api/users'
+// updateUser 仅供「账号修改」使用，功能暂时关闭
+import { destroy, destroySendCode } from '@/api/users'
 import { resetPasswordSendCode, resetPassword } from '@/api/comm'
 import { toast } from '@/utils/toast'
 
@@ -224,10 +230,12 @@ const CONST = {
   CODE_COOLDOWN: 60
 }
 
-// ===== 账号修改 =====
+// ===== 账号展示（账号修改功能暂时关闭） =====
+const currentAccount = ref('')
+
+/* 账号修改功能暂时关闭，恢复时取消注释即可
 const accountLoading = ref(false)
 const showAccountEdit = ref(false)
-const currentAccount = ref('')
 const accountForm = reactive({ newAccount: '' })
 const accountErrors = reactive({ newAccount: '' })
 
@@ -273,6 +281,7 @@ async function handleAccountSubmit() {
     accountLoading.value = false
   }
 }
+*/
 
 // ===== 重置密码 =====
 const resetLoading = ref(false)

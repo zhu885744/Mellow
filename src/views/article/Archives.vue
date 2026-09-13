@@ -30,7 +30,12 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listArticles } from '@/api/article'
 import { formatDate } from '@/utils/time'
+import { cache } from '@/utils/cache'
 import dayjs from 'dayjs'
+
+// 归档列表缓存键与有效期（12 小时 = 720 分钟）
+const ARCHIVE_CACHE_KEY = 'mellow_archive_articles'
+const ARCHIVE_CACHE_MINUTES = 12 * 60
 
 const loading = ref(false)
 const groups = ref([])
@@ -48,6 +53,13 @@ function groupByYear(list) {
 }
 
 async function load() {
+  // 优先读缓存：命中且未过期时直接渲染，不再发起请求
+  const cached = cache.get(ARCHIVE_CACHE_KEY)
+  if (Array.isArray(cached)) {
+    groups.value = groupByYear(cached)
+    return
+  }
+
   loading.value = true
   try {
     const res = await listArticles({
@@ -57,7 +69,10 @@ async function load() {
       order: 'publish_time desc',
       field: 'id,title,create_time,publish_time'
     })
-    groups.value = groupByYear(res.data?.data || [])
+    const list = res.data?.data || []
+    groups.value = groupByYear(list)
+    // 空结果不写缓存，避免新文章发布后被空缓存挡住
+    if (list.length) cache.set(ARCHIVE_CACHE_KEY, list, ARCHIVE_CACHE_MINUTES)
   } catch {
     groups.value = []
   } finally {

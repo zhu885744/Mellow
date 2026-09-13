@@ -16,6 +16,6 @@
  * 注意：删除字段 = 继续沿用打包时的 .env 配置；显式留空 = 强制同源。
  */
 window.__INIS_CONFIG__ = {
-  apiUri: '',
+  apiUri: 'https://cs.zhuxu.asia',
   socketUri: ''
 }

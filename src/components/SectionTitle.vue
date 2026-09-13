@@ -20,9 +20,6 @@ defineProps({ title: String })
 </script>
 
 <style scoped>
-.section-card {
-  margin-bottom: 32px;
-}
 .section-header {
   display: flex;
   justify-content: space-between;
