@@ -2,12 +2,21 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="一个简洁大方的三栏轻量博客主题" />
-    <title>朱某的生活印记</title>
+    <!-- ========== 基础 SEO ========== -->
+    <title>朱某的生活印记 - 记录生活点滴与思考</title>
+    <meta name="description" content="一个简洁大方的三栏轻量博客主题，记录我的生活点滴、技术思考与日常感悟。" />
+    <meta name="keywords" content="博客,生活记录,技术分享,个人博客,生活点滴" />
+    <meta name="author" content="生活点滴" />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://zhuxu.asia/" />
+    <!-- ========== 图标 ========== -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <!-- ========== 主题色（移动端浏览器地址栏） ========== -->
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)" />
+    <!-- ========== 防闪烁主题脚本（保持原逻辑） ========== -->
     <script>
-      // 防闪烁：渲染前根据本地设置/系统偏好预设主题
       (function () {
         try {
           var m = localStorage.getItem('mellow_theme') || 'auto'
@@ -17,11 +26,17 @@
         } catch (e) { /* ignore */ }
       })()
     </script>
-    <!-- 运行时配置：部署到后端 public 目录后，可直接改 runtime-config.js 指定后端地址，无需重新打包 -->
+    <!-- ========== 运行时配置 ========== -->
     <script src="/runtime-config.js"></script>
   </head>
   <body>
     <div id="app"></div>
+    <noscript>
+      <div style="padding:2rem;text-align:center;font-family:sans-serif;">
+        <h1>朱某的生活印记</h1>
+        <p>本站需要启用 JavaScript 才能正常浏览，请在浏览器设置中开启后刷新页面。</p>
+      </div>
+    </noscript>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
