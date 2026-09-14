@@ -498,7 +498,7 @@ onMounted(() => {
 .nav-item.active {
   color: var(--primary);
   font-weight: 600;
-  background: rgba(184, 153, 104, 0.12);
+  background: var(--accent-soft);
 }
 .nav-item.active::before {
   content: '';

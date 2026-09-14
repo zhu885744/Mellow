@@ -188,7 +188,7 @@ defineExpose({ show, hide })
   display: flex;
   flex-direction: column;
   background: var(--bg-card);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
@@ -278,7 +278,7 @@ defineExpose({ show, hide })
 }
 .ban-textarea:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.12);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .ban-count {
   margin-top: 4px;

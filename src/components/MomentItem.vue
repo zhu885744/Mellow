@@ -348,7 +348,7 @@ function previewImage(i) {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 4px;
-  background: rgba(184, 153, 104, 0.14);
+  background: var(--accent-soft);
   color: var(--primary-deep);
   flex-shrink: 0;
 }
@@ -379,7 +379,7 @@ function previewImage(i) {
   margin-left: 6px;
   font-size: 11px;
   padding: 1px 6px;
-  background: rgba(192, 57, 43, 0.1);
+  background: var(--accent-soft);
   color: var(--accent);
   border-radius: 3px;
 }

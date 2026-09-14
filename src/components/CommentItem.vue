@@ -302,15 +302,15 @@ function submitReply() {
 .c-level {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(184, 153, 104, 0.14);
+  border-radius: var(--radius-xs);
+  background: var(--accent-soft);
   color: var(--primary-deep);
   flex-shrink: 0;
 }
 .c-title {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-weight: 600;
   color: #fff;
   flex-shrink: 0;
@@ -333,27 +333,29 @@ function submitReply() {
   font-size: 10px;
   padding: 0 5px;
   border-radius: 3px;
-  background: rgba(192, 57, 43, 0.1);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 .c-time {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   flex-basis: 100%; /* 日期独占一行，显示在昵称下面 */
   margin-top: 1px;
 }
 .c-del {
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
 }
 .c-del:hover {
   color: var(--accent);
 }
 .c-content {
-  font-size: 14px;
+  font-size: 15px;
   line-height: 1.7;
   color: var(--text-soft);
-  margin: 6px 0;
+  margin: 8px 0;
   word-break: break-word;
 }
 .c-content-link {
@@ -377,9 +379,12 @@ function submitReply() {
   border: none;
   background: none;
   color: var(--text-muted);
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
   padding: 0;
+  transition: color var(--dur) var(--ease);
 }
 .c-action:hover {
   color: var(--primary);
@@ -415,14 +420,14 @@ function submitReply() {
   width: 88px;
   height: 88px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   border: 1px solid var(--border);
   cursor: zoom-in;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 .c-img:hover {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  box-shadow: var(--shadow);
 }
 
 /* ===== 回复框图片上传 ===== */
@@ -444,9 +449,9 @@ function submitReply() {
   position: relative;
   width: 56px;
   height: 56px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
-  border: 1px solid var(--border, #e8e6dd);
+  border: 1px solid var(--border);
 }
 .reply-thumb img {
   width: 100%;
@@ -465,11 +470,11 @@ function submitReply() {
   font-size: 13px;
   color: #fff;
   background: rgba(0, 0, 0, 0.55);
-  border-radius: 0 0 0 6px;
+  border-radius: 0 0 0 var(--radius-xs);
   cursor: pointer;
 }
 .img-del:hover {
-  background: var(--accent, #c0392b);
+  background: var(--accent);
 }
 .c-children {
   margin-top: 12px;
@@ -488,7 +493,7 @@ function submitReply() {
     height: 36px;
   }
   .c-time {
-    font-size: 11px;
+    font-size: 12px;
   }
   /* 子评论缩进收紧，更适配窄屏 */
   .c-children {

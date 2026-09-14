@@ -185,7 +185,7 @@ onMounted(() => {
   transition: background 0.2s;
 }
 .stat-card.is-warn {
-  background: rgba(212, 161, 72, 0.14);
+  background: var(--gold-soft);
 }
 .stat-num {
   display: block;
@@ -209,7 +209,7 @@ onMounted(() => {
   padding: 8px 12px;
   font-size: 12px;
   color: var(--warning);
-  background: rgba(212, 161, 72, 0.1);
+  background: var(--gold-wash);
   border-radius: var(--radius-sm);
 }
 
@@ -230,13 +230,13 @@ onMounted(() => {
 }
 .entry-card:hover {
   border-color: var(--primary);
-  background: rgba(184, 153, 104, 0.06);
+  background: var(--accent-wash);
   transform: translateY(-2px);
   box-shadow: var(--shadow-sm);
 }
 .entry-primary {
-  border-color: rgba(184, 153, 104, 0.45);
-  background: rgba(184, 153, 104, 0.08);
+  border-color: var(--accent-glow);
+  background: var(--accent-wash);
 }
 .entry-ico {
   width: 38px;

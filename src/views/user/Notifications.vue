@@ -317,7 +317,7 @@ onMounted(load)
   color: var(--primary);
 }
 .chip.active {
-  background: rgba(184, 153, 104, 0.14);
+  background: var(--accent-soft);
   border-color: var(--primary);
   color: var(--primary-deep);
   font-weight: 600;
@@ -349,10 +349,10 @@ onMounted(load)
   outline-offset: -2px;
 }
 .notif.unread {
-  background: rgba(184, 153, 104, 0.08);
+  background: var(--accent-wash);
 }
 .notif.unread:hover {
-  background: rgba(184, 153, 104, 0.14);
+  background: var(--accent-soft);
 }
 
 .notif-dot {
@@ -385,10 +385,10 @@ onMounted(load)
 .notif:hover .notif-icon {
   transform: scale(1.06);
 }
-.notif-icon.type-comment { background: rgba(184, 153, 104, 0.14); color: var(--primary-deep); }
+.notif-icon.type-comment { background: var(--accent-soft); color: var(--primary-deep); }
 .notif-icon.type-like { background: rgba(217, 84, 77, 0.12); color: var(--danger); }
 .notif-icon.type-follow { background: rgba(108, 154, 77, 0.12); color: var(--success); }
-.notif-icon.type-collect { background: rgba(212, 161, 72, 0.14); color: var(--warning); }
+.notif-icon.type-collect { background: var(--gold-soft); color: var(--warning); }
 .notif-icon.type-system { background: rgba(74, 144, 226, 0.12); color: #4a90e2; }
 
 .notif-body {

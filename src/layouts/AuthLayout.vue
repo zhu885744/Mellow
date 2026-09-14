@@ -43,8 +43,8 @@ onMounted(() => {
   position: absolute;
   inset: 0;
   background-image:
-    radial-gradient(at 20% 30%, rgba(184, 153, 104, 0.08) 0px, transparent 50%),
-    radial-gradient(at 80% 70%, rgba(184, 153, 104, 0.05) 0px, transparent 50%);
+    radial-gradient(at 20% 30%, var(--accent-wash) 0px, transparent 50%),
+    radial-gradient(at 80% 70%, var(--accent-wash) 0px, transparent 50%);
   pointer-events: none;
 }
 .auth-card {

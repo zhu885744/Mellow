@@ -377,7 +377,7 @@ defineExpose({ show, hide })
   max-width: 460px;
   max-height: 88vh;
   background: var(--bg-card);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   overflow-y: auto;
   overflow-x: hidden;
@@ -387,7 +387,7 @@ defineExpose({ show, hide })
   align-items: center;
   justify-content: space-between;
   padding: 18px 20px;
-  background: linear-gradient(135deg, rgba(184, 153, 104, 0.12), rgba(184, 153, 104, 0.05));
+  background: linear-gradient(135deg, var(--accent-soft), var(--accent-wash));
   border-bottom: 1px solid var(--border-soft);
 }
 .checkin-title {
@@ -438,8 +438,8 @@ defineExpose({ show, hide })
   align-items: center;
   gap: 14px;
   padding: 18px;
-  background: linear-gradient(135deg, rgba(184, 153, 104, 0.14), rgba(184, 153, 104, 0.05));
-  border: 1px solid rgba(212, 161, 72, 0.28);
+  background: linear-gradient(135deg, var(--accent-soft), var(--accent-wash));
+  border: 1px solid var(--gold-line);
   border-radius: var(--radius);
   margin-bottom: 12px;
 }
@@ -562,8 +562,8 @@ defineExpose({ show, hide })
 
 /* 连续签到奖励 */
 .reward-card {
-  background: linear-gradient(135deg, rgba(212, 161, 72, 0.12), rgba(184, 153, 104, 0.05));
-  border: 1px solid rgba(212, 161, 72, 0.3);
+  background: linear-gradient(135deg, var(--gold-wash), var(--accent-wash));
+  border: 1px solid var(--gold-line);
   border-radius: var(--radius);
   padding: 12px 14px;
   margin-bottom: 12px;
@@ -600,8 +600,8 @@ defineExpose({ show, hide })
   gap: 6px;
   padding: 10px 14px;
   margin-bottom: 12px;
-  background: linear-gradient(135deg, rgba(212, 161, 72, 0.14), rgba(184, 153, 104, 0.05));
-  border: 1px dashed rgba(212, 161, 72, 0.4);
+  background: linear-gradient(135deg, var(--gold-soft), var(--accent-wash));
+  border: 1px dashed var(--gold-line);
   border-radius: var(--radius);
   font-size: 13px;
   color: var(--text-soft);
@@ -701,8 +701,8 @@ defineExpose({ show, hide })
   border: 1px solid var(--border-soft);
 }
 .rank-item.top {
-  background: linear-gradient(135deg, rgba(212, 161, 72, 0.12), rgba(184, 153, 104, 0.06));
-  border-color: rgba(212, 161, 72, 0.3);
+  background: linear-gradient(135deg, var(--gold-wash), var(--accent-wash));
+  border-color: var(--gold-line);
 }
 .rank-num {
   width: 32px;

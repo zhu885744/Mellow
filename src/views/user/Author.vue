@@ -640,7 +640,7 @@ watch(() => route.params.id, () => {
   font-size: 12px;
   padding: 2px 8px;
   border-radius: 4px;
-  background: rgba(184, 153, 104, 0.14);
+  background: var(--accent-soft);
   color: var(--primary-deep);
 }
 .author-title {

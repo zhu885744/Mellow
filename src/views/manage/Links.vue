@@ -263,7 +263,7 @@ onMounted(load)
   color: var(--success);
 }
 .link-status.is-pending {
-  background: rgba(212, 161, 72, 0.12);
+  background: var(--gold-wash);
   color: var(--warning);
 }
 .link-status.is-reject {
@@ -337,7 +337,7 @@ onMounted(load)
 }
 .input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.12);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .dialog-actions {
   display: flex;

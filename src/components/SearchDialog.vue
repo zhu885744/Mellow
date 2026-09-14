@@ -422,7 +422,7 @@ defineExpose({ show, hide })
   flex-direction: column;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
@@ -481,7 +481,7 @@ defineExpose({ show, hide })
 }
 .search-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.15);
+  box-shadow: 0 0 0 3px var(--accent-ring);
   background: var(--bg-card);
 }
 .search-clear {
@@ -604,7 +604,7 @@ defineExpose({ show, hide })
   white-space: nowrap;
 }
 .result-title :deep(mark) {
-  background: rgba(184, 153, 104, 0.35);
+  background: var(--accent-glow);
   color: inherit;
   padding: 0 1px;
   border-radius: 2px;

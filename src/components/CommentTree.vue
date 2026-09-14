@@ -374,11 +374,11 @@ defineExpose({ load })
 }
 :deep(.comment-item.comment-flash) {
   animation: comment-flash 2s ease;
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
 }
 @keyframes comment-flash {
   0%, 100% { background: transparent; box-shadow: none; }
-  20% { background: rgba(184, 153, 104, 0.16); box-shadow: 0 0 0 2px rgba(184, 153, 104, 0.4); }
+  20% { background: var(--accent-soft); box-shadow: 0 0 0 2px var(--accent-glow); }
 }
 
 .comment-loading {
@@ -392,9 +392,9 @@ defineExpose({ load })
   display: flex;
   gap: 10px;
   padding: 12px;
-  background: var(--bg-alt, #faf9f5);
-  border: 1px solid var(--border, #e8e6dd);
-  border-radius: 12px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
   margin-bottom: 16px;
 }
 .root-avatar {
@@ -443,15 +443,15 @@ defineExpose({ load })
 .c-level {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 4px;
-  background: rgba(184, 153, 104, 0.14);
+  border-radius: var(--radius-xs);
+  background: var(--accent-soft);
   color: var(--primary-deep);
   flex-shrink: 0;
 }
 .c-title {
   font-size: 11px;
   padding: 1px 6px;
-  border-radius: 4px;
+  border-radius: var(--radius-xs);
   font-weight: 600;
   color: #fff;
   flex-shrink: 0;
@@ -472,19 +472,21 @@ defineExpose({ load })
 .title-default { background: #6c757d; }
 .root-input textarea {
   width: 100%;
-  border: 1px solid var(--border, #e8e6dd);
-  border-radius: 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   padding: 8px 10px;
-  font-size: 14px;
+  font-size: 15px;
+  line-height: 1.7;
   resize: vertical;
-  background: var(--bg, #fff);
-  color: var(--text, #2c2c2c);
+  background: var(--bg-muted);
+  color: var(--text);
   font-family: inherit;
   box-sizing: border-box;
 }
 .root-input textarea:focus {
   outline: none;
-  border-color: var(--accent, #c2a36b);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .root-actions {
   display: flex;
@@ -511,9 +513,9 @@ defineExpose({ load })
   position: relative;
   width: 64px;
   height: 64px;
-  border-radius: 6px;
+  border-radius: var(--radius-xs);
   overflow: hidden;
-  border: 1px solid var(--border, #e8e6dd);
+  border: 1px solid var(--border);
 }
 .img-thumb img {
   width: 100%;
@@ -532,10 +534,10 @@ defineExpose({ load })
   font-size: 13px;
   color: #fff;
   background: rgba(0, 0, 0, 0.55);
-  border-radius: 0 0 0 6px;
+  border-radius: 0 0 0 var(--radius-xs);
   cursor: pointer;
 }
 .img-del:hover {
-  background: var(--accent, #c0392b);
+  background: var(--accent);
 }
 </style>

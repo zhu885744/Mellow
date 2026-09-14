@@ -529,7 +529,7 @@ onMounted(() => {
 }
 .search-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.12);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 .audit-tip {
@@ -537,7 +537,7 @@ onMounted(() => {
   padding: 8px 12px;
   font-size: 12px;
   color: var(--warning);
-  background: rgba(212, 161, 72, 0.1);
+  background: var(--gold-wash);
   border-radius: var(--radius-sm);
 }
 
@@ -630,7 +630,7 @@ onMounted(() => {
   color: var(--text-muted);
 }
 .post-status.is-pending {
-  background: rgba(212, 161, 72, 0.14);
+  background: var(--gold-soft);
   color: var(--warning);
 }
 .m-actions {
@@ -666,7 +666,7 @@ onMounted(() => {
   flex-direction: column;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }

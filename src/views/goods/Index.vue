@@ -397,8 +397,8 @@ onMounted(() => {
   /* 空间不足时提示文案自动换到下一排，避免被挤压成竖排文字 */
   flex-wrap: wrap;
   gap: 12px 16px;
-  background: linear-gradient(135deg, rgba(212, 161, 72, 0.14), rgba(184, 153, 104, 0.06));
-  border: 1px solid rgba(212, 161, 72, 0.28);
+  background: linear-gradient(135deg, var(--gold-soft), var(--accent-wash));
+  border: 1px solid var(--gold-line);
 }
 .balance-left {
   display: flex;
@@ -557,7 +557,7 @@ onMounted(() => {
   color: var(--success);
 }
 .type-tag.physical {
-  background: rgba(212, 161, 72, 0.14);
+  background: var(--gold-soft);
   color: #c7902f;
 }
 
@@ -628,7 +628,7 @@ onMounted(() => {
   padding: 0 6px;
   font-size: 11px;
   border-radius: 4px;
-  background: rgba(212, 161, 72, 0.14);
+  background: var(--gold-soft);
   color: #c7902f;
   font-weight: 600;
   line-height: 18px;
@@ -691,7 +691,7 @@ onMounted(() => {
   width: 100%;
   max-width: 420px;
   background: var(--bg-card);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
@@ -834,7 +834,7 @@ onMounted(() => {
   .balance-tip {
     align-items: flex-start;
     padding-top: 11px;
-    border-top: 1px dashed rgba(212, 161, 72, 0.32);
+    border-top: 1px dashed var(--gold-line);
     line-height: 1.6;
   }
   .balance-tip .bi {

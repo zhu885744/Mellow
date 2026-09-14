@@ -232,7 +232,7 @@ const siteDateText = ref('')
 const randomArticles = ref([])
 const latestComments = ref([])
 
-const commentColors = ['#b89968', '#6c9a4d', '#d4a148', '#4a90e2', '#d9544d', '#9b59b6']
+const commentColors = ['#c7482a', '#2e7a5c', '#c08a2e', '#4a90e2', '#d9544d', '#9b59b6']
 function colorFor(str) {
   let hash = 0
   for (let i = 0; i < (str || '').length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash)
@@ -604,7 +604,7 @@ watch(
   background: var(--bg-card);
 }
 .notif-preview.unread {
-  background: rgba(184, 153, 104, 0.08);
+  background: var(--accent-wash);
 }
 .notif-preview-icon {
   width: 28px;
@@ -618,7 +618,7 @@ watch(
   background: var(--bg-muted);
 }
 .notif-preview-icon.type-comment {
-  background: rgba(184, 153, 104, 0.14);
+  background: var(--accent-soft);
   color: var(--primary-deep);
 }
 .notif-preview-icon.type-like {
@@ -630,7 +630,7 @@ watch(
   color: var(--success);
 }
 .notif-preview-icon.type-collect {
-  background: rgba(212, 161, 72, 0.12);
+  background: var(--gold-wash);
   color: #c7902f;
 }
 .notif-preview-icon.type-system {

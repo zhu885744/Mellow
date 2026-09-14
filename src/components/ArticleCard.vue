@@ -143,7 +143,7 @@ function goDetail() {
   padding: 1px 6px;
   font-size: 11px;
   border-radius: 3px;
-  background: rgba(192, 57, 43, 0.1);
+  background: var(--accent-soft);
   color: var(--accent);
   vertical-align: middle;
 }

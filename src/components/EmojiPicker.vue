@@ -174,7 +174,7 @@ onUnmounted(() => {
   max-width: calc(100vw - 24px);
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   max-height: 280px;
   overflow: hidden;
@@ -252,7 +252,7 @@ onUnmounted(() => {
   line-height: 1.2;
 }
 .emoji-item:hover {
-  background: rgba(184, 153, 104, 0.15);
+  background: var(--accent-soft);
   transform: scale(1.08);
 }
 .emoji-item:active {

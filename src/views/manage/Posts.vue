@@ -354,7 +354,7 @@ onMounted(() => {
 }
 .search-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.12);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 .audit-tip {
@@ -362,7 +362,7 @@ onMounted(() => {
   padding: 8px 12px;
   font-size: 12px;
   color: var(--warning);
-  background: rgba(212, 161, 72, 0.1);
+  background: var(--gold-wash);
   border-radius: var(--radius-sm);
 }
 

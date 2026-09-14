@@ -251,7 +251,7 @@ watch(() => route.path, () => {
   color: var(--text);
 }
 .admin-nav-item.active {
-  background: rgba(184, 153, 104, 0.12);
+  background: var(--accent-soft);
   color: var(--primary);
   font-weight: 600;
 }

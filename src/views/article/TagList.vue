@@ -84,7 +84,7 @@ onMounted(loadAllTags)
 .tag-chip:hover {
   border-color: var(--primary);
   color: var(--primary);
-  background: rgba(184, 153, 104, 0.08);
+  background: var(--accent-wash);
 }
 .tag-count {
   min-width: 18px;
@@ -98,7 +98,7 @@ onMounted(loadAllTags)
   transition: all 0.2s;
 }
 .tag-chip:hover .tag-count {
-  background: rgba(184, 153, 104, 0.18);
+  background: var(--accent-ring);
   color: var(--primary);
 }
 </style>

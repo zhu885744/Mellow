@@ -94,7 +94,7 @@ onMounted(loadAllCategories)
   font-size: 26px;
   font-family: var(--font-serif);
   color: var(--primary);
-  background: rgba(184, 153, 104, 0.12);
+  background: var(--accent-soft);
 }
 .cat-name {
   font-size: 14px;

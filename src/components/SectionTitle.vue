@@ -26,26 +26,31 @@ defineProps({ title: String })
   align-items: center;
   margin-bottom: 16px;
 }
+/* H3 规范：900 衬线 20px */
 .section-title {
   display: flex;
   align-items: center;
   font-family: var(--font-serif);
   font-size: 20px;
-  font-weight: 600;
+  font-weight: 900;
   color: var(--text);
-  letter-spacing: 2px;
+  letter-spacing: 0.02em;
 }
+/* 版块标记用竹青，与朱砂（主操作）分工 */
 .title-bar {
   display: inline-block;
   width: 4px;
-  height: 18px;
-  background: var(--primary);
+  height: 20px;
+  background: var(--bamboo);
   margin-right: 10px;
   border-radius: 2px;
 }
+/* Meta：13px / 500 */
 .section-extra {
-  font-size: 12px;
+  font-size: 13px;
+  font-weight: 500;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
 }
 .section-body {
   /* 内容区 */

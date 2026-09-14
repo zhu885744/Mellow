@@ -468,7 +468,7 @@ watch(() => userStore.user, (nu) => {
 }
 .frame-item.selected {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.25);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .hint {
   font-size: 11px;
@@ -498,7 +498,7 @@ watch(() => userStore.user, (nu) => {
 }
 .preset-title.selected {
   border-color: var(--primary-deep);
-  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.35);
+  box-shadow: 0 0 0 3px var(--accent-glow);
   transform: translateY(-1px);
   outline: 2px solid var(--primary-deep);
   font-weight: 600;

@@ -37,6 +37,6 @@
   padding: 4px 12px;
   font-size: 12px;
   color: var(--primary);
-  background: rgba(184, 153, 104, 0.1);
+  background: var(--accent-soft);
   border-radius: 999px;
 }

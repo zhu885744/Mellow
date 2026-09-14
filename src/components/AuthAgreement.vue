@@ -152,7 +152,7 @@ defineExpose({ validate })
   display: flex;
   flex-direction: column;
   background: var(--bg-card);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
@@ -161,7 +161,7 @@ defineExpose({ validate })
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: linear-gradient(135deg, rgba(184, 153, 104, 0.12), rgba(184, 153, 104, 0.05));
+  background: linear-gradient(135deg, var(--accent-soft), var(--accent-wash));
   border-bottom: 1px solid var(--border-soft);
   flex-shrink: 0;
 }

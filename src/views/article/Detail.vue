@@ -400,7 +400,7 @@ onUnmounted(() => {
   width: 100%;
   max-width: 340px;
   background: var(--bg-card);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
@@ -409,7 +409,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  background: linear-gradient(135deg, rgba(212, 161, 72, 0.12), rgba(184, 153, 104, 0.05));
+  background: linear-gradient(135deg, var(--gold-wash), var(--accent-wash));
   border-bottom: 1px solid var(--border-soft);
 }
 .reward-title {

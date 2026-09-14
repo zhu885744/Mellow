@@ -93,7 +93,7 @@ export function showAuthDialog(message, onConfirm) {
   box.style.cssText = `
     background: var(--bg-card, #fff);
     border: 1px solid var(--border, #e5e7eb);
-    border-radius: 12px;
+    border-radius: var(--radius-xl, 18px);
     box-shadow: var(--shadow, 0 8px 30px rgba(0, 0, 0, 0.15));
     width: calc(100% - 48px);
     max-width: 380px;

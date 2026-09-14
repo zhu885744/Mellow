@@ -137,7 +137,7 @@ onMounted(() => {
   transition: all 0.15s;
 }
 .filter-tag.active {
-  background: rgba(184, 153, 104, 0.12);
+  background: var(--accent-soft);
   color: var(--primary-deep);
 }
 .filter-tag:hover {

@@ -449,7 +449,7 @@ onBeforeRouteLeave(() => {
 }
 .title-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(184, 153, 104, 0.12);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .form-row {
   display: flex;

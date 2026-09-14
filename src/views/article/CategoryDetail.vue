@@ -174,7 +174,7 @@ onMounted(init)
   align-items: center;
   gap: 20px;
   margin-bottom: 24px;
-  background: linear-gradient(135deg, rgba(184, 153, 104, 0.08), var(--bg-card));
+  background: linear-gradient(135deg, var(--accent-wash), var(--bg-card));
 }
 .category-avatar {
   width: 80px;

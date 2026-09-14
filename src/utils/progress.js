@@ -28,8 +28,8 @@ function ensureBar() {
     width: 100%;
     transform-origin: 0 50%;
     transform: scaleX(0);
-    background: var(--primary, #b89968);
-    box-shadow: 0 0 6px rgba(184, 153, 104, 0.6);
+    background: var(--primary);
+    box-shadow: 0 0 6px var(--accent-glow);
     transition: transform 0.2s ease-out;
   `
   bar.appendChild(inner)

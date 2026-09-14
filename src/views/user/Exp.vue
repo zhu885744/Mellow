@@ -421,7 +421,7 @@ watch(() => user.value?.id, (id) => {
   margin-top: 14px;
 }
 .data-table .row-current {
-  background: rgba(184, 153, 104, 0.1);
+  background: var(--accent-soft);
 }
 .data-table .row-current td:first-child {
   color: var(--primary-deep);
