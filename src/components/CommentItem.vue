@@ -284,7 +284,8 @@ function submitReply() {
 .c-head {
   display: flex;
   align-items: center;
-  gap: 8px;
+  /* 横向 8px 保持昵称/等级/头衔之间呼吸感，纵向 2px 收紧昵称与日期两行间距 */
+  gap: 2px 8px;
   font-size: 13px;
   flex-wrap: wrap;
 }
@@ -340,9 +341,9 @@ function submitReply() {
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
+  line-height: 1.3;
   font-variant-numeric: tabular-nums;
   flex-basis: 100%; /* 日期独占一行，显示在昵称下面 */
-  margin-top: 1px;
 }
 .c-del {
   color: var(--text-muted);

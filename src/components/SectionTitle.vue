@@ -36,12 +36,12 @@ defineProps({ title: String })
   color: var(--text);
   letter-spacing: 0.02em;
 }
-/* 版块标记用竹青，与朱砂（主操作）分工 */
+/* 版块标记统一用朱砂（与导航选中态、站点配置面板保持一致） */
 .title-bar {
   display: inline-block;
   width: 4px;
   height: 20px;
-  background: var(--bamboo);
+  background: var(--primary);
   margin-right: 10px;
   border-radius: 2px;
 }
@@ -51,8 +51,5 @@ defineProps({ title: String })
   font-weight: 500;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
-}
-.section-body {
-  /* 内容区 */
 }
 </style>

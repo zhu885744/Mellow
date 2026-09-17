@@ -1,33 +1,31 @@
 <template>
-  <transition name="search-modal">
-    <div v-if="visible" class="search-overlay" @click.self="hide">
-      <div class="search-dialog">
-        <!-- 头部 -->
-        <div class="search-header">
-          <h3 class="search-title">搜索</h3>
-          <button class="search-close" aria-label="关闭" @click="hide">
-            <i class="bi bi-x-lg" />
-          </button>
-        </div>
-
-        <!-- 输入区 -->
-        <div class="search-input-wrap">
-          <div class="search-input-group">
-            <i class="bi bi-search search-icon" />
-            <input
-              ref="inputRef"
-              v-model="query"
-              type="text"
-              class="search-input"
-              :placeholder="placeholder"
-              @input="onInput"
-              @keydown.up.prevent="onArrow(-1)"
-              @keydown.down.prevent="onArrow(1)"
-              @keydown.enter.prevent="onEnter"
-              @keydown.esc.prevent="hide"
-            />
-            <button v-if="query" class="search-clear" aria-label="清除" @click="clearQuery">
-              <i class="bi bi-x" />
+  <Teleport to="body">
+    <transition name="search-modal">
+      <div v-if="visible" class="search-overlay" @click.self="hide">
+        <div class="search-dialog" role="dialog" aria-modal="true" aria-label="搜索">
+          <!-- 头部：标题 + 输入框 + 关闭（手机端隐藏标题，输入框撑满） -->
+          <div class="search-header">
+            <h3 class="search-title">搜索</h3>
+            <div class="search-input-group">
+              <i class="bi bi-search search-icon" />
+              <input
+                ref="inputRef"
+                v-model="query"
+                type="text"
+                class="search-input"
+                :placeholder="placeholder"
+                @input="onInput"
+                @keydown.up.prevent="onArrow(-1)"
+                @keydown.down.prevent="onArrow(1)"
+                @keydown.enter.prevent="onEnter"
+                @keydown.esc.prevent="hide"
+              />
+              <button v-if="query" class="search-clear" aria-label="清除" @click="clearQuery">
+                <i class="bi bi-x" />
+              </button>
+            </div>
+            <button class="search-close" aria-label="关闭" @click="hide">
+              <i class="bi bi-x-lg" />
             </button>
           </div>
 
@@ -41,73 +39,73 @@
               @click="changeScope(s.key)"
             >{{ s.label }}</button>
           </div>
-        </div>
 
-        <!-- 内容区 -->
-        <div class="search-body">
-          <!-- 热门搜索 -->
-          <div v-if="!loading && !query && history.length === 0" class="section">
-            <div class="section-header">热门搜索</div>
-            <div class="search-tags">
-              <button v-for="(k, i) in hotSearches" :key="i" class="search-tag" @click="useQuery(k)">{{ k }}</button>
+          <!-- 内容区 -->
+          <div class="search-body">
+            <!-- 热门搜索 -->
+            <div v-if="!loading && !query && history.length === 0" class="section">
+              <div class="section-header">热门搜索</div>
+              <div class="search-tags">
+                <button v-for="(k, i) in hotSearches" :key="i" class="search-tag" @click="useQuery(k)">{{ k }}</button>
+              </div>
             </div>
-          </div>
 
-          <!-- 搜索历史 -->
-          <div v-if="!loading && !query && history.length > 0" class="section">
-            <div class="section-header">
-              搜索历史
-              <button class="clear-history" @click="clearHistory">清除</button>
+            <!-- 搜索历史 -->
+            <div v-if="!loading && !query && history.length > 0" class="section">
+              <div class="section-header">
+                搜索历史
+                <button class="clear-history" @click="clearHistory">清除</button>
+              </div>
+              <div class="search-tags">
+                <span v-for="(k, i) in history" :key="i" class="search-tag">
+                  <a @click="useQuery(k)">{{ k }}</a>
+                  <button class="tag-remove" aria-label="删除" @click="removeHistory(i)">
+                    <i class="bi bi-x" />
+                  </button>
+                </span>
+              </div>
             </div>
-            <div class="search-tags">
-              <span v-for="(k, i) in history" :key="i" class="search-tag">
-                <a @click="useQuery(k)">{{ k }}</a>
-                <button class="tag-remove" aria-label="删除" @click="removeHistory(i)">
-                  <i class="bi bi-x" />
+
+            <!-- 搜索结果 -->
+            <div v-else-if="!loading && results.length > 0" class="section">
+              <div class="results">
+                <button
+                  v-for="(r, i) in results"
+                  :key="r.id || r.key || i"
+                  class="result-item"
+                  :class="{ selected: selected === i }"
+                  @click="goResult(r)"
+                >
+                  <span class="result-type" :class="`type-${r._type}`">{{ typeName(r._type) }}</span>
+                  <span class="result-title" v-html="title(r)"></span>
+                  <i class="bi bi-chevron-right result-arrow" />
                 </button>
-              </span>
+              </div>
+            </div>
+
+            <!-- 无结果 -->
+            <div v-else-if="!loading && query && results.length === 0" class="empty">
+              <p class="empty-title">没有找到相关结果</p>
+              <p class="empty-sub">试试其他关键词</p>
+            </div>
+
+            <!-- 加载中 -->
+            <div v-else-if="loading" class="loading">
+              <span class="spinner" />
+              <p>搜索中...</p>
             </div>
           </div>
 
-          <!-- 搜索结果 -->
-          <div v-else-if="!loading && results.length > 0" class="section">
-            <div class="results">
-              <button
-                v-for="(r, i) in results"
-                :key="r.id || r.key || i"
-                class="result-item"
-                :class="{ selected: selected === i }"
-                @click="goResult(r)"
-              >
-                <span class="result-type" :class="`type-${r._type}`">{{ typeName(r._type) }}</span>
-                <span class="result-title" v-html="title(r)"></span>
-                <i class="bi bi-chevron-right result-arrow" />
-              </button>
-            </div>
+          <!-- 底部提示（仅桌面端，手机端隐藏） -->
+          <div class="search-footer">
+            <span><kbd>Enter</kbd> 确认</span>
+            <span><kbd>↑↓</kbd> 选择</span>
+            <span><kbd>Esc</kbd> 关闭</span>
           </div>
-
-          <!-- 无结果 -->
-          <div v-else-if="!loading && query && results.length === 0" class="empty">
-            <p class="empty-title">没有找到相关结果</p>
-            <p class="empty-sub">试试其他关键词</p>
-          </div>
-
-          <!-- 加载中 -->
-          <div v-else-if="loading" class="loading">
-            <span class="spinner" />
-            <p>搜索中...</p>
-          </div>
-        </div>
-
-        <!-- 底部提示 -->
-        <div class="search-footer">
-          <span><kbd>Enter</kbd> 确认</span>
-          <span><kbd>↑↓</kbd> 选择</span>
-          <span><kbd>Esc</kbd> 关闭</span>
         </div>
       </div>
-    </div>
-  </transition>
+    </transition>
+  </Teleport>
 </template>
 
 <script setup>
@@ -413,6 +411,7 @@ defineExpose({ show, hide })
   align-items: flex-start;
   justify-content: center;
   padding: 10vh 16px 16px;
+  overscroll-behavior: contain;
 }
 .search-dialog {
   width: 100%;
@@ -427,73 +426,84 @@ defineExpose({ show, hide })
   overflow: hidden;
 }
 
+/* 头部：标题 + 输入框 + 关闭按钮同一行 */
 .search-header {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 12px;
+  flex-shrink: 0;
   padding: 14px 20px;
   border-bottom: 1px solid var(--border-soft);
   background: var(--bg-soft);
 }
 .search-title {
+  flex-shrink: 0;
   font-size: 16px;
   font-weight: 600;
   color: var(--text);
 }
 .search-close {
-  width: 30px;
-  height: 30px;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   color: var(--text-muted);
-  transition: all 0.2s;
+  transition: background-color 0.2s, color 0.2s, transform 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
 .search-close:hover {
   background: var(--border);
   color: var(--text);
   transform: rotate(90deg);
 }
-
-.search-input-wrap {
-  padding: 16px 20px 12px;
+.search-close:active {
+  background: var(--border);
 }
+
 .search-input-group {
   position: relative;
   display: flex;
   align-items: center;
+  flex: 1;
+  min-width: 0;
 }
 .search-icon {
   position: absolute;
   left: 12px;
   color: var(--text-muted);
+  pointer-events: none;
 }
 .search-input {
   width: 100%;
-  padding: 10px 36px 10px 38px;
+  padding: 10px 40px 10px 38px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  background: var(--bg-muted);
+  background: var(--bg-card);
   color: var(--text);
   font-size: 14px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
+.search-input::placeholder {
+  color: var(--text-light);
+}
 .search-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
-  background: var(--bg-card);
 }
 .search-clear {
   position: absolute;
-  right: 8px;
-  width: 26px;
-  height: 26px;
+  right: 6px;
+  width: 28px;
+  height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   color: var(--text-muted);
+  -webkit-tap-highlight-color: transparent;
 }
 .search-clear:hover {
   background: var(--border);
@@ -504,11 +514,15 @@ defineExpose({ show, hide })
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
-  margin-top: 12px;
+  flex-shrink: 0;
+  padding: 12px 20px 0;
 }
 .search-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 4px 20px 12px;
 }
 .section {
@@ -524,8 +538,11 @@ defineExpose({ show, hide })
   margin-bottom: 10px;
 }
 .clear-history {
+  padding: 2px 6px;
+  margin-right: -6px;
   font-size: 12px;
   color: var(--text-muted);
+  -webkit-tap-highlight-color: transparent;
 }
 .clear-history:hover {
   color: var(--danger);
@@ -539,6 +556,7 @@ defineExpose({ show, hide })
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  min-height: 30px;
   padding: 4px 12px;
   font-size: 13px;
   border: 1px solid var(--border);
@@ -547,18 +565,31 @@ defineExpose({ show, hide })
   background: var(--bg-soft);
   cursor: pointer;
   transition: all 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 .search-tag a {
   color: inherit;
+  cursor: pointer;
 }
 .search-tag:hover {
   color: var(--primary);
   border-color: var(--primary);
 }
+.search-tag:active {
+  background: var(--bg-muted);
+}
 .tag-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin: -2px -4px -2px 0;
+  border-radius: 50%;
   font-size: 13px;
   line-height: 1;
   color: var(--text-light);
+  -webkit-tap-highlight-color: transparent;
 }
 .tag-remove:hover {
   color: var(--danger);
@@ -572,13 +603,18 @@ defineExpose({ show, hide })
   display: flex;
   align-items: center;
   gap: 10px;
+  min-height: 44px;
   padding: 10px 8px;
   border-radius: var(--radius-sm);
   text-align: left;
   transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
 }
 .result-item:hover,
 .result-item.selected {
+  background: var(--bg-muted);
+}
+.result-item:active {
   background: var(--bg-muted);
 }
 .result-type {
@@ -668,5 +704,89 @@ kbd {
 .search-modal-leave-to .search-dialog {
   transform: translateY(-16px) scale(0.98);
   opacity: 0;
+}
+
+/* ========== 手机端：全屏搜索 ========== */
+@media (max-width: 640px) {
+  .search-overlay {
+    align-items: stretch;
+    padding: 0;
+    /* 弹窗已铺满屏幕，毛玻璃只会拖慢滚动 */
+    backdrop-filter: none;
+  }
+  .search-dialog {
+    max-width: 100%;
+    max-height: none;
+    height: 100%;
+    border: none;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top);
+  }
+  .search-header {
+    gap: 8px;
+    padding: 10px 12px;
+  }
+  /* 省下标题行，让输入框尽量宽 */
+  .search-title {
+    display: none;
+  }
+  /* 16px 可避免 iOS 聚焦输入框时页面被放大 */
+  .search-input {
+    font-size: 16px;
+    padding: 11px 40px 11px 38px;
+  }
+  .search-close {
+    width: 38px;
+    height: 38px;
+  }
+  /* 范围切换改为横向滑动，不再换行挤压内容区 */
+  .search-scopes {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding: 10px 12px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .search-scopes::-webkit-scrollbar {
+    display: none;
+  }
+  .search-scopes .btn {
+    flex: 0 0 auto;
+  }
+  .search-body {
+    padding: 2px 12px calc(12px + env(safe-area-inset-bottom));
+  }
+  .search-tag {
+    min-height: 32px;
+    padding: 6px 14px;
+  }
+  .result-item {
+    gap: 8px;
+    padding: 12px 8px;
+  }
+  .result-title {
+    font-size: 15px;
+  }
+  .result-arrow {
+    display: none;
+  }
+  .empty,
+  .loading {
+    padding: 40px 0;
+  }
+  /* 键盘快捷键提示在触屏上无意义 */
+  .search-footer {
+    display: none;
+  }
+
+  .search-modal-enter-active .search-dialog,
+  .search-modal-leave-active .search-dialog {
+    transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .search-modal-enter-from .search-dialog,
+  .search-modal-leave-to .search-dialog {
+    transform: translateY(14px);
+    opacity: 1;
+  }
 }
 </style>

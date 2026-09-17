@@ -43,14 +43,21 @@
       </button>
     </div>
 
-    <!-- 作者 -->
-    <div v-if="author" class="author-card card card-pad">
+    <!-- 作者（点击进入作者主页） -->
+    <component
+      :is="authorLink ? 'router-link' : 'div'"
+      v-if="author"
+      :to="authorLink || undefined"
+      class="author-card card card-pad"
+      :class="{ 'is-link': !!authorLink }"
+    >
       <img :src="author.avatar || defaultAvatar" class="author-avatar" />
       <div class="author-info">
         <div class="author-name">{{ author.nickname }}</div>
         <div class="author-desc">{{ author.description || '' }}</div>
       </div>
-    </div>
+      <i v-if="authorLink" class="bi bi-chevron-right author-arrow" />
+    </component>
 
     <!-- 评论 -->
     <SectionTitle title="评论">
@@ -218,6 +225,11 @@ function onContentClick(e) {
 }
 
 const author = computed(() => article.value?.result?.author || null)
+// 作者主页链接（无 id 时退化为不可点击的普通卡片）
+const authorLink = computed(() => {
+  const id = author.value?.id
+  return id ? `/author/${id}` : ''
+})
 const tagList = computed(() => {
   const t = article.value?.result?.tags
   if (Array.isArray(t)) return t
@@ -488,22 +500,59 @@ onUnmounted(() => {
 }
 .author-card {
   display: flex;
+  align-items: center;
   gap: 16px;
   margin: 24px 0;
+  color: inherit;
+  text-decoration: none;
+}
+/* 可跳转时给出可点击反馈 */
+.author-card.is-link {
+  cursor: pointer;
+  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.author-card.is-link:hover {
+  border-color: var(--primary-soft);
+  box-shadow: var(--shadow-sm);
+  /* 覆盖全局 a:hover 的链接色，避免主题色渗透到描述文字 */
+  color: var(--text);
+}
+.author-card.is-link:hover .author-name {
+  color: var(--primary);
+}
+.author-card.is-link:active {
+  transform: translateY(1px);
+}
+.author-card.is-link:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
+}
+.author-arrow {
+  flex-shrink: 0;
+  color: var(--text-light);
+  transition: transform 0.2s, color 0.2s;
+}
+.author-card.is-link:hover .author-arrow {
+  color: var(--primary);
+  transform: translateX(2px);
 }
 .author-avatar {
   width: 56px;
   height: 56px;
   border-radius: 50%;
   object-fit: cover;
+  flex-shrink: 0;
 }
 .author-info {
   flex: 1;
+  min-width: 0;
 }
 .author-name {
   font-size: 15px;
   font-weight: 500;
   margin-bottom: 4px;
+  transition: color 0.2s;
 }
 .author-desc {
   font-size: 12px;

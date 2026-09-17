@@ -2,11 +2,14 @@
   <Teleport to="body">
     <Transition name="modal-fade">
       <div v-if="state.visible" class="checkin-overlay" @click.self="hide()">
-        <div class="checkin-dialog">
+        <div class="checkin-dialog" role="dialog" aria-modal="true" aria-label="每日签到">
+          <!-- 手机端底部抽屉指示条 -->
+          <div class="sheet-handle" aria-hidden="true"></div>
+
           <!-- 头部 -->
           <div class="checkin-header">
             <span class="checkin-title"><i class="bi bi-calendar-check" /> 每日签到</span>
-            <button class="btn btn-icon btn-sm btn-round" @click="hide()"><i class="bi bi-x-lg" /></button>
+            <button class="btn btn-icon btn-sm btn-round checkin-close" aria-label="关闭" @click="hide()"><i class="bi bi-x-lg" /></button>
           </div>
 
           <!-- Tab -->
@@ -80,20 +83,23 @@
             <div class="points-tip">
               <i class="bi bi-coin" />
               <span>签到可得 <strong>+{{ state.checkInPoints }}</strong> 积分</span>
-              <router-link to="/goods" class="points-link">去兑换 <i class="bi bi-arrow-right" /></router-link>
+              <router-link to="/goods" class="points-link" @click="hide()">去兑换 <i class="bi bi-arrow-right" /></router-link>
             </div>
 
-            <button
-              class="btn btn-primary btn-lg btn-block checkin-btn"
-              :class="{ 'is-loading': state.loading }"
-              :disabled="state.loading || state.checkinStatus.checked"
-              @click="performCheckin"
-            >
-              <span v-if="state.loading" class="spinner"></span>
-              <span v-if="state.loading">签到中...</span>
-              <span v-else-if="state.checkinStatus.checked">今日已签到</span>
-              <span v-else>立即签到</span>
-            </button>
+            <!-- 签到按钮（吸底，长列表滚动时始终可见） -->
+            <div class="checkin-actions">
+              <button
+                class="btn btn-primary btn-lg btn-block checkin-btn"
+                :class="{ 'is-loading': state.loading }"
+                :disabled="state.loading || state.checkinStatus.checked"
+                @click="performCheckin"
+              >
+                <span v-if="state.loading" class="spinner"></span>
+                <span v-if="state.loading">签到中...</span>
+                <span v-else-if="state.checkinStatus.checked">今日已签到</span>
+                <span v-else>立即签到</span>
+              </button>
+            </div>
           </div>
 
           <!-- 排行榜面板 -->
@@ -371,22 +377,44 @@ defineExpose({ show, hide })
   align-items: center;
   justify-content: center;
   padding: 16px;
+  overscroll-behavior: contain;
 }
 .checkin-dialog {
+  /* 面板内边距变量：手机端会整体收窄，吸底按钮依赖它做左右出血 */
+  --pad: 20px;
   width: 100%;
   max-width: 460px;
   max-height: 88vh;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-card);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-md);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
+}
+/* 手机端拖拽指示条（桌面端隐藏） */
+.sheet-handle {
+  display: none;
+  flex-shrink: 0;
+  padding: 10px 0 4px;
+  background: linear-gradient(135deg, var(--accent-soft), var(--accent-wash));
+}
+.sheet-handle::after {
+  content: '';
+  display: block;
+  width: 40px;
+  height: 4px;
+  margin: 0 auto;
+  border-radius: 999px;
+  background: var(--border);
 }
 .checkin-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
+  gap: 12px;
+  flex-shrink: 0;
+  padding: 16px var(--pad);
   background: linear-gradient(135deg, var(--accent-soft), var(--accent-wash));
   border-bottom: 1px solid var(--border-soft);
 }
@@ -394,11 +422,20 @@ defineExpose({ show, hide })
   font-size: 16px;
   font-weight: 600;
   color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.checkin-close {
+  flex-shrink: 0;
 }
 .checkin-tabs {
   display: flex;
-  border-bottom: 2px solid var(--border-soft);
-  padding: 0 20px;
+  gap: 4px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border-soft);
+  padding: 0 var(--pad);
+  background: var(--bg-card);
 }
 .checkin-tab {
   padding: 10px 16px;
@@ -410,6 +447,7 @@ defineExpose({ show, hide })
   cursor: pointer;
   position: relative;
   transition: color 0.2s;
+  -webkit-tap-highlight-color: transparent;
 }
 .checkin-tab:hover {
   color: var(--primary);
@@ -420,7 +458,7 @@ defineExpose({ show, hide })
 .checkin-tab.active::after {
   content: '';
   position: absolute;
-  bottom: -2px;
+  bottom: -1px;
   left: 0;
   right: 0;
   height: 3px;
@@ -428,9 +466,31 @@ defineExpose({ show, hide })
   border-radius: 3px 3px 0 0;
 }
 
+/* 面板本身是滚动容器：头部/标签吸顶，内容区独立滚动 */
 .checkin-panel,
 .rank-panel {
-  padding: 20px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.checkin-panel {
+  padding: var(--pad) var(--pad) 0;
+}
+.rank-panel {
+  padding: var(--pad);
+}
+
+/* 吸底签到按钮 */
+.checkin-actions {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  margin: 0 calc(-1 * var(--pad));
+  padding: 12px var(--pad) calc(16px + env(safe-area-inset-bottom));
+  background: var(--bg-card);
 }
 
 .hero-card {
@@ -599,7 +659,7 @@ defineExpose({ show, hide })
   align-items: center;
   gap: 6px;
   padding: 10px 14px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   background: linear-gradient(135deg, var(--gold-soft), var(--accent-wash));
   border: 1px dashed var(--gold-line);
   border-radius: var(--radius);
@@ -746,6 +806,9 @@ defineExpose({ show, hide })
 .rank-stats {
   font-size: 12px;
   color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 @keyframes spin {
@@ -768,5 +831,131 @@ defineExpose({ show, hide })
 .modal-fade-leave-to .checkin-dialog {
   transform: scale(0.95) translateY(-10px);
   opacity: 0;
+}
+
+/* ========== 手机端：底部抽屉 ========== */
+@media (max-width: 640px) {
+  .checkin-overlay {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .checkin-dialog {
+    --pad: 16px;
+    max-width: 100%;
+    max-height: 92vh;
+    max-height: 92dvh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+  .sheet-handle {
+    display: block;
+  }
+  .checkin-header {
+    padding: 12px var(--pad);
+  }
+  .checkin-title {
+    font-size: 15px;
+  }
+  /* 增大关闭按钮点击区域 */
+  .checkin-close {
+    width: 34px;
+    height: 34px;
+  }
+  /* 标签平分宽度，符合拇指操作习惯 */
+  .checkin-tab {
+    flex: 1;
+    min-height: 44px;
+    padding: 12px 8px;
+  }
+
+  /* 顶部信息卡：整体收紧，避免文字换行挤压 */
+  .hero-card {
+    gap: 12px;
+    padding: 14px;
+  }
+  .hero-icon {
+    width: 42px;
+    height: 42px;
+    font-size: 19px;
+  }
+  .hero-title {
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+  .hero-desc {
+    line-height: 1.5;
+  }
+  .hero-streak {
+    padding-left: 12px;
+  }
+  .hero-streak-num {
+    font-size: 20px;
+  }
+  .hero-streak-label {
+    font-size: 10px;
+  }
+
+  /* 日历：加大格子尺寸，保证可点/可读 */
+  .calendar-card {
+    padding: 12px;
+  }
+  .calendar-grid {
+    gap: 3px;
+  }
+  .calendar-cell {
+    height: 38px;
+    font-size: 13px;
+    border-radius: 8px;
+  }
+  .calendar-count {
+    font-size: 11px;
+  }
+
+  .milestone-tip {
+    line-height: 1.5;
+  }
+
+  .points-tip {
+    flex-wrap: wrap;
+    padding: 10px 12px;
+  }
+
+  /* 排行榜 */
+  .rank-panel {
+    padding-bottom: calc(var(--pad) + env(safe-area-inset-bottom));
+  }
+  .rank-tab {
+    min-height: 36px;
+    font-size: 13px;
+  }
+  .rank-list {
+    padding-bottom: 4px;
+  }
+  .rank-item {
+    gap: 10px;
+    padding: 10px;
+  }
+  .rank-num {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+  }
+  .rank-avatar {
+    width: 36px;
+    height: 36px;
+  }
+  .rank-stats {
+    font-size: 11px;
+  }
+
+  /* 抽屉从底部滑入 */
+  .modal-fade-enter-active .checkin-dialog,
+  .modal-fade-leave-active .checkin-dialog {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .modal-fade-enter-from .checkin-dialog,
+  .modal-fade-leave-to .checkin-dialog {
+    transform: translateY(100%);
+    opacity: 1;
+  }
 }
 </style>
