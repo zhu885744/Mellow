@@ -18,7 +18,34 @@
     </div>
 
     <div v-else>
-      <div v-for="g in groups" :key="g.id" class="link-group">
+      <!-- 分组筛选：仅当存在多个分组时出现，"全部" 为默认视图 -->
+      <div v-if="groups.length > 1" class="group-filter">
+        <button
+          class="group-chip"
+          :class="{ active: activeGroupId === null }"
+          @click="activeGroupId = null"
+        >
+          全部<span class="group-chip-count">{{ totalCount }}</span>
+        </button>
+        <button
+          v-for="g in groups"
+          :key="g.id"
+          class="group-chip"
+          :class="{ active: activeGroupId === g.id }"
+          @click="activeGroupId = g.id"
+        >
+          {{ g.name }}<span class="group-chip-count">{{ g.list.length }}</span>
+        </button>
+      </div>
+
+      <div v-for="g in filteredGroups" :key="g.id" class="link-group">
+        <!-- 分组标题：单分组时省略，避免出现无意义的「默认分组」 -->
+        <div v-if="groups.length > 1" class="link-group-head">
+          <h3 class="link-group-name"><i class="bi bi-collection" />{{ g.name }}</h3>
+          <span class="link-group-count">{{ g.list.length }} 个站点</span>
+        </div>
+        <p v-if="groups.length > 1 && g.description" class="link-group-desc">{{ g.description }}</p>
+
         <div class="link-grid">
           <a
             v-for="link in (g.list || [])"
@@ -99,7 +126,7 @@
 import { ref, computed, onMounted } from 'vue'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import { listLinks, createLink } from '@/api/links'
+import { listLinks, listLinkGroups, createLink } from '@/api/links'
 import { call } from '@/api/request'
 import { cache } from '@/utils/cache'
 import { renderMarkdown } from '@/utils/markdown'
@@ -210,28 +237,71 @@ async function checkLinksStatus() {
   }
 }
 
-function toGroups(list) {
+// 当前选中的分组，null 表示展示全部分组
+const activeGroupId = ref(null)
+
+const totalCount = computed(() => groups.value.reduce((n, g) => n + (g.list?.length || 0), 0))
+
+const filteredGroups = computed(() => {
+  if (activeGroupId.value === null) return groups.value
+  return groups.value.filter((g) => g.id === activeGroupId.value)
+})
+
+// 分组排序权重：兼容 sort / order / weigh 三种常见字段，缺失时保持后端返回顺序
+function groupWeight(g) {
+  return Number(g?.sort ?? g?.order ?? g?.weigh ?? 0)
+}
+
+/**
+ * 把扁平友链列表按分组归类。
+ * 优先使用后端返回的分组表（顺序、名称最权威），再补齐分组表里没有的 id，
+ * 兼容接口未返回分组信息时退化为「按友链自带的分组信息分组」。
+ */
+function buildGroups(list, groupList = []) {
   const map = new Map()
+  // 先按后端分组表建桶（顺序最权威），保证展示顺序与后台一致
+  ;[...groupList]
+    .sort((a, b) => groupWeight(a) - groupWeight(b))
+    .forEach((g) => {
+      const id = g.id ?? 0
+      map.set(String(id), {
+        id,
+        name: g.name || '未命名分组',
+        description: g.description || '',
+        list: []
+      })
+    })
+
   list.forEach((link) => {
     const g = link.result?.group || {}
-    const gid = g.id ?? 0
-    if (!map.has(gid)) {
-      map.set(gid, { id: gid, name: g.name || '默认分组', description: g.description || '', list: [] })
+    const id = g.id ?? 0
+    const key = String(id)
+    if (!map.has(key)) {
+      map.set(key, { id, name: g.name || '默认分组', description: g.description || '', list: [] })
     }
-    map.get(gid).list.push(link)
+    map.get(key).list.push(link)
   })
+
+  // 空分组不展示；未归类的默认分组（id 为 0）统一排到最后
   return [...map.values()]
+    .filter((g) => g.list.length)
+    .sort((a, b) => (Number(a.id) === 0 ? 1 : 0) - (Number(b.id) === 0 ? 1 : 0))
 }
 
 async function load() {
   loading.value = true
   try {
-    const res = await listLinks(linkQuery)
-    const linksData = res.data?.data || []
+    // 分组接口单独容错：拿不到分组表时仍按友链自带的分组信息展示
+    const [linksRes, groupRes] = await Promise.all([
+      listLinks(linkQuery),
+      listLinkGroups().catch(() => null)
+    ])
+    const linksData = linksRes.data?.data || []
+    const groupList = Array.isArray(groupRes?.data) ? groupRes.data : (groupRes?.data?.data || [])
     const statusCache = readStatusCache()
     // 优先使用 12 小时内的缓存，避免每次进入页面都触发后端检测
     applyStatus(linksData, statusCache)
-    groups.value = toGroups(linksData)
+    groups.value = buildGroups(linksData, groupList)
     // 无缓存或缓存未覆盖全部友链时，异步检测一次（不阻塞首屏）
     if (linksData.some((link) => link.url && !statusCache?.[link.url])) {
       checkLinksStatus()
@@ -271,8 +341,98 @@ onMounted(load)
 </script>
 
 <style scoped>
+/* --- 分组筛选 --- */
+.group-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.group-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.2s, border-color 0.2s, background-color 0.2s;
+}
+
+.group-chip:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+.group-chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+}
+
+.group-chip-count {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.6;
+  font-variant-numeric: tabular-nums;
+}
+
+.group-chip.active .group-chip-count {
+  background: rgba(255, 255, 255, 0.24);
+  color: #fff;
+}
+
+/* --- 分组标题 --- */
 .link-group {
   margin-bottom: 24px;
+}
+
+.link-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.link-group-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.link-group-name i {
+  color: var(--primary);
+  font-size: 14px;
+}
+
+.link-group-count {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.link-group-desc {
+  margin: -6px 0 12px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .link-grid {
@@ -444,6 +604,24 @@ onMounted(load)
 @media (max-width: 640px) {
   .link-grid {
     grid-template-columns: 1fr;
+  }
+  /* 分组较多时横向滑动，避免 chips 折行占掉半屏 */
+  .group-filter {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .group-filter::-webkit-scrollbar {
+    display: none;
+  }
+  .group-chip {
+    flex: 0 0 auto;
+    min-height: 34px;
+  }
+  .link-group {
+    margin-bottom: 20px;
   }
 }
 </style>

@@ -1,7 +1,7 @@
 <template>
   <div class="notif-page">
     <section class="card notif-card">
-      <!-- 头部：标题 + 概览 + 全部已读 -->
+      <!-- 头部：标题 + 概览 + 全部已读 + 清空已读 -->
       <header class="notif-head">
         <div class="notif-head-main">
           <h2 class="notif-heading">
@@ -15,15 +15,26 @@
             </template>
           </p>
         </div>
-        <button
-          type="button"
-          class="btn btn-sm btn-soft"
-          :disabled="unreadCount === 0 || readAllLoading"
-          @click="readAll"
-        >
-          <i class="bi bi-check2-all" />
-          {{ readAllLoading ? '处理中...' : '全部已读' }}
-        </button>
+        <div class="notif-head-actions">
+          <button
+            type="button"
+            class="btn btn-sm btn-soft"
+            :disabled="!canReadAll || readAllLoading"
+            @click="readAll"
+          >
+            <i class="bi bi-check2-all" />
+            {{ readAllLoading ? '处理中...' : '全部已读' }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-danger"
+            :disabled="loading"
+            @click="showClearConfirm = true"
+          >
+            <i class="bi bi-trash3" />
+            {{ clearReadLoading ? '清空中...' : '清空已读' }}
+          </button>
+        </div>
       </header>
 
       <!-- 筛选 -->
@@ -108,6 +119,18 @@
         @update:current="(p) => { page = p; load() }"
       />
     </section>
+
+    <!-- 清空已读确认弹窗 -->
+    <ConfirmDialog
+      v-model:visible="showClearConfirm"
+      title="清空已读消息"
+      message="确定清空所有已读消息吗？清空后将移入回收站，可稍后恢复。"
+      confirm-text="清空"
+      loading-text="清空中..."
+      danger
+      :loading="clearReadLoading"
+      @confirm="clearRead"
+    />
   </div>
 </template>
 
@@ -115,7 +138,8 @@
 import { ref, computed, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
-import { listNotifications, readNotification } from '@/api/tags'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { listNotifications, readNotification, removeAllNotifications } from '@/api/tags'
 import { useNotificationStore } from '@/stores/notification'
 import { useRouter } from 'vue-router'
 import { fromNow } from '@/utils/time'
@@ -128,6 +152,8 @@ const items = ref([])
 const total = ref(0)
 const loading = ref(false)
 const readAllLoading = ref(false)
+const clearReadLoading = ref(false)
+const showClearConfirm = ref(false)
 const page = ref(1)
 const pageSize = 15
 
@@ -152,6 +178,12 @@ const readOptions = [
 ]
 
 const unreadCount = computed(() => Number(notif.count) || 0)
+
+// 当前列表里是否还有未读（全局未读数依赖轮询，可能滞后或接口异常）
+const unreadInView = computed(() => items.value.some((n) => !n.is_read))
+
+// 满足任一条件即可一键已读：全局有未读，或当前列表存在未读
+const canReadAll = computed(() => unreadCount.value > 0 || unreadInView.value)
 
 const typeMap = {
   comment: '评论',
@@ -206,7 +238,7 @@ function iconOf(t) {
 }
 
 async function readAll() {
-  if (readAllLoading.value || unreadCount.value === 0) return
+  if (readAllLoading.value || !canReadAll.value) return
   readAllLoading.value = true
   try {
     await notif.readAll()
@@ -216,6 +248,29 @@ async function readAll() {
     toast.error('操作失败，请重试')
   } finally {
     readAllLoading.value = false
+  }
+}
+
+// 清空已读消息：只软删除已读通知（移入回收站，可恢复），未读消息不受影响
+// 由主题内置的 <ConfirmDialog> 二次确认后触发，处理中弹窗保持打开
+async function clearRead() {
+  if (clearReadLoading.value) return
+  clearReadLoading.value = true
+  try {
+    const res = await removeAllNotifications({ is_read: 1 })
+    if (res?.code === 204) {
+      toast.info('暂无已读消息')
+    } else {
+      toast.success('已清空全部已读消息')
+    }
+    // 清空后第一页可能为空，回到首页重新加载
+    if (page.value > 1) page.value = 1
+    await load()
+  } catch {
+    toast.error('清空失败，请重试')
+  } finally {
+    clearReadLoading.value = false
+    showClearConfirm.value = false
   }
 }
 
@@ -261,6 +316,12 @@ onMounted(load)
 }
 .notif-head-main {
   min-width: 0;
+}
+.notif-head-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .notif-heading {
   display: flex;

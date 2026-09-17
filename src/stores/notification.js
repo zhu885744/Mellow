@@ -17,13 +17,20 @@ export const useNotificationStore = defineStore('notification', () => {
     return list[0] || null
   }
 
+  // unread-count 的 data 兼容：直接是数字 / { count } / { total } / 嵌套 { data: { count } }
+  const pickCount = (res) => {
+    const raw = res?.data
+    if (typeof raw === 'number') return raw
+    return Number(raw?.count ?? raw?.total ?? raw?.data?.count) || 0
+  }
+
   async function refresh() {
     try {
       const res = await unreadCount()
       // 后端返回结构: { code, data: { count } }
-      count.value = res.data?.data?.count || 0
+      count.value = pickCount(res)
       // 只拉取一条：有未读优先取未读最新，否则取全部最新（比原来两次列表请求少一次）
-      const params = { page: 1, size: 1, order: 'create_time desc' }
+      const params = { page: 1, limit: 1, order: 'create_time desc' }
       if (count.value > 0) params.is_read = 0
       const list = await listNotifications(params)
       const item = pickFirst(list)

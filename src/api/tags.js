@@ -85,5 +85,6 @@ export const readNotification = (id) =>
 export const readAllNotifications = () =>
   call('notification', 'read-all', { method: 'PUT' })
 
-export const removeAllNotifications = () =>
-  call('notification', 'remove-all', { method: 'DELETE' })
+// 清空通知：支持 { type }（按类型）、{ is_read: 1 }（仅已读），清空后进入回收站
+export const removeAllNotifications = (params = {}) =>
+  call('notification', 'remove-all', { method: 'DELETE', params })
