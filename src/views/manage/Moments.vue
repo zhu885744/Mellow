@@ -134,6 +134,15 @@
                   >
                     <i class="bi bi-image" /> {{ uploading ? '上传中...' : '图片' }}
                   </button>
+                  <button
+                    type="button"
+                    class="btn btn-secondary btn-sm"
+                    :disabled="uploading"
+                    title="从附件库选择已有图片"
+                    @click="showLibrary = true"
+                  >
+                    <i class="bi bi-folder2-open" /> 附件库
+                  </button>
                 </template>
               </EmojiEditor>
 
@@ -144,6 +153,16 @@
                 multiple
                 class="hidden-file"
                 @change="onPick"
+              />
+
+              <!-- 附件库（选择已上传图片加入动态配图） -->
+              <AttachmentLibrary
+                v-model:visible="showLibrary"
+                title="选择动态图片"
+                accept="image"
+                multiple
+                :max="9"
+                @select="onLibrarySelect"
               />
 
               <div v-if="editForm.images.length" class="edit-images">
@@ -195,6 +214,7 @@ import { useRouter } from 'vue-router'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmojiEditor from '@/components/EmojiEditor.vue'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { listMoments, updateMoment, removeMoment, uploadMomentImages } from '@/api/moments'
 import { likesCount } from '@/api/tags'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
@@ -416,6 +436,25 @@ async function onPick(e) {
 
 function removeEditImage(i) {
   editForm.images.splice(i, 1)
+}
+
+// 附件库：把选中的已上传图片加入动态配图（去重 + 数量上限）
+const showLibrary = ref(false)
+function onLibrarySelect(urls = []) {
+  const rest = 9 - editForm.images.length
+  if (rest <= 0) {
+    toast.warning('最多只能上传 9 张图片')
+    return
+  }
+  const add = urls.filter((url) => url && !editForm.images.includes(url)).slice(0, rest)
+  editForm.images.push(...add)
+  if (!add.length) {
+    toast.info('所选图片已在列表中')
+  } else if (add.length < urls.length) {
+    toast.warning('受数量限制，部分附件未添加')
+  } else {
+    toast.success(`已添加 ${add.length} 张图片`)
+  }
 }
 
 async function submitEdit() {

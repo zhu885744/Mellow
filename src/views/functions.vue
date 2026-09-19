@@ -7,6 +7,14 @@
       </template>
     </SectionTitle>
 
+    <!-- 附件库（站点 LOGO / favicon 选择已有图片） -->
+    <AttachmentLibrary
+      v-model:visible="showLibrary"
+      :title="libraryTitle"
+      accept="image"
+      @select="onLibrarySelect"
+    />
+
     <!-- 权限检查 -->
     <div v-if="!isAdmin" class="card card-pad">
       <EmptyState icon="bi bi-lock" text="您没有权限访问此页面，请联系管理员" />
@@ -50,12 +58,22 @@
             </div>
             <div class="field">
               <label class="field-label">网站 LOGO</label>
-              <input v-model="globalConfig.avatar" class="input" placeholder="输入 LOGO URL" />
+              <div class="input-group">
+                <input v-model="globalConfig.avatar" class="input" placeholder="输入 LOGO URL" />
+                <button type="button" class="btn btn-sm" title="从附件库选择" @click="openLibrary('avatar')">
+                  <i class="bi bi-folder2-open" /> 附件库
+                </button>
+              </div>
               <div class="field-hint">网站的 LOGO 图片</div>
             </div>
             <div class="field">
               <label class="field-label">网站图标</label>
-              <input v-model="globalConfig.favicon" class="input" placeholder="输入 favicon URL" />
+              <div class="input-group">
+                <input v-model="globalConfig.favicon" class="input" placeholder="输入 favicon URL" />
+                <button type="button" class="btn btn-sm" title="从附件库选择" @click="openLibrary('favicon')">
+                  <i class="bi bi-folder2-open" /> 附件库
+                </button>
+              </div>
               <div class="field-hint">浏览器标签显示的图标</div>
             </div>
             <div class="field">
@@ -332,6 +350,7 @@ import { ref, onMounted, computed } from 'vue'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { getConfig, saveConfig } from '@/api/config'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
@@ -385,6 +404,21 @@ const floatPositionOptions = [
   { value: 'center', label: '右侧居中' },
   { value: 'bottom', label: '右侧底部' }
 ]
+
+// 附件库：选择已上传图片作为站点 LOGO / favicon
+const showLibrary = ref(false)
+const libraryKey = ref('avatar')
+const libraryTitle = computed(() => (libraryKey.value === 'favicon' ? '选择网站图标' : '选择网站 LOGO'))
+function openLibrary(key) {
+  libraryKey.value = key
+  showLibrary.value = true
+}
+function onLibrarySelect(urls = []) {
+  const url = urls[0]
+  if (!url) return
+  globalConfig.value[libraryKey.value] = url
+  toast.success('图片已应用，记得点「保存设置」')
+}
 
 // 评论配置
 const commentConfig = ref({
@@ -681,6 +715,19 @@ onMounted(async () => {
   flex-direction: column;
   gap: 4px;
   margin-bottom: 14px;
+}
+/* 输入框 + 附件库按钮同行 */
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.input-group .input {
+  flex: 1;
+  min-width: 0;
+}
+.input-group .btn {
+  flex-shrink: 0;
 }
 .field:last-child {
   margin-bottom: 0;

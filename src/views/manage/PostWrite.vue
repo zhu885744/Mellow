@@ -67,9 +67,20 @@
                 <button type="button" class="btn btn-ghost btn-sm" :disabled="uploading" @click="pickCover">
                   {{ uploading ? '上传中...' : '上传' }}
                 </button>
+                <button type="button" class="btn btn-ghost btn-sm" title="从附件库选择封面" @click="showCoverLibrary = true">
+                  附件库
+                </button>
               </div>
             </div>
             <input ref="coverFileRef" type="file" accept="image/*" hidden @change="onCoverChange" />
+
+            <!-- 附件库（选择已上传图片作为封面） -->
+            <AttachmentLibrary
+              v-model:visible="showCoverLibrary"
+              title="选择封面图片"
+              accept="image"
+              @select="onCoverLibrarySelect"
+            />
           </div>
 
           <div class="form-item">
@@ -196,6 +207,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import {
   createArticle,
   updateArticle,
@@ -351,6 +363,15 @@ async function addTag() {
 
 function pickCover() {
   coverFileRef.value?.click()
+}
+
+// 附件库：选择已上传图片作为封面
+const showCoverLibrary = ref(false)
+function onCoverLibrarySelect(urls = []) {
+  const url = urls[0]
+  if (!url) return
+  form.cover = url
+  toast.success('封面已应用')
 }
 
 async function onCoverChange(e) {

@@ -22,6 +22,17 @@
         <i :class="uploading ? 'bi bi-arrow-repeat md-spin' : 'bi bi-image'" />
       </button>
 
+      <!-- 从附件库插入图片 -->
+      <button
+        type="button"
+        class="md-tool"
+        title="从附件库插入图片"
+        @mousedown.prevent
+        @click="showLibrary = true"
+      >
+        <i class="bi bi-folder2-open" />
+      </button>
+
       <span class="md-toolbar__split" />
 
       <button
@@ -105,12 +116,23 @@
     </div>
 
     <input ref="fileRef" type="file" accept="image/*" hidden @change="onFileChange" />
+
+    <!-- 附件库（选择已上传图片，按 markdown 图片语法插入光标处） -->
+    <AttachmentLibrary
+      v-model:visible="showLibrary"
+      title="选择正文图片"
+      accept="image"
+      multiple
+      :max="9"
+      @select="onLibrarySelect"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import EmojiPicker from './EmojiPicker.vue'
+import AttachmentLibrary from './AttachmentLibrary.vue'
 import { renderMarkdown } from '@/utils/markdown'
 import { getFullUrl } from '@/utils/runtimeConfig'
 import { uploadArticleImage } from '@/api/article'
@@ -460,6 +482,15 @@ function removeAdjacentImage(key) {
   const { text } = serializeEditor(root)
   applySource(text, at === null ? text.length : at)
   return true
+}
+
+// 附件库：把选中的已上传图片按 markdown 图片语法插入光标处（各自独占一行）
+const showLibrary = ref(false)
+function onLibrarySelect(urls = []) {
+  const list = urls.filter(Boolean)
+  if (!list.length) return
+  insertMarker(list.map((url) => `![](${url})`).join('\n\n'), true)
+  toast.success(`已插入 ${list.length} 张图片`)
 }
 
 /** 拖拽图片到编辑器直接上传 */

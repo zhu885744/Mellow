@@ -28,9 +28,20 @@
                 @change="onAvatarFileChange"
               />
             </label>
+            <button type="button" class="btn btn-sm" title="从附件库选择头像" @click="showLibrary = true">
+              <i class="bi bi-folder2-open" /> 从附件库选择
+            </button>
             <p class="hint">支持 JPG、PNG、GIF，建议 1:1 比例；修改后点「保存修改」生效。</p>
           </div>
         </div>
+
+        <!-- 附件库（选择已上传图片作为头像） -->
+        <AttachmentLibrary
+          v-model:visible="showLibrary"
+          title="选择头像"
+          accept="image"
+          @select="onLibrarySelect"
+        />
 
         <!-- 默认头像 -->
         <div class="preset-section">
@@ -149,6 +160,7 @@ import { useUserStore } from '@/stores/user'
 import { updateUser, uploadAvatar } from '@/api/users'
 import { toast } from '@/utils/toast'
 import AvatarFrame from '@/components/AvatarFrame.vue'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 
 const userStore = useUserStore()
 
@@ -250,6 +262,15 @@ function onAvatarFileChange(e) {
       uploading.value = false
       e.target.value = ''
     })
+}
+
+// 附件库：选择已上传图片作为头像
+const showLibrary = ref(false)
+function onLibrarySelect(urls = []) {
+  const url = urls[0]
+  if (!url) return
+  form.avatar = url
+  toast.success('头像已应用，请点击「保存修改」完成更新')
 }
 
 function applyCustomAvatar() {

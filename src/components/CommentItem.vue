@@ -57,6 +57,14 @@
               <i class="bi bi-image" />
               {{ uploading ? '上传中…' : '图片' }}
             </button>
+            <button
+              type="button"
+              class="btn btn-secondary btn-sm"
+              title="从附件库选择已有图片"
+              @click="showLibrary = true"
+            >
+              <i class="bi bi-folder2-open" /> 附件库
+            </button>
           </template>
         </EmojiEditor>
         <div v-if="replyImages.length" class="c-reply-images">
@@ -72,6 +80,16 @@
           multiple
           class="hidden-file"
           @change="onPickImages"
+        />
+
+        <!-- 附件库（选择已上传图片加入回复图片） -->
+        <AttachmentLibrary
+          v-model:visible="showLibrary"
+          title="选择回复图片"
+          accept="image"
+          multiple
+          :max="9"
+          @select="onLibrarySelect"
         />
         <div class="c-reply-actions">
           <span v-if="replyImages.length" class="img-tip">已选 {{ replyImages.length }} 张</span>
@@ -117,6 +135,7 @@ import { isAdmin, pickCommentAuthor, getTitleColorClass } from '@/utils/helper'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import EmojiEditor from './EmojiEditor.vue'
+import AttachmentLibrary from './AttachmentLibrary.vue'
 import { uploadCommentImages } from '@/api/comment'
 import { openLightbox } from '@/utils/lightbox'
 import { toast } from '@/utils/toast'
@@ -243,6 +262,25 @@ async function onPickImages(e) {
 
 function removeImage(i) {
   replyImages.value.splice(i, 1)
+}
+
+// 附件库：把选中的已上传图片加入回复图片（去重 + 数量上限）
+const showLibrary = ref(false)
+function onLibrarySelect(urls = []) {
+  const rest = 9 - replyImages.value.length
+  if (rest <= 0) {
+    toast.warning('最多只能上传 9 张图片')
+    return
+  }
+  const add = urls.filter((url) => url && !replyImages.value.includes(url)).slice(0, rest)
+  replyImages.value.push(...add)
+  if (!add.length) {
+    toast.info('所选图片已在列表中')
+  } else if (add.length < urls.length) {
+    toast.warning('受数量限制，部分附件未添加')
+  } else {
+    toast.success(`已添加 ${add.length} 张图片`)
+  }
 }
 
 function cancelReply() {

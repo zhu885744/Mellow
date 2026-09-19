@@ -73,9 +73,13 @@
       <EmptyState text="暂无商品" />
     </div>
     <div v-else class="goods-grid">
-      <div v-for="g in goodsList" :key="g.id" class="goods-card card">
+      <div v-for="g in decoratedGoods" :key="g.id" class="goods-card card">
         <div class="goods-cover-wrap">
           <img :src="g.cover || defaultCover" class="goods-cover" :alt="g.title" @error="onCoverError" />
+          <!-- 兑换时间状态角标：未开始 / 即将结束（1 小时内）/ 已结束 -->
+          <span v-if="g._state" class="goods-state" :class="g._state.type">
+            <i :class="g._state.icon" aria-hidden="true" /> {{ g._state.text }}
+          </span>
         </div>
         <div class="goods-body">
           <div class="goods-title">
@@ -91,6 +95,14 @@
             </span>
             <span v-if="Number(g.min_exp) > 0" class="goods-tag">需经验达到 {{ g.min_exp }} 可兑换</span>
             <span v-if="Number(g.sold) > 0" class="goods-tag">已兑 {{ g.sold }}</span>
+            <!-- 距结束倒计时（1 小时内转为警示色） -->
+            <span
+              v-if="g._endCountdown"
+              class="goods-tag is-deadline"
+              :class="{ 'is-urgent': g._endUrgent }"
+            >
+              <i class="bi bi-hourglass-split" aria-hidden="true" /> 距限时兑换结束 {{ g._endCountdown }}
+            </span>
           </div>
           <div class="goods-foot">
             <span class="goods-price"><i class="bi bi-coin" /> {{ g.price }}</span>
@@ -101,9 +113,13 @@
           <button
             class="btn btn-primary btn-block"
             :disabled="g.can_buy === false || buyingId === g.id"
+            :title="g._title"
             @click="buy(g)"
           >
             <span v-if="buyingId === g.id" class="spinner"></span>
+            <template v-else-if="g._startCountdown">
+              <i class="bi bi-clock" aria-hidden="true" /> 未开始 · 还剩 {{ g._startCountdown }}
+            </template>
             <span v-else>{{ g.can_buy === false ? (g.buy_reason || '不可兑换') : '兑换' }}</span>
           </button>
         </div>
@@ -275,7 +291,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import {
   getGoods,
@@ -288,6 +304,7 @@ import {
   receiveOrder
 } from '@/api/goods'
 import { toast } from '@/utils/toast'
+import { formatCountdown, remainSeconds } from '@/utils/countdown'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -341,17 +358,89 @@ function formatTime(t) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
-async function loadGoods() {
-  loading.value = true
+// ===== 兑换时间倒计时 =====
+// 「未开始」显示距开抢倒计时，「进行中」显示距结束倒计时（每秒刷新）；
+// 任一倒计时走完后静默刷新列表，拿回后端最新的 can_buy / buy_reason。
+const nowSec = ref(Math.floor(Date.now() / 1000))
+let timer = null
+// 即将结束的阈值：1 小时内高亮提醒
+const ENDING_SOON = 3600
+
+const decoratedGoods = computed(() =>
+  goodsList.value.map((g) => {
+    const nowMs = nowSec.value * 1000
+    const startLeft = remainSeconds(g.start_time, nowMs)
+    const endLeft = remainSeconds(g.end_time, nowMs)
+    const startCountdown = startLeft > 0 ? formatCountdown(startLeft) : ''
+    const endCountdown = endLeft > 0 ? formatCountdown(endLeft) : ''
+
+    const startText = Number(g.start_time) > 0 ? formatTime(g.start_time) : ''
+    const endText = Number(g.end_time) > 0 ? formatTime(g.end_time) : ''
+    const title = [startText && `开抢 ${startText}`, endText && `结束 ${endText}`].filter(Boolean).join(' · ')
+
+    let state = null
+    if (startCountdown) {
+      state = { type: 'is-soon', icon: 'bi bi-clock', text: '未开始' }
+    } else if (endCountdown && endLeft <= ENDING_SOON) {
+      state = { type: 'is-ending', icon: 'bi bi-hourglass-split', text: '限时兑换即将结束' }
+    } else if (endText && !endCountdown) {
+      state = { type: 'is-end', icon: 'bi bi-slash-circle', text: '已结束' }
+    }
+
+    return {
+      ...g,
+      _startCountdown: startCountdown,
+      _endCountdown: endCountdown,
+      _endUrgent: endCountdown !== '' && endLeft <= ENDING_SOON,
+      _title: title,
+      // 是否仍有倒计时在跑（用于驱动定时器）
+      _live: !!(startCountdown || endCountdown),
+      _state: state
+    }
+  })
+)
+
+const countingCount = computed(() => decoratedGoods.value.filter((g) => g._live).length)
+
+function startTimer() {
+  if (timer) return
+  timer = setInterval(() => {
+    const before = countingCount.value
+    nowSec.value = Math.floor(Date.now() / 1000)
+    // 有商品的倒计时刚走完（开抢 / 结束）→ 静默刷新兑换状态
+    if (countingCount.value < before) loadGoods(true)
+  }, 1000)
+}
+
+function stopTimer() {
+  if (!timer) return
+  clearInterval(timer)
+  timer = null
+}
+
+watch(
+  countingCount,
+  (count) => {
+    if (count > 0) startTimer()
+    else stopTimer()
+  },
+  { immediate: true }
+)
+
+onUnmounted(stopTimer)
+
+// silent = true 时不显示整页 loading（用于倒计时结束后的静默刷新）
+async function loadGoods(silent = false) {
+  if (!silent) loading.value = true
   try {
     const params = {}
     if (activeCategory.value) params.category = activeCategory.value
     const res = await getGoods(params)
     goodsList.value = res.data?.data || []
   } catch {
-    goodsList.value = []
+    if (!silent) goodsList.value = []
   } finally {
-    loading.value = false
+    if (!silent) loading.value = false
   }
 }
 
@@ -714,10 +803,34 @@ onMounted(() => {
   flex-direction: column;
 }
 .goods-cover-wrap {
+  position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
   overflow: hidden;
   background: var(--bg-muted);
+}
+/* 兑换时间状态角标 */
+.goods-state {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 9px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #fff;
+  border-radius: 999px;
+}
+.goods-state.is-soon {
+  background: var(--warning);
+}
+.goods-state.is-ending {
+  background: var(--danger);
+}
+.goods-state.is-end {
+  background: rgba(50, 46, 38, 0.72);
 }
 .goods-cover {
   width: 100%;
@@ -782,6 +895,18 @@ onMounted(() => {
   background: var(--bg-muted);
   color: var(--text-muted);
   white-space: nowrap;
+}
+/* 距结束倒计时标签（1 小时内转警示色） */
+.goods-tag.is-deadline {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--gold-wash);
+  color: var(--warning);
+}
+.goods-tag.is-deadline.is-urgent {
+  background: var(--accent-soft);
+  color: var(--danger);
 }
 
 .status-tag {
