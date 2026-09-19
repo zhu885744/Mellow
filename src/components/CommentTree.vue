@@ -1,7 +1,7 @@
 <template>
   <div class="comment-tree">
-    <!-- 发表评论（根评论） -->
-    <div class="root-comment-box">
+    <!-- 发表评论（根评论）；allowComment = false 时只隐藏输入发布模块，评论列表照常展示 -->
+    <div v-if="allowComment" class="root-comment-box">
       <img v-if="userStore.isLogged" class="root-avatar" :src="userStore.user?.avatar || defaultAvatar" alt="" @click="goMe" />
       <div class="root-input">
         <div v-if="userStore.isLogged" class="root-meta">
@@ -63,6 +63,12 @@
       </div>
     </div>
 
+    <!-- 评论已关闭提示（仍展示已有评论） -->
+    <div v-else class="comment-closed">
+      <i class="bi bi-chat-square" aria-hidden="true" />
+      该内容的评论功能已关闭
+    </div>
+
     <div v-if="loading" class="comment-loading">
       <span class="spinner" /> 加载中...
     </div>
@@ -74,6 +80,7 @@
         :comment="c"
         :bind-type="bindType"
         :author-id="authorId"
+        :allow-comment="allowComment"
         :reply-to="replyTo"
         :highlight-id="highlightId"
         @like="onLike"
@@ -114,7 +121,9 @@ const props = defineProps({
   bindId: { type: [String, Number], required: true },
   bindType: { type: String, default: 'article' },
   authorId: { type: [String, Number], default: null },
-  highlightId: { type: [String, Number], default: null }
+  highlightId: { type: [String, Number], default: null },
+  // 是否允许评论：false 时隐藏「发表评论 / 回复」输入模块，评论内容仍展示
+  allowComment: { type: Boolean, default: true }
 })
 
 // 通知父组件真实评论总数（发表/删除后同步）
@@ -386,6 +395,23 @@ defineExpose({ load })
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
+}
+
+/* 评论已关闭（禁止评论时替代输入模块） */
+.comment-closed {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+  background: var(--bg-alt);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+}
+.comment-closed .bi {
+  font-size: 14px;
 }
 
 .root-comment-box {

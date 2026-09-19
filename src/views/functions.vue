@@ -150,17 +150,19 @@
               </div>
               <div class="field">
                 <label class="field-label">按钮样式</label>
-                <select v-model="globalConfig.float_buttons.style" class="input">
-                  <option value="rounded">圆角按钮</option>
-                  <option value="square">方形按钮</option>
-                </select>
+                <SelectMenu
+                  v-model="globalConfig.float_buttons.style"
+                  variant="field"
+                  :options="floatStyleOptions"
+                />
               </div>
               <div class="field">
                 <label class="field-label">显示位置</label>
-                <select v-model="globalConfig.float_buttons.position" class="input">
-                  <option value="center">右侧居中</option>
-                  <option value="bottom">右侧底部</option>
-                </select>
+                <SelectMenu
+                  v-model="globalConfig.float_buttons.position"
+                  variant="field"
+                  :options="floatPositionOptions"
+                />
               </div>
 
               <!-- 按钮管理 -->
@@ -329,6 +331,7 @@
 import { ref, onMounted, computed } from 'vue'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import SelectMenu from '@/components/SelectMenu.vue'
 import { getConfig, saveConfig } from '@/api/config'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
@@ -372,6 +375,16 @@ const activeTab = ref('global')
 
 // 管理员判断
 const isAdmin = computed(() => helperIsAdmin(userStore.user))
+
+// 悬浮按钮下拉选项（主题内置 SelectMenu）
+const floatStyleOptions = [
+  { value: 'rounded', label: '圆角按钮' },
+  { value: 'square', label: '方形按钮' }
+]
+const floatPositionOptions = [
+  { value: 'center', label: '右侧居中' },
+  { value: 'bottom', label: '右侧底部' }
+]
 
 // 评论配置
 const commentConfig = ref({

@@ -16,12 +16,15 @@
       <div class="status-tabs">
         <button
           v-for="tab in tabs"
-          :key="tab.value"
+          :key="tab.key"
           type="button"
           class="status-tab"
-          :class="{ active: status === tab.value }"
-          @click="switchTab(tab.value)"
-        >{{ tab.label }}</button>
+          :class="{ active: status === tab.key }"
+          @click="switchTab(tab.key)"
+        >
+          {{ tab.label }}
+          <em v-if="tab.key === 'audit' && pendingCount > 0" class="tab-badge">{{ pendingCount }}</em>
+        </button>
       </div>
       <div class="search-box">
         <i class="bi bi-search" />
@@ -36,7 +39,7 @@
     </div>
 
     <p v-if="pendingCount > 0" class="audit-tip">
-      <i class="bi bi-info-circle" /> 有 {{ pendingCount }} 篇文章正在等待审核，审核通过后会显示在这里。
+      <i class="bi bi-info-circle" /> 有 {{ pendingCount }} 篇文章正在等待审核，审核通过后访客才能看到。
     </p>
 
     <!-- 列表 -->
@@ -61,12 +64,15 @@
         <div class="post-main">
           <h3 class="post-title">
             <a href="javascript:;" @click="viewArticle(item)">{{ item.title || '无标题' }}</a>
-            <span class="post-status" :class="item.status === 1 ? 'is-pub' : 'is-draft'">
-              {{ item.status === 1 ? '已发布' : '草稿' }}
+            <span class="post-status" :class="statusClass(item)">
+              {{ statusLabel(item) }}
             </span>
           </h3>
 
-          <p class="post-abstract">{{ item.abstract || '暂无摘要' }}</p>
+          <p class="post-abstract">
+            <EmojiText v-if="item.abstract" :text="item.abstract" :size="16" />
+            <template v-else>暂无摘要</template>
+          </p>
 
           <div class="post-meta">
             <span v-if="groupNameOf(item)" class="meta-chip">
@@ -109,6 +115,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
+import EmojiText from '@/components/EmojiText.vue'
 import { getMyArticles, countMyArticles, removeArticle, getArticleGroups } from '@/api/article'
 import { listAllTags } from '@/api/tags'
 import { useUserStore } from '@/stores/user'
@@ -130,18 +137,40 @@ const page = ref(1)
 const loading = ref(false)
 const pendingCount = ref(0)
 
-const status = ref('')
+const status = ref('all')
 const keyword = ref('')
 const searchKey = ref('')
 
 const groups = ref([])
 const tags = ref([])
 
+// 筛选标签：where 为附加查询条件（uid 由 load 统一带上）
+// 待审核 / 未通过只有作者本人能看到（后端对「查询自己」的请求不过滤 audit）
 const tabs = [
-  { label: '全部', value: '' },
-  { label: '已发布', value: 1 },
-  { label: '草稿', value: 0 }
+  { key: 'all', label: '全部', where: {} },
+  { key: 'pub', label: '已发布', where: { status: 1, audit: 1 } },
+  { key: 'audit', label: '待审核', where: { status: 1, audit: 0 } },
+  { key: 'draft', label: '草稿', where: { status: 0 } }
 ]
+
+const currentTab = computed(() => tabs.find((tab) => tab.key === status.value) || tabs[0])
+
+// 状态文案 / 配色：草稿、待审核、未通过、已发布
+function statusLabel(item) {
+  if (Number(item.status) === 0) return '草稿'
+  const audit = Number(item.audit)
+  if (audit === 0) return '待审核'
+  if (audit === 2) return '未通过'
+  return '已发布'
+}
+
+function statusClass(item) {
+  if (Number(item.status) === 0) return 'is-draft'
+  const audit = Number(item.audit)
+  if (audit === 0) return 'is-audit'
+  if (audit === 2) return 'is-reject'
+  return 'is-pub'
+}
 
 const groupMap = computed(() => {
   const map = {}
@@ -178,8 +207,7 @@ async function load() {
   if (!uid.value) return
   loading.value = true
   try {
-    const where = { uid: uid.value }
-    if (status.value !== '') where.status = status.value
+    const where = { uid: uid.value, ...currentTab.value.where }
     const params = {
       page: page.value,
       limit: pageSize,
@@ -245,11 +273,9 @@ function changePage(p) {
 }
 
 function viewArticle(item) {
-  if (item.status === 1) {
-    router.push(`/archives/${item.id}`)
-  } else {
-    router.push(`/manage/posts/edit/${item.id}`)
-  }
+  // 草稿没有前台页面，直接进编辑器；
+  // 其余状态（含待审核 / 未通过）后端允许作者本人查看，可以正常打开详情页预览
+  router.push(Number(item.status) === 0 ? `/manage/posts/edit/${item.id}` : `/archives/${item.id}`)
 }
 
 function confirmRemove(item) {
@@ -326,6 +352,22 @@ onMounted(() => {
 }
 .status-tab.active {
   background: var(--primary);
+  color: #fff;
+}
+/* 待审核数量角标 */
+.tab-badge {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-style: normal;
+  line-height: 16px;
+  border-radius: 8px;
+  background: var(--gold-wash);
+  color: var(--warning);
+}
+.status-tab.active .tab-badge {
+  background: rgba(255, 255, 255, 0.24);
   color: #fff;
 }
 .search-box {
@@ -449,6 +491,14 @@ onMounted(() => {
 .post-status.is-draft {
   background: var(--bg-muted);
   color: var(--text-muted);
+}
+.post-status.is-audit {
+  background: var(--gold-wash);
+  color: var(--warning);
+}
+.post-status.is-reject {
+  background: var(--accent-soft);
+  color: var(--danger);
 }
 .post-abstract {
   margin: 0 0 8px;

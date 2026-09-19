@@ -24,13 +24,15 @@
             <router-link :to="`/tag/${t.id}`">#{{ t.name }}</router-link>
           </span>
         </div>
-        <p class="article-abstract">{{ truncate(article.abstract || article.text || article.content, abstractLimit) }}</p>
+        <p class="article-abstract">
+          <EmojiText :text="truncate(article.abstract || article.text || article.content, abstractLimit)" :size="16" />
+        </p>
         <div class="article-foot">
           <span v-if="author" class="meta-stat">
             <router-link :to="`/author/${author.id}`">{{ author.nickname }}</router-link>
           </span>
           <span class="meta-stat">{{ article.views || 0 }} 次阅读</span>
-          <span class="meta-stat">{{ commentCount }} 评论</span>
+          <span v-if="showComment" class="meta-stat">{{ commentCount }} 评论</span>
         </div>
       </div>
     </div>
@@ -42,6 +44,7 @@ import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/time'
 import { truncate } from '@/utils/helper'
+import EmojiText from '@/components/EmojiText.vue'
 
 const props = defineProps({
   article: { type: Object, required: true },
@@ -80,6 +83,9 @@ const author = computed(() => {
 // 评论数直接取文章返回里的 result.comment.count
 // （comment/count 不支持 bind_id/bind_type 过滤，会返回全站评论总数）
 const commentCount = computed(() => props.article.result?.comment?.count || 0)
+
+// 文章 json.comment.show 为 2（不显示评论）时，列表里也不展示评论数
+const showComment = computed(() => Number(props.article.result?.comment?.show ?? 1) !== 2)
 
 function goDetail() {
   router.push(`/archives/${props.article.id}`)

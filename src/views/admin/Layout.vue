@@ -5,7 +5,7 @@
     <aside class="admin-sidebar">
       <div class="admin-brand">
         <i class="bi bi-shield-lock" />
-        <span class="admin-brand-text">Mellow 后台</span>
+        <span class="admin-brand-text">Mellow 管理后台</span>
       </div>
 
       <nav class="admin-nav" v-if="menus.length">

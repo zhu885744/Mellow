@@ -1,5 +1,16 @@
 <template>
   <div class="admin-dashboard">
+    <div class="panel">
+      <div class="panel-title">欢迎使用 Mellow 管理后台</div>
+      <p class="panel-text">
+        这里是站点管理的专属后台。左侧菜单包含文章、评论、动态、用户、友链与站点设置等模块，
+        上方统计卡片实时读取各控制器的 <code>/count</code> 接口。当前为基础界面搭建阶段，模块页面已就绪，后续将逐步接入数据表格。
+      </p>
+      <ul class="panel-tips">
+        <li><i class="bi bi-check-circle" /> 侧边栏支持移动端折叠 / 桌面端收起</li>
+        <li><i class="bi bi-check-circle" /> 统计卡片并行请求各模块数量统计接口</li>
+      </ul>
+    </div>
     <div class="stat-grid">
       <div v-for="s in stats" :key="s.key" class="stat-card">
         <div class="stat-icon" :style="{ color: s.color }">
@@ -14,19 +25,6 @@
           <div class="stat-label">{{ s.label }}</div>
         </div>
       </div>
-    </div>
-
-    <div class="panel">
-      <div class="panel-title">欢迎使用 Mellow 管理后台</div>
-      <p class="panel-text">
-        这里是站点管理的专属后台。左侧菜单包含文章、评论、动态、用户、友链与站点设置等模块，
-        上方统计卡片实时读取各控制器的 <code>/count</code> 接口。当前为基础界面搭建阶段，模块页面已就绪，后续将逐步接入数据表格。
-      </p>
-      <ul class="panel-tips">
-        <li><i class="bi bi-check-circle" /> 仅管理员可访问（基于 <code>isAdmin</code> 校验）</li>
-        <li><i class="bi bi-check-circle" /> 侧边栏支持移动端折叠 / 桌面端收起</li>
-        <li><i class="bi bi-check-circle" /> 统计卡片并行请求各模块数量接口</li>
-      </ul>
     </div>
   </div>
 </template>

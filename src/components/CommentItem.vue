@@ -34,14 +34,14 @@
           <span class="c-icon"><i ref="likeIcon" class="bi" :class="comment.liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
           <span>{{ comment.likeCount || 0 }}</span>
         </button>
-        <button class="c-action" @click="$emit('reply', comment)">
+        <button v-if="allowComment" class="c-action" @click="$emit('reply', comment)">
           <span class="c-icon"><i class="bi bi-chat-dots" /></span> 回复
         </button>
         <button v-if="canDelete" class="c-action c-del" @click="$emit('remove', comment)">删除</button>
       </div>
 
-      <!-- 回复框 -->
-      <div v-if="replyTo && replyTo.id === comment.id" class="c-reply-box">
+      <!-- 回复框（禁止评论时不展示） -->
+      <div v-if="allowComment && replyTo && replyTo.id === comment.id" class="c-reply-box">
         <EmojiEditor
           v-model="replyText"
           :placeholder="`回复 @${replyTo.name}：`"
@@ -95,6 +95,7 @@
           :bind-type="bindType"
           :is-child="true"
           :author-id="authorId"
+          :allow-comment="allowComment"
           :reply-to="replyTo"
           :highlight-id="highlightId"
           @like="$emit('like', $event)"
@@ -126,7 +127,9 @@ const props = defineProps({
   isChild: { type: Boolean, default: false },
   authorId: { type: [String, Number], default: null },
   replyTo: { type: Object, default: null },
-  highlightId: { type: [String, Number], default: null }
+  highlightId: { type: [String, Number], default: null },
+  // 是否允许评论：false 时隐藏「回复」按钮与回复框
+  allowComment: { type: Boolean, default: true }
 })
 
 const emit = defineEmits(['like', 'reply', 'submit', 'remove'])

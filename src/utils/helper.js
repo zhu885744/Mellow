@@ -76,11 +76,28 @@ export const toIdField = (ids) => {
 
 /**
  * 字符串截断
+ *
+ * 以 [emoji:url] 表情标记为整体单位截断，避免把标记切成半截导致
+ * 列表/摘要里显示 [emoji:https://cs... 这样的残缺文本
  */
 export const truncate = (str, len = 80) => {
   if (!str) return ''
-  str = String(str).replace(/<[^>]+>/g, '')
-  return str.length > len ? str.slice(0, len) + '...' : str
+  const text = String(str).replace(/<[^>]+>/g, '')
+  if (text.length <= len) return text
+
+  const parts = text.split(/(\[emoji:[^\]]+\])/g)
+  let out = ''
+  for (const part of parts) {
+    if (!part) continue
+    if (out.length + part.length > len) {
+      // 表情标记整体放不下时直接丢弃，不显示半截图片/标记
+      if (part.startsWith('[emoji:')) break
+      out += part.slice(0, Math.max(0, len - out.length))
+      break
+    }
+    out += part
+  }
+  return out + '...'
 }
 
 /**

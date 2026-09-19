@@ -1,15 +1,27 @@
 <template>
   <div v-if="article" class="article-detail">
-    <h1 class="title">{{ article.title }}</h1>
+    <h1 class="title">
+      <EmojiText :text="article.title" :size="24" />
+    </h1>
     <div class="meta">
       <span>{{ formatDate(article.create_time) }}</span>
       <span class="dot">·</span>
       <span>{{ article.views || 0 }} 次阅读</span>
-      <span class="dot">·</span>
-      <span>{{ commentsCount }} 评论</span>
+      <template v-if="commentShow">
+        <span class="dot">·</span>
+        <span>{{ commentsCount }} 评论</span>
+      </template>
     </div>
 
-    <div v-if="article.abstract" class="abstract">{{ article.abstract }}</div>
+    <!-- 审核状态提示：只有作者本人 / 管理员能看到未审核文章，这里说明可见范围 -->
+    <div v-if="auditTip" class="audit-banner" :class="auditTip.type">
+      <i :class="auditTip.icon" aria-hidden="true" />
+      <span>{{ auditTip.text }}</span>
+    </div>
+
+    <div v-if="article.abstract" class="abstract">
+      <EmojiText :text="article.abstract" :size="18" />
+    </div>
 
     <article
       ref="contentRef"
@@ -59,19 +71,23 @@
       <i v-if="authorLink" class="bi bi-chevron-right author-arrow" />
     </component>
 
-    <!-- 评论 -->
-    <SectionTitle title="评论">
-      <template #extra>
-        <span class="text-muted">{{ commentsCount }} 条评论</span>
-      </template>
-    </SectionTitle>
-    <CommentTree
-      :bind-id="article.id"
-      bind-type="article"
-      :author-id="article.result?.author?.id"
-      :highlight-id="route.query.comment"
-      @loaded="(n) => commentsCount = n"
-    />
+    <!-- 评论（json.comment.show：1 显示 / 2 不显示；allow：1 允许 / 2 禁止，禁止时仅隐藏输入框） -->
+    <template v-if="commentShow">
+      <SectionTitle title="评论">
+        <template #extra>
+          <span v-if="commentAllow" class="text-muted">{{ commentsCount }} 条评论</span>
+          <span v-else class="text-muted">评论已关闭</span>
+        </template>
+      </SectionTitle>
+      <CommentTree
+        :bind-id="article.id"
+        bind-type="article"
+        :author-id="article.result?.author?.id"
+        :allow-comment="commentAllow"
+        :highlight-id="route.query.comment"
+        @loaded="(n) => commentsCount = n"
+      />
+    </template>
   </div>
 
   <EmptyState v-else-if="!loading" text="文章不存在或已被删除" />
@@ -126,6 +142,7 @@ import { useRoute } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
 import CommentTree from '@/components/CommentTree.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import EmojiText from '@/components/EmojiText.vue'
 import { getArticle } from '@/api/article'
 import { getUser } from '@/api/users'
 import {
@@ -155,6 +172,28 @@ const collected = ref(false)
 const likeCount = ref(0)
 const collectCount = ref(0)
 const commentsCount = ref(0)
+
+// 评论开关：取自文章 json.comment（后端已按全局 ARTICLE 配置做继承）
+// show: 1 显示 / 2 不显示（整块隐藏）    allow: 1 允许 / 2 禁止（仅隐藏输入发布模块，列表照常展示）
+const commentAllow = computed(() => Number(article.value?.result?.comment?.allow ?? 1) !== 2)
+const commentShow = computed(() => Number(article.value?.result?.comment?.show ?? 1) !== 2)
+
+// 审核状态提示（草稿 / 待审核 / 未通过；普通访客拿不到这类文章，只有作者与管理员可见）
+const auditTip = computed(() => {
+  const item = article.value
+  if (!item) return null
+  if (Number(item.status) === 0) {
+    return { type: 'is-draft', icon: 'bi bi-pencil-square', text: '草稿，仅自己可见' }
+  }
+  const audit = Number(item.audit)
+  if (audit === 0) {
+    return { type: 'is-audit', icon: 'bi bi-clock-history', text: '待审核，通过后其他访客才能看到' }
+  }
+  if (audit === 2) {
+    return { type: 'is-reject', icon: 'bi bi-exclamation-triangle', text: '未通过审核，仅自己（与管理员）可见' }
+  }
+  return null
+})
 
 // 打赏配置：读取文章作者的收款码（作者在 /user/reward 中设置，存于 user.json.reward）
 // 优先用文章详情返回的 author.json；若作者对象未带 json，回退用 users/one 单独拉取
@@ -377,6 +416,31 @@ onUnmounted(() => {
   color: var(--text-soft);
   border-radius: 0 var(--radius) var(--radius) 0;
   margin-bottom: 24px;
+}
+/* 审核状态提示条（草稿 / 待审核 / 未通过） */
+.audit-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 16px;
+  padding: 10px 14px;
+  font-size: 13px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.audit-banner.is-draft {
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+.audit-banner.is-audit {
+  background: var(--gold-wash);
+  border-color: var(--gold-line);
+  color: var(--warning);
+}
+.audit-banner.is-reject {
+  background: var(--accent-soft);
+  border-color: var(--primary-soft);
+  color: var(--danger);
 }
 /* .content 基础排版由全局 .markdown-body 提供 */
 
