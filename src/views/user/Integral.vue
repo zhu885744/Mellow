@@ -31,6 +31,36 @@
       </div>
     </div>
 
+    <!-- 卡密兑换 -->
+    <div v-if="isLogged" class="card card-pad">
+      <div class="block-head">
+        <h3 class="block-title">卡密兑换</h3>
+        <span class="block-extra">输入卡密即可兑换积分，兑换后立即到账</span>
+      </div>
+      <div class="redeem-row">
+        <input
+          v-model="cardCode"
+          class="redeem-input"
+          type="text"
+          maxlength="64"
+          autocomplete="off"
+          spellcheck="false"
+          placeholder="请输入卡密"
+          :disabled="redeeming"
+          @keyup.enter="redeem"
+        />
+        <button
+          type="button"
+          class="btn btn-primary redeem-btn"
+          :disabled="redeeming || !cardCode.trim()"
+          @click="redeem"
+        >{{ redeeming ? '兑换中...' : '立即兑换' }}</button>
+      </div>
+      <p class="redeem-tip">
+        <i class="bi bi-shield-check" /> 卡密不区分大小写，空格与连字符会被自动忽略；请勿向他人泄露你的卡密。
+      </p>
+    </div>
+
     <!-- 今日任务进度 -->
     <div v-if="isLogged" class="card card-pad">
       <div class="block-head">
@@ -152,8 +182,9 @@
           <option value="">全部类型</option>
           <option v-for="r in rules" :key="r.type" :value="r.type">{{ r.name }}</option>
           <option value="buy">积分兑换</option>
+          <option value="card">卡密兑换</option>
           <option value="refund">退款返还</option>
-          <option value="give">积分调整</option>
+          <option value="give">管理员积分调整</option>
         </select>
       </div>
 
@@ -183,8 +214,9 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { getIntegral, getIntegralLogs, getIntegralRules, getIntegralTasks, getIntegralRank } from '@/api/goods'
+import { getIntegral, getIntegralLogs, getIntegralRules, getIntegralTasks, getIntegralRank, redeemIntegralCard } from '@/api/goods'
 import { useUserStore } from '@/stores/user'
+import { toast } from '@/utils/toast'
 
 const userStore = useUserStore()
 const isLogged = computed(() => userStore.isLogged)
@@ -201,6 +233,10 @@ const loadingRules = ref(false)
 const loadingLogs = ref(false)
 const loadingTasks = ref(false)
 const loadingRank = ref(false)
+
+// 卡密兑换
+const cardCode = ref('')
+const redeeming = ref(false)
 
 // 明细筛选
 const direction = ref('')
@@ -231,7 +267,8 @@ const typeMap = {
   'share': '分享内容',
   'buy': '积分兑换',
   'refund': '订单退款',
-  'give': '积分调整'
+  'give': '管理员积分调整',
+  'card': '卡密兑换'
 }
 
 function typeName(t) {
@@ -337,6 +374,27 @@ function switchRank(v) {
   if (rankBy.value === v) return
   rankBy.value = v
   loadRank()
+}
+
+// 卡密兑换：成功后刷新积分概览 / 明细 / 排行榜
+async function redeem() {
+  const code = cardCode.value.trim()
+  if (!code) {
+    toast.warning('请输入卡密')
+    return
+  }
+  redeeming.value = true
+  try {
+    const res = await redeemIntegralCard(code)
+    const value = Number(res?.data?.value) || 0
+    toast.success(value > 0 ? `兑换成功，获得 ${value} 积分` : '兑换成功')
+    cardCode.value = ''
+    await Promise.all([loadSummary(), loadLogs(), loadRank()])
+  } catch {
+    // 失败原因（卡密不存在/已使用/已过期/尝试过于频繁等）已由请求拦截器统一提示
+  } finally {
+    redeeming.value = false
+  }
 }
 
 onMounted(() => {
@@ -463,6 +521,55 @@ onMounted(() => {
   font-weight: 600;
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 卡密兑换 ---------- */
+.redeem-row {
+  display: flex;
+  gap: 10px;
+}
+.redeem-input {
+  flex: 1;
+  min-width: 0;
+  padding: 9px 14px;
+  font-size: 14px;
+  font-family: inherit;
+  letter-spacing: 1px;
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.redeem-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.redeem-input::placeholder {
+  letter-spacing: normal;
+  color: var(--text-light);
+}
+.redeem-input:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.redeem-btn {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.redeem-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.redeem-tip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
 }
 
 /* ---------- 今日任务 ---------- */

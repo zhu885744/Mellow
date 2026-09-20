@@ -65,3 +65,7 @@ export const getIntegralTasks = () =>
 // 积分排行榜（公开）：by = earned（累计获得，默认）/ balance（当前余额）
 export const getIntegralRank = (params = {}) =>
   call('integral', 'rank', { method: 'GET', params: { by: 'earned', limit: 20, ...params } })
+
+// 卡密兑换积分（登录）：输入卡密即可兑换，成功后积分立即到账
+export const redeemIntegralCard = (card) =>
+  call('integral', 'card-redeem', { method: 'POST', data: { card } })
