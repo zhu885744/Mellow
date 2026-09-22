@@ -444,8 +444,9 @@ defineExpose({ show, hide })
 }
 .search-close {
   flex-shrink: 0;
-  width: 32px;
-  height: 32px;
+  /* 与同排的搜索框等高 */
+  width: var(--control-h);
+  height: var(--control-h);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -478,7 +479,8 @@ defineExpose({ show, hide })
 }
 .search-input {
   width: 100%;
-  padding: 10px 40px 10px 38px;
+  height: var(--control-h);
+  padding: 0 40px 0 38px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-card);
@@ -730,14 +732,9 @@ kbd {
   .search-title {
     display: none;
   }
-  /* 16px 可避免 iOS 聚焦输入框时页面被放大 */
+  /* 16px 可避免 iOS 聚焦输入框时页面被放大（高度仍走全局令牌，保证与关闭按钮等高） */
   .search-input {
     font-size: 16px;
-    padding: 11px 40px 11px 38px;
-  }
-  .search-close {
-    width: 38px;
-    height: 38px;
   }
   /* 范围切换改为横向滑动，不再换行挤压内容区 */
   .search-scopes {

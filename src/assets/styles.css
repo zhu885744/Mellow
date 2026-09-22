@@ -75,6 +75,15 @@
   --radius-lg: 14px;
   --radius-xl: 18px;
 
+  /* ---------- 控件高度：输入框 / 下拉 / 按钮统一取用 ----------
+   * 同一行内的控件必须等高，否则会出现“高低不齐”的观感问题。
+   * 用法：表单控件与默认按钮 = --control-h；筛选栏 / 列表行内 = --control-h-sm。
+   */
+  --control-h-xs: 26px;   /* 迷你：标签内小按钮 */
+  --control-h-sm: 32px;   /* 紧凑：筛选栏、列表行内操作 */
+  --control-h: 40px;      /* 标准：表单、弹窗 */
+  --control-h-lg: 46px;   /* 大号：空态 / 营销操作 */
+
   /* ---------- 间距：4px 栅格 ---------- */
   --space-1: 8px;
   --space-2: 12px;
@@ -291,7 +300,8 @@ h1, h2, h3 {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 8px 16px;
+  height: var(--control-h);
+  padding: 0 16px;
   border-radius: var(--radius);
   font-size: 14px;
   font-family: inherit;
@@ -321,21 +331,25 @@ h1, h2, h3 {
 
 /* ---------- 尺寸 ---------- */
 .btn-xs {
-  padding: 2px 8px;
+  height: var(--control-h-xs);
+  padding: 0 8px;
   font-size: 11px;
   gap: 4px;
   border-radius: var(--radius-sm);
 }
 .btn-sm {
-  padding: 4px 10px;
+  height: var(--control-h-sm);
+  padding: 0 10px;
   font-size: 12px;
 }
 .btn-lg {
-  padding: 12px 24px;
+  height: var(--control-h-lg);
+  padding: 0 24px;
   font-size: 16px;
 }
 .btn-xl {
-  padding: 14px 32px;
+  height: 54px;
+  padding: 0 32px;
   font-size: 17px;
   border-radius: var(--radius-lg);
 }
@@ -508,24 +522,24 @@ h1, h2, h3 {
 }
 /* 图标按钮：正方形，padding 与宽高随尺寸类变化 */
 .btn-icon {
-  padding: 8px;
-  width: 36px;
-  height: 36px;
+  padding: 0;
+  width: var(--control-h);
+  height: var(--control-h);
 }
 .btn-icon.btn-xs {
-  padding: 2px;
-  width: 22px;
-  height: 22px;
+  padding: 0;
+  width: var(--control-h-xs);
+  height: var(--control-h-xs);
 }
 .btn-icon.btn-sm {
-  padding: 4px;
-  width: 28px;
-  height: 28px;
+  padding: 0;
+  width: var(--control-h-sm);
+  height: var(--control-h-sm);
 }
 .btn-icon.btn-lg {
-  padding: 12px;
-  width: 46px;
-  height: 46px;
+  padding: 0;
+  width: var(--control-h-lg);
+  height: var(--control-h-lg);
 }
 .btn-round {
   border-radius: 50%;
@@ -584,9 +598,9 @@ h1, h2, h3 {
 }
 
 /* ========== 表单 ========== */
-.input, .textarea {
+.input,
+.textarea {
   width: 100%;
-  padding: 10px 12px;
   background: var(--bg-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -594,14 +608,22 @@ h1, h2, h3 {
   font-size: 14px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-.input:focus, .textarea:focus {
+/* 单行输入与 .btn、下拉触发器（SelectMenu field）保持同一高度 */
+.input {
+  height: var(--control-h);
+  padding: 0 12px;
+  line-height: 1.5;
+}
+.input:focus,
+.textarea:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .textarea {
-  resize: vertical;
-  min-height: 100px;
+  padding: 10px 12px;
   line-height: 1.6;
+  resize: vertical;
+  min-height: 96px;
 }
 
 .form-item {

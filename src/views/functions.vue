@@ -22,8 +22,8 @@
 
     <!-- 配置内容 -->
     <template v-else>
-      <!-- 标签导航 -->
-      <div class="tab-bar">
+      <!-- 标签导航（只有一个 tab 时无需展示） -->
+      <div v-if="tabs.length > 1" class="tab-bar">
         <button
           v-for="t in tabs"
           :key="t.key"
@@ -238,108 +238,6 @@
             <button class="btn" :disabled="saving" @click="resetGlobalConfig">重置</button>
           </div>
         </div>
-
-        <!-- ========== 评论设置 ========== -->
-        <div v-show="activeTab === 'comment'">
-          <div class="section">
-            <h3 class="section-title">全局设置</h3>
-            <div class="switch-row">
-              <div>
-                <div class="field-label">启用全局评论功能</div>
-                <div class="field-hint">关闭后，所有文章的评论模块将完全不显示</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" v-model="commentConfig.enabled" />
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-          </div>
-
-          <div class="section">
-            <h3 class="section-title">速率限制</h3>
-            <div class="switch-row">
-              <div>
-                <div class="field-label">启用速率限制</div>
-                <div class="field-hint">防止频繁评论</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" v-model="commentConfig.rate_limit.enabled" />
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-            <template v-if="commentConfig.rate_limit.enabled">
-              <div class="field">
-                <label class="field-label">最大评论数（次）</label>
-                <input type="number" v-model.number="commentConfig.rate_limit.max_count" class="input" min="1" max="100" />
-              </div>
-              <div class="field">
-                <label class="field-label">时间窗口（秒）</label>
-                <input type="number" v-model.number="commentConfig.rate_limit.time_window" class="input" min="1" max="3600" />
-              </div>
-            </template>
-          </div>
-
-          <div class="section">
-            <h3 class="section-title">评论长度</h3>
-            <div class="field">
-              <label class="field-label">最大长度（字）</label>
-              <input type="number" v-model.number="commentConfig.max_length" class="input" min="1" max="10000" />
-            </div>
-          </div>
-
-          <div class="section">
-            <h3 class="section-title">内容要求</h3>
-            <div class="switch-row compact">
-              <label class="field-label">要求评论内容包含中文</label>
-              <label class="switch">
-                <input type="checkbox" v-model="commentConfig.require_chinese" />
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-            <div class="switch-row compact">
-              <label class="field-label">启用敏感词过滤</label>
-              <label class="switch">
-                <input type="checkbox" v-model="commentConfig.sensitive_filter" />
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-            <div class="field" v-if="commentConfig.sensitive_filter">
-              <label class="field-label">敏感词列表</label>
-              <textarea v-model="commentConfig.sensitive_words" class="textarea" rows="3" placeholder="多个敏感词用「，」分隔"></textarea>
-            </div>
-          </div>
-
-          <div class="section">
-            <h3 class="section-title">邮件通知</h3>
-            <div class="switch-row">
-              <div>
-                <div class="field-label">启用邮件通知</div>
-                <div class="field-hint">评论时发送邮件通知</div>
-              </div>
-              <label class="switch">
-                <input type="checkbox" v-model="commentConfig.email_notify.enabled" />
-                <span class="switch-slider"></span>
-              </label>
-            </div>
-            <template v-if="commentConfig.email_notify.enabled">
-              <div class="field">
-                <label class="field-label">重试次数（次）</label>
-                <input type="number" v-model.number="commentConfig.email_notify.retry_count" class="input" min="1" max="10" />
-              </div>
-              <div class="field">
-                <label class="field-label">重试间隔（秒）</label>
-                <input type="number" v-model.number="commentConfig.email_notify.retry_interval" class="input" min="1" max="60" />
-              </div>
-            </template>
-          </div>
-
-          <div class="save-actions">
-            <button class="btn btn-primary" :disabled="saving" @click="saveCommentConfig">
-              {{ saving ? '保存中...' : '保存评论设置' }}
-            </button>
-            <button class="btn" :disabled="saving" @click="resetCommentConfig">重置</button>
-          </div>
-        </div>
       </div>
     </template>
   </div>
@@ -351,7 +249,7 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
-import { getConfig, saveConfig } from '@/api/config'
+import { saveConfig } from '@/api/config'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
 import { toast } from '@/utils/toast'
@@ -361,7 +259,6 @@ const userStore = useUserStore()
 const siteStore = useSiteStore()
 
 const CONFIG_KEY = 'Mellow_functions'
-const COMMENT_KEY = 'COMMENT'
 
 // 配置缓存
 let cachedFunctionsConfig = null
@@ -387,8 +284,7 @@ function clearFunctionsCache() {
 
 // Tab
 const tabs = [
-  { key: 'global', label: '全局设置', icon: 'bi bi-globe' },
-  { key: 'comment', label: '评论设置', icon: 'bi bi-chat-dots' }
+  { key: 'global', label: '全局设置', icon: 'bi bi-globe' }
 ]
 const activeTab = ref('global')
 
@@ -419,17 +315,6 @@ function onLibrarySelect(urls = []) {
   globalConfig.value[libraryKey.value] = url
   toast.success('图片已应用，记得点「保存设置」')
 }
-
-// 评论配置
-const commentConfig = ref({
-  enabled: true,
-  rate_limit: { enabled: true, max_count: 5, time_window: 60 },
-  max_length: 500,
-  require_chinese: true,
-  sensitive_filter: true,
-  sensitive_words: '广告,开发,开发',
-  email_notify: { enabled: true, retry_count: 3, retry_interval: 5 }
-})
 
 // 全局配置
 const globalConfig = ref({
@@ -472,35 +357,6 @@ function handleDateChange(event) {
     : Math.floor(Date.now() / 1000).toString()
 }
 
-// 获取评论配置
-async function getCommentConfig() {
-  try {
-    const res = await getConfig(COMMENT_KEY)
-    if (res.code === 200 && res.data) {
-      const config = res.data.json || {}
-      commentConfig.value = {
-        enabled: config.enabled === 1,
-        rate_limit: {
-          enabled: config.rate_limit?.enabled === 1,
-          max_count: config.rate_limit?.max_count || 5,
-          time_window: config.rate_limit?.time_window || 60
-        },
-        max_length: config.max_length || 500,
-        require_chinese: config.require_chinese === 1,
-        sensitive_filter: config.sensitive_filter === 1,
-        sensitive_words: config.sensitive_words?.join(',') || '广告,开发,开发',
-        email_notify: {
-          enabled: config.email_notify?.enabled === 1,
-          retry_count: config.email_notify?.retry_count || 3,
-          retry_interval: config.email_notify?.retry_interval || 5
-        }
-      }
-    }
-  } catch {
-    toast.error('获取评论配置失败')
-  }
-}
-
 // 获取全局配置
 async function getGlobalConfig() {
   try {
@@ -530,37 +386,6 @@ async function getGlobalConfig() {
     }
   } catch {
     toast.error('获取全局配置失败')
-  }
-}
-
-// 保存评论配置
-async function saveCommentConfig() {
-  saving.value = true
-  try {
-    const c = commentConfig.value
-    const config = {
-      enabled: c.enabled ? 1 : 0,
-      rate_limit: {
-        enabled: c.rate_limit.enabled ? 1 : 0,
-        max_count: c.rate_limit.max_count || 5,
-        time_window: c.rate_limit.time_window || 60
-      },
-      max_length: c.max_length || 500,
-      require_chinese: c.require_chinese ? 1 : 0,
-      sensitive_filter: c.sensitive_filter ? 1 : 0,
-      sensitive_words: c.sensitive_words.split(',').map((w) => w.trim()).filter(Boolean),
-      email_notify: {
-        enabled: c.email_notify.enabled ? 1 : 0,
-        retry_count: c.email_notify.retry_count || 3,
-        retry_interval: c.email_notify.retry_interval || 5
-      }
-    }
-    await saveConfig(COMMENT_KEY, config)
-    toast.success('评论设置保存成功')
-  } catch {
-    toast.error('评论设置保存失败')
-  } finally {
-    saving.value = false
   }
 }
 
@@ -601,18 +426,6 @@ function moveFloatButton(index, direction) {
 }
 
 // 重置
-function resetCommentConfig() {
-  commentConfig.value = {
-    enabled: true,
-    rate_limit: { enabled: true, max_count: 5, time_window: 60 },
-    max_length: 500,
-    require_chinese: true,
-    sensitive_filter: true,
-    sensitive_words: '广告,开发,开发',
-    email_notify: { enabled: true, retry_count: 3, retry_interval: 5 }
-  }
-}
-
 function resetGlobalConfig() {
   globalConfig.value = {
     title: '',
@@ -632,7 +445,7 @@ function resetGlobalConfig() {
 onMounted(async () => {
   await userStore.verifyToken(true)
   if (isAdmin.value) {
-    await Promise.all([getCommentConfig(), getGlobalConfig()])
+    await getGlobalConfig()
   }
 })
 </script>

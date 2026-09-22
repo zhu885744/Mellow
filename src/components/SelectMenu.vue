@@ -223,7 +223,8 @@ onUnmounted(() => {
   align-items: center;
   gap: 6px;
   max-width: 220px;
-  height: 34px;
+  /* 与 .btn-sm / 筛选栏其它控件等高（见 styles.css 的 --control-h-* 令牌） */
+  height: var(--control-h-sm);
   padding: 0 12px;
   font-family: inherit;
   font-size: 13px;
@@ -284,12 +285,13 @@ onUnmounted(() => {
 .select-menu.is-field .select-trigger {
   width: 100%;
   max-width: none;
-  height: auto;
+  /* 与 .input 等高：表单里输入框与下拉不能一高一矮 */
+  height: var(--control-h);
   justify-content: space-between;
   gap: 8px;
-  padding: 10px 12px;
+  padding: 0 12px;
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.5;
   border-radius: var(--radius);
   border-color: var(--border);
   background: var(--bg-muted);

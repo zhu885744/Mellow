@@ -1,15 +1,18 @@
 <template>
-  <div class="admin-page">
-    <div class="page-head"><i :class="icon" /><h1 class="page-title">{{ title }}</h1></div>
-    <div class="page-body">
-      <p class="page-desc">{{ desc }}</p>
-      <span class="page-badge">模块建设中</span>
-    </div>
-  </div>
+  <!--
+    管理后台独立页面编辑器
+    与文章编辑器共用 components/admin/ContentWriteForm.vue（mode=page）：
+    Markdown 编辑器、标签、评论开关、审核状态一致；
+    字段差异为「唯一标识 key + 备注 remark」，且没有草稿/发布之分（仅保存）。
+  -->
+  <ContentWriteForm
+    mode="page"
+    base-path="/admin/pages"
+    edit-base="/admin/pages/edit"
+    can-edit-others
+  />
 </template>
+
 <script setup>
-const title = '撰写独立页面'
-const icon = 'bi bi-pencil-square'
-const desc = '撰写并发布新的独立单页面。基础界面已就绪，等待接口对接。'
+import ContentWriteForm from '@/components/admin/ContentWriteForm.vue'
 </script>
-<style scoped>@import './admin-page.css';</style>

@@ -338,7 +338,9 @@ onMounted(() => {
   gap: 6px;
 }
 .status-tab {
-  padding: 5px 14px;
+  /* 与筛选栏内的下拉 / 搜索框 / 按钮等高 */
+  height: var(--control-h-sm);
+  padding: 0 14px;
   font-size: 13px;
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
@@ -385,7 +387,8 @@ onMounted(() => {
 }
 .search-input {
   width: 100%;
-  padding: 7px 12px 7px 30px;
+  height: var(--control-h-sm);
+  padding: 0 12px 0 30px;
   font-size: 13px;
   border: 1px solid var(--border);
   border-radius: var(--radius);

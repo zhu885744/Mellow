@@ -178,14 +178,13 @@
             @click="setDirection(opt.value)"
           >{{ opt.label }}</button>
         </div>
-        <select v-model="typeFilter" class="select" @change="loadLogs">
-          <option value="">全部类型</option>
-          <option v-for="r in rules" :key="r.type" :value="r.type">{{ r.name }}</option>
-          <option value="buy">积分兑换</option>
-          <option value="card">卡密兑换</option>
-          <option value="refund">退款返还</option>
-          <option value="give">管理员积分调整</option>
-        </select>
+        <SelectMenu
+          v-model="typeFilter"
+          :options="typeOptions"
+          icon="bi bi-funnel"
+          placeholder="全部类型"
+          @change="loadLogs"
+        />
       </div>
 
       <div v-if="loadingLogs" class="loading"><span class="spinner" /> 加载中...</div>
@@ -214,6 +213,7 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import SelectMenu from '@/components/SelectMenu.vue'
 import { getIntegral, getIntegralLogs, getIntegralRules, getIntegralTasks, getIntegralRank, redeemIntegralCard } from '@/api/goods'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
@@ -246,6 +246,25 @@ const directionOptions = [
   { value: 'income', label: '收入' },
   { value: 'expense', label: '支出' }
 ]
+
+// 类型下拉选项：首项「全部类型」+ 规则类型 + 内置类型（按 value 去重）
+const typeOptions = computed(() => {
+  const list = [{ value: '', label: '全部类型' }]
+  const seen = new Set([''])
+  const candidates = [
+    ...(rules.value || []).map((r) => ({ value: r.type, label: r.name })),
+    { value: 'buy', label: '积分兑换' },
+    { value: 'card', label: '卡密兑换' },
+    { value: 'refund', label: '退款返还' },
+    { value: 'give', label: '管理员积分调整' }
+  ]
+  for (const opt of candidates) {
+    if (!opt.value || seen.has(opt.value)) continue
+    seen.add(opt.value)
+    list.push(opt)
+  }
+  return list
+})
 
 // 排行榜
 const rankBy = ref('earned')
@@ -531,7 +550,9 @@ onMounted(() => {
 .redeem-input {
   flex: 1;
   min-width: 0;
-  padding: 9px 14px;
+  /* 与同排的兑换按钮等高 */
+  height: var(--control-h);
+  padding: 0 14px;
   font-size: 14px;
   font-family: inherit;
   letter-spacing: 1px;
@@ -774,7 +795,11 @@ onMounted(() => {
   gap: 6px;
 }
 .chip {
-  padding: 4px 12px;
+  /* 与同排的类型下拉 / 其它筛选控件等高 */
+  display: inline-flex;
+  align-items: center;
+  height: var(--control-h-sm);
+  padding: 0 12px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--bg-card);
@@ -793,15 +818,6 @@ onMounted(() => {
   border-color: var(--primary);
   color: var(--primary-deep);
   font-weight: 600;
-}
-.select {
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  color: var(--text-soft);
-  font-size: 12px;
-  outline: none;
 }
 .rule-icon {
   margin-right: 6px;

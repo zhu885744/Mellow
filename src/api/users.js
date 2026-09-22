@@ -65,3 +65,74 @@ export const getExpLogs = (params = {}) =>
 // 等级体系列表
 export const getLevels = (params = {}) =>
   call('level', 'all', { method: 'GET', params: { page: 1, limit: 100, order: 'exp asc', ...params } })
+
+// ===== 后台（管理员）=====
+
+// 批量按 id 拉取用户基础信息（后台列表展示作者昵称/头像）
+// where 使用 $in，后端会转换为 `id` IN (...)
+export const listUsersByIds = (ids = []) => {
+  const list = (Array.isArray(ids) ? ids : [ids]).map((i) => Number(i)).filter((i) => i > 0)
+  if (!list.length) return Promise.resolve({ code: 204, data: null })
+  return call('users', 'all', {
+    method: 'GET',
+    params: {
+      page: 1,
+      limit: 100,
+      field: 'id,nickname,avatar',
+      where: JSON.stringify({ id: { $in: list } })
+    }
+  })
+}
+
+// 用户列表（管理员视角，后端不脱敏；field/where/order/like 由 utils/user.js 统一拼装）
+export const listUsers = (params = {}) =>
+  call('users', 'all', {
+    method: 'GET',
+    params: { page: 1, limit: 15, order: 'id desc', ...params }
+  })
+
+// 用户数量统计（注意：后端 users/count 不支持 onlyTrashed，回收站计数请用 listUsers 的 count）
+export const countUsers = (params = {}) =>
+  call('users', 'count', { method: 'GET', params })
+
+// 新建用户（后端要求邮箱非空；password 为空时账号无法用密码登录）
+export const createUser = (data) =>
+  call('users', 'create', { method: 'POST', data })
+
+// 修改用户状态（0 正常 / 1 冻结），后端禁止操作系统管理员
+export const setUserStatus = (id, status) =>
+  call('users', 'status', { method: 'PUT', data: { id: Number(id), status: Number(status) } })
+
+// 封禁用户（管理员）
+// duration 传字符串：'0' 表示永久封禁；不传 duration 并置 auto_gradient=true 时走后端自动梯度
+export const banUser = (data) =>
+  call('users', 'ban', { method: 'PUT', data })
+
+// 解封用户（传 uid 或 record_id 其一）
+export const unbanUser = (data) =>
+  call('users', 'unban', { method: 'PUT', data })
+
+// 软删除用户（移入回收站），禁止包含系统管理员与自己
+export const removeUsers = (ids) =>
+  call('users', 'remove', {
+    method: 'DELETE',
+    params: { ids: (Array.isArray(ids) ? ids : [ids]).join(',') }
+  })
+
+// 彻底删除用户（不可恢复）
+export const forceDeleteUsers = (ids) =>
+  call('users', 'delete', {
+    method: 'DELETE',
+    params: { ids: (Array.isArray(ids) ? ids : [ids]).join(',') }
+  })
+
+// 从回收站恢复用户
+export const restoreUsers = (ids) =>
+  call('users', 'restore', {
+    method: 'PUT',
+    data: { ids: Array.isArray(ids) ? ids : [ids] }
+  })
+
+// 清空用户回收站
+export const clearUserRecycle = () =>
+  call('users', 'clear', { method: 'DELETE' })

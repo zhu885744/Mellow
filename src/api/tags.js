@@ -1,5 +1,18 @@
 import { call } from './request'
 
+// ids 归一化：DELETE 走 query 传参，数组会被序列化成 ids[]= 导致后端取不到，统一转逗号分隔字符串
+const toIdsString = (ids) =>
+  (Array.isArray(ids) ? ids : [ids])
+    .map((i) => Number(i))
+    .filter((i) => i > 0)
+    .join(',')
+
+// PUT/POST 走 JSON body，直接传数组即可（utils.Unity.Ids 会解析）
+const toIdsArray = (ids) =>
+  (Array.isArray(ids) ? ids : [ids])
+    .map((i) => Number(i))
+    .filter((i) => i > 0)
+
 export const listTags = (params = {}) =>
   call('tags', 'all', { method: 'GET', params })
 
@@ -16,6 +29,49 @@ export const listAllTags = (params = {}) =>
 // 新建标签
 export const createTag = (name) =>
   call('tags', 'create', { method: 'POST', data: { name } })
+
+// ===== 后台（管理员）=====
+
+/**
+ * 后台标签列表
+ * 后端 tags/all 会额外注入 article_count（该标签被已审核文章引用的数量），
+ * 传 field 时必须把它带上，否则会被字段过滤掉。
+ */
+export const listTagsAdmin = (params = {}) =>
+  call('tags', 'all', {
+    method: 'GET',
+    params: {
+      page: 1,
+      limit: 15,
+      order: 'create_time desc',
+      field: 'id,name,description,avatar,article_count,create_time,update_time,delete_time',
+      ...params
+    }
+  })
+
+// 标签数量统计（注意：后端 tags/count 不支持 onlyTrashed，回收站数量请用列表的 count）
+export const countTags = (params = {}) =>
+  call('tags', 'count', { method: 'GET', params })
+
+// 保存标签：无 id 为新增，有 id 为更新（后端 save 自动分流）
+export const saveTag = (data) =>
+  call('tags', 'save', { method: 'POST', data })
+
+// 软删除（移入回收站）
+export const removeTags = (ids) =>
+  call('tags', 'remove', { method: 'DELETE', params: { ids: toIdsString(ids) } })
+
+// 彻底删除（不可恢复）
+export const forceDeleteTags = (ids) =>
+  call('tags', 'delete', { method: 'DELETE', params: { ids: toIdsString(ids) } })
+
+// 从回收站恢复
+export const restoreTags = (ids) =>
+  call('tags', 'restore', { method: 'PUT', data: { ids: toIdsArray(ids) } })
+
+// 清空回收站
+export const clearTagRecycle = () =>
+  call('tags', 'clear', { method: 'DELETE' })
 
 // 点赞
 export const like = (target_type, target_id) =>

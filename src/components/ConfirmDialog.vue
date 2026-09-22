@@ -9,13 +9,13 @@
           </h3>
           <p v-if="message" class="confirm-message">{{ message }}</p>
           <div class="confirm-actions">
-            <button type="button" class="btn btn-sm" :disabled="loading" @click="onCancel">
+            <button type="button" class="btn" :disabled="loading" @click="onCancel">
               {{ cancelText }}
             </button>
             <button
               ref="confirmBtn"
               type="button"
-              class="btn btn-sm"
+              class="btn"
               :class="danger ? 'btn-danger' : 'btn-primary'"
               :disabled="loading"
               @click="onConfirm"

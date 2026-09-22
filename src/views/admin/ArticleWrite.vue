@@ -1,15 +1,17 @@
 <template>
-  <div class="admin-page">
-    <div class="page-head"><i :class="icon" /><h1 class="page-title">{{ title }}</h1></div>
-    <div class="page-body">
-      <p class="page-desc">{{ desc }}</p>
-      <span class="page-badge">模块建设中</span>
-    </div>
-  </div>
+  <!--
+    管理后台文章编辑器
+    复用 /manage/posts/write 的完整功能（Markdown 编辑器、封面、摘要、标签、分类、评论开关、审核状态等），
+    差异：返回列表为 /admin/article；管理员可编辑任意作者的文章。
+  -->
+  <ContentWriteForm
+    mode="article"
+    base-path="/admin/article"
+    edit-base="/admin/article/edit"
+    can-edit-others
+  />
 </template>
+
 <script setup>
-const title = '撰写文章'
-const icon = 'bi bi-pencil-square'
-const desc = '撰写并发布新文章，支持 Markdown 与附件上传。基础界面已就绪，等待接口对接。'
+import ContentWriteForm from '@/components/admin/ContentWriteForm.vue'
 </script>
-<style scoped>@import './admin-page.css';</style>

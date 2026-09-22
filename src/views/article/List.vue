@@ -14,11 +14,13 @@
           @click="setFilter({ group: null, tag: null })"
         >全部</button>
         <span class="filter-divider">|</span>
-        <select v-model="filter.sort" class="filter-select" @change="reload">
-          <option value="create_time desc">最新发布</option>
-          <option value="views desc">最多阅读</option>
-          <option value="create_time asc">最早发布</option>
-        </select>
+        <SelectMenu
+          v-model="filter.sort"
+          :options="sortOptions"
+          icon="bi bi-sort-down"
+          placeholder="排序方式"
+          @change="reload"
+        />
       </div>
     </div>
 
@@ -47,6 +49,7 @@ import ArticleCard from '@/components/ArticleCard.vue'
 import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import SelectMenu from '@/components/SelectMenu.vue'
 import { listArticles } from '@/api/article'
 
 const route = useRoute()
@@ -61,6 +64,13 @@ const filter = ref({
   group: null,
   tag: null
 })
+
+// 排序下拉选项（主题内置 SelectMenu）
+const sortOptions = [
+  { value: 'create_time desc', label: '最新发布' },
+  { value: 'views desc', label: '最多阅读' },
+  { value: 'create_time asc', label: '最早发布' }
+]
 
 function setFilter(f) {
   filter.value.group = f.group
@@ -128,7 +138,11 @@ onMounted(() => {
   font-size: 13px;
 }
 .filter-tag {
-  padding: 4px 10px;
+  /* 与筛选栏内的排序下拉等高 */
+  display: inline-flex;
+  align-items: center;
+  height: var(--control-h-sm);
+  padding: 0 10px;
   border-radius: var(--radius);
   color: var(--text-soft);
   background: transparent;
@@ -146,14 +160,6 @@ onMounted(() => {
 .filter-divider {
   color: var(--border);
   margin: 0 4px;
-}
-.filter-select {
-  padding: 4px 8px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-card);
-  color: var(--text-soft);
-  cursor: pointer;
 }
 .article-list {
   padding: 8px 0;

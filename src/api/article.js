@@ -30,6 +30,13 @@ export const countArticlesByAuthor = (uid) =>
     params: { where: JSON.stringify({ uid, audit: 1 }) }
   })
 
+// 统计某个分类下的文章数（后台用：管理员查询不限审核状态）
+export const countArticlesInGroup = (groupId) =>
+  call('article', 'count', {
+    method: 'GET',
+    params: { where: JSON.stringify({ group: { $like: `%|${groupId}|%` } }) }
+  })
+
 // 获取某作者发布的文章列表（分页）
 export const getAuthorArticles = (uid, params = {}) =>
   call('article', 'all', {
@@ -88,10 +95,50 @@ export const createArticle = (data) =>
 export const updateArticle = (data) =>
   call('article', 'update', { method: 'PUT', data })
 
-// 删除文章
+// 删除文章（软删除，移入回收站）
+// 注意：DELETE 走 query 传参，数组会被序列化成 ids[]= 导致后端取不到，故统一转逗号分隔字符串
 export const removeArticle = (ids) =>
-  call('article', 'remove', { method: 'DELETE', params: { ids } })
+  call('article', 'remove', {
+    method: 'DELETE',
+    params: { ids: (Array.isArray(ids) ? ids : [ids]).join(',') }
+  })
 
 // 随机文章
 export const randArticles = (limit = 4) =>
   call('article', 'rand', { method: 'GET', params: { limit, field: 'id,title,abstract,views,create_time,group' } })
+
+// ===== 后台（管理员）=====
+
+// 后台文章列表：不限定作者，可查询全部状态；传 onlyTrashed 查回收站
+export const getArticles = (params = {}) =>
+  call('article', 'all', {
+    method: 'GET',
+    params: { page: 1, limit: 15, order: 'create_time desc', ...params }
+  })
+
+/**
+ * 后台文章数量统计
+ * 支持 where（含 $like）与 onlyTrashed——后端 article/count 会处理 withTrashOptions，
+ * 因此回收站数量可以直接用该接口统计。
+ */
+export const countArticles = (params = {}) =>
+  call('article', 'count', { method: 'GET', params })
+
+// 恢复回收站文章（管理员可恢复任意文章）
+export const restoreArticle = (ids) =>
+  call('article', 'restore', {
+    method: 'PUT',
+    data: { ids: Array.isArray(ids) ? ids : [ids] }
+  })
+
+// 彻底删除文章（不可恢复）
+// 注意：DELETE 走 query 传参，数组会被序列化成 ids[]= 导致后端取不到，故用逗号分隔字符串
+export const forceDeleteArticle = (ids) =>
+  call('article', 'delete', {
+    method: 'DELETE',
+    params: { ids: (Array.isArray(ids) ? ids : [ids]).join(',') }
+  })
+
+// 清空回收站（管理员清空全站，普通作者仅清空自己的）
+export const clearArticleRecycle = () =>
+  call('article', 'clear', { method: 'DELETE' })

@@ -12,3 +12,17 @@ export const getSiteFunctions = (config) =>
 // 保存配置
 export const saveConfig = (key, json, value = '') =>
   call('config', 'save', { method: 'POST', data: { key, json, value } })
+
+/**
+ * 保存系统配置项（自定义字段版）
+ *
+ * config 表结构是 key / value / json / text，不同配置项用的字段不同：
+ * - SYSTEM_API_KEY、ALLOW_REGISTER 只用 value（"0"/"1"）
+ * - SYSTEM_QPS、SYSTEM_QPS_BLOCK、SYSTEM_QPS_NOTIFY 用 value + json
+ * - SYSTEM_PAGE_LIMIT 用 value + text（最大条数）
+ * 这里只提交调用方显式传入的字段，避免把不需要的字段写成空值。
+ *
+ * @param {{key: string, value?: string, json?: any, text?: string}} data
+ */
+export const saveSystemConfig = (data) =>
+  call('config', 'save', { method: 'POST', data })

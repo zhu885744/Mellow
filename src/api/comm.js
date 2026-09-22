@@ -72,6 +72,12 @@ export const registerSendCode = (social) =>
     data: { social }
   })
 
+/**
+ * 注册来源（写入 users.source）
+ * 用于区分「通过 Mellow 主题注册」的账号，后台用户列表可直接看到该标记。
+ */
+export const REGISTER_SOURCE = 'mellow'
+
 // 注册（提交，加密传输）
 export const register = async (social, code, password, account = '', nickname = '') => {
   // 注册接口使用 social 作为登录账号，password 需加密
@@ -81,6 +87,7 @@ export const register = async (social, code, password, account = '', nickname = 
     data: {
       social,
       code,
+      source: REGISTER_SOURCE,
       account: account ? AES.encrypt(account) : '',
       nickname: nickname ? AES.encrypt(nickname) : '',
       password: AES.encrypt(password)

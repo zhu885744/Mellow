@@ -229,12 +229,13 @@ async function publish() {
   }
   publishing.value = true
   try {
+    // 不传 audit：是否进入待审核由后端按站点「动态审核」开关决定，
+    // 强制传 audit=1 会让审核开关形同虚设（后台「待审核」永远为空）
     await createMoment({
       content: newContent.value,
       images: newImages.value.join(','),
       location: newLocation.value.trim(),
-      status: 1,
-      audit: 1
+      status: 1
     })
     newContent.value = ''
     newImages.value = []
@@ -337,7 +338,9 @@ onMounted(load)
 }
 .pub-loc-input {
   width: 100%;
-  padding: 7px 12px 7px 30px;
+  /* 与发布器工具栏按钮（.btn-sm）等高 */
+  height: var(--control-h-sm);
+  padding: 0 12px 0 30px;
   font-size: 13px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);

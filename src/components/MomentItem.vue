@@ -63,7 +63,7 @@
         <span class="like-heart"><i ref="likeHeart" class="bi" :class="liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
         <span class="like-count">{{ likeCount }}</span>
       </button>
-      <button class="action-item" @click="toggleComments">
+      <button v-if="commentShow" class="action-item" @click="toggleComments">
         <i class="bi bi-chat-dots" /> {{ commentCount }}
         <span v-if="showComments">收起</span>
         <span v-else>评论</span>
@@ -74,12 +74,13 @@
       </button>
     </div>
 
-    <!-- 动态评论 -->
-    <div v-if="showComments" class="moment-comments">
+    <!-- 动态评论：allow 为 2 时只关掉发表入口，show 为 2 时整个评论入口都不显示 -->
+    <div v-if="showComments && commentShow" class="moment-comments">
       <CommentTree
         :bind-id="moment.id"
         bind-type="moments"
         :author-id="moment.uid"
+        :allow-comment="commentAllow"
         :highlight-id="highlightId"
         @loaded="(n) => commentCount = n"
       />
@@ -124,9 +125,15 @@ function onAvatarError(e) {
 
 const showComments = ref(false)
 
+// 评论开关：取自动态 result.comment（后端已按 MOMENTS 总开关做覆盖与继承）
+// allow：1 允许 / 2 禁止（禁止仍展示已有评论，只关掉发表与回复入口）
+// show：1 显示 / 2 隐藏（隐藏则整个评论入口都不显示）
+const commentAllow = computed(() => Number(props.moment?.result?.comment?.allow ?? 1) !== 2)
+const commentShow = computed(() => Number(props.moment?.result?.comment?.show ?? 1) !== 2)
+
 // 详情页（forceOpen）或带 ?comment 跳入时，自动展开该动态评论区
 onMounted(() => {
-  if (props.forceOpen || props.highlightId) {
+  if (commentShow.value && (props.forceOpen || props.highlightId)) {
     showComments.value = true
   }
 })

@@ -68,21 +68,66 @@ const routes = [
       { path: 'dashboard', name: 'admin-dashboard', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '概览' } },
       // 创作
       { path: 'article/write', name: 'admin-article-write', component: () => import('@/views/admin/ArticleWrite.vue'), meta: { title: '写文章' } },
-      { path: 'article', name: 'admin-article', component: () => import('@/views/admin/ArticleList.vue'), meta: { title: '文章' } },
+      { path: 'article/edit/:id', name: 'admin-article-edit', component: () => import('@/views/admin/ArticleWrite.vue'), meta: { title: '编辑文章' } },
+      // 文章管理：Articles.vue 承载统计概览，ArticleList.vue 为列表子路由（子页通过 inject 联动筛选）
+      // 注意：article/write 与 article/edit/:id 是平级路由，不受此处嵌套影响
+      {
+        path: 'article',
+        component: () => import('@/views/admin/Articles.vue'),
+        meta: { title: '文章' },
+        children: [
+          { path: '', name: 'admin-article', component: () => import('@/views/admin/ArticleList.vue'), meta: { title: '文章' } }
+        ]
+      },
       { path: 'article/group', name: 'admin-article-group', component: () => import('@/views/admin/ArticleGroup.vue'), meta: { title: '文章分类' } },
       { path: 'pages', name: 'admin-pages', component: () => import('@/views/admin/PageList.vue'), meta: { title: '页面' } },
       { path: 'pages/write', name: 'admin-pages-write', component: () => import('@/views/admin/PageWrite.vue'), meta: { title: '写页面' } },
-      { path: 'moments', name: 'admin-moments', component: () => import('@/views/admin/MomentList.vue'), meta: { title: '动态' } },
+      { path: 'pages/edit/:id', name: 'admin-pages-edit', component: () => import('@/views/admin/PageWrite.vue'), meta: { title: '编辑页面' } },
+      // 动态管理：Moments.vue 承载统计概览，MomentList.vue 为列表子路由（子页通过 inject 联动筛选）
+      {
+        path: 'moments',
+        component: () => import('@/views/admin/Moments.vue'),
+        meta: { title: '动态' },
+        children: [
+          { path: '', name: 'admin-moments', component: () => import('@/views/admin/MomentList.vue'), meta: { title: '动态' } }
+        ]
+      },
       // 管理
-      { path: 'users', name: 'admin-users', component: () => import('@/views/admin/UserList.vue'), meta: { title: '用户' } },
-      { path: 'comment', name: 'admin-comment', component: () => import('@/views/admin/CommentList.vue'), meta: { title: '评论' } },
+      // 用户管理：Users.vue 承载统计概览，UserList.vue 为列表子路由（子页通过 inject 联动筛选）
+      {
+        path: 'users',
+        component: () => import('@/views/admin/Users.vue'),
+        meta: { title: '用户' },
+        children: [
+          { path: '', name: 'admin-users', component: () => import('@/views/admin/UserList.vue'), meta: { title: '用户' } }
+        ]
+      },
+      // 评论管理：Comments.vue 承载统计概览，CommentList.vue 为列表子路由（子页通过 inject 联动筛选）
+      {
+        path: 'comment',
+        component: () => import('@/views/admin/Comments.vue'),
+        meta: { title: '评论' },
+        children: [
+          { path: '', name: 'admin-comment', component: () => import('@/views/admin/CommentList.vue'), meta: { title: '评论' } }
+        ]
+      },
       { path: 'placard', name: 'admin-placard', component: () => import('@/views/admin/Placard.vue'), meta: { title: '公告' } },
       { path: 'banner', name: 'admin-banner', component: () => import('@/views/admin/Banner.vue'), meta: { title: '轮播图' } },
       { path: 'tags', name: 'admin-tags', component: () => import('@/views/admin/TagList.vue'), meta: { title: '标签' } },
       { path: 'level', name: 'admin-level', component: () => import('@/views/admin/Level.vue'), meta: { title: '等级' } },
       { path: 'exp', name: 'admin-exp', component: () => import('@/views/admin/Exp.vue'), meta: { title: '经验' } },
+      { path: 'goods', name: 'admin-goods', component: () => import('@/views/admin/Goods.vue'), meta: { title: '商品' } },
+      { path: 'integral', name: 'admin-integral', component: () => import('@/views/admin/Integral.vue'), meta: { title: '积分' } },
       { path: 'message', name: 'admin-message', component: () => import('@/views/admin/Message.vue'), meta: { title: '消息' } },
-      { path: 'links', name: 'admin-links', component: () => import('@/views/admin/LinkList.vue'), meta: { title: '友链' } },
+      // 友链管理：Links.vue 承载统计概览，LinkList.vue 为列表子路由（子页通过 inject 联动筛选）
+      {
+        path: 'links',
+        component: () => import('@/views/admin/Links.vue'),
+        meta: { title: '友链' },
+        children: [
+          { path: '', name: 'admin-links', component: () => import('@/views/admin/LinkList.vue'), meta: { title: '友链' } }
+        ]
+      },
       { path: 'links/group', name: 'admin-links-group', component: () => import('@/views/admin/LinkGroup.vue'), meta: { title: '友链分组' } },
       { path: 'attachment', name: 'admin-attachment', component: () => import('@/views/admin/Attachment.vue'), meta: { title: '附件' } },
       { path: 'system', name: 'admin-system', component: () => import('@/views/admin/SystemConfig.vue'), meta: { title: '系统设置' } },

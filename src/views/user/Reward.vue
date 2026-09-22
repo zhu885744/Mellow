@@ -516,7 +516,8 @@ watch(() => userStore.user, (nu) => {
   align-items: center;
   gap: 6px;
   padding: 0 10px;
-  height: 36px;
+  /* 与上方操作按钮（.btn-sm）等高 */
+  height: var(--control-h-sm);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-card);
