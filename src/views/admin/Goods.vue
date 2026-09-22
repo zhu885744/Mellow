@@ -282,15 +282,32 @@
                 </span>
               </div>
               <div class="order-goods">
-                <span class="goods-title">{{ order.goods_title || `商品 #${order.goods_id}` }}</span>
+                <span class="goods-title">{{ orderGoodsTitle(order) }}</span>
                 <span class="meta-text"><i class="bi bi-coin" /> {{ order.price }} 积分</span>
               </div>
               <div class="order-meta">
-                <span class="meta-text">用户 #{{ order.uid }}</span>
+                <span class="meta-text"><i class="bi bi-person" /> {{ orderUserText(order) }}</span>
                 <span class="meta-text"><i class="bi bi-clock" /> {{ fromNow(order.create_time) }}</span>
                 <span v-if="order.logistics" class="meta-text" :title="order.logistics">
                   <i class="bi bi-truck" /> {{ order.logistics }}
                 </span>
+              </div>
+              <!-- 收货信息（实物商品下单时填写，后端存 JSON 并在 result.address 解析） -->
+              <div v-if="orderAddress(order)" class="order-address">
+                <i class="bi bi-geo-alt" />
+                <span class="addr-name">{{ orderAddress(order).name }}</span>
+                <span class="addr-phone">{{ orderAddress(order).phone }}</span>
+                <span class="addr-detail" :title="orderAddress(order).address">
+                  {{ orderAddress(order).address }}
+                </span>
+                <button
+                  class="btn btn-ghost btn-sm"
+                  title="复制收货信息"
+                  aria-label="复制收货信息"
+                  @click="copyAddress(order)"
+                >
+                  <i class="bi bi-clipboard" />
+                </button>
               </div>
             </div>
 
@@ -484,6 +501,18 @@
       confirm-text="确认发货"
       @confirm="submitShip"
     >
+      <!-- 实物商品：发货前核对收货信息 -->
+      <div v-if="ship.address" class="ship-address">
+        <div class="ship-address-head">
+          <span class="ship-address-title"><i class="bi bi-geo-alt" /> 收货信息</span>
+          <button class="btn btn-ghost btn-sm" @click="copyAddress(ship.address)">复制</button>
+        </div>
+        <div class="ship-address-line">
+          <span>{{ ship.address.name }}</span>
+          <span>{{ ship.address.phone }}</span>
+        </div>
+        <div class="ship-address-detail">{{ ship.address.address }}</div>
+      </div>
       <div class="form-item">
         <label class="form-label">物流信息</label>
         <textarea v-model="ship.logistics" class="textarea" rows="3" placeholder="快递公司 + 运单号，虚拟商品可留空" />
@@ -550,7 +579,7 @@ import {
 } from '@/api/goods'
 import { uploadAttachments } from '@/api/attachment'
 import { fromNow, toLocalInput, fromLocalInput } from '@/utils/time'
-import { debounce } from '@/utils/helper'
+import { debounce, copyText } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
 const pageSize = 15
@@ -667,7 +696,9 @@ const ship = reactive({
   loading: false,
   id: 0,
   orderNo: '',
-  logistics: ''
+  logistics: '',
+  // 实物商品的收货信息，发货前用于核对
+  address: null
 })
 
 const deliver = reactive({
@@ -1191,10 +1222,60 @@ function askClearRecycle() {
 }
 
 // ---------- 订单流转 ----------
+
+// 收货信息归一化为 { name, phone, address }，字段全空视为没有收货信息（虚拟商品）
+function normalizeAddress(raw) {
+  if (!raw || typeof raw !== 'object') return null
+  const name = raw.name || ''
+  const phone = raw.phone || ''
+  const address = raw.address || ''
+  if (!name && !phone && !address) return null
+  return { name, phone, address }
+}
+
+// 订单的收货信息：实物商品下单时填写，后端存为 JSON 字符串并在 result.address 里解析；
+// result 缺失时回退到原始 address 字符串自行解析
+function orderAddress(order) {
+  let raw = order?.result?.address
+  if (raw == null && typeof order?.address === 'string' && order.address.trim()) {
+    try {
+      raw = JSON.parse(order.address)
+    } catch {
+      raw = null
+    }
+  }
+  return normalizeAddress(raw)
+}
+
+function orderUserText(order) {
+  const nickname = order?.result?.user?.nickname
+  return nickname ? `${nickname} UID:${order.uid}` : `用户 UID:${order.uid}`
+}
+
+// 商品标题：与用户端「我的订单」口径一致 ——
+// goods_title 是下单快照（早期订单没有该字段，为空），result.goods.title 是实时商品信息，
+// 两者都没有（商品已被彻底删除且无快照）才退回商品 ID
+function orderGoodsTitle(order) {
+  return order?.goods_title
+    || order?.result?.goods?.title
+    || `商品 #${order?.goods_id}`
+}
+
+// target 既可以是订单对象，也可以是已解析好的地址对象（发货弹窗里复用）
+async function copyAddress(target) {
+  const a = normalizeAddress(target?.result?.address ?? target)
+  if (!a) return
+  const text = [a.name, a.phone, a.address].filter(Boolean).join(' ')
+  const ok = await copyText(text)
+  if (ok) toast.success('收货信息已复制')
+  else toast.error('复制失败，请手动复制')
+}
+
 function openShip(order) {
   ship.id = Number(order.id)
   ship.orderNo = order.order_no || `#${order.id}`
   ship.logistics = ''
+  ship.address = orderAddress(order)
   ship.visible = true
 }
 
@@ -1668,6 +1749,74 @@ onMounted(() => {
 }
 .goods-title {
   font-weight: 500;
+}
+/* 收货信息（实物商品） */
+.order-address {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  color: var(--text-soft);
+  background: var(--bg-muted);
+  border-radius: var(--radius);
+}
+.order-address > .bi {
+  color: var(--primary);
+}
+.order-address .addr-name {
+  font-weight: 500;
+  color: var(--text);
+}
+.order-address .addr-phone {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+.order-address .addr-detail {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+
+.ship-address {
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  background: var(--bg-muted);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
+.ship-address-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.ship-address-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.ship-address-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.ship-address-detail {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  word-break: break-all;
 }
 
 /* ---------- 弹窗 ---------- */
