@@ -51,6 +51,12 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'dist',
+      // 产物静态目录统一为 static（默认 assets），避免与后端自身的静态资源目录
+      // public/assets（emoji、随机头像、上传附件等）撞路径：
+      // 两者混在一个目录下时，前端产物缺失会命中后端的 JSON 错误响应，
+      // 浏览器对 <script type="module"> 做严格 MIME 校验后直接报错。
+      // 注意：后端 config/app.toml 的 app.theme_ignore_prefix 已包含 /static（见 config/app.go）
+      assetsDir: 'static',
       sourcemap: false,
       chunkSizeWarningLimit: 1500
     }

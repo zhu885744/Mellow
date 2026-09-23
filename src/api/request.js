@@ -37,7 +37,7 @@ const service = axios.create({
   }
 })
 
-// dev 类接口（如 /dev/info/time）不走 /api 前缀，单独导出实例供调用
+// dev 类接口（如 /dev/info/time、/dev/info/version）不走 /api 前缀，单独导出实例供调用
 export const devService = axios.create({
   baseURL: API_ROOT_URL,
   timeout: 10000,
@@ -46,6 +46,21 @@ export const devService = axios.create({
     'Content-Type': 'application/json'
   }
 })
+
+// dev 接口的响应体结构与 /api 相同（{ code, msg, data }，见 app/dev/controller/base.go 的 json()），
+// 这里同样剥离 axios 包装，调用方可直接解构 { code, data }。
+// 注意：漏配这个拦截器会让所有 dev 接口的返回值变成 axios response，解构出来全是 undefined
+// （表现为「服务器时间/版本号静默取不到、回退到本地值」）。
+devService.interceptors.response.use(
+  (res) => res.data,
+  (err) => {
+    if (err.code === 'ERR_CANCELED') return Promise.reject(err)
+    return Promise.reject({
+      code: err.response?.status || 0,
+      msg: err.response?.data?.msg || err.message || '请求失败'
+    })
+  }
+)
 
 // INIS 鉴权说明（参考 Cardify-inis 实现，实测 /api/comm/check-token 返回 "Authorization 不能为空！"）：
 // 后端校验的是请求头 Authorization: <token>（裸 JWT，不要加 "Bearer " 前缀）。

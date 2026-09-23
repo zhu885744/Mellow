@@ -131,6 +131,20 @@ const fallbackIcons = {
   file: 'bi bi-paperclip'
 }
 
+/**
+ * 解析菜单图标：
+ * 1. 后端已是 Bootstrap Icons 类名（"bi bi-bag" 或 "bi-bag"）→ 直接使用；
+ * 2. 旧版短名（article / group …）→ 查 fallbackIcons 映射；
+ * 3. 其余 → 兜底圆圈。
+ * 这样新老数据库（auth-pages.icon 两种形态）都能正确展示。
+ */
+function resolveIcon(name) {
+  if (typeof name !== 'string' || !name.trim()) return 'bi bi-circle'
+  const value = name.trim()
+  if (value.includes('bi-')) return value.startsWith('bi ') ? value : `bi ${value}`
+  return fallbackIcons[value] || 'bi bi-circle'
+}
+
 const menus = computed(() => {
   const flat = authPagesStore.getFlat || []
   if (!flat.length) return []
@@ -163,7 +177,7 @@ const menus = computed(() => {
           return {
             path,
             name: p.name || path,
-            icon: svg ? '' : fallbackIcons[p.icon] || 'bi bi-circle',
+            icon: svg ? '' : resolveIcon(p.icon),
             isSvg: !!svg,
             svg
           }

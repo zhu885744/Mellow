@@ -168,6 +168,12 @@
               <td><code class="page-path">{{ item.path }}</code></td>
               <td class="td-icon">
                 <span v-if="item.svg" class="page-icon" v-html="item.svg" />
+                <i
+                  v-else-if="biIcon(item.icon)"
+                  class="icon-preview"
+                  :class="biIcon(item.icon)"
+                  :title="item.icon"
+                />
                 <span v-else class="icon-chip">{{ item.icon || '—' }}</span>
               </td>
               <td class="td-act">
@@ -227,7 +233,8 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">图标名</label>
-          <input v-model="edit.icon" class="input" type="text" placeholder="可选，如 article" />
+          <input v-model="edit.icon" class="input" type="text" placeholder="可选，如 bi bi-bag" />
+          <p class="form-hint">填 Bootstrap Icons 类名（https://icons.getbootstrap.com/）</p>
         </div>
         <div class="form-item">
           <label class="form-label">图标大小</label>
@@ -331,6 +338,14 @@ const statCards = computed(() => [
   { label: '页面总数', value: stats.total, icon: 'bi bi-window-stack', color: 'var(--primary)' },
   { label: '回收站', value: stats.trash, icon: 'bi bi-trash3', color: 'var(--text-muted)' }
 ])
+
+// icon 是 Bootstrap Icons 类名（"bi bi-bag" 或 "bi-bag"）时返回可直接用于 :class 的值，否则返回空串
+function biIcon(name) {
+  if (typeof name !== 'string' || !name.trim()) return ''
+  const value = name.trim()
+  if (!value.includes('bi-')) return ''
+  return value.startsWith('bi ') ? value : `bi ${value}`
+}
 
 const emptyText = computed(() => {
   if (searchKey.value) return '没有匹配的页面'
@@ -948,6 +963,10 @@ onMounted(() => {
   font-size: 11px;
   color: var(--text-muted);
 }
+.icon-preview {
+  font-size: 16px;
+  color: var(--text-soft);
+}
 
 .row-actions {
   display: flex;
@@ -969,6 +988,12 @@ onMounted(() => {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 12px;
+}
+.form-hint {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
 }
 
 @media (max-width: 768px) {
