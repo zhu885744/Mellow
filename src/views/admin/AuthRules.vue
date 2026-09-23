@@ -313,7 +313,8 @@
  *
  * 后端约束（app/api/controller/auth-rules.go、app/api/middleware/rule.go）：
  * - 规则类型共三种：common（中间件直接放行）/ login（需登录）/ default（需对应权限点）；
- *   后端初始化数据里还有 type=root 的标注值，但中间件未对其特殊判定，行为等同 default；
+ *   早期初始化数据误用过 type=root，中间件从未对其特殊判定（行为等同 default），
+ *   种子数据已统一为 default，老库由 model.normalizeAuthRuleTypes 在迁移时纠正；
  * - 允许字段只有 cost/name/route/method/type/remark/json/text；
  * - **hash 由后端按 [METHOD]route 计算**，前端不传；改动 method/route 会让 hash 变化，
  *   已授权分组需要重新配置（已在界面提示）；
@@ -344,6 +345,7 @@ import {
   AUTH_RULE_METHODS,
   AUTH_RULE_SEARCH_FIELDS,
   authRuleTypeLabel,
+  authRuleTypeKey,
   authRuleMethodText,
   authRuleWhereJSON,
   sanitizeAuthRuleKeyword
@@ -423,7 +425,8 @@ const emptyText = computed(() => {
 
 // ---------- 展示辅助 ----------
 function typeClass(item) {
-  return `is-${String(item?.type || 'default')}`
+  // root 等遗留标注按 default 归一（后端只认 common / login / default 三类）
+  return `is-${authRuleTypeKey(item)}`
 }
 
 function methodClass(item) {
@@ -1113,10 +1116,6 @@ onMounted(() => {
 .type-chip.is-login {
   color: #0ea5e9;
   background: rgba(14, 165, 233, 0.12);
-}
-.type-chip.is-root {
-  color: var(--warning);
-  background: var(--gold-wash);
 }
 
 .row-actions {

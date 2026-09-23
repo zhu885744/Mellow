@@ -15,15 +15,25 @@ export const AUTH_RULE_FIELD =
  * - login   需登录：已登录即放行，不校验权限点
  * - default 默认：需具备对应权限点 [METHOD][route]，否则返回「无权限！」
  *
- * 说明：后端初始化数据里还有 type=root（如 exp/give、积分卡密接口），
- * 但中间件并未对它做特殊判定，行为与 default 完全一致（只是语义标注），
- * 因此这里不单列；库里若存在 root，列表会原样展示该值，不会丢数据。
+ * 说明：早期后端初始化数据误用过 type=root（exp/give、积分卡密、商品管理等），
+ * 中间件从未对它做特殊判定，行为与 default 完全一致，属于错误的类型标注，
+ * 种子数据已统一改为 default，老库由 InitAuthRules 的 normalizeAuthRuleTypes 纠正。
+ * 为兼容尚未纠正的库，这里把 root 作为 default 的遗留别名处理（展示与配色同 default）。
  */
 export const AUTH_RULE_TYPES = [
   { value: 'default', label: '默认（需权限点）', color: 'var(--text-muted)' },
   { value: 'common', label: '公共（免登录）', color: 'var(--success)' },
   { value: 'login', label: '需登录', color: '#0ea5e9' }
 ]
+
+/** 遗留类型别名：root → default */
+const LEGACY_TYPE_ALIAS = { root: 'default' }
+
+/** 归一化类型值：空值按 default，root 视作 default */
+export function authRuleTypeKey(item) {
+  const type = String(item?.type || 'default').trim() || 'default'
+  return LEGACY_TYPE_ALIAS[type] || type
+}
 
 // 请求方法（后端会把 method 统一转大写后参与 hash 计算）
 export const AUTH_RULE_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH']
@@ -49,11 +59,11 @@ export const AUTH_RULE_SEARCH_FIELDS = [
 
 /**
  * 类型文案
- * 未知类型（如后端标注用的 root）原样返回，避免把真实数据展示成别的类型
+ * 未知类型原样返回，避免把真实数据展示成别的类型（root 等遗留别名按 default 展示）
  */
 export function authRuleTypeLabel(item) {
-  const type = String(item?.type || 'default')
-  return AUTH_RULE_TYPES.find((t) => t.value === type)?.label || type
+  const key = authRuleTypeKey(item)
+  return AUTH_RULE_TYPES.find((t) => t.value === key)?.label || key
 }
 
 /** 方法统一转大写展示 */

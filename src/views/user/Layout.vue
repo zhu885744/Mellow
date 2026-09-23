@@ -58,25 +58,20 @@
         </template>
 
         <div class="user-nav-group">创作</div>
-        <RouterLink to="/manage" class="user-nav-item user-nav-ext">
+        <RouterLink to="/manage" class="user-nav-item">
           <i class="bi bi-grid-1x2" />
           <span class="user-nav-text">创作中心</span>
-          <i class="bi bi-box-arrow-up-right user-nav-ext-ico" />
         </RouterLink>
-
-        <template v-if="isAdmin">
-          <div class="user-nav-group">管理</div>
-          <RouterLink to="/user/site" class="user-nav-item user-nav-ext">
-            <i class="bi bi-tools" />
-            <span class="user-nav-text">站点配置</span>
-          </RouterLink>
-        </template>
       </nav>
 
       <div class="user-sidebar-footer">
         <RouterLink to="/" class="user-nav-item">
           <i class="bi bi-box-arrow-left" />
           <span class="user-nav-text">返回前台</span>
+        </RouterLink>
+        <RouterLink to="/admin" class="user-nav-item">
+          <i class="bi bi-shield-lock" />
+          <span class="user-nav-text">管理后台</span>
         </RouterLink>
         <button type="button" class="user-logout" @click="userStore.logout">
           <i class="bi bi-box-arrow-right" />

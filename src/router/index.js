@@ -41,8 +41,13 @@ const routes = [
       { path: 'exp', name: 'user-exp', component: () => import('@/views/user/Exp.vue') },
       { path: 'integral', name: 'user-integral', component: () => import('@/views/user/Integral.vue') },
       { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
-      // 站点配置（管理员）：原 /settings 已迁移到用户中心下
-      { path: 'site', name: 'user-site', component: () => import('@/views/functions.vue'), meta: { auth: true } }
+      // 站点配置（管理员）：已迁至后台 /admin/system 的「网站设置」模块，旧地址保留为重定向
+      {
+        path: 'site',
+        name: 'user-site',
+        redirect: { path: '/admin/system', query: { tab: 'site' } },
+        meta: { auth: true }
+      }
     ]
   },
   // 创作中心：与 /admin 一样是独立于前台 MainLayout 的顶级路由，拥有自己的完整布局

@@ -6,7 +6,7 @@
         <div>
           <h2 class="block-title">系统配置</h2>
           <p class="block-desc">
-            安全策略、认证、缓存、存储、短信等运行时配置；修改后立即生效，无需重启（存储配置会自动重载）
+            网站信息、安全策略、认证、缓存、存储、短信等配置；修改后立即生效，无需重启（存储配置会自动重载）
           </p>
         </div>
         <div class="head-actions">
@@ -149,6 +149,9 @@
               </div>
             </section>
           </template>
+
+          <!-- ============ 网站设置（站点信息 / 导航 / 备案 / 协议 / 悬浮按钮）============ -->
+          <SiteSettingsForm v-else-if="tab === 'site'" />
 
           <!-- ============ 内容配置（文章 / 动态 / 独立页面，三份结构相同）============ -->
           <section v-else-if="CONTENT_KEYS[tab]" class="card card-pad">
@@ -345,6 +348,29 @@
               <label class="form-label">允许用户自行注册</label>
               <SelectMenu v-model="cfg.register.value" variant="field" :options="ON_OFF" />
             </div>
+
+            <div class="form-item">
+              <label class="form-label">新用户默认权限组</label>
+              <div v-if="registerGroups.loading" class="loading is-inline"><span class="spinner" /> 加载权限组...</div>
+              <p v-else-if="!registerGroups.list.length" class="form-hint">
+                暂无可用权限组：请先到「安全 → 权限组」创建，或确认当前账号有权访问权限组列表。
+              </p>
+              <div v-else class="check-grid is-block">
+                <label v-for="g in registerGroups.list" :key="g.id" class="check-line">
+                  <input v-model="cfg.register.ids" type="checkbox" :value="Number(g.id)" />
+                  <span>
+                    {{ g.name || g.key }}
+                    <code v-if="g.key" class="group-key">{{ g.key }}</code>
+                    <span v-if="Number(g.root) === 1" class="root-flag">超管</span>
+                  </span>
+                </label>
+              </div>
+              <p class="form-hint">
+                注册成功后自动把新用户加入所选权限组（写入 ALLOW_REGISTER 的 text 字段，即分组 ID 列表）；
+                留空表示新用户不带任何权限组。含「超管」分组请谨慎勾选。
+              </p>
+            </div>
+
             <div class="cfg-foot">
               <button class="btn btn-primary btn-sm" :disabled="isSaving('register')" @click="saveRegister">
                 <i class="bi bi-check2" /> 保存
@@ -952,6 +978,8 @@
  * 后端要点（app/api/controller/toml.go、app/api/middleware/*、app/model/config.go）：
  * - SYSTEM_API_KEY / SYSTEM_QPS / SYSTEM_QPS_BLOCK / SYSTEM_QPS_NOTIFY / SYSTEM_PAGE_LIMIT /
  *   ALLOW_REGISTER 均为 config 表记录，value 是 "0"/"1" 字符串；
+ * - ALLOW_REGISTER 另用 text 存「新用户默认权限组」的 ID 列表（如 "1,2"，空表示不分组），
+ *   注册成功后由 Comm.auth() 读取（utils.Unity.Ids 按数字提取），把新用户写进对应 auth-group 的 uids；
  * - 内容配置 ARTICLE / MOMENTS / PAGE 结构相同（editor / audit / comment{allow,show}），
  *   分别由 article.go、moments.go、pages.go 的 config() 读取，audit 决定新建内容的默认审核态；
  *   评论配置 COMMENT 结构独立（allow / rate_limit / max_length / require_chinese /
@@ -962,9 +990,12 @@
  * - storage 不带 name 读取时不脱敏，因此这里按分组分别读取；
  * - 日志配置后端只读（没有保存接口）。
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import SelectMenu from '@/components/SelectMenu.vue'
+import SiteSettingsForm from '@/components/admin/SiteSettingsForm.vue'
 import { getConfig, saveSystemConfig } from '@/api/config'
+import { listAuthGroups } from '@/api/auth-group'
 import {
   saveToml,
   testToml,
@@ -1005,6 +1036,7 @@ const SMS_DRIVERS = [
 
 const modules = [
   { key: 'security', label: '安全', icon: 'bi bi-shield-lock' },
+  { key: 'site', label: '网站设置', icon: 'bi bi-globe2' },
   { key: 'article', label: '文章配置', icon: 'bi bi-file-earmark-text' },
   { key: 'moments', label: '动态配置', icon: 'bi bi-chat-square-text' },
   { key: 'pagesCfg', label: '独立页面配置', icon: 'bi bi-window' },
@@ -1041,7 +1073,25 @@ const COMMENT_SHOW_OPTIONS = [
   { value: '2', label: '隐藏' }
 ]
 
-const tab = ref('security')
+// 模块定位：支持 /admin/system?tab=site 这类直达链接（如用户中心跳「网站设置」）
+const route = useRoute()
+const router = useRouter()
+const MODULE_KEYS = modules.map((m) => m.key)
+const initialTab = MODULE_KEYS.includes(String(route.query.tab)) ? String(route.query.tab) : 'security'
+const tab = ref(initialTab)
+// 切换模块时把当前模块写回地址栏，便于刷新/分享后停留在同一模块
+watch(tab, (value) => {
+  if (String(route.query.tab || '') === value) return
+  router.replace({ query: { ...route.query, tab: value } })
+})
+// 地址栏被外部改动（如侧栏再点一次直达链接）时同步模块
+watch(
+  () => route.query.tab,
+  (value) => {
+    const next = MODULE_KEYS.includes(String(value)) ? String(value) : 'security'
+    if (next !== tab.value) tab.value = next
+  }
+)
 const loading = ref(false)
 const loadError = ref(false)
 // 每个保存动作独立的 loading 标记，避免互相阻塞
@@ -1054,7 +1104,8 @@ const cfg = reactive({
   qpsBlock: { value: '0', json: { count: 3, second: '60 * 60' } },
   qpsNotify: { value: '0', json: { email: '', webhook: '' } },
   pageLimit: { value: '1', text: '50' },
-  register: { value: '1' },
+  // 注册开关 + 新用户默认权限组（ids 存到 ALLOW_REGISTER 的 text 字段）
+  register: { value: '1', ids: [] },
   // 内容配置：ARTICLE / MOMENTS / PAGE 三份结构相同（editor / audit / comment）
   content: {
     ARTICLE: { editor: 'tinymce', audit: '1', comment: { allow: '1', show: '1' } },
@@ -1115,6 +1166,22 @@ const toml = reactive({
 // 测试用字段（不落库）
 const test = reactive({ email: '', phone: '' })
 
+// 注册模块用到的权限组列表（后端 auth-group/all，字段同 UserList 的分配权限组弹窗）
+const registerGroups = reactive({ list: [], loading: false })
+
+async function loadAuthGroups() {
+  registerGroups.loading = true
+  try {
+    const res = await listAuthGroups()
+    registerGroups.list = res.data?.data || []
+  } catch {
+    // 接口受限时保持为空，页面给出提示
+    registerGroups.list = []
+  } finally {
+    registerGroups.loading = false
+  }
+}
+
 // ---------- 工具 ----------
 function isSaving(key) {
   return !!saving[key]
@@ -1148,6 +1215,12 @@ function parseJson(raw, fallback = {}) {
 function toText(value, fallback = '') {
   if (value === null || value === undefined) return fallback
   return String(value)
+}
+
+// 分组 ID 列表归一化：后端存的是 "|1|2|" 之类的字符串，统一取出数字（与 utils.Unity.Ids 行为一致）
+function parseIdList(raw) {
+  const matched = String(raw ?? '').match(/\d+/g)
+  return matched ? [...new Set(matched.map(Number))] : []
 }
 
 // ---------- 读取 ----------
@@ -1227,7 +1300,11 @@ async function loadConfigs() {
     cfg.pageLimit.value = toText(pageLimit.value, '1')
     cfg.pageLimit.text = toText(pageLimit.text, '50')
   }
-  if (register) cfg.register.value = toText(register.value, '1')
+  if (register) {
+    cfg.register.value = toText(register.value, '1')
+    // 新用户默认权限组：后端 Comm.auth() 读取该记录的 text 字段
+    cfg.register.ids = parseIdList(register.text)
+  }
 
   if (article) cfg.content.ARTICLE = readContentConfig(article)
   if (moments) cfg.content.MOMENTS = readContentConfig(moments)
@@ -1330,7 +1407,7 @@ async function loadAll() {
   loading.value = true
   loadError.value = false
   try {
-    await Promise.all([loadConfigs(), loadTomlAll()])
+    await Promise.all([loadConfigs(), loadTomlAll(), loadAuthGroups()])
   } catch {
     loadError.value = true
     toast.error('配置加载失败')
@@ -1401,8 +1478,28 @@ function savePageLimit() {
   )
 }
 
-function saveRegister() {
-  return saveConfigItem('register', { key: 'ALLOW_REGISTER', data: { value: cfg.register.value } }, '已保存')
+/**
+ * 保存注册配置
+ * - value：是否允许自行注册（"0"/"1"）
+ * - text ：新用户默认权限组 ID 列表，后端 Comm.auth() 注册后按它把用户加进对应权限组
+ * 注意：text 必须与 value 一起提交，否则会被当成未提交字段而保持原值；
+ * 反过来，这里不提交多余字段，避免误清空 remark 等。
+ */
+async function saveRegister() {
+  await saveConfigItem(
+    'register',
+    {
+      key: 'ALLOW_REGISTER',
+      data: { value: cfg.register.value, text: cfg.register.ids.map(Number).join(',') }
+    },
+    '已保存'
+  )
+  // 重新读取，避免数字/字符串差异留在表单里
+  const fresh = await readConfig('ALLOW_REGISTER')
+  if (fresh) {
+    cfg.register.value = toText(fresh.value, '1')
+    cfg.register.ids = parseIdList(fresh.text)
+  }
 }
 
 /**
@@ -1753,6 +1850,55 @@ onMounted(loadAll)
   font-size: 11px;
   background: var(--bg-muted);
   border-radius: 3px;
+}
+
+/* ---------- 多选（注册默认权限组） ---------- */
+.check-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 12px;
+  margin-top: 8px;
+}
+.check-grid.is-block {
+  grid-template-columns: 1fr;
+  margin-top: 0;
+}
+.check-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 13px;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.check-line input {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.group-key {
+  padding: 0 6px;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--primary-deep);
+  background: var(--accent-soft);
+  border-radius: 3px;
+}
+.root-flag {
+  margin-left: 6px;
+  padding: 0 6px;
+  font-size: 11px;
+  color: var(--warning);
+  background: var(--gold-wash);
+  border-radius: 3px;
+}
+.loading.is-inline {
+  padding: 8px 0;
+  text-align: left;
+  font-size: 13px;
 }
 
 /* ---------- 只读信息 ---------- */

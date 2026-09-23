@@ -18,6 +18,7 @@ export const saveConfig = (key, json, value = '') =>
  *
  * config 表结构是 key / value / json / text，不同配置项用的字段不同：
  * - SYSTEM_API_KEY、ALLOW_REGISTER 只用 value（"0"/"1"）
+ *   ALLOW_REGISTER 额外用 text 存「新用户默认权限组」ID 列表（如 "1,2"）
  * - SYSTEM_QPS、SYSTEM_QPS_BLOCK、SYSTEM_QPS_NOTIFY 用 value + json
  * - SYSTEM_PAGE_LIMIT 用 value + text（最大条数）
  * 这里只提交调用方显式传入的字段，避免把不需要的字段写成空值。

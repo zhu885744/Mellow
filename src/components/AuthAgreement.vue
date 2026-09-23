@@ -55,7 +55,7 @@ const checked = computed({
 const ready = ref(false)
 const dialog = ref(null)
 
-// 默认协议内容（与后台 functions.vue 默认值保持一致，配置缺失时兜底）
+// 默认协议内容（与后台「网站设置」SiteSettingsForm.vue 默认值保持一致，配置缺失时兜底）
 const DEFAULT_USER = '用户协议\n\n欢迎使用我们的服务！请仔细阅读以下用户协议。\n\n1. 服务条款\n您必须年满13周岁才能使用本服务。\n\n2. 账户安全\n您有责任维护账户密码的安全性。\n\n3. 用户行为规范\n请勿发布违法或侵犯他人权益的内容。'
 const DEFAULT_PRIVACY = '隐私协议\n\n我们重视您的隐私。\n\n1. 收集的信息\n我们可能收集您的账户信息和使用数据。\n\n2. 信息使用\n用于提供和改进服务。\n\n3. 信息共享\n我们不会向第三方出售您的个人信息。'
 
