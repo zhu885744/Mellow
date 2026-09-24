@@ -42,6 +42,10 @@
     <div class="auth-bottom">
       还没有账号？<router-link to="/auth/register">立即注册</router-link>
     </div>
+    <!-- 注册验证方式为「Email 验证」时用得上：重发验证邮件 / 完成验证 -->
+    <div class="auth-bottom is-minor">
+      <router-link to="/auth/verify">邮箱未验证？重发验证邮件</router-link>
+    </div>
   </div>
 </template>
 
@@ -124,5 +128,15 @@ async function handleLogin() {
   margin-top: 24px;
   font-size: 13px;
   color: var(--text-muted);
+}
+.auth-bottom.is-minor {
+  margin-top: 10px;
+  font-size: 12px;
+}
+.auth-bottom.is-minor a {
+  color: var(--text-muted);
+}
+.auth-bottom.is-minor a:hover {
+  color: var(--primary);
 }
 </style>

@@ -337,46 +337,121 @@
           </section>
 
           <!-- ============ 注册 ============ -->
-          <section v-else-if="tab === 'register'" class="card card-pad">
-            <header class="cfg-head">
-              <div>
-                <h3 class="cfg-title">开放注册</h3>
-                <p class="cfg-desc">关闭后仅管理员可创建账号，注册接口会拒绝新用户提交</p>
+          <template v-else-if="tab === 'register'">
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">开放注册</h3>
+                  <p class="cfg-desc">关闭后仅管理员可创建账号，注册接口会拒绝新用户提交</p>
+                </div>
+              </header>
+              <div class="form-item">
+                <label class="form-label">允许用户自行注册</label>
+                <SelectMenu v-model="cfg.register.value" variant="field" :options="ON_OFF" />
               </div>
-            </header>
-            <div class="form-item">
-              <label class="form-label">允许用户自行注册</label>
-              <SelectMenu v-model="cfg.register.value" variant="field" :options="ON_OFF" />
-            </div>
-
-            <div class="form-item">
-              <label class="form-label">新用户默认权限组</label>
-              <div v-if="registerGroups.loading" class="loading is-inline"><span class="spinner" /> 加载权限组...</div>
-              <p v-else-if="!registerGroups.list.length" class="form-hint">
-                暂无可用权限组：请先到「安全 → 权限组」创建，或确认当前账号有权访问权限组列表。
-              </p>
-              <div v-else class="check-grid is-block">
-                <label v-for="g in registerGroups.list" :key="g.id" class="check-line">
-                  <input v-model="cfg.register.ids" type="checkbox" :value="Number(g.id)" />
-                  <span>
-                    {{ g.name || g.key }}
-                    <code v-if="g.key" class="group-key">{{ g.key }}</code>
-                    <span v-if="Number(g.root) === 1" class="root-flag">超管</span>
-                  </span>
-                </label>
+              <div class="form-item">
+                <label class="form-label">新用户注册验证</label>
+                <SelectMenu v-model="cfg.register.verifyMode" variant="field" :options="REGISTER_VERIFY_OPTIONS" />
+                <p class="form-hint">{{ registerVerifyHint }}</p>
               </div>
-              <p class="form-hint">
-                注册成功后自动把新用户加入所选权限组（写入 ALLOW_REGISTER 的 text 字段，即分组 ID 列表）；
-                留空表示新用户不带任何权限组。含「超管」分组请谨慎勾选。
-              </p>
-            </div>
+            </section>
 
-            <div class="cfg-foot">
-              <button class="btn btn-primary btn-sm" :disabled="isSaving('register')" @click="saveRegister">
-                <i class="bi bi-check2" /> 保存
-              </button>
-            </div>
-          </section>
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">邮箱域名限制</h3>
+                  <p class="cfg-desc">用于拦截一次性邮箱或限定内部邮箱注册，仅对邮箱注册方式生效</p>
+                </div>
+              </header>
+              <div class="form-item">
+                <label class="form-label">限制模式</label>
+                <SelectMenu v-model="cfg.register.domainMode" variant="field" :options="REGISTER_DOMAIN_OPTIONS" />
+                <p class="form-hint">{{ registerDomainHint }}</p>
+              </div>
+
+              <div v-if="cfg.register.domainMode === 'whitelist'" class="form-item">
+                <label class="form-label">注册邮箱白名单</label>
+                <textarea
+                  v-model="cfg.register.whitelistText"
+                  class="textarea code-textarea"
+                  rows="5"
+                  placeholder="qq.com&#10;163.com&#10;@foxmail.com"
+                ></textarea>
+                <p class="form-hint">只允许使用这些域名结尾的邮箱地址注册，每行一个域名（@ 可省略，子域自动匹配，如 qq.com 同时允许 mail.qq.com）。</p>
+              </div>
+
+              <div v-if="cfg.register.domainMode === 'blacklist'" class="form-item">
+                <label class="form-label">注册邮箱黑名单</label>
+                <textarea
+                  v-model="cfg.register.blacklistText"
+                  class="textarea code-textarea"
+                  rows="5"
+                  placeholder="example.com&#10;@tempmail.com"
+                ></textarea>
+                <p class="form-hint">禁止使用这些域名结尾的邮箱地址注册，每行一个域名（@ 可省略，子域自动匹配）。</p>
+              </div>
+            </section>
+
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">注册后发布欢迎消息</h3>
+                  <p class="cfg-desc">两项可同时开启；人工审核模式下通过审核时发送，邮箱验证模式下验证通过时发送</p>
+                </div>
+              </header>
+              <div class="form-grid">
+                <div class="form-item">
+                  <label class="form-label">站内消息通知</label>
+                  <SelectMenu v-model="cfg.register.welcomeMessage" variant="field" :options="ON_OFF" />
+                  <p class="form-hint">注册成功后，向用户发送站内欢迎消息</p>
+                </div>
+                <div class="form-item">
+                  <label class="form-label">发送欢迎 Email</label>
+                  <SelectMenu v-model="cfg.register.welcomeEmail" variant="field" :options="ON_OFF" />
+                  <p class="form-hint">注册成功后，向用户注册邮箱发送欢迎邮件</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">新用户默认权限组</h3>
+                  <p class="cfg-desc">注册成功后自动入组，空选表示不带任何权限组</p>
+                </div>
+              </header>
+              <div class="form-item">
+                <label class="form-label">默认权限组</label>
+                <div v-if="registerGroups.loading" class="loading is-inline"><span class="spinner" /> 加载权限组...</div>
+                <p v-else-if="!registerGroups.list.length" class="form-hint">
+                  暂无可用权限组：请先到「安全 → 权限组」创建，或确认当前账号有权访问权限组列表。
+                </p>
+                <div v-else class="check-grid is-block">
+                  <label v-for="g in registerGroups.list" :key="g.id" class="check-line">
+                    <input v-model="cfg.register.ids" type="checkbox" :value="Number(g.id)" />
+                    <span>
+                      {{ g.name || g.key }}
+                      <code v-if="g.key" class="group-key">{{ g.key }}</code>
+                      <span v-if="Number(g.root) === 1" class="root-flag">超管</span>
+                    </span>
+                  </label>
+                </div>
+                <p class="form-hint">
+                  注册成功后自动把新用户加入所选权限组（写入 ALLOW_REGISTER 的 text 字段，即分组 ID 列表）；
+                  留空表示新用户不带任何权限组。含「超管」分组请谨慎勾选。
+                </p>
+              </div>
+            </section>
+
+            <section class="card card-pad">
+              <div class="cfg-foot is-plain">
+                <span class="form-hint is-inline">以上设置同属 ALLOW_REGISTER 一条记录，点保存一次即可全部生效</span>
+                <button class="btn btn-primary btn-sm" :disabled="isSaving('register')" @click="saveRegister">
+                  <i class="bi bi-check2" /> 保存注册设置
+                </button>
+              </div>
+            </section>
+          </template>
 
           <!-- ============ 缓存 ============ -->
           <template v-else-if="tab === 'cache'">
@@ -980,6 +1055,11 @@
  *   ALLOW_REGISTER 均为 config 表记录，value 是 "0"/"1" 字符串；
  * - ALLOW_REGISTER 另用 text 存「新用户默认权限组」的 ID 列表（如 "1,2"，空表示不分组），
  *   注册成功后由 Comm.auth() 读取（utils.Unity.Ids 按数字提取），把新用户写进对应 auth-group 的 uids；
+ * - ALLOW_REGISTER 的 json 存注册扩展设置（见 app/model/register.go）：
+ *   email_domain_mode（off/whitelist/blacklist）+ email_whitelist / email_blacklist、
+ *   verify_mode（none/email/manual）、welcome_message / welcome_email；
+ *   none 直接注册并登录，email 会标记 email_verified=0 并发验证邮件（/auth/verify），
+ *   manual 会把 status 置为 2（待审核），两者都需通过后才能登录；
  * - 内容配置 ARTICLE / MOMENTS / PAGE 结构相同（editor / audit / comment{allow,show}），
  *   分别由 article.go、moments.go、pages.go 的 config() 读取，audit 决定新建内容的默认审核态；
  *   评论配置 COMMENT 结构独立（allow / rate_limit / max_length / require_chinese /
@@ -990,7 +1070,7 @@
  * - storage 不带 name 读取时不脱敏，因此这里按分组分别读取；
  * - 日志配置后端只读（没有保存接口）。
  */
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SelectMenu from '@/components/SelectMenu.vue'
 import SiteSettingsForm from '@/components/admin/SiteSettingsForm.vue'
@@ -1032,6 +1112,20 @@ const SMS_DRIVERS = [
   { value: 'aliyun', label: '阿里云短信' },
   { value: 'aliyun_number_verify', label: '阿里云号码认证' },
   { value: 'tencent', label: '腾讯云短信' }
+]
+
+// 新用户注册验证方式（对应后端 model.RegisterVerify* 三个常量）
+const REGISTER_VERIFY_OPTIONS = [
+  { value: 'none', label: '无（注册后直接登录）' },
+  { value: 'email', label: 'Email 验证（验证通过后才能登录）' },
+  { value: 'manual', label: '人工审核（管理员通过后才能登录）' }
+]
+
+// 邮箱域名限制模式
+const REGISTER_DOMAIN_OPTIONS = [
+  { value: 'off', label: '关闭' },
+  { value: 'whitelist', label: '白名单模式' },
+  { value: 'blacklist', label: '黑名单模式' }
 ]
 
 const modules = [
@@ -1104,8 +1198,20 @@ const cfg = reactive({
   qpsBlock: { value: '0', json: { count: 3, second: '60 * 60' } },
   qpsNotify: { value: '0', json: { email: '', webhook: '' } },
   pageLimit: { value: '1', text: '50' },
-  // 注册开关 + 新用户默认权限组（ids 存到 ALLOW_REGISTER 的 text 字段）
-  register: { value: '1', ids: [] },
+  // 注册设置（同属 ALLOW_REGISTER 一条记录）
+  // - value     → value 字段：是否允许自行注册
+  // - ids       → text 字段：新用户默认权限组 ID 列表
+  // - 其余字段  → json 字段：域名限制 / 验证方式 / 欢迎消息开关
+  register: {
+    value: '1',
+    ids: [],
+    verifyMode: 'none',
+    domainMode: 'off',
+    whitelistText: '',
+    blacklistText: '',
+    welcomeMessage: '0',
+    welcomeEmail: '0'
+  },
   // 内容配置：ARTICLE / MOMENTS / PAGE 三份结构相同（editor / audit / comment）
   content: {
     ARTICLE: { editor: 'tinymce', audit: '1', comment: { allow: '1', show: '1' } },
@@ -1223,6 +1329,40 @@ function parseIdList(raw) {
   return matched ? [...new Set(matched.map(Number))] : []
 }
 
+// 邮箱域名列表 ↔ 文本：后台按「一行一个」编辑，保存时转数组（后端也会再做一次归一化）
+function domainText(list) {
+  return Array.isArray(list) ? list.join('\n') : String(list ?? '')
+}
+function parseDomainText(text) {
+  const list = String(text ?? '')
+    .split(/[\n\r,，;；\s]+/)
+    .map((item) => item.trim().replace(/^@/, '').replace(/^\.+|\.+$/g, '').toLowerCase())
+    .filter(Boolean)
+  return [...new Set(list)]
+}
+
+// 注册验证方式 / 域名限制的说明文案
+const registerVerifyHint = computed(() => {
+  switch (cfg.register.verifyMode) {
+    case 'email':
+      return '选择「Email 验证」将向用户注册 Email 发送一封验证邮件以确认邮箱的有效性，验证通过前无法登录'
+    case 'manual':
+      return '选择「人工审核」将由管理员在「用户管理」中逐个确定是否允许新用户登录'
+    default:
+      return '选择「无」用户可直接注册成功（仍需要邮箱/短信验证码）'
+  }
+})
+const registerDomainHint = computed(() => {
+  switch (cfg.register.domainMode) {
+    case 'whitelist':
+      return '选择「白名单模式」，只有限制名单中的邮箱域名可以注册（名单为空时任何邮箱都无法注册）'
+    case 'blacklist':
+      return '选择「黑名单模式」，限制名单中的邮箱域名不能注册'
+    default:
+      return '选择「无」直接关闭本功能；名单内每行一个域名，例如 qq.com'
+  }
+})
+
 // ---------- 读取 ----------
 async function readConfig(key) {
   // 配置项可能尚未初始化，失败时不弹全局提示
@@ -1242,6 +1382,29 @@ function readContentConfig(raw) {
       show: toText(comment.show, '1')
     }
   }
+}
+
+// 注册配置（ALLOW_REGISTER）：value 是注册开关，text 是默认权限组，json 是扩展设置
+function readRegisterConfig(raw) {
+  const json = parseJson(raw?.json, {})
+
+  cfg.register.value = toText(raw?.value, '1')
+  // 新用户默认权限组：后端 Comm.auth() 读取该记录的 text 字段
+  cfg.register.ids = parseIdList(raw?.text)
+
+  // 域名限制
+  cfg.register.domainMode = ['whitelist', 'blacklist'].includes(json.email_domain_mode)
+    ? json.email_domain_mode
+    : 'off'
+  cfg.register.whitelistText = domainText(json.email_whitelist)
+  cfg.register.blacklistText = domainText(json.email_blacklist)
+
+  // 注册验证方式
+  cfg.register.verifyMode = ['email', 'manual'].includes(json.verify_mode) ? json.verify_mode : 'none'
+
+  // 欢迎消息 / 欢迎邮件
+  cfg.register.welcomeMessage = Number(json.welcome_message) ? '1' : '0'
+  cfg.register.welcomeEmail = Number(json.welcome_email) ? '1' : '0'
 }
 
 // 评论配置（COMMENT）：结构独立，敏感词转成「一行一个」的文本便于编辑
@@ -1301,9 +1464,7 @@ async function loadConfigs() {
     cfg.pageLimit.text = toText(pageLimit.text, '50')
   }
   if (register) {
-    cfg.register.value = toText(register.value, '1')
-    // 新用户默认权限组：后端 Comm.auth() 读取该记录的 text 字段
-    cfg.register.ids = parseIdList(register.text)
+    readRegisterConfig(register)
   }
 
   if (article) cfg.content.ARTICLE = readContentConfig(article)
@@ -1479,27 +1640,38 @@ function savePageLimit() {
 }
 
 /**
- * 保存注册配置
+ * 保存注册配置（ALLOW_REGISTER 一条记录承载三部分数据）
  * - value：是否允许自行注册（"0"/"1"）
  * - text ：新用户默认权限组 ID 列表，后端 Comm.auth() 注册后按它把用户加进对应权限组
- * 注意：text 必须与 value 一起提交，否则会被当成未提交字段而保持原值；
- * 反过来，这里不提交多余字段，避免误清空 remark 等。
+ * - json ：邮箱域名限制 / 注册验证方式 / 欢迎消息开关
+ * 注意：只提交本页涉及的字段，避免误清空 remark 等；保存后回读，统一数字/字符串口径。
  */
 async function saveRegister() {
+  const setting = {
+    email_domain_mode: cfg.register.domainMode,
+    // 名单文本 → 数组；后端 NormalizeDomains 会再做一次归一化（去 @、小写、去重）
+    email_whitelist: parseDomainText(cfg.register.whitelistText),
+    email_blacklist: parseDomainText(cfg.register.blacklistText),
+    verify_mode: cfg.register.verifyMode,
+    welcome_message: Number(cfg.register.welcomeMessage) ? 1 : 0,
+    welcome_email: Number(cfg.register.welcomeEmail) ? 1 : 0
+  }
+
   await saveConfigItem(
     'register',
     {
       key: 'ALLOW_REGISTER',
-      data: { value: cfg.register.value, text: cfg.register.ids.map(Number).join(',') }
+      data: {
+        value: cfg.register.value,
+        text: cfg.register.ids.map(Number).join(','),
+        json: setting
+      }
     },
     '已保存'
   )
-  // 重新读取，避免数字/字符串差异留在表单里
+
   const fresh = await readConfig('ALLOW_REGISTER')
-  if (fresh) {
-    cfg.register.value = toText(fresh.value, '1')
-    cfg.register.ids = parseIdList(fresh.text)
-  }
+  if (fresh) readRegisterConfig(fresh)
 }
 
 /**
@@ -1832,6 +2004,17 @@ onMounted(loadAll)
   margin-top: 16px;
   padding-top: 14px;
   border-top: 1px dashed var(--border-soft);
+}
+/* 单独的保存条（注册模块）：无上边框、按钮靠右 */
+.cfg-foot.is-plain {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.form-hint.is-inline {
+  margin: 0 auto 0 0;
 }
 
 .form-grid {

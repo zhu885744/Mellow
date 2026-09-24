@@ -94,7 +94,7 @@
           </template>
           <template v-else>
             <button class="btn btn-sm" :disabled="busy" @click="batchStatus(USER_STATUS_NORMAL)">
-              <i class="bi bi-person-check" /> 批量解冻
+              <i class="bi bi-person-check" /> 批量通过/解冻
             </button>
             <button class="btn btn-sm" :disabled="busy" @click="batchStatus(USER_STATUS_FROZEN)">
               <i class="bi bi-snow" /> 批量冻结
@@ -173,7 +173,7 @@
                 </span>
 
                 <span class="status-chip" :class="userStatusClass(item)">
-                  <i :class="Number(item.status) === USER_STATUS_FROZEN ? 'bi bi-snow' : 'bi bi-person-check'" />
+                  <i :class="userStatusIcon(item)" />
                   {{ userStatusLabel(item) }}
                 </span>
 
@@ -574,6 +574,7 @@ import {
   USER_TRASH_ORDER,
   USER_DEFAULT_ORDER,
   USER_STATUS_NORMAL,
+  USER_STATUS_AUDIT,
   USER_STATUS_FROZEN,
   BAN_TYPES,
   BAN_TYPE_ALL,
@@ -601,10 +602,12 @@ const tabs = USER_TABS
 const sortOptions = USER_SORT_OPTIONS
 const searchFields = USER_SEARCH_FIELDS
 
-// 账号状态切换项（对应后端 users/status 的 0/1）
+// 账号状态切换项（对应后端 users/status 的 0/1/2）
 // 同时用作行内状态单选与编辑弹窗的 SelectMenu 选项（后者只取 value / label）
+// 待审核（2）由「注册验证方式=人工审核」写入，管理员点「正常」即视为审核通过
 const STATUS_OPTIONS = [
   { value: USER_STATUS_NORMAL, key: 'normal', label: '正常', icon: 'bi bi-person-check' },
+  { value: USER_STATUS_AUDIT, key: 'audit', label: '待审核', icon: 'bi bi-hourglass-split' },
   { value: USER_STATUS_FROZEN, key: 'frozen', label: '冻结', icon: 'bi bi-snow' }
 ]
 
@@ -669,7 +672,17 @@ function banCountOf(item) {
 }
 
 function userStatusClass(item) {
-  return Number(item?.status) === USER_STATUS_FROZEN ? 'is-frozen' : 'is-normal'
+  const status = Number(item?.status)
+  if (status === USER_STATUS_FROZEN) return 'is-frozen'
+  if (status === USER_STATUS_AUDIT) return 'is-audit'
+  return 'is-normal'
+}
+
+function userStatusIcon(item) {
+  const status = Number(item?.status)
+  if (status === USER_STATUS_FROZEN) return 'bi bi-snow'
+  if (status === USER_STATUS_AUDIT) return 'bi bi-hourglass-split'
+  return 'bi bi-person-check'
 }
 
 function banLine(item) {
@@ -857,9 +870,12 @@ async function changeStatus(item, value) {
   if (Number(item.status) === Number(value)) return
   busy.value = true
   try {
+    const wasAudit = Number(item.status) === USER_STATUS_AUDIT
     await setUserStatus(item.id, value)
     item.status = value
-    toast.success(value === USER_STATUS_FROZEN ? '账号已冻结' : '账号已解冻')
+    if (value === USER_STATUS_FROZEN) toast.success('账号已冻结')
+    else if (value === USER_STATUS_AUDIT) toast.success('已标记为待审核')
+    else toast.success(wasAudit ? '审核通过，账号已可登录' : '账号已解冻')
     // 状态筛选下该条目可能已不属于当前标签
     if (status.value !== 'all') await afterMutation(0)
     else refreshStats()
@@ -1078,7 +1094,9 @@ function openEdit(item) {
   edit.description = item.description || ''
   edit.remark = item.remark || ''
   edit.source = item.source || 'default'
-  edit.status = Number(item.status) === USER_STATUS_FROZEN ? USER_STATUS_FROZEN : USER_STATUS_NORMAL
+  edit.status = [USER_STATUS_NORMAL, USER_STATUS_FROZEN, USER_STATUS_AUDIT].includes(Number(item.status))
+    ? Number(item.status)
+    : USER_STATUS_NORMAL
   edit.dialogTitle = `编辑用户 #${item.id}`
   edit.visible = true
 }
@@ -1587,6 +1605,10 @@ onUnmounted(() => {
   color: var(--success);
   background: rgba(108, 154, 77, 0.12);
 }
+.status-chip.is-audit {
+  color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.12);
+}
 .status-chip.is-frozen {
   color: var(--warning);
   background: var(--gold-wash);
@@ -1672,7 +1694,7 @@ onUnmounted(() => {
   cursor: not-allowed;
 }
 
-/* ---------- 账号状态单选（正常 / 冻结） ---------- */
+/* ---------- 账号状态单选（正常 / 待审核 / 冻结） ---------- */
 .status-switch {
   display: inline-flex;
   align-items: center;
@@ -1717,6 +1739,10 @@ onUnmounted(() => {
 .status-option.active.is-normal {
   background: rgba(108, 154, 77, 0.14);
   color: var(--success);
+}
+.status-option.active.is-audit {
+  background: rgba(14, 165, 233, 0.14);
+  color: #0ea5e9;
 }
 .status-option.active.is-frozen {
   background: var(--gold-wash);

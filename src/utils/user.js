@@ -13,9 +13,11 @@ export const USER_LIST_FIELD =
 // 回收站 key：不属于状态标签，需要单独的查询参数（onlyTrashed）
 export const USER_TRASH_KEY = 'trash'
 
-// 用户状态（与后端 model.UserStatusNormal / UserStatusFrozen 对应）
+// 用户状态（与后端 model.UserStatusNormal / UserStatusFrozen / UserStatusAudit 对应）
 export const USER_STATUS_NORMAL = 0
 export const USER_STATUS_FROZEN = 1
+// 待审核：注册验证方式为「人工审核」时写入，管理员在用户列表改为「正常」即通过
+export const USER_STATUS_AUDIT = 2
 
 /**
  * 筛选定义
@@ -41,6 +43,14 @@ export const USER_FILTERS = [
     icon: 'bi bi-person-check',
     color: 'var(--success)',
     where: { status: USER_STATUS_NORMAL }
+  },
+  {
+    key: 'audit',
+    label: '待审核',
+    tabLabel: '待审核',
+    icon: 'bi bi-hourglass-split',
+    color: '#0ea5e9',
+    where: { status: USER_STATUS_AUDIT }
   },
   {
     key: 'frozen',
@@ -216,9 +226,12 @@ export function banDurationText(days) {
 
 // ---------- 展示辅助 ----------
 
-/** 用户状态文案（0 正常 / 1 冻结） */
+/** 用户状态文案（0 正常 / 1 冻结 / 2 待审核） */
 export function userStatusLabel(item) {
-  return Number(item?.status) === USER_STATUS_FROZEN ? '已冻结' : '正常'
+  const status = Number(item?.status)
+  if (status === USER_STATUS_FROZEN) return '已冻结'
+  if (status === USER_STATUS_AUDIT) return '待审核'
+  return '正常'
 }
 
 /** 是否处于封禁中（优先用后端解析好的 result.ban.is_banned） */
