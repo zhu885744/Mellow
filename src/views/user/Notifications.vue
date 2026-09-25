@@ -139,7 +139,9 @@ import { ref, computed, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import { listNotifications, readNotification, removeAllNotifications } from '@/api/tags'
+import { listNotifications, readNotification } from '@/api/tags'
+// remove-all 单次有数量上限，用 @/api/notification 的封装循环清理到清空
+import { clearAllNotifications } from '@/api/notification'
 import { useNotificationStore } from '@/stores/notification'
 import { useRouter } from 'vue-router'
 import { fromNow } from '@/utils/time'
@@ -253,16 +255,23 @@ async function readAll() {
 
 // 清空已读消息：只软删除已读通知（移入回收站，可恢复），未读消息不受影响
 // 由主题内置的 <ConfirmDialog> 二次确认后触发，处理中弹窗保持打开
+//
+// 注意：后端 remove-all 单次最多清理 200 条（NOTIFICATION_BATCH_LIMIT），
+// 返回 { cleared, remaining }，因此这里循环调用直到清空（最多 20 轮，防御性上限）。
 async function clearRead() {
   if (clearReadLoading.value) return
   clearReadLoading.value = true
   try {
-    const res = await removeAllNotifications({ is_read: 1 })
-    if (res?.code === 204) {
+    const { cleared, remaining } = await clearAllNotifications({ is_read: 1 })
+
+    if (cleared === 0) {
       toast.info('暂无已读消息')
+    } else if (remaining > 0) {
+      toast.success(`已清空 ${cleared} 条已读消息，剩余 ${remaining} 条请再次点击`)
     } else {
       toast.success('已清空全部已读消息')
     }
+
     // 清空后第一页可能为空，回到首页重新加载
     if (page.value > 1) page.value = 1
     await load()
