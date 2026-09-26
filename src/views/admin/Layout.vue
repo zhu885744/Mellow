@@ -67,7 +67,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useAuthPagesStore } from '@/stores/auth-pages'
-import { isAdmin } from '@/utils/helper'
+import { adminAllowedPaths, canEnterAdmin } from '@/utils/helper'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 
@@ -149,21 +149,8 @@ const menus = computed(() => {
   const flat = authPagesStore.getFlat || []
   if (!flat.length) return []
 
-  // 用户拥有的页面 path 集合
-  const auth = user.value?.result?.auth || user.value?.auth
-  const pagesHash = auth?.pages?.hash
-  let allowedPaths = null
-  if (Array.isArray(pagesHash) && pagesHash.length) {
-    if (pagesHash.includes('all')) {
-      allowedPaths = null // 拥有全部
-    } else {
-      const uniq = [...new Set(pagesHash)].filter(Boolean)
-      allowedPaths = new Set(
-        flat.filter((p) => uniq.includes(p.hash)).map((p) => p.path)
-      )
-    }
-  }
-
+  // 允许访问的页面 path 集合（null = 拥有全部页面）
+  const allowedPaths = adminAllowedPaths(user.value, flat)
   const byPath = Object.fromEntries(flat.map((p) => [p.path, p]))
 
   return groupDefs
@@ -189,18 +176,53 @@ const menus = computed(() => {
 
 const currentTitle = computed(() => route.meta?.title || '后台管理')
 
-// 权限守卫：非管理员跳回首页
-if (!isAdmin(user.value)) {
+// 权限守卫：没有后台页面权限的账号跳回首页
+// （判定见 utils/helper.js 的 canEnterAdmin：超级管理员 / 组 key=admin / 勾了任意后台页面；
+//   不能只认「组 key=admin」，否则非 admin 的运营组即使勾了部分页面也进不来）
+if (!canEnterAdmin(user.value)) {
   router.replace('/')
+}
+
+// 取当前路径对应的后台页面（最长前缀匹配，如 /admin/article/edit/3 → /admin/article）
+function pageOfPath(flat, path) {
+  let matched = null
+  flat.forEach((p) => {
+    if ((path === p.path || path.startsWith(`${p.path}/`)) && (!matched || p.path.length > matched.path.length)) {
+      matched = p
+    }
+  })
+  return matched
+}
+
+/**
+ * 路由级页面校验：手输 URL 打开没有权限的后台页面时，跳到第一个可见页面
+ * （/admin/dashboard 是概览，不在页面权限清单里，能进后台即可访问）
+ */
+function guardRoute(path = route.path) {
+  if (!path.startsWith('/admin/') || path === '/admin/dashboard') return
+
+  const flat = authPagesStore.getFlat || []
+  if (!flat.length) return
+
+  const allowedPaths = adminAllowedPaths(user.value, flat)
+  if (!allowedPaths) return
+
+  const page = pageOfPath(flat, path)
+  if (!page || allowedPaths.has(page.path)) return
+
+  const first = menus.value[0]?.children?.[0]?.path
+  router.replace(first || '/')
 }
 
 onMounted(async () => {
   await authPagesStore.ensureLoaded()
   authReady.value = true
+  guardRoute()
 })
 
-// 移动端：路由变化后自动收起抽屉（桌面端保持用户选择的折叠状态不变）
-watch(() => route.path, () => {
+// 路由变化：校验页面权限；移动端顺带自动收起抽屉（桌面端保持用户选择的折叠状态）
+watch(() => route.path, (path) => {
+  guardRoute(path)
   if (window.innerWidth <= 768) collapsed.value = false
 })
 </script>

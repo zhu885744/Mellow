@@ -36,6 +36,15 @@ export const getTomlNotification = () => getToml('notification')
 /** 短信配置（不带 name 时返回 drive + 各服务商，且已脱敏） */
 export const getTomlSms = () => getToml('sms')
 
+/**
+ * 发件队列（config/sms.toml 的 [email] 段：分批 + 重试参数）
+ *
+ * - 读取：getTomlSms() 的 data.email 里就带着这些字段（与邮件服务配置同表）；
+ * - 保存：saveToml('sms-email-queue', { batch_size, batch_interval, retry_delay,
+ *   max_attempts, send_timeout, verify_wait, queue_size })，只提交要改的字段，
+ *   未提交的保持原值，越界（见后端 facade.MailQueueLimits）返回 400。
+ */
+
 /** 缓存配置（返回 open / default / redis / file / ram） */
 export const getTomlCache = () => getToml('cache')
 

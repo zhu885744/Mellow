@@ -197,3 +197,46 @@ export const isAdmin = (user) => {
   }
   return false
 }
+
+/**
+ * 用户是否为后台页面权限集合（供菜单 / 路由过滤，见 views/admin/Layout.vue）
+ *
+ * @returns {null|Set<string>} null 表示拥有全部页面（未配置页面权限或含 all），
+ *                             否则为允许访问的后台页面 path 集合
+ */
+export const adminAllowedPaths = (user, flat) => {
+  const auth = user?.result?.auth || user?.auth
+  const pagesHash = auth?.pages?.hash
+  const list = Array.isArray(flat) ? flat : []
+
+  // pages 为空 = 未配置页面权限（历史库 / 超级管理员）→ 视为全部
+  if (!Array.isArray(pagesHash) || !pagesHash.length) return null
+  if (pagesHash.includes('all')) return null
+
+  const uniq = [...new Set(pagesHash)].filter(Boolean)
+  return new Set(list.filter((p) => uniq.includes(p.hash)).map((p) => p.path))
+}
+
+/**
+ * 判断用户是否可以进入管理后台
+ *
+ * 与 isAdmin 的区别：
+ * - isAdmin 是「超级管理员」口径（拥有全部接口权限 all，或权限组 key === 'admin'），
+ *   用于「能管理一切」的场景（动态置顶 / 删除等）；
+ * - 这里判断的是「有没有后台页面权限」：权限组只要给了任意后台页面（auth-group.pages），
+ *   就允许进入后台（菜单与路由会再按这些页面过滤），这样非 admin 的运营组也能进入
+ *   自己那部分页面。pages 为空 = 未配置页面权限，与菜单口径一致按「全部」处理。
+ */
+export const canEnterAdmin = (user) => {
+  if (!user || typeof user !== 'object') return false
+  const auth = user?.result?.auth || user?.auth
+  if (!auth) return false
+  if (auth.all === true || auth.all === 1) return true
+
+  const groups = auth?.group?.list || auth?.group || []
+  if (Array.isArray(groups) && groups.some((g) => g?.key === 'admin')) return true
+
+  const pages = auth?.pages?.hash
+  if (!Array.isArray(pages) || !pages.length) return true
+  return pages.includes('all') || pages.some(Boolean)
+}

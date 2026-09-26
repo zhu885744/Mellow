@@ -212,7 +212,7 @@
             <header class="cfg-head">
               <div>
                 <h3 class="cfg-title">评论配置</h3>
-                <p class="cfg-desc">评论开关、限流、内容校验、敏感词与邮件通知</p>
+                <p class="cfg-desc">评论开关、限流、内容校验与敏感词</p>
               </div>
             </header>
 
@@ -245,19 +245,11 @@
                 <label class="form-label">敏感词过滤</label>
                 <SelectMenu v-model="cfg.comment.sensitive_filter" variant="field" :options="ON_OFF" />
               </div>
-              <div class="form-item">
-                <label class="form-label">邮件通知</label>
-                <SelectMenu v-model="cfg.comment.email_notify.enabled" variant="field" :options="ON_OFF" />
-              </div>
-              <div class="form-item">
-                <label class="form-label">通知重试次数</label>
-                <input v-model="cfg.comment.email_notify.retry_count" class="input" type="number" min="0" step="1" />
-              </div>
-              <div class="form-item">
-                <label class="form-label">重试间隔（秒）</label>
-                <input v-model="cfg.comment.email_notify.retry_interval" class="input" type="number" min="1" step="1" />
-              </div>
             </div>
+
+            <p class="form-hint">
+              邮件通知（评论 / 回复）已统一到「邮件通知」模块管理，见其中的「评论互动」分组
+            </p>
 
             <div class="form-item">
               <label class="form-label">敏感词</label>
@@ -860,6 +852,39 @@
               </div>
             </section>
 
+            <!-- 发件队列：分批限流 + 失败重试（config/sms.toml 的 [email] 段） -->
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">发件队列</h3>
+                  <p class="cfg-desc">
+                    通知类邮件统一入队后分批发送（验证码 / 注册验证邮件入队即发，不受分批限制），
+                    失败按「重试延迟」重新入队，达到「最大尝试次数」后标记失败并丢弃；
+                    保存后立即生效，无需重启
+                  </p>
+                </div>
+              </header>
+              <div class="form-grid">
+                <div v-for="item in MAIL_QUEUE_FIELDS" :key="item.key" class="form-item">
+                  <label class="form-label">{{ item.label }}</label>
+                  <input
+                    v-model.number="toml.sms.emailQueue[item.key]"
+                    class="input"
+                    type="number"
+                    step="1"
+                    :min="item.min"
+                    :max="item.max"
+                  />
+                  <p class="form-hint">{{ item.hint }}（{{ item.min }} ~ {{ item.max }}）</p>
+                </div>
+              </div>
+              <div class="cfg-foot">
+                <button class="btn btn-primary btn-sm" :disabled="isSaving('smsEmailQueue')" @click="saveSmsEmailQueue">
+                  <i class="bi bi-check2" /> 保存
+                </button>
+              </div>
+            </section>
+
             <section class="card card-pad">
               <header class="cfg-head">
                 <div>
@@ -989,6 +1014,71 @@
             </section>
           </template>
 
+          <!-- ============ 邮件通知（统一开关）============ -->
+          <template v-else-if="tab === 'mail'">
+            <!-- 总开关 + 管理员收件人 -->
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">邮件通知总开关</h3>
+                  <p class="cfg-desc">
+                    关闭后所有场景都不再发邮件（站内消息不受影响）；
+                    邮件统一走邮箱队列分批投递，失败会自动延迟重试
+                    （分批 / 重试参数见「短信」标签页的「发件队列」）
+                  </p>
+                </div>
+              </header>
+
+              <div class="form-item">
+                <label class="form-label">总开关</label>
+                <SelectMenu v-model="cfg.mail.enabled" variant="field" :options="ON_OFF" />
+              </div>
+
+              <div class="form-item">
+                <label class="form-label">管理员收件邮箱</label>
+                <input
+                  v-model="cfg.mail.adminEmail"
+                  class="input"
+                  type="text"
+                  placeholder="多个用逗号分隔；留空则用「超级管理员」账号的邮箱"
+                />
+                <p class="form-hint">
+                  审核 / 订单等「通知管理员」的场景发到这里；留空时自动取权限组 root=1 成员的邮箱
+                </p>
+              </div>
+              
+              <div class="cfg-foot">
+                <button class="btn btn-primary btn-sm" :disabled="isSaving('mail')" @click="saveMail">
+                  <i class="bi bi-check2" /> 保存
+                </button>
+              </div>
+            </section>
+
+            <!-- 场景开关：按分组展示，开则正常发送、关则禁用 -->
+            <section v-for="group in MAIL_GROUPS" :key="group" class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">{{ group }}</h3>
+                  <p class="cfg-desc">按需开启；关闭后该场景不再发送邮件，站内记录不受影响</p>
+                </div>
+              </header>
+
+              <div class="form-grid">
+                <div v-for="scene in mailScenesOf(group)" :key="scene.key" class="form-item">
+                  <label class="form-label">{{ scene.label }}</label>
+                  <SelectMenu v-model="cfg.mail.scenes[scene.key]" variant="field" :options="ON_OFF" />
+                  <p class="form-hint">{{ scene.target === 'admin' ? '发给管理员' : '发给相关用户' }}</p>
+                </div>
+              </div>
+
+              <div class="cfg-foot">
+                <button class="btn btn-primary btn-sm" :disabled="isSaving('mail')" @click="saveMail">
+                  <i class="bi bi-check2" /> 保存
+                </button>
+              </div>
+            </section>
+          </template>
+
           <!-- ============ 通知与日志 ============ -->
           <template v-else-if="tab === 'notify'">
             <section class="card card-pad">
@@ -1055,6 +1145,12 @@
  *   ALLOW_REGISTER 均为 config 表记录，value 是 "0"/"1" 字符串；
  * - ALLOW_REGISTER 另用 text 存「新用户默认权限组」的 ID 列表（如 "1,2"，空表示不分组），
  *   注册成功后由 Comm.auth() 读取（utils.Unity.Ids 按数字提取），把新用户写进对应 auth-group 的 uids；
+ * - SYSTEM_MAIL_NOTIFY 是「统一邮件通知」记录（见 app/model/mail-notify.go）：
+ *   value / json.enabled 是总开关（0 关闭时所有场景都停发），json.admin_email 是管理员收件邮箱
+ *   （留空回退「超级管理员」账号邮箱），json.scenes 存各场景开关
+ *   （article.pending / comment.notify / user.banned / order.paid ...，清单见 model.MailNotifyScenes()）；
+ *   评论 / 回复的邮件通知也在此管理（comment.notify / comment.reply），评论模块不再有独立邮件开关；
+ *   邮件统一走邮箱队列（app/facade/mail_queue.go）分批投递，失败自动延迟重试；
  * - ALLOW_REGISTER 的 json 存注册扩展设置（见 app/model/register.go）：
  *   email_domain_mode（off/whitelist/blacklist）+ email_whitelist / email_blacklist、
  *   verify_mode（none/email/manual）、welcome_message / welcome_email；
@@ -1063,7 +1159,7 @@
  * - 内容配置 ARTICLE / MOMENTS / PAGE 结构相同（editor / audit / comment{allow,show}），
  *   分别由 article.go、moments.go、pages.go 的 config() 读取，audit 决定新建内容的默认审核态；
  *   评论配置 COMMENT 结构独立（allow / rate_limit / max_length / require_chinese /
- *   sensitive_filter / sensitive_words / email_notify），由 comment.go 的 config("comment") 读取；
+ *   sensitive_filter / sensitive_words），由 comment.go 的 config("comment") 读取；
  *   这几份配置的 json 即配置本体，保存时整体覆盖；
  * - QPS_BLOCK 的 second 是表达式字符串（如 "60 * 60"），会自动封禁触发阈值的 IP；
  * - 密钥类字段读取时已脱敏为 `****` 串，**原样回传**即表示不修改（后端会还原真实值）；
@@ -1130,6 +1226,7 @@ const REGISTER_DOMAIN_OPTIONS = [
 
 const modules = [
   { key: 'security', label: '安全', icon: 'bi bi-shield-lock' },
+  { key: 'mail', label: '邮件通知', icon: 'bi bi-envelope-paper' },
   { key: 'site', label: '网站设置', icon: 'bi bi-globe2' },
   { key: 'article', label: '文章配置', icon: 'bi bi-file-earmark-text' },
   { key: 'moments', label: '动态配置', icon: 'bi bi-chat-square-text' },
@@ -1192,6 +1289,52 @@ const loadError = ref(false)
 const saving = reactive({})
 
 // ===== config 表配置 =====
+/**
+ * 统一邮件通知的场景（与后端 app/model/mail-notify.go 的 MailNotifyScenes 一一对应）
+ *
+ * - target: admin 发给管理员（收件邮箱见上面的「管理员收件邮箱」）/ user 发给相关用户
+ * - default: 默认开关（后端兜底值，前端只用于「后端还没返回该场景」时展示）
+ * 新增场景时两边都要加；前端漏掉的场景后端仍按默认值处理，保存时也不会被覆盖（见 saveMail）。
+ */
+const MAIL_SCENES = [
+  { key: 'article.pending', label: '文章待审核', group: '内容审核', target: 'admin', default: 1 },
+  { key: 'article.passed', label: '文章审核通过', group: '内容审核', target: 'user', default: 1 },
+  { key: 'article.rejected', label: '文章审核未通过', group: '内容审核', target: 'user', default: 1 },
+  { key: 'page.pending', label: '独立页面待审核', group: '内容审核', target: 'admin', default: 1 },
+  { key: 'page.passed', label: '独立页面审核通过', group: '内容审核', target: 'user', default: 1 },
+  { key: 'page.rejected', label: '独立页面审核未通过', group: '内容审核', target: 'user', default: 1 },
+  { key: 'links.pending', label: '友链待审核', group: '内容审核', target: 'admin', default: 1 },
+  { key: 'links.passed', label: '友链审核通过', group: '内容审核', target: 'user', default: 1 },
+  { key: 'links.rejected', label: '友链审核未通过', group: '内容审核', target: 'user', default: 1 },
+  { key: 'comment.notify', label: '评论通知（内容作者）', group: '评论互动', target: 'user', default: 1 },
+  { key: 'comment.reply', label: '回复通知（被回复人）', group: '评论互动', target: 'user', default: 1 },
+  { key: 'user.pending', label: '新用户待审核', group: '用户管理', target: 'admin', default: 1 },
+  { key: 'user.passed', label: '用户审核通过', group: '用户管理', target: 'user', default: 1 },
+  { key: 'user.frozen', label: '账号被冻结', group: '用户管理', target: 'user', default: 1 },
+  { key: 'user.unfrozen', label: '账号解除冻结', group: '用户管理', target: 'user', default: 1 },
+  { key: 'user.banned', label: '账号被封禁', group: '用户管理', target: 'user', default: 1 },
+  { key: 'user.unbanned', label: '账号解除封禁', group: '用户管理', target: 'user', default: 1 },
+  { key: 'order.paid', label: '订单支付成功', group: '积分商城', target: 'admin', default: 1 },
+  { key: 'order.shipped', label: '订单已发货', group: '积分商城', target: 'user', default: 1 },
+  { key: 'order.canceled', label: '订单已取消', group: '积分商城', target: 'user', default: 1 }
+]
+
+// 场景分组（展示顺序）
+const MAIL_GROUPS = ['内容审核', '评论互动', '用户管理', '积分商城']
+
+// 默认场景开关（"1"/"0" 字符串，与 SelectMenu 的 ON_OFF 对齐）
+function defaultMailScenes() {
+  const scenes = {}
+  MAIL_SCENES.forEach((scene) => {
+    scenes[scene.key] = String(scene.default)
+  })
+  return scenes
+}
+
+function mailScenesOf(group) {
+  return MAIL_SCENES.filter((scene) => scene.group === group)
+}
+
 const cfg = reactive({
   apiKey: { value: '0' },
   qps: { value: '1', json: { point: 15, global: 50 } },
@@ -1219,19 +1362,48 @@ const cfg = reactive({
     PAGE: { editor: 'tinymce', audit: '1', comment: { allow: '1', show: '1' } }
   },
   // 评论配置：COMMENT（结构与内容配置不同，字段更多）
+  // 注：评论 / 回复的邮件开关不在评论模块，已统一到 SYSTEM_MAIL_NOTIFY（见下方 mail）
   comment: {
     allow: '1',
     rate_limit: { enabled: '1', max_count: 5, time_window: 60 },
     max_length: 500,
     require_chinese: '1',
-    sensitive_filter: '1',
-    email_notify: { enabled: '1', retry_count: 3, retry_interval: 5 }
+    sensitive_filter: '1'
   },
   // 敏感词按「一行一个」编辑，保存时拆成数组
-  sensitiveText: ''
+  sensitiveText: '',
+  // 统一邮件通知（SYSTEM_MAIL_NOTIFY 一条记录）
+  // - enabled     → json.enabled：总开关
+  // - adminEmail  → json.admin_email：管理员收件邮箱（多个逗号分隔，空则用超管邮箱）
+  // - scenes      → json.scenes：各场景开关（key 见 MAIL_SCENES）
+  // - rawScenes   → 后端原始 scenes，保存时与表单合并（避免覆盖掉前端未知的新场景）
+  mail: { enabled: '1', adminEmail: '', scenes: defaultMailScenes(), rawScenes: {} }
 })
 
 // ===== toml 配置 =====
+/**
+ * 发件队列参数（config/sms.toml 的 [email] 段）
+ * 与后端 app/facade/mail_queue.go 的 MailQueueDefaultValues / MailQueueLimits 一一对应，
+ * 默认值与取值范围改动时两边要同步。
+ */
+const MAIL_QUEUE_FIELDS = [
+  { key: 'batch_size', label: '每批数量', def: 10, min: 1, max: 1000, hint: '一个批次窗口内最多发送多少封通知类邮件；验证码 / 注册验证邮件不受此限制，入队即发' },
+  { key: 'batch_interval', label: '批次间隔（秒）', def: 600, min: 1, max: 86400, hint: '一批发满后等待多久再开下一个窗口（600 = 10 分钟）' },
+  { key: 'retry_delay', label: '重试延迟（秒）', def: 60, min: 1, max: 86400, hint: '发送失败后延迟多久重新入队重试' },
+  { key: 'max_attempts', label: '最大尝试次数', def: 3, min: 1, max: 10, hint: '含首次发送，达到上限后标记失败并丢弃，不会无限重试' },
+  { key: 'send_timeout', label: '发送超时（秒）', def: 30, min: 5, max: 600, hint: '单封邮件超过该时长按失败处理，避免 SMTP 卡住整个队列' },
+  { key: 'verify_wait', label: '验证码等待（秒）', def: 10, min: 0, max: 60, hint: '等待首轮发送结果的超时，0 = 不等待（纯异步，前端只提示「已发送」）' },
+  { key: 'queue_size', label: '队列上限', def: 1000, min: 10, max: 1000000, hint: '待发任务上限，超出后通知类邮件直接丢弃并记日志（验证码始终受理）' }
+]
+
+function defaultMailQueue() {
+  const result = {}
+  MAIL_QUEUE_FIELDS.forEach((item) => {
+    result[item.key] = item.def
+  })
+  return result
+}
+
 const toml = reactive({
   jwt: { key: '', expire: '', issuer: '', subject: '' },
   cache: {
@@ -1261,6 +1433,8 @@ const toml = reactive({
   sms: {
     drive: { default: 'email', email: 'email', sms: 'email' },
     email: { host: '', port: 465, account: '', password: '', nickname: '', sign_name: '' },
+    // 发件队列（与 email 同属 config/sms.toml 的 [email] 段，见 app/facade/mail_queue.go）
+    emailQueue: defaultMailQueue(),
     aliyun: { access_key_id: '', access_key_secret: '', endpoint: '', sign_name: '', verify_code: '' },
     aliyunNumberVerify: { access_key_id: '', access_key_secret: '', endpoint: '', sign_name: '', template_code: '' },
     tencent: { secret_id: '', secret_key: '', endpoint: '', sms_sdk_app_id: '', sign_name: '', verify_code: '', region: '' }
@@ -1297,6 +1471,15 @@ async function withSaving(key, fn) {
   saving[key] = true
   try {
     await fn()
+    return true
+  } catch (err) {
+    // 失败提示由请求拦截器统一给出（如 msg=无权限！），这里吞掉异常即可：
+    // 保存按钮是 @click 直接调用，不 catch 会在控制台抛 "Uncaught (in promise)"。
+    // 403 额外给一条可操作的提示：新接口的权限点需要给当前账号的权限组勾选。
+    if (err?.code === 403) {
+      toast.warning('当前账号没有这个权限点，请在「权限组」中勾选后重试（新接口需重启后端补录规则）')
+    }
+    return false
   } finally {
     saving[key] = false
   }
@@ -1408,10 +1591,10 @@ function readRegisterConfig(raw) {
 }
 
 // 评论配置（COMMENT）：结构独立，敏感词转成「一行一个」的文本便于编辑
+// 邮件通知（评论 / 回复）不在这里：已统一到 SYSTEM_MAIL_NOTIFY 的 comment.notify / comment.reply
 function readCommentConfig(raw) {
   const json = parseJson(raw?.json, {})
   const rate = json.rate_limit && typeof json.rate_limit === 'object' ? json.rate_limit : {}
-  const email = json.email_notify && typeof json.email_notify === 'object' ? json.email_notify : {}
   const words = Array.isArray(json.sensitive_words) ? json.sensitive_words : []
   return {
     allow: toText(json.allow, '1'),
@@ -1423,17 +1606,31 @@ function readCommentConfig(raw) {
     max_length: Number(json.max_length || 500),
     require_chinese: toText(json.require_chinese, '1'),
     sensitive_filter: toText(json.sensitive_filter, '1'),
-    email_notify: {
-      enabled: toText(email.enabled, '1'),
-      retry_count: Number(email.retry_count || 3),
-      retry_interval: Number(email.retry_interval || 5)
-    },
     words
   }
 }
 
+/**
+ * 读取统一邮件通知配置（SYSTEM_MAIL_NOTIFY）
+ * scenes 用默认值打底：后端新增 / 缺失的场景不会在这里丢掉（rawScenes 保存时原样合并回去）
+ */
+function readMailConfig(raw) {
+  const json = parseJson(raw?.json, {})
+  const scenes = json.scenes && typeof json.scenes === 'object' ? json.scenes : {}
+
+  cfg.mail.enabled = toText(json.enabled, '1')
+  cfg.mail.adminEmail = toText(json.admin_email, '')
+  cfg.mail.rawScenes = { ...scenes }
+
+  const form = defaultMailScenes()
+  Object.keys(form).forEach((key) => {
+    if (scenes[key] !== undefined) form[key] = Number(scenes[key]) === 1 ? '1' : '0'
+  })
+  cfg.mail.scenes = form
+}
+
 async function loadConfigs() {
-  const [apiKey, qps, block, notify, pageLimit, register, article, moments, pages, comment] = await Promise.all([
+  const [apiKey, qps, block, notify, pageLimit, register, article, moments, pages, comment, mailNotify] = await Promise.all([
     readConfig('SYSTEM_API_KEY'),
     readConfig('SYSTEM_QPS'),
     readConfig('SYSTEM_QPS_BLOCK'),
@@ -1443,7 +1640,8 @@ async function loadConfigs() {
     readConfig('ARTICLE'),
     readConfig('MOMENTS'),
     readConfig('PAGE'),
-    readConfig('COMMENT')
+    readConfig('COMMENT'),
+    readConfig('SYSTEM_MAIL_NOTIFY')
   ])
 
   if (apiKey) cfg.apiKey.value = toText(apiKey.value, '0')
@@ -1477,8 +1675,10 @@ async function loadConfigs() {
     cfg.comment.max_length = parsed.max_length
     cfg.comment.require_chinese = parsed.require_chinese
     cfg.comment.sensitive_filter = parsed.sensitive_filter
-    cfg.comment.email_notify = parsed.email_notify
     cfg.sensitiveText = parsed.words.join('\n')
+  }
+  if (mailNotify) {
+    readMailConfig(mailNotify)
   }
 }
 
@@ -1509,7 +1709,24 @@ async function loadTomlAll() {
 
   const smsData = sms?.data || {}
   toml.sms.drive = { default: 'email', email: 'email', sms: 'email', ...(smsData.drive || {}) }
-  toml.sms.email = { host: '', port: 465, account: '', password: '', nickname: '', sign_name: '', ...(smsData.email || {}) }
+
+  // 邮件服务与发件队列同属 [email] 段，但表单分开：队列参数单独放 emailQueue
+  const emailData = smsData.email || {}
+  toml.sms.email = {
+    host: toText(emailData.host, ''),
+    port: Number(emailData.port || 465),
+    account: toText(emailData.account, ''),
+    password: toText(emailData.password, ''),
+    nickname: toText(emailData.nickname, ''),
+    sign_name: toText(emailData.sign_name, '')
+  }
+  toml.sms.emailQueue = defaultMailQueue()
+  MAIL_QUEUE_FIELDS.forEach((item) => {
+    const value = emailData[item.key]
+    if (value !== undefined && value !== null && value !== '') {
+      toml.sms.emailQueue[item.key] = Number(value)
+    }
+  })
   toml.sms.aliyun = { access_key_id: '', access_key_secret: '', endpoint: '', sign_name: '', verify_code: '', ...(smsData.aliyun || {}) }
   toml.sms.aliyunNumberVerify = {
     access_key_id: '',
@@ -1631,6 +1848,39 @@ function saveQpsNotify() {
   )
 }
 
+/**
+ * 保存统一邮件通知配置（SYSTEM_MAIL_NOTIFY）
+ *
+ * - enabled     → json.enabled：总开关（0 关闭时后端所有场景都停发）
+ * - admin_email → json.admin_email：管理员收件邮箱（空则后端回退超管账号邮箱）
+ * - scenes      → json.scenes：各场景开关（1 开 / 0 关）
+ * 保存前与后端原始 scenes 合并，避免把前端没列出的（后端新增的）场景覆盖掉。
+ */
+async function saveMail() {
+  const scenes = { ...cfg.mail.rawScenes }
+  Object.keys(cfg.mail.scenes).forEach((key) => {
+    scenes[key] = Number(cfg.mail.scenes[key]) === 1 ? 1 : 0
+  })
+
+  await saveConfigItem(
+    'mail',
+    {
+      key: 'SYSTEM_MAIL_NOTIFY',
+      data: {
+        value: cfg.mail.enabled,
+        json: {
+          enabled: Number(cfg.mail.enabled) === 1 ? 1 : 0,
+          admin_email: String(cfg.mail.adminEmail || '').trim(),
+          scenes
+        }
+      }
+    },
+    '邮件通知配置已保存'
+  )
+
+  cfg.mail.rawScenes = { ...scenes }
+}
+
 function savePageLimit() {
   return saveConfigItem(
     'pageLimit',
@@ -1722,12 +1972,7 @@ async function saveComment() {
         max_length: Number(cfg.comment.max_length),
         require_chinese: Number(cfg.comment.require_chinese),
         sensitive_filter: Number(cfg.comment.sensitive_filter),
-        sensitive_words: words,
-        email_notify: {
-          enabled: Number(cfg.comment.email_notify.enabled),
-          retry_count: Number(cfg.comment.email_notify.retry_count),
-          retry_interval: Number(cfg.comment.email_notify.retry_interval)
-        }
+        sensitive_words: words
       }
     })
     toast.success('已保存')
@@ -1811,6 +2056,15 @@ function saveSmsDrive() {
 
 function saveSmsEmail() {
   return saveTomlItem('smsEmail', 'sms-email', { ...toml.sms.email })
+}
+
+// 发件队列：PUT /api/toml/sms-email-queue，只提交这 7 个参数（未提交的字段后端保持原值）
+function saveSmsEmailQueue() {
+  const data = {}
+  MAIL_QUEUE_FIELDS.forEach((item) => {
+    data[item.key] = Number(toml.sms.emailQueue[item.key] ?? item.def)
+  })
+  return saveTomlItem('smsEmailQueue', 'sms-email-queue', data, '发件队列配置已保存')
 }
 
 function saveSmsAliyun() {

@@ -83,9 +83,9 @@
             <span class="nav-zh">商城</span>
           </router-link>
 
-          <!-- 管理员入口 -->
+          <!-- 管理后台入口：有任意后台页面权限即显示（非 admin 的运营组也要能进自己那部分页面） -->
           <router-link
-            v-if="isAdmin(userStore.user)"
+            v-if="canEnterAdmin(userStore.user)"
             to="/admin"
             active-class="active"
             class="nav-item"
@@ -185,7 +185,7 @@ import CheckinDialog from '@/components/CheckinDialog.vue'
 import { call } from '@/api/request'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
-import { isAdmin } from '@/utils/helper'
+import { canEnterAdmin } from '@/utils/helper'
 import { useRouter, useRoute } from 'vue-router'
 
 const userStore = useUserStore()
