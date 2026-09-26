@@ -588,57 +588,39 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">访问域名</label>
-                  <input v-model="toml.storage.local.domain" class="input" type="text" placeholder="如 https://example.com" />
+                  <input v-model="toml.storage.local.domain" class="input" type="text" placeholder="留空 = 相对路径 /storage/xxx" />
+                  <p class="form-hint">
+                    留空时附件地址是相对路径（跟随站点域名）；需要 CDN 时填 https://cdn.example.com。
+                    不要填成与「存储路径」相同的值，否则会拼出 storage/storage/xxx
+                  </p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">存储路径</label>
-                  <input v-model="toml.storage.local.path" class="input" type="text" />
+                  <input v-model="toml.storage.local.path" class="input" type="text" placeholder="storage" />
+                  <p class="form-hint">public 下的子目录，留空则文件直接放在 public 下</p>
+                </div>
+                <div class="form-item">
+                  <label class="form-label">目录命名规则</label>
+                  <input v-model="toml.storage.local.dir_rule" class="input" type="text" placeholder="{Y}-{m}/{d}" />
+                  <p class="form-hint">上传目录结构，可多层（用 / 分隔）；只想放在存储路径下不要子目录就填 /</p>
+                </div>
+                <div class="form-item">
+                  <label class="form-label">文件命名规则</label>
+                  <input v-model="toml.storage.local.file_rule" class="input" type="text" placeholder="{timestamp}{str-random-10}" />
+                  <p class="form-hint">不含扩展名，扩展名会按原文件自动追加</p>
                 </div>
               </div>
+              <p class="form-hint">
+                上传到：<code class="rule-preview">{{ uploadRulePreview(toml.storage.local.path, toml.storage.local.dir_rule, toml.storage.local.file_rule) }}</code>
+              </p>
+              <p class="form-hint">
+                可用占位符：
+                <span v-for="item in UPLOAD_RULE_TOKENS" :key="item.token" class="rule-token">
+                  <code>{{ item.token }}</code> {{ item.desc }}
+                </span>
+              </p>
               <div class="cfg-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('storageLocal')" @click="saveStorageLocal">
-                  <i class="bi bi-check2" /> 保存
-                </button>
-              </div>
-            </section>
-
-            <section class="card card-pad">
-              <header class="cfg-head">
-                <div>
-                  <h3 class="cfg-title">阿里云 OSS</h3>
-                </div>
-              </header>
-              <div class="form-grid">
-                <div class="form-item">
-                  <label class="form-label">AccessKey ID</label>
-                  <input v-model="toml.storage.oss.access_key_id" class="input" type="text" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">AccessKey Secret</label>
-                  <input v-model="toml.storage.oss.access_key_secret" class="input" type="text" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">Endpoint</label>
-                  <input v-model="toml.storage.oss.endpoint" class="input" type="text" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">Bucket</label>
-                  <input v-model="toml.storage.oss.bucket" class="input" type="text" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">访问域名</label>
-                  <input v-model="toml.storage.oss.domain" class="input" type="text" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">路径前缀</label>
-                  <input v-model="toml.storage.oss.path" class="input" type="text" />
-                </div>
-              </div>
-              <div class="cfg-foot">
-                <button class="btn btn-sm" :disabled="isSaving('testOss')" @click="testStorage('oss')">
-                  <i class="bi bi-plug" /> 测试连接
-                </button>
-                <button class="btn btn-primary btn-sm" :disabled="isSaving('storageOss')" @click="saveStorageOss">
                   <i class="bi bi-check2" /> 保存
                 </button>
               </div>
@@ -661,68 +643,56 @@
                 </div>
                 <div class="form-item">
                   <label class="form-label">AppId</label>
-                  <input v-model="toml.storage.cos.app_id" class="input" type="text" />
+                  <input v-model="toml.storage.cos.app_id" class="input" type="text" placeholder="如 1250000000" />
+                  <p class="form-hint">桶名的数字后缀，用于拼默认域名 &lt;bucket&gt;-&lt;app_id&gt;.cos.&lt;region&gt;.myqcloud.com</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">Bucket</label>
-                  <input v-model="toml.storage.cos.bucket" class="input" type="text" />
+                  <input v-model="toml.storage.cos.bucket" class="input" type="text" placeholder="如 inis-cos" />
+                  <p class="form-hint">
+                    可填裸桶名（自动补 -AppId），也可直接填控制台复制的全名 inis-cos-1250000000（不会再重复拼）
+                  </p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">地域</label>
-                  <input v-model="toml.storage.cos.region" class="input" type="text" />
+                  <input v-model="toml.storage.cos.region" class="input" type="text" placeholder="如 ap-guangzhou" />
+                  <p class="form-hint">留空按 ap-guangzhou（广州）处理</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">访问域名</label>
-                  <input v-model="toml.storage.cos.domain" class="input" type="text" />
+                  <input v-model="toml.storage.cos.domain" class="input" type="text" placeholder="留空 = 默认域名" />
+                  <p class="form-hint">留空时用 https://&lt;bucket&gt;-&lt;app_id&gt;.cos.&lt;region&gt;.myqcloud.com，填了则作为 CDN 域名</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">路径前缀</label>
-                  <input v-model="toml.storage.cos.path" class="input" type="text" />
+                  <input v-model="toml.storage.cos.path" class="input" type="text" placeholder="如 inis" />
+                  <p class="form-hint">对象键前缀，留空则键直接从目录命名规则开始（不带前导 /）</p>
+                </div>
+                <div class="form-item">
+                  <label class="form-label">目录命名规则</label>
+                  <input v-model="toml.storage.cos.dir_rule" class="input" type="text" placeholder="{Y}-{m}/{d}" />
+                  <p class="form-hint">对象键的目录结构，可多层（用 / 分隔）；不想分目录就填 /</p>
+                </div>
+                <div class="form-item">
+                  <label class="form-label">文件命名规则</label>
+                  <input v-model="toml.storage.cos.file_rule" class="input" type="text" placeholder="{timestamp}{str-random-10}" />
+                  <p class="form-hint">不含扩展名，扩展名会按原文件自动追加</p>
                 </div>
               </div>
+              <p class="form-hint">
+                上传到：<code class="rule-preview">{{ uploadRulePreview(toml.storage.cos.path, toml.storage.cos.dir_rule, toml.storage.cos.file_rule) }}</code>
+              </p>
+              <p class="form-hint">
+                可用占位符（与本地存储一致）：
+                <span v-for="item in UPLOAD_RULE_TOKENS" :key="item.token" class="rule-token">
+                  <code>{{ item.token }}</code> {{ item.desc }}
+                </span>
+              </p>
               <div class="cfg-foot">
                 <button class="btn btn-sm" :disabled="isSaving('testCos')" @click="testStorage('cos')">
                   <i class="bi bi-plug" /> 测试连接
                 </button>
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('storageCos')" @click="saveStorageCos">
-                  <i class="bi bi-check2" /> 保存
-                </button>
-              </div>
-            </section>
-
-            <section class="card card-pad">
-              <header class="cfg-head">
-                <div>
-                  <h3 class="cfg-title">七牛云 Kodo</h3>
-                </div>
-              </header>
-              <div class="form-grid">
-                <div class="form-item">
-                  <label class="form-label">AccessKey</label>
-                  <input v-model="toml.storage.kodo.access_key" class="input" type="text" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">SecretKey</label>
-                  <input v-model="toml.storage.kodo.secret_key" class="input" type="text" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">Bucket</label>
-                  <input v-model="toml.storage.kodo.bucket" class="input" type="text" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">地域</label>
-                  <input v-model="toml.storage.kodo.region" class="input" type="text" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">访问域名</label>
-                  <input v-model="toml.storage.kodo.domain" class="input" type="text" />
-                </div>
-              </div>
-              <div class="cfg-foot">
-                <button class="btn btn-sm" :disabled="isSaving('testKodo')" @click="testStorage('kodo')">
-                  <i class="bi bi-plug" /> 测试连接
-                </button>
-                <button class="btn btn-primary btn-sm" :disabled="isSaving('storageKodo')" @click="saveStorageKodo">
                   <i class="bi bi-check2" /> 保存
                 </button>
               </div>
@@ -746,26 +716,7 @@
                 <div class="form-item">
                   <label class="form-label">并发上限</label>
                   <input v-model="toml.storage.attachment.concurrent_limit" class="input" type="number" min="1" step="1" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">每分钟上限</label>
-                  <input v-model="toml.storage.attachment.limit_per_minute" class="input" type="number" min="0" step="1" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">每小时上限</label>
-                  <input v-model="toml.storage.attachment.limit_per_hour" class="input" type="number" min="0" step="1" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">每天上限</label>
-                  <input v-model="toml.storage.attachment.limit_per_day" class="input" type="number" min="0" step="1" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">每周上限</label>
-                  <input v-model="toml.storage.attachment.limit_per_week" class="input" type="number" min="0" step="1" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">每月上限</label>
-                  <input v-model="toml.storage.attachment.limit_per_month" class="input" type="number" min="0" step="1" />
+                  <p class="form-hint">同时上传的文件数上限（跨实例用 Redis 计数，Redis 不可用时降级本机计数）</p>
                 </div>
               </div>
               <div class="cfg-foot">
@@ -1164,6 +1115,10 @@
  * - QPS_BLOCK 的 second 是表达式字符串（如 "60 * 60"），会自动封禁触发阈值的 IP；
  * - 密钥类字段读取时已脱敏为 `****` 串，**原样回传**即表示不修改（后端会还原真实值）；
  * - storage 不带 name 读取时不脱敏，因此这里按分组分别读取；
+ *   [local] / [cos] 各支持 dir_rule（目录命名规则）与 file_rule（文件命名规则），
+ *   由 app/facade/storage-rule.go 解析：最终键 = path 前缀 / 目录规则 / 文件规则 + 扩展名；
+ *   占位符清单见本文件的 UPLOAD_RULE_TOKENS（与后端 StorageRulePlaceholders 同源），
+ *   目录规则留空用默认 {Y}-{m}/{d}、填 / 表示不要子目录；
  * - 日志配置后端只读（没有保存接口）。
  */
 import { ref, reactive, computed, onMounted, watch } from 'vue'
@@ -1198,10 +1153,62 @@ const CACHE_DRIVERS = [
 
 const STORAGE_DRIVERS = [
   { value: 'local', label: '本地' },
-  { value: 'oss', label: '阿里云 OSS' },
-  { value: 'cos', label: '腾讯云 COS' },
-  { value: 'kodo', label: '七牛云 Kodo' }
+  { value: 'cos', label: '腾讯云 COS' }
 ]
+
+/**
+ * 上传命名规则（config/storage.toml 的 [local] / [cos] 段：dir_rule / file_rule）
+ *
+ * 与后端 app/facade/storage-rule.go 的 DefaultStorageDirRule / DefaultStorageFileRule、
+ * StorageRulePlaceholders 一一对应，改动默认值或占位符时两边必须同步。
+ * 占位符支持 {Y} {y} {m} {d} {timestamp} {uniqid} {md5} {md5-16}
+ * {str-random-16} {str-random-10} {filename} {uid}
+ */
+const DEFAULT_DIR_RULE = '{Y}-{m}/{d}'
+const DEFAULT_FILE_RULE = '{timestamp}{str-random-10}'
+
+// 占位符说明（顺序与后端 StorageRulePlaceholders 一致）
+const UPLOAD_RULE_TOKENS = [
+  { token: '{Y}', desc: '年份(2026)' },
+  { token: '{y}', desc: '两位数年份(26)' },
+  { token: '{m}', desc: '月份(09)' },
+  { token: '{d}', desc: '当月的第几号(26)' },
+  { token: '{timestamp}', desc: '时间戳(秒)' },
+  { token: '{uniqid}', desc: '唯一字符串' },
+  { token: '{md5}', desc: '32 位随机 md5' },
+  { token: '{md5-16}', desc: '16 位随机 md5' },
+  { token: '{str-random-16}', desc: '16 位随机字符串' },
+  { token: '{str-random-10}', desc: '10 位随机字符串' },
+  { token: '{filename}', desc: '文件原始名称（不含扩展名）' },
+  { token: '{uid}', desc: '上传者 ID（游客 0）' }
+]
+
+// 预览用的示例值（只影响界面上展示的示例路径，真实取值由后端决定）
+const UPLOAD_RULE_SAMPLE = {
+  '{Y}': '2026',
+  '{y}': '26',
+  '{m}': '09',
+  '{d}': '26',
+  '{timestamp}': '1758888888',
+  '{uniqid}': '67e5d1a2f3c4b5',
+  '{md5}': 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+  '{md5-16}': 'e5f60718293a4b5c',
+  '{str-random-16}': 'k3m9x2p7q1z8b4n6',
+  '{str-random-10}': 'k3m9x2p7q1',
+  '{filename}': 'photo',
+  '{uid}': '1'
+}
+
+// 规则预览：把占位符替换成示例值，拼出「前缀/目录/文件名.jpg」供管理员确认结构
+function uploadRulePreview(prefix, dirRule, fileRule) {
+  const apply = (rule) =>
+    String(rule || '').replace(/\{[^{}]*\}/g, (token) => UPLOAD_RULE_SAMPLE[token] ?? '')
+  const parts = [prefix, apply(dirRule), `${apply(fileRule)}.jpg`]
+    .flatMap((item) => String(item || '').split('/'))
+    .map((item) => item.trim())
+    .filter((item) => item && item !== '.' && item !== '..')
+  return parts.join('/')
+}
 
 const SMS_DRIVERS = [
   { value: 'email', label: '邮件' },
@@ -1414,20 +1421,27 @@ const toml = reactive({
     ram: { expire: '' }
   },
   storage: {
+    // 仅支持 local（本地）与 cos（腾讯云 COS）两种驱动
     default: 'local',
-    local: { domain: '', path: '' },
-    oss: { access_key_id: '', access_key_secret: '', endpoint: '', bucket: '', domain: '', path: '' },
-    cos: { secret_id: '', secret_key: '', app_id: '', bucket: '', region: '', domain: '', path: '' },
-    kodo: { access_key: '', secret_key: '', bucket: '', region: '', domain: '' },
+    // dir_rule / file_rule：上传命名规则（自定义目录结构与文件名），默认值与后端一致
+    local: { domain: '', path: '', dir_rule: DEFAULT_DIR_RULE, file_rule: DEFAULT_FILE_RULE },
+    cos: {
+      secret_id: '',
+      secret_key: '',
+      app_id: '',
+      bucket: '',
+      region: '',
+      domain: '',
+      path: '',
+      dir_rule: DEFAULT_DIR_RULE,
+      file_rule: DEFAULT_FILE_RULE
+    },
     attachment: {
+      // 只有 3 项真正生效：后缀白名单 / 单文件大小 / 并发上限
+      // （原先还有 limit_per_minute 等 5 个「每时段上限」，后端从未实现校验，已移除）
       allow_extensions: '',
       max_file_size: 0,
-      concurrent_limit: 0,
-      limit_per_minute: 0,
-      limit_per_hour: 0,
-      limit_per_day: 0,
-      limit_per_week: 0,
-      limit_per_month: 0
+      concurrent_limit: 0
     }
   },
   sms: {
@@ -1757,27 +1771,42 @@ async function loadTomlAll() {
   }
 
   // 存储按分组读取（不带 name 的接口不脱敏，不能直接用于表单回填）
-  const names = ['local', 'oss', 'cos', 'kodo', 'attachment']
+  const names = ['local', 'cos', 'attachment']
   const groups = await Promise.all(names.map((name) => getStorageGroup(name).catch(() => null)))
   const picked = {}
   groups.forEach((res, index) => {
     picked[names[index]] = res?.data || {}
   })
-  toml.storage.default = toText(picked.local?.default || picked.oss?.default || 'local', 'local')
-  toml.storage.local = { domain: '', path: '', ...(picked.local || {}) }
-  toml.storage.oss = { access_key_id: '', access_key_secret: '', endpoint: '', bucket: '', domain: '', path: '', ...(picked.oss || {}) }
-  toml.storage.cos = { secret_id: '', secret_key: '', app_id: '', bucket: '', region: '', domain: '', path: '', ...(picked.cos || {}) }
-  toml.storage.kodo = { access_key: '', secret_key: '', bucket: '', region: '', domain: '', ...(picked.kodo || {}) }
+  toml.storage.default = toText(picked.local?.default || picked.cos?.default || 'local', 'local')
+  // 命名规则（dir_rule / file_rule）：老配置文件里没有这两项，缺项时回填与后端一致的默认值
+  const localData = picked.local || {}
+  const cosData = picked.cos || {}
+  toml.storage.local = {
+    domain: '',
+    path: '',
+    ...localData,
+    dir_rule: toText(localData.dir_rule, DEFAULT_DIR_RULE),
+    file_rule: toText(localData.file_rule, DEFAULT_FILE_RULE)
+  }
+  toml.storage.cos = {
+    secret_id: '',
+    secret_key: '',
+    app_id: '',
+    bucket: '',
+    region: '',
+    domain: '',
+    path: '',
+    ...cosData,
+    dir_rule: toText(cosData.dir_rule, DEFAULT_DIR_RULE),
+    file_rule: toText(cosData.file_rule, DEFAULT_FILE_RULE)
+  }
+  // 附件配置只取真正生效的 3 个字段：历史配置里已废弃的 limit_per_* 不再带回来，
+  // 否则保存时会把它们又写回 config/storage.toml
+  const attachmentData = picked.attachment || {}
   toml.storage.attachment = {
-    allow_extensions: '',
-    max_file_size: 0,
-    concurrent_limit: 0,
-    limit_per_minute: 0,
-    limit_per_hour: 0,
-    limit_per_day: 0,
-    limit_per_week: 0,
-    limit_per_month: 0,
-    ...(picked.attachment || {})
+    allow_extensions: toText(attachmentData.allow_extensions, ''),
+    max_file_size: Number(attachmentData.max_file_size || 0),
+    concurrent_limit: Number(attachmentData.concurrent_limit || 0)
   }
 }
 
@@ -2030,16 +2059,8 @@ function saveStorageLocal() {
   return saveTomlItem('storageLocal', 'storage-local', { ...toml.storage.local })
 }
 
-function saveStorageOss() {
-  return saveTomlItem('storageOss', 'storage-oss', { ...toml.storage.oss })
-}
-
 function saveStorageCos() {
   return saveTomlItem('storageCos', 'storage-cos', { ...toml.storage.cos })
-}
-
-function saveStorageKodo() {
-  return saveTomlItem('storageKodo', 'storage-kodo', { ...toml.storage.kodo })
 }
 
 function saveStorageAttachment() {
@@ -2097,14 +2118,7 @@ function testRedis() {
 }
 
 function testStorage(kind) {
-  if (kind === 'oss') {
-    return runTest('testOss', 'test-oss', {
-      access_key_id: toml.storage.oss.access_key_id,
-      access_key_secret: toml.storage.oss.access_key_secret,
-      endpoint: toml.storage.oss.endpoint,
-      bucket: toml.storage.oss.bucket
-    }, 'OSS 连接成功')
-  }
+  // 仅保留腾讯云 COS 的连通性测试（本地存储无需测试连接）
   if (kind === 'cos') {
     return runTest('testCos', 'test-cos', {
       secret_id: toml.storage.cos.secret_id,
@@ -2114,12 +2128,6 @@ function testStorage(kind) {
       region: toml.storage.cos.region
     }, 'COS 连接成功')
   }
-  return runTest('testKodo', 'test-kodo', {
-    access_key: toml.storage.kodo.access_key,
-    secret_key: toml.storage.kodo.secret_key,
-    bucket: toml.storage.kodo.bucket,
-    region: toml.storage.kodo.region
-  }, 'Kodo 连接成功')
 }
 
 function testSmsEmail() {
@@ -2287,6 +2295,19 @@ onMounted(loadAll)
   font-size: 11px;
   background: var(--bg-muted);
   border-radius: 3px;
+}
+
+/* ---------- 上传命名规则（存储页的占位符说明与路径预览） ---------- */
+.rule-token {
+  display: inline-block;
+  margin: 0 10px 2px 0;
+  white-space: nowrap;
+}
+.rule-token code {
+  color: var(--primary);
+}
+.rule-preview {
+  word-break: break-all;
 }
 
 /* ---------- 多选（注册默认权限组） ---------- */

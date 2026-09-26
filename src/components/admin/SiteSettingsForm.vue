@@ -21,19 +21,19 @@
         <div class="form-item">
           <label class="form-label">网站标题</label>
           <input v-model="globalConfig.title" class="input" placeholder="输入您的网站标题" />
-          <p class="form-hint">显示在浏览器标签和网站头部</p>
+          <p class="form-hint">显示在前台左栏顶部、浏览器标签与页脚版权处</p>
         </div>
         <div class="form-item">
           <label class="form-label">网站关键词</label>
           <input v-model="globalConfig.keyword" class="input" placeholder="输入关键词，用逗号分隔" />
-          <p class="form-hint">用于 SEO 优化，多个关键词用逗号分隔</p>
+          <p class="form-hint">写入页面 meta keywords，多个关键词用逗号分隔</p>
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">网站描述</label>
         <input v-model="globalConfig.description" class="input" placeholder="输入您的网站描述" />
-        <p class="form-hint">用于 SEO 和社交媒体分享</p>
+        <p class="form-hint">写入页面 meta description，同时显示在前台左栏标题下方</p>
       </div>
 
       <div class="form-item">
@@ -44,7 +44,9 @@
             <i class="bi bi-folder2-open" /> 附件库
           </button>
         </div>
-        <p class="form-hint">网站的 LOGO 图片</p>
+        <p class="form-hint">
+          显示在前台左栏顶部（标题上方）、登录页与手机端顶栏；建议用透明底的方形或横向图片，留空则不显示
+        </p>
       </div>
 
       <div class="form-item">
@@ -55,7 +57,10 @@
             <i class="bi bi-folder2-open" /> 附件库
           </button>
         </div>
-        <p class="form-hint">浏览器标签显示的图标</p>
+        <p class="form-hint">
+          浏览器标签页图标（favicon，支持 .ico / .png / .svg），留空则用主题默认的 /favicon.ico；
+          改完刷新一次页面即可看到
+        </p>
       </div>
 
       <div class="form-item">

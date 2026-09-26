@@ -7,7 +7,7 @@ import { call } from './request'
  * 1. 读取：GET /api/toml/{name}，可选 ?name=xxx 只取某个分组；
  *    **storage 不带 name 时后端不脱敏**，因此存储相关一律按分组读取（见 getStorageGroup）。
  * 2. 保存：PUT /api/toml/{method}，各分项方法只更新自己那段，未提交的分组保持原值。
- * 3. 测试：POST /api/toml/test-xxx，用于连通性验证（Redis / OSS / COS / Kodo / 短信）。
+ * 3. 测试：POST /api/toml/test-xxx，用于连通性验证（Redis / 腾讯云 COS / 短信）。
  * 4. 脱敏：后端对**非管理员**会把密钥类字段（password / access_key_secret / secret_key /
  *    access_key / secret_id / key）脱敏成 `****` 占位串；管理员（后台）返回明文。
  *    若拿到的仍是占位串，原样回传即可表示不修改，后端 restoreSecretParams 会还原真实值。
@@ -53,6 +53,6 @@ export const getTomlJwt = () => getToml('crypt', { name: 'jwt' })
 
 /**
  * 存储配置：必须按分组读取，避免拿到明文密钥
- * @param {string} name local / oss / cos / kodo / attachment
+ * @param {string} name local / cos / attachment
  */
 export const getStorageGroup = (name) => getToml('storage', { name })

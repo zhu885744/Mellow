@@ -184,7 +184,9 @@
                 <span class="meta-text"><i class="bi bi-clock" /> {{ timeText(item) }}</span>
               </div>
               <div class="attach-meta">
-                <span class="meta-text"><i class="bi bi-person" /> #{{ item.uploader_id }}</span>
+                <span class="meta-text" :title="uploaderTitle(item)">
+                  <i class="bi bi-person" /> {{ uploaderName(item) }}
+                </span>
                 <span class="meta-text">{{ attachmentTypeLabel(item) }}</span>
               </div>
             </div>
@@ -312,6 +314,8 @@
  * 后端约束（app/api/controller/attachment.go、app/model/attachment.go）：
  * - attachment/all 与 count：非管理员只能查到 uploader_id 为自己的附件，
  *   后台依赖管理员身份才能管理全站附件；count 支持 onlyTrashed；
+ * - attachment/all 的每行会额外补 uploader_account / uploader_name（昵称，为空回退账号），
+ *   列表展示昵称而不是 uploader_id 数字；
  * - attachment/update 允许字段只有 original_name / target_type / target_id，
  *   非管理员改他人附件返回「无权限！」；
  * - remove 是软删除（不删存储文件）；delete / clear **仅管理员**，
@@ -436,6 +440,21 @@ function extText(item) {
 function timeText(item) {
   if (trash.value) return `删除于 ${fromNow(item.delete_time)}`
   return `上传于 ${fromNow(item.create_time)}`
+}
+
+// 上传者显示名：后端 attachment/all 已按 uploader_id 批量补好昵称（uploader_name，
+// 昵称为空时后端回退成账号 / 「用户 #id」），这里只做兜底展示
+function uploaderName(item) {
+  if (item?.uploader_name) return item.uploader_name
+  return item?.uploader_id ? `#${item.uploader_id}` : '—'
+}
+
+// 悬浮提示：把昵称 / 账号 / 用户 ID 都列出来，便于管理员核对是哪个账号上传的
+function uploaderTitle(item) {
+  const lines = [`上传者：${uploaderName(item)}`]
+  if (item.uploader_account) lines.push(`账号：${item.uploader_account}`)
+  if (item.uploader_id) lines.push(`用户 ID：${item.uploader_id}`)
+  return lines.join('\n')
 }
 
 async function copyUrl(item) {

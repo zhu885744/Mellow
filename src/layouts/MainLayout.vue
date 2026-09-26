@@ -2,7 +2,10 @@
   <div class="layout">
     <!-- 移动端顶栏（仅手机端显示） -->
     <div class="mobile-topbar">
-      <span class="mobile-brand">{{ site.title }}</span>
+      <span class="mobile-brand">
+        <img v-if="site.avatar" class="mobile-brand__logo" :src="site.avatar" :alt="site.title" />
+        {{ site.title }}
+      </span>
       <div class="mobile-actions">
         <button
           class="btn btn-sm"
@@ -37,8 +40,21 @@
       <!-- 左栏 - 站点信息 + 导航 -->
       <aside class="layout-left">
         <div class="site-card">
-          <div class="site-card__title">{{ site.title }}</div>
-          <div class="site-card__subtitle">{{ site.description }}</div>
+          <!-- 网站 LOGO（后台「网站设置 → 网站 LOGO」，对应配置里的 avatar 字段）
+               配了 LOGO 就只显示 LOGO（标题/描述已在图片里，不再重复）；
+               没配、或地址失效时退回「标题 + 描述」的文字版 -->
+          <img
+            v-if="site.avatar && !logoFailed"
+            class="site-card__logo"
+            :src="site.avatar"
+            :alt="site.title"
+            loading="eager"
+            @error="logoFailed = true"
+          />
+          <template v-else>
+            <div class="site-card__title">{{ site.title }}</div>
+            <div class="site-card__subtitle">{{ site.description }}</div>
+          </template>
         </div>
 
         <!-- 全局搜索按钮 -->
@@ -226,12 +242,20 @@ const site = computed(() => {
   return {
     title: c.title || 'Mellow',
     description: c.description || '我从虚空中惊醒',
+    // 网站 LOGO（后台「网站设置 → 网站 LOGO」）：左栏顶部与移动端顶栏展示
+    avatar: c.avatar || '',
     copyCode: c.copy?.code || '',
     copyLink: c.copy?.link || '',
     policeCode: c.police?.code || '',
     recordCode: c.police?.code || '',
     policeLink: c.police?.link || ''
   }
+})
+
+// 网站 LOGO 地址失效时不再展示，避免左栏顶部出现破图（换了地址自动重试）
+const logoFailed = ref(false)
+watch(() => site.value.avatar, () => {
+  logoFailed.value = false
 })
 
 // 获取导航页（/api/pages/all）
@@ -451,6 +475,17 @@ onMounted(() => {
   text-align: center;
   border-bottom: 1px solid var(--border);
 }
+/* 网站 LOGO：配了 LOGO 时它就是左栏顶部唯一内容（不再显示标题/描述）
+   方形图标按 96px 展示，横向 LOGO 自动缩到栏宽内，不裁切 */
+.site-card__logo {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  max-height: 96px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
 .site-card__title {
   font-family: var(--font-serif);
   font-size: 26px;
@@ -578,6 +613,9 @@ onMounted(() => {
     backdrop-filter: blur(8px);
   }
   .mobile-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     font-family: var(--font-serif);
     font-size: 17px;
     font-weight: 600;
@@ -587,6 +625,13 @@ onMounted(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+  }
+  /* 网站 LOGO：移动端顶栏只留一个小图标 */
+  .mobile-brand__logo {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    object-fit: contain;
   }
   /* 手机端隐藏左栏与底部 footer，由顶栏 + 底部 Tab Bar 接管导航 */
   .layout-left,

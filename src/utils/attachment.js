@@ -6,8 +6,10 @@
  */
 
 // 列表字段：不含 file_hash（无需展示），保留定位与展示需要的全部字段
+// uploader_name / uploader_account 由后端 attachment/all 批量补齐（昵称，为空回退账号），
+// 列表展示上传者昵称；字段里保留 uploader 关键字，后端才会把它们补进裁剪结果
 export const ATTACHMENT_FIELD =
-  'id,uuid,original_name,save_name,save_path,full_url,file_size,mime_type,file_ext,storage_driver,uploader_id,target_type,target_id,create_time,update_time,delete_time'
+  'id,uuid,original_name,save_name,save_path,full_url,file_size,mime_type,file_ext,storage_driver,uploader_id,uploader_name,uploader_account,target_type,target_id,create_time,update_time,delete_time'
 
 /** 扩展名分组：用于类型筛选（where.file_ext 的 $in / $nin） */
 export const ATTACHMENT_EXT_GROUPS = {
