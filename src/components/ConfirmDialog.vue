@@ -8,6 +8,10 @@
             {{ title }}
           </h3>
           <p v-if="message" class="confirm-message">{{ message }}</p>
+          <!-- 附加内容（如危险操作的额外选项）：不传插槽时不渲染 -->
+          <div v-if="$slots.default" class="confirm-extra">
+            <slot />
+          </div>
           <div class="confirm-actions">
             <button type="button" class="btn" :disabled="loading" @click="onCancel">
               {{ cancelText }}
@@ -108,6 +112,13 @@ watch(
   margin: 10px 0 0;
   font-size: 13px;
   line-height: 1.7;
+  color: var(--text-muted);
+}
+/* 附加内容插槽（如危险操作的额外选项） */
+.confirm-extra {
+  margin-top: 12px;
+  font-size: 13px;
+  line-height: 1.6;
   color: var(--text-muted);
 }
 .confirm-actions {

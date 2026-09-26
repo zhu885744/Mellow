@@ -77,7 +77,7 @@
             <div class="placard-name-row">
               <span class="type-dot" :style="{ background: typeColor(item) }" :title="typeLabel(item)" />
               <span class="placard-name">{{ item.title || '未命名公告' }}</span>
-              <span class="type-chip">{{ typeLabel(item) }}</span>
+              <span class="type-chip" :style="typeChipStyle(item)">{{ typeLabel(item) }}</span>
               <span v-if="item.url" class="placard-url">
                 <i class="bi bi-link-45deg" /> {{ item.url }}
               </span>
@@ -149,7 +149,7 @@
             :options="PLACARD_TYPES"
             placeholder="请选择类型"
           />
-          <p class="form-hint">决定首页轮播左侧圆点的配色</p>
+          <p class="form-hint">决定首页轮播左侧圆点与公告弹窗类型标签的配色</p>
         </div>
         <div class="form-item">
           <label class="form-label">打开方式</label>
@@ -223,15 +223,18 @@ import {
 import { fromNow } from '@/utils/time'
 import { truncate, debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
+// 公告类型（文案 + 配色）来自共享定义 utils/placard.js：与首页轮播圆点、公告内容弹窗的
+// 类型标签同源，改配色只动那一处（历史上「公告」用主题朱砂、「警告」用 #d9544d，
+// 两个红色几乎看不出区别，现改为 朱砂 / 琥珀 / 天蓝 三个色相）
+import {
+  PLACARD_TYPES,
+  placardTypeKey,
+  placardTypeLabel,
+  placardTypeColor,
+  placardTypeStyle
+} from '@/utils/placard'
 
 const pageSize = 15
-
-// 公告类型：与首页轮播圆点配色（views/home/Index.vue 的 .placard-* ）保持一致
-const PLACARD_TYPES = [
-  { value: 'notice', label: '公告', color: 'var(--primary)' },
-  { value: 'warning', label: '警告', color: '#d9544d' },
-  { value: 'info', label: '提示', color: '#4a90e2' }
-]
 
 // 打开方式：后端默认 _blank，前端仅识别 _self 为当前窗口
 const TARGET_OPTIONS = [
@@ -277,20 +280,17 @@ const emptyText = computed(() => {
 })
 
 // ---------- 展示辅助 ----------
-function typeKey(item) {
-  return PLACARD_TYPES.some((t) => t.value === item?.type) ? item.type : 'notice'
-}
-
-function typeOf(item) {
-  return PLACARD_TYPES.find((t) => t.value === typeKey(item)) || PLACARD_TYPES[0]
-}
-
 function typeColor(item) {
-  return typeOf(item).color
+  return placardTypeColor(item?.type)
 }
 
 function typeLabel(item) {
-  return typeOf(item).label
+  return placardTypeLabel(item?.type)
+}
+
+// 类型标签的行内配色（文字 + 同色淡底），与首页弹窗里的标签一致
+function typeChipStyle(item) {
+  return placardTypeStyle(item?.type)
 }
 
 function targetLabel(item) {
@@ -368,7 +368,7 @@ function openAdd() {
 function openEdit(item) {
   dialog.id = Number(item.id)
   dialog.title = item.title || ''
-  dialog.type = typeKey(item)
+  dialog.type = placardTypeKey(item?.type)
   dialog.content = item.content || ''
   dialog.url = item.url || ''
   dialog.target = item.target === '_self' ? '_self' : '_blank'
@@ -660,12 +660,12 @@ onMounted(load)
   font-weight: 600;
   color: var(--text);
 }
+/* 类型标签：文字色与底色由 utils/placard.js 的行内样式给出（与前台弹窗一致） */
 .type-chip {
   padding: 1px 8px;
   font-size: 11px;
-  border-radius: 3px;
-  color: var(--text-muted);
-  background: var(--bg-muted);
+  border-radius: 999px;
+  white-space: nowrap;
 }
 .placard-url {
   display: inline-flex;

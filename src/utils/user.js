@@ -246,6 +246,17 @@ export function banRecordOf(item) {
   return item?.result?.ban?.record || null
 }
 
+/**
+ * 是否存在封禁痕迹（生效中的封禁、累计封禁次数 > 0、或有过封禁时间）
+ * 用于决定「清空封禁信息」入口是否展示
+ */
+export function hasUserBanInfo(item) {
+  if (isUserBanned(item)) return true
+  const count = Number(item?.result?.ban?.ban_count ?? item?.ban_count ?? 0)
+  if (count > 0) return true
+  return Number(item?.last_ban_at || 0) > 0
+}
+
 /** 用户所属权限组列表（后端 result.auth.group.list） */
 export function userGroupsOf(item) {
   const list = item?.result?.auth?.group?.list

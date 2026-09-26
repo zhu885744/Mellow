@@ -18,7 +18,7 @@
             class="placard-link"
             @click="openPlacard(current)"
           >
-            <span class="placard-dot" :class="`placard-${current.type || 'notice'}`" />
+            <span class="placard-dot" :style="{ background: placardTypeColor(current.type) }" />
             <span class="placard-name">{{ current.title }}</span>
             <span
               v-if="current.content"
@@ -65,6 +65,10 @@
         <div v-if="activePlacard" class="placard-mask" @click.self="closePlacard">
           <div class="placard-dialog">
             <div class="placard-dialog-head">
+              <!-- 类型小标签：文案 + 对应配色（与后台列表、轮播圆点同源） -->
+              <span class="placard-dialog-tag" :style="placardTypeStyle(activePlacard.type)">
+                {{ placardTypeLabel(activePlacard.type) }}
+              </span>
               <h3 class="placard-dialog-title">{{ activePlacard.title }}</h3>
               <button class="placard-dialog-close" @click="closePlacard" aria-label="关闭">
                 <i class="bi bi-x-lg"></i>
@@ -98,6 +102,7 @@ import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listArticles } from '@/api/article'
 import { call } from '@/api/request'
+import { placardTypeLabel, placardTypeColor, placardTypeStyle } from '@/utils/placard'
 import { formatDate } from '@/utils/time'
 
 const loading = ref(false)
@@ -251,6 +256,7 @@ onBeforeUnmount(stop)
 .placard-link:hover {
   color: var(--primary);
 }
+/* 类型圆点：颜色由 utils/placard.js 的行内样式给出（避免各页面配色漂移） */
 .placard-dot {
   flex-shrink: 0;
   width: 7px;
@@ -259,9 +265,6 @@ onBeforeUnmount(stop)
   margin-top: 6px;
   background: var(--primary);
 }
-.placard-notice { background: var(--primary); }
-.placard-warning { background: #d9544d; }
-.placard-info { background: #4a90e2; }
 .placard-name {
   font-weight: 500;
   flex-shrink: 0;
@@ -355,12 +358,15 @@ onBeforeUnmount(stop)
   padding: 16px 18px 12px;
   border-bottom: 1px solid var(--border);
 }
+/* 类型小标签：文字色 + 同色淡底由 utils/placard.js 的行内样式给出 */
 .placard-dialog-tag {
   flex-shrink: 0;
-  margin-top: 4px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  margin-top: 2px;
+  padding: 1px 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  border-radius: 999px;
+  white-space: nowrap;
 }
 .placard-dialog-title {
   flex: 1;

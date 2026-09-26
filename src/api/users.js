@@ -112,6 +112,16 @@ export const banUser = (data) =>
 export const unbanUser = (data) =>
   call('users', 'unban', { method: 'PUT', data })
 
+/**
+ * 清空用户封禁信息（管理员）
+ *
+ * 物理删除该用户的全部封禁记录（含回收站里的），并把 ban_count / current_ban_id /
+ * last_ban_at / restrictions 一起归零；unfreeze=1 时若账号处于「冻结」状态一并恢复为正常。
+ * 与 unban 的区别：unban 只撤销当前记录、保留历史；clear-ban 是把封禁痕迹彻底抹掉。
+ */
+export const clearUserBan = (data) =>
+  call('users', 'clear-ban', { method: 'PUT', data })
+
 // 软删除用户（移入回收站），禁止包含系统管理员与自己
 export const removeUsers = (ids) =>
   call('users', 'remove', {

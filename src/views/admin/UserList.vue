@@ -279,6 +279,17 @@
                 </button>
 
                 <button
+                  v-if="hasBanTrace(item)"
+                  class="btn btn-ghost btn-sm"
+                  :title="isProtected(item) ? protectedText(item) : '清空封禁信息'"
+                  aria-label="清空封禁信息"
+                  :disabled="busy || isProtected(item)"
+                  @click="askClearBan(item)"
+                >
+                  <i class="bi bi-eraser" />
+                </button>
+
+                <button
                   class="btn btn-ghost btn-sm danger"
                   :title="isProtected(item) ? protectedText(item) : '删除'"
                   aria-label="删除"
@@ -525,6 +536,22 @@
       :loading="confirm.loading"
       @confirm="runConfirm"
     />
+
+    <!-- 清空封禁信息（危险操作：物理删除封禁记录 + 归零用户封禁字段） -->
+    <ConfirmDialog
+      v-model:visible="clearBan.visible"
+      title="清空封禁信息"
+      :message="clearBan.message"
+      confirm-text="清空"
+      danger
+      :loading="clearBan.loading"
+      @confirm="runClearBan"
+    >
+      <label v-if="clearBan.frozen" class="ban-clear-option">
+        <input v-model="clearBan.unfreeze" type="checkbox" />
+        <span>同时解除「冻结」状态（该账号当前处于冻结中，只清记录仍无法登录）</span>
+      </label>
+    </ConfirmDialog>
   </div>
 </template>
 
@@ -556,6 +583,7 @@ import {
   setUserStatus,
   banUser,
   unbanUser,
+  clearUserBan,
   removeUsers,
   forceDeleteUsers,
   restoreUsers,
@@ -585,6 +613,7 @@ import {
   banDurationText,
   banRecordOf,
   isUserBanned,
+  hasUserBanInfo,
   userGroupsOf,
   isProtectedUser,
   protectedReason
@@ -665,6 +694,11 @@ const groupsOf = userGroupsOf
 
 function isBanned(item) {
   return isUserBanned(item)
+}
+
+// 是否需要展示「清空封禁信息」入口：封禁中或有历史封禁痕迹（含累计次数 / 最后封禁时间）
+function hasBanTrace(item) {
+  return hasUserBanInfo(item)
 }
 
 function banCountOf(item) {
@@ -848,6 +882,49 @@ async function runConfirm() {
     // 请求失败时保持弹窗打开，错误提示已由请求拦截器统一给出
   } finally {
     confirm.loading = false
+  }
+}
+
+// ---------- 清空封禁信息（危险操作） ----------
+// 与「解封」不同：会物理删除该用户的全部封禁记录，并把累计封禁次数 / 当前封禁记录 /
+// 封禁限制 / 最后封禁时间全部归零（后端 users/clear-ban），不可恢复。
+// 账号处于「冻结」中时额外给一个「同时解除冻结」的选项：只清记录不解冻会变成
+// 「没有封禁记录却登录不了」的状态。
+const clearBan = reactive({
+  visible: false,
+  loading: false,
+  message: '',
+  uid: 0,
+  frozen: false,
+  unfreeze: true
+})
+
+function askClearBan(item) {
+  clearBan.uid = Number(item.id)
+  clearBan.frozen = Number(item.status) === USER_STATUS_FROZEN
+  // 冻结中的账号默认勾选，避免清完记录后账号仍然登录不了
+  clearBan.unfreeze = clearBan.frozen
+  clearBan.message =
+    `确定清空用户「${item.nickname || item.id}」的全部封禁信息吗？` +
+    '该用户的所有封禁记录会被永久删除，累计封禁次数、当前封禁记录、封禁限制与最后封禁时间一并归零，此操作不可恢复！'
+  clearBan.visible = true
+}
+
+async function runClearBan() {
+  clearBan.loading = true
+  try {
+    const res = await clearUserBan({
+      uid: clearBan.uid,
+      unfreeze: clearBan.unfreeze ? 1 : 0
+    })
+    const records = Number(res?.data?.records || 0)
+    toast.success(records > 0 ? `已清空 ${records} 条封禁记录` : '已清空该用户的封禁信息')
+    clearBan.visible = false
+    await afterMutation(0)
+  } catch {
+    // 请求失败时保持弹窗打开，错误提示已由请求拦截器统一给出
+  } finally {
+    clearBan.loading = false
   }
 }
 
@@ -1905,6 +1982,18 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* 清空封禁信息弹窗里的附加选项（ConfirmDialog 的默认插槽内容） */
+.ban-clear-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+.ban-clear-option input {
+  margin-top: 2px;
+  flex-shrink: 0;
 }
 
 @media (max-width: 768px) {

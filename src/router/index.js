@@ -17,7 +17,6 @@ const routes = [
       { path: 'moments', name: 'moments', component: () => import('@/views/moments/Index.vue') },
       { path: 'moments/:id', name: 'moment-detail', component: () => import('@/views/moments/Detail.vue'), props: true },
       { path: 'links', name: 'links', component: () => import('@/views/links/Index.vue') },
-      { path: 'blackroom', name: 'blackroom', component: () => import('@/views/Blackroom.vue') },
       { path: 'goods', name: 'goods', component: () => import('@/views/goods/Index.vue') },
       { path: 'about', name: 'about', component: () => import('@/views/page/Index.vue'), props: { pageKey: 'about' } },
       // 用户主页 /author/:id（必须在 /:key 之前，避免被兜底路由拦截）
@@ -157,6 +156,9 @@ const routes = [
       { path: 'verify', name: 'verify-email', component: () => import('@/views/auth/VerifyEmail.vue') }
     ]
   },
+  // 小黑屋（封禁公示）：独立于前台 MainLayout 的顶级路由，页面自己撑满视口，
+  // 不带左右栏 / 顶栏 / 页脚等任何布局与导航组件（与 /404 同级，路径仍是 /blackroom）
+  { path: '/blackroom', name: 'blackroom', component: () => import('@/views/Blackroom.vue') },
   { path: '/:pathMatch(.*)*', name: 'not-found', component: () => import('@/views/NotFound.vue') }
 ]
 
