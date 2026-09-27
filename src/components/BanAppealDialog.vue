@@ -5,7 +5,7 @@
         <div class="ban-dialog">
           <div class="ban-header">
             <span class="ban-title">
-              <i class="bi bi-exclamation-octagon" /> 账号已被封禁
+              <i class="bi bi-exclamation-octagon" /> {{ title }}
             </span>
           </div>
 
@@ -37,8 +37,13 @@
               </li>
             </ul>
 
+            <!-- 查看他人主页：只展示封禁信息，不出现申诉表单（申诉只能本人发起） -->
+            <p v-if="!appealable" class="ban-tip is-muted">
+              <i class="bi bi-info-circle" /> 该账号的封禁申诉只能由账号本人发起
+            </p>
+
             <!-- 禁止申诉 -->
-            <p v-if="Number(record.ban_appeal) === 1" class="ban-tip is-danger">
+            <p v-else-if="Number(record.ban_appeal) === 1" class="ban-tip is-danger">
               <i class="bi bi-slash-circle" /> 管理员已禁止该封禁申诉
             </p>
             <p v-else-if="violationNum >= 5" class="ban-tip is-danger">
@@ -104,15 +109,31 @@ const visible = ref(false)
 const submitting = ref(false)
 const content = ref('')
 
-// 封禁信息来自登录态：user.result.ban（后端 Users.banInfo 提供）
-const banInfo = computed(() => user.value?.result?.ban || null)
+/**
+ * 两个使用场景：
+ * 1. 全局（MainLayout）：不传参，封禁信息取当前登录态 user.result.ban（后端 Users.banInfo 提供），
+ *    此时就是「自己被封禁」，可以申诉；
+ * 2. 用户主页（Author.vue）：传 ban（被查看用户的 result.ban）与 appealable=false，
+ *    只展示对方的封禁信息，不提供申诉（申诉只能由被封禁的本人发起）。
+ */
+const props = defineProps({
+  ban: { type: Object, default: null },
+  appealable: { type: Boolean, default: true }
+})
+
+const banInfo = computed(() => props.ban || user.value?.result?.ban || null)
 const record = computed(() => banInfo.value?.record || {})
+
+// 查看他人主页时用「该账号」，自己则是「账号」
+const title = computed(() => (props.appealable ? '账号已被封禁' : '该账号已被封禁'))
 
 const violationNum = computed(() => Number(record.value.violation_num) || 0)
 // status: 0 生效中 / 3 申诉中 / 4 申诉通过 / 5 申诉驳回
 const appealed = computed(() => Number(record.value.status) !== 0)
 const canAppeal = computed(
   () =>
+    // 只有被封禁的本人能申诉（查看他人主页时 appealable=false）
+    props.appealable &&
     !appealed.value &&
     Number(record.value.ban_appeal) !== 1 &&
     violationNum.value < 5 &&
@@ -254,6 +275,10 @@ defineExpose({ show, hide })
 .ban-tip.is-ok {
   background: rgba(108, 154, 77, 0.12);
   color: var(--success);
+}
+.ban-tip.is-muted {
+  background: var(--bg-muted);
+  color: var(--text-muted);
 }
 
 .ban-appeal-label {

@@ -113,6 +113,16 @@ export const unbanUser = (data) =>
   call('users', 'unban', { method: 'PUT', data })
 
 /**
+ * 处理封禁申诉（管理员）
+ *
+ * - action = approve：通过，立即解封（清空 restrictions / current_ban_id，记录状态=4）
+ * - action = reject：驳回，封禁继续生效（记录状态=5），reply 必填（驳回理由）
+ * 两种结果都会给用户发站内消息（强制发送）。
+ */
+export const handleUserAppeal = (data) =>
+  call('users', 'appeal-handle', { method: 'PUT', data })
+
+/**
  * 清空用户封禁信息（管理员）
  *
  * 物理删除该用户的全部封禁记录（含回收站里的），并把 ban_count / current_ban_id /

@@ -20,9 +20,9 @@
           <router-link to="/manage/posts/write" class="btn btn-sm btn-ghost"><i class="bi bi-pencil-square" /> 写文章</router-link>
         </div>
         <div class="signin-entry">
-          <button class="btn btn-sm btn-primary btn-block" @click="openCheckin">
+          <router-link to="/checkin" class="btn btn-sm btn-primary btn-block">
             <i class="bi bi-calendar-check" /> 每日签到
-          </button>
+          </router-link>
           <button class="btn btn-sm btn-ghost btn-block" @click="userStore.logout"><i class="bi bi-box-arrow-right" />退出登录</button>
         </div>
       </template>
@@ -187,8 +187,6 @@
       </div>
     </div>
 
-    <!-- 签到弹窗 -->
-    <CheckinDialog ref="checkinDialog" />
   </div>
 </template>
 
@@ -206,7 +204,6 @@ import { pickCommentAuthor } from '@/utils/helper'
 import { renderEmoji } from '@/utils/emoji'
 
 import { useRouter } from 'vue-router'
-import CheckinDialog from '@/components/CheckinDialog.vue'
 import AvatarFrame from '@/components/AvatarFrame.vue'
 import touxiang from '@/assets/img/touxiang.webp'
 
@@ -214,11 +211,6 @@ const userStore = useUserStore()
 const notif = useNotificationStore()
 const siteStore = useSiteStore()
 const { user } = storeToRefs(userStore)
-
-const checkinDialog = ref(null)
-function openCheckin() {
-  checkinDialog.value?.show()
-}
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 

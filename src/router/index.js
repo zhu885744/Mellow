@@ -17,6 +17,9 @@ const routes = [
       { path: 'moments', name: 'moments', component: () => import('@/views/moments/Index.vue') },
       { path: 'moments/:id', name: 'moment-detail', component: () => import('@/views/moments/Detail.vue'), props: true },
       { path: 'links', name: 'links', component: () => import('@/views/links/Index.vue') },
+      // 搜索 / 签到：原先是弹窗，现改为独立页面（支持 /search?q=xxx&scope=article 直达）
+      { path: 'search', name: 'search', component: () => import('@/views/Search.vue') },
+      { path: 'checkin', name: 'checkin', component: () => import('@/views/Checkin.vue') },
       { path: 'goods', name: 'goods', component: () => import('@/views/goods/Index.vue') },
       { path: 'about', name: 'about', component: () => import('@/views/page/Index.vue'), props: { pageKey: 'about' } },
       // 用户主页 /author/:id（必须在 /:key 之前，避免被兜底路由拦截）

@@ -257,6 +257,31 @@ export function hasUserBanInfo(item) {
   return Number(item?.last_ban_at || 0) > 0
 }
 
+/**
+ * 封禁记录状态：0 封禁中 / 3 申诉中 / 5 申诉驳回（未封禁时 0）
+ *
+ * 注意：申诉中(3) 与申诉驳回(5) 期间封禁仍然生效（后端 BanStatusRestricted 口径），
+ * 所以这两个状态在列表里也要显示封禁标识，直到真正解封。
+ */
+export function userBanStatus(item) {
+  const info = item?.result?.ban
+  if (!info || info.is_banned === false) return 0
+  return Number(info.status ?? info.record?.status ?? 0) || 0
+}
+
+/** 是否申诉审核中（status=3） */
+export function isUserAppealing(item) {
+  return userBanStatus(item) === 3
+}
+
+/** 后台列表用的封禁状态文案：封禁中 / 申诉中 / 申诉驳回 */
+export function userBanStatusLabel(item) {
+  const status = userBanStatus(item)
+  if (status === 3) return '申诉中'
+  if (status === 5) return '申诉驳回'
+  return '封禁中'
+}
+
 /** 用户所属权限组列表（后端 result.auth.group.list） */
 export function userGroupsOf(item) {
   const list = item?.result?.auth?.group?.list

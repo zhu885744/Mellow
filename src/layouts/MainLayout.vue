@@ -57,12 +57,12 @@
           </template>
         </div>
 
-        <!-- 全局搜索按钮 -->
-        <button class="btn btn-ghost btn-sm btn-block" @click="openSearch">
+        <!-- 全局搜索（独立页面 /search，Ctrl+K 可直达） -->
+        <router-link to="/search" class="btn btn-ghost btn-sm btn-block" active-class="active">
           <i class="bi bi-search" />
           <span>搜索</span>
           <kbd class="search-kbd">Ctrl K</kbd>
-        </button>
+        </router-link>
 
         <nav class="site-nav">
           <router-link to="/" exact-active-class="active" class="nav-item">
@@ -173,9 +173,6 @@
       </button>
     </nav>
 
-    <!-- 全局搜索弹窗 -->
-    <SearchDialog ref="searchDialogRef" />
-
     <!-- 全局封禁申诉弹窗（当前用户被封禁时自动弹出） -->
     <BanAppealDialog ref="banDialogRef" />
 
@@ -184,20 +181,15 @@
 
     <!-- 右侧悬浮按钮 -->
     <FloatButtons />
-
-    <!-- 签到弹窗（移动端顶栏使用） -->
-    <CheckinDialog ref="checkinDialogRef" />
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import SidebarRight from '@/components/SidebarRight.vue'
-import SearchDialog from '@/components/SearchDialog.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import FloatButtons from '@/components/FloatButtons.vue'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
-import CheckinDialog from '@/components/CheckinDialog.vue'
 import { call } from '@/api/request'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
@@ -209,20 +201,14 @@ const siteStore = useSiteStore()
 const router = useRouter()
 const route = useRoute()
 
-// 签到弹窗（移动端顶栏「签到」按钮）
-const checkinDialogRef = ref(null)
+// 签到（独立页面 /checkin）：未登录时不跳登录页，由页面自身给出登录引导
 function onCheckinClick() {
-  if (!userStore.isLogged) {
-    router.push('/auth/login')
-    return
-  }
-  checkinDialogRef.value?.show()
+  if (route.path !== '/checkin') router.push('/checkin')
 }
 
-// 全局搜索弹窗
-const searchDialogRef = ref(null)
+// 全局搜索（独立页面 /search）：Ctrl/⌘ + K 直达
 function openSearch() {
-  searchDialogRef.value?.show()
+  if (route.path !== '/search') router.push('/search')
 }
 function onGlobalKey(e) {
   if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {

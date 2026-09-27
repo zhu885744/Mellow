@@ -19,6 +19,11 @@
               v-if="profile.title"
               :class="['author-title', titleClass]"
             >{{ profile.title }}</span>
+            <!-- 封禁标识（后端 users/one 的 result.ban）：申诉中 / 申诉驳回期间也保持显示 -->
+            <span v-if="isBanned" class="author-ban-tag" :class="{ 'is-appeal': banStatus !== 0 }">
+              <i class="bi" :class="banStatus === 0 ? 'bi-slash-circle' : 'bi-hourglass-split'" />
+              {{ banStatusText }}
+            </span>
           </div>
           <div class="author-desc">{{ profile.description || '这个人很懒，什么都没留下' }}</div>
           <a
@@ -59,6 +64,18 @@
             </template>
           </div>
         </div>
+      </div>
+
+      <!-- 封禁提示条：该账号处于封禁中，展示关键信息并提供详情 / 申诉入口 -->
+      <div v-if="isBanned" class="author-ban-bar">
+        <i class="bi bi-exclamation-octagon" />
+        <div class="author-ban-bar__text">
+          <strong>{{ banBarTitle }}</strong>
+          <span>{{ banSummary }}</span>
+        </div>
+        <button type="button" class="btn btn-sm btn-outline-danger" @click="openBanDialog">
+          查看详情<template v-if="isSelf"> / 申诉</template>
+        </button>
       </div>
     </div>
 
@@ -136,20 +153,25 @@
         </ul>
       </template>
     </div>
+
+    <!-- 封禁信息弹窗：本人可提交申诉，查看他人主页时只展示信息 -->
+    <BanAppealDialog ref="banDialogRef" :ban="banInfo" :appealable="isSelf" />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ArticleCard from '@/components/ArticleCard.vue'
 import AvatarFrame from '@/components/AvatarFrame.vue'
+import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import { getUser } from '@/api/users'
 import { getAuthorArticles, countArticlesByAuthor } from '@/api/article'
 import { myLikes, myCollects } from '@/api/tags'
 import { call } from '@/api/request'
 import { useUserStore } from '@/stores/user'
-import { fromNow } from '@/utils/time'
+import { fromNow, formatDate } from '@/utils/time'
+import { banTypeText } from '@/utils/user'
 import { toast } from '@/utils/toast'
 import { renderEmoji } from '@/utils/emoji'
 import EmptyState from '@/components/EmptyState.vue'
@@ -193,6 +215,53 @@ const titleClass = computed(() => getTitleColorClass(profile.value.title))
 const stats = ref({ article: 0, follow: 0, fans: 0 })
 const following = ref(false)
 const isSelf = computed(() => userStore.isLogged && Number(userStore.user?.id) === uid.value)
+
+// ---------- 封禁信息（后端 users/one 的 result.ban，见 model.Users.banInfo） ----------
+const banInfo = ref(null)
+const banDialogRef = ref(null)
+// 自动弹窗对同一个主页只弹一次，避免切 Tab、重复加载时反复打扰
+const banShown = ref(false)
+
+const isBanned = computed(() => Boolean(banInfo.value?.is_banned))
+
+// 封禁状态：0 封禁中 / 3 申诉中 / 5 申诉驳回 —— 申诉期间封禁继续生效，
+// 所以标识要一直显示到真正解封为止（后端 BanStatusRestricted 口径）
+const banStatus = computed(() => {
+  const info = banInfo.value
+  if (!info?.is_banned) return 0
+  return Number(info.status ?? info.record?.status ?? 0) || 0
+})
+
+const banStatusText = computed(() => {
+  if (banStatus.value === 3) return '申诉中'
+  if (banStatus.value === 5) return '申诉驳回'
+  return '封禁中'
+})
+
+const banBarTitle = computed(() => {
+  if (banStatus.value === 3) return '该账号处于封禁中（申诉审核中）'
+  if (banStatus.value === 5) return '该账号处于封禁中（申诉未通过）'
+  return '该账号处于封禁中'
+})
+
+// 封禁摘要：限制范围 · 时长 · 原因 · 到期
+const banSummary = computed(() => {
+  const record = banInfo.value?.record
+  if (!record) return '该账号已被限制使用'
+  const days = Number(record.duration) || 0
+  const parts = [banTypeText(record.ban_type), days === 0 ? '永久封禁' : `${days} 天`]
+  if (record.reason) parts.push(`原因：${record.reason}`)
+  if (Number(record.expires_at) > 0) parts.push(`到期：${formatDate(record.expires_at)}`)
+  // 申诉中把申诉时间也带上，方便对照处理进度
+  if (banStatus.value === 3 && Number(record.appeal_time) > 0) {
+    parts.push(`申诉时间：${formatDate(record.appeal_time)}`)
+  }
+  return parts.join(' · ')
+})
+
+function openBanDialog() {
+  banDialogRef.value?.show()
+}
 
 const tab = ref('article')
 const list = ref([])
@@ -366,6 +435,16 @@ async function loadProfile() {
     // 等级：兼容 result.level.current 与 users_rating.grade 两种结构
     const lv = u.result?.level?.current || u.users_rating?.users_grade
     level.value = lv?.value || u.users_rating?.grade || u.grade || 0
+
+    // 封禁信息：被封禁时页面显示「封禁中」标识
+    banInfo.value = u.result?.ban || null
+    // 查看他人被封禁的主页 → 自动弹出封禁详情（只展示信息，不提供申诉）；
+    // 自己被封禁时由全局弹窗（MainLayout 的 BanAppealDialog）负责提醒，这里不再重复弹
+    if (isBanned.value && !isSelf.value && !banShown.value) {
+      banShown.value = true
+      await nextTick()
+      banDialogRef.value?.show()
+    }
     stats.value = {
       article: u.article_total || 0,
       follow: 0,
@@ -602,6 +681,9 @@ onMounted(() => {
 })
 
 watch(() => route.params.id, () => {
+  // 切换用户主页：重置封禁状态，新主页若被封禁会重新自动弹窗
+  banInfo.value = null
+  banShown.value = false
   loadProfile()
   loadFollowState()
   page.value = 1
@@ -649,6 +731,56 @@ watch(() => route.params.id, () => {
   border-radius: 4px;
   font-weight: 600;
   color: #fff;
+}
+
+/* ---------- 封禁标识与提示条 ---------- */
+.author-ban-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 999px;
+  color: var(--danger);
+  background: rgba(199, 72, 42, 0.12);
+}
+/* 申诉中 / 申诉驳回：改用琥珀色，与「封禁中」区分开（但同样属于封禁状态） */
+.author-ban-tag.is-appeal {
+  color: var(--warning);
+  background: var(--gold-wash);
+}
+.author-ban-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: rgba(199, 72, 42, 0.08);
+  border: 1px solid rgba(199, 72, 42, 0.24);
+}
+.author-ban-bar > i {
+  flex-shrink: 0;
+  font-size: 18px;
+  color: var(--danger);
+}
+.author-ban-bar__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.author-ban-bar__text strong {
+  font-size: 14px;
+  color: var(--danger);
+}
+.author-ban-bar__text span {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  word-break: break-word;
 }
 /* 头衔配色（与 Profile 页 10 个头衔一致） */
 .title-zhangmen { background: linear-gradient(135deg, #c8a04a, #b07d2e); }

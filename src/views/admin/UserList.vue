@@ -177,8 +177,9 @@
                   {{ userStatusLabel(item) }}
                 </span>
 
-                <span v-if="isBanned(item)" class="status-chip is-ban">
-                  <i class="bi bi-shield-x" /> 封禁中
+                <!-- 封禁状态：申诉中 / 申诉驳回也仍然属于封禁中（直到真正解封） -->
+                <span v-if="isBanned(item)" class="status-chip" :class="banChipClass(item)">
+                  <i :class="banChipIcon(item)" /> {{ banChipText(item) }}
                 </span>
               </div>
 
@@ -287,6 +288,18 @@
                   @click="askClearBan(item)"
                 >
                   <i class="bi bi-eraser" />
+                </button>
+
+                <!-- 处理申诉：仅在申诉审核中（status=3）出现 -->
+                <button
+                  v-if="isAppealing(item)"
+                  class="btn btn-ghost btn-sm is-appeal"
+                  title="处理申诉"
+                  aria-label="处理申诉"
+                  :disabled="busy"
+                  @click="openAppeal(item)"
+                >
+                  <i class="bi bi-chat-left-text" />
                 </button>
 
                 <button
@@ -495,6 +508,62 @@
       </div>
     </AdminFormDialog>
 
+    <!-- 处理申诉（管理员）：通过=立即解封 / 驳回=封禁继续生效 -->
+    <AdminFormDialog
+      v-model:visible="appeal.visible"
+      title="处理封禁申诉"
+      icon="bi bi-chat-left-text"
+      :loading="appeal.loading"
+      confirm-text="提交处理"
+      width="560px"
+      @confirm="submitAppeal"
+    >
+      <p class="dialog-tip">
+        用户 <strong>{{ appeal.nickname }}</strong> 对封禁记录 #{{ appeal.recordId }} 提交了申诉。
+      </p>
+
+      <dl class="appeal-info">
+        <div>
+          <dt>申诉时间</dt>
+          <dd>{{ appeal.time ? formatTime(appeal.time) : '—' }}</dd>
+        </div>
+        <div>
+          <dt>封禁原因</dt>
+          <dd>{{ appeal.reason || '未说明' }}</dd>
+        </div>
+        <div>
+          <dt>封禁范围</dt>
+          <dd>{{ appeal.banType || '全面封禁' }}</dd>
+        </div>
+      </dl>
+
+      <div class="form-item">
+        <label class="form-label">申诉内容</label>
+        <p class="appeal-content">{{ appeal.content || '（用户未填写申诉说明）' }}</p>
+      </div>
+
+      <div class="form-item">
+        <label class="form-label">处理结果</label>
+        <SelectMenu v-model="appeal.action" variant="field" :options="APPEAL_ACTIONS" />
+        <p class="form-hint">
+          通过：立即解封并恢复账号；驳回：封禁继续生效（用户均可收到站内消息）。
+        </p>
+      </div>
+
+      <div class="form-item">
+        <label class="form-label">
+          回复内容{{ appeal.action === 'reject' ? '（驳回必填）' : '（可选）' }}
+        </label>
+        <textarea
+          v-model="appeal.reply"
+          class="textarea"
+          rows="3"
+          maxlength="1024"
+          placeholder="驳回时请说明理由，用户会在站内消息里看到"
+        />
+      </div>
+    </AdminFormDialog>
+
     <!-- 分配权限组 -->
     <AdminFormDialog
       v-model:visible="groups.visible"
@@ -584,6 +653,7 @@ import {
   banUser,
   unbanUser,
   clearUserBan,
+  handleUserAppeal,
   removeUsers,
   forceDeleteUsers,
   restoreUsers,
@@ -613,6 +683,9 @@ import {
   banDurationText,
   banRecordOf,
   isUserBanned,
+  isUserAppealing,
+  userBanStatus,
+  userBanStatusLabel,
   hasUserBanInfo,
   userGroupsOf,
   isProtectedUser,
@@ -701,6 +774,30 @@ function hasBanTrace(item) {
   return hasUserBanInfo(item)
 }
 
+// 申诉审核中（status=3）：此时才出现「处理申诉」按钮
+function isAppealing(item) {
+  return isUserAppealing(item)
+}
+
+// 封禁状态标签：封禁中 / 申诉中 / 申诉驳回（后端 is_banned 在申诉期间仍为 true）
+function banChipText(item) {
+  return userBanStatusLabel(item)
+}
+
+function banChipClass(item) {
+  const status = userBanStatus(item)
+  if (status === 3) return 'is-appeal'
+  if (status === 5) return 'is-appeal-rejected'
+  return 'is-ban'
+}
+
+function banChipIcon(item) {
+  const status = userBanStatus(item)
+  if (status === 3) return 'bi bi-hourglass-split'
+  if (status === 5) return 'bi bi-x-circle'
+  return 'bi bi-shield-x'
+}
+
 function banCountOf(item) {
   return Number(item?.result?.ban?.ban_count ?? item?.ban_count ?? 0) || 0
 }
@@ -725,6 +822,12 @@ function banLine(item) {
   const parts = [banTypeText(record.ban_type), banDurationText(record.duration)]
   if (record.reason) parts.push(`原因：${record.reason}`)
   if (Number(record.expires_at) > 0) parts.push(`到期：${formatTime(record.expires_at)}`)
+  // 申诉中 / 申诉驳回也要标出来：管理员据此决定是否需要处理申诉
+  const status = userBanStatus(item)
+  if (status === 3) {
+    parts.push(record.appeal_time ? `申诉中（${formatTime(record.appeal_time)}）` : '申诉中')
+  }
+  if (status === 5) parts.push('申诉已驳回')
   return parts.join(' · ')
 }
 
@@ -925,6 +1028,69 @@ async function runClearBan() {
     // 请求失败时保持弹窗打开，错误提示已由请求拦截器统一给出
   } finally {
     clearBan.loading = false
+  }
+}
+
+// ---------- 处理申诉（管理员） ----------
+// 通过：立即解封（后端清空 restrictions / current_ban_id，记录状态=4）
+// 驳回：封禁继续生效（记录状态=5），回复内容必填并会写进用户的站内消息
+const APPEAL_ACTIONS = [
+  { value: 'approve', label: '通过（立即解封）' },
+  { value: 'reject', label: '驳回（封禁继续生效）' }
+]
+
+const appeal = reactive({
+  visible: false,
+  loading: false,
+  uid: 0,
+  nickname: '',
+  recordId: 0,
+  content: '',
+  time: 0,
+  reason: '',
+  banType: '',
+  action: 'approve',
+  reply: ''
+})
+
+function openAppeal(item) {
+  const record = banRecordOf(item) || {}
+  appeal.uid = Number(item.id)
+  appeal.nickname = item.nickname || `用户 ${item.id}`
+  appeal.recordId = Number(record.id) || 0
+  appeal.content = record.appeal_content || ''
+  appeal.time = Number(record.appeal_time) || 0
+  appeal.reason = record.reason || ''
+  appeal.banType = banTypeText(record.ban_type)
+  appeal.action = 'approve'
+  appeal.reply = ''
+  appeal.visible = true
+}
+
+async function submitAppeal() {
+  if (!appeal.recordId) {
+    toast.warning('未找到对应的封禁记录')
+    return
+  }
+  if (appeal.action === 'reject' && !appeal.reply.trim()) {
+    toast.warning('驳回时请填写回复内容')
+    return
+  }
+
+  appeal.loading = true
+  try {
+    await handleUserAppeal({
+      record_id: appeal.recordId,
+      action: appeal.action,
+      reply: appeal.reply.trim()
+    })
+    toast.success(appeal.action === 'approve' ? '申诉已通过，账号已解封' : '申诉已驳回，封禁继续生效')
+    appeal.visible = false
+    await afterMutation(0)
+  } catch {
+    // 请求失败时保持弹窗打开，错误提示已由请求拦截器统一给出
+  } finally {
+    appeal.loading = false
   }
 }
 
@@ -1694,6 +1860,16 @@ onUnmounted(() => {
   color: var(--danger);
   background: var(--accent-soft);
 }
+/* 申诉中：琥珀色，提醒管理员有待处理 */
+.status-chip.is-appeal {
+  color: var(--warning);
+  background: var(--gold-wash);
+}
+/* 申诉驳回：封禁继续生效，用偏暗的红区分「封禁中」 */
+.status-chip.is-appeal-rejected {
+  color: var(--danger);
+  background: rgba(199, 72, 42, 0.08);
+}
 
 .user-contact {
   display: flex;
@@ -1982,6 +2158,47 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* 处理申诉：待处理的操作按钮用警示色，便于在行内一眼找到 */
+.btn.is-appeal {
+  color: var(--warning);
+}
+.btn.is-appeal:hover:not(:disabled) {
+  background: var(--gold-wash);
+}
+
+/* 处理申诉弹窗：封禁信息速览 + 申诉正文 */
+.appeal-info {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin: 0 0 14px;
+  padding: 12px 14px;
+  background: var(--bg-muted);
+  border-radius: var(--radius);
+}
+.appeal-info dt {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.appeal-info dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: var(--text);
+  word-break: break-word;
+}
+.appeal-content {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-soft);
+  background: var(--bg-muted);
+  border-left: 3px solid var(--warning);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  word-break: break-word;
+  white-space: pre-wrap;
 }
 
 /* 清空封禁信息弹窗里的附加选项（ConfirmDialog 的默认插槽内容） */
