@@ -441,7 +441,8 @@
       </div>
 
       <p class="dialog-tip">
-        规则类型 <strong>{{ rule.type }}</strong> 不可修改；保存只覆盖该类型的配置，其余类型（含签到的连续加成与里程碑）保持原样。
+        规则类型 <strong>{{ rule.type }}</strong> 不可修改；保存只覆盖该类型的配置，其余类型保持原样。
+        签到奖励已独立，请到「签到管理」里配置。
       </p>
     </AdminFormDialog>
 
@@ -470,9 +471,8 @@
  * 后端约束（app/api/controller/exp.go、app/model/exp.go）：
  * - exp/give 仅 root 可用，且**只接受单个 uid**（无批量接口），批量由前端顺序调用；
  *   value 为 0 会被拒绝，负数时要求用户当前经验足够（否则返回「用户经验值不足！」）；
- * - exp/rules 只返回 type/name/value/daily_limit，check-in 的连续签到加成（streak_bonus）
- *   与里程碑（milestones）不在其中；因此保存规则必须以 config/one 的原始 json 为基底，
- *   只覆盖当前编辑的那一条，否则会把这些字段写丢；
+ * - exp/rules 只返回 type/name/value/daily_limit（签到已独立，不再返回 check-in）；
+ *   保存规则以 config/one 的原始 json 为基底，只覆盖当前编辑的那一条，避免把其它字段写丢；
  * - exp/count 不支持 onlyTrashed，回收站数量改用列表接口的 count 字段；
  * - 流水删除只是移除记录，不会回退用户已获得的经验值（后端未做回退）；
  * - 用户列表走 users/all：order 未做白名单校验由前端限定，where 支持 $gt / 等值条件。
@@ -1036,8 +1036,8 @@ async function saveRule() {
 
   rule.loading = true
   try {
-    // 以 config 中的原始配置为基底：exp/rules 不返回签到的连续加成与里程碑，
-    // 直接把 rules 写回去会把这些字段丢掉
+    // 以 config 中的原始配置为基底：exp/rules 只是规则的展示视图，
+    // 直接把 rules 写回去会丢掉配置里其它字段
     const res = await getExpConfig()
     const raw = res?.data?.json
     const config = typeof raw === 'string' ? JSON.parse(raw) : { ...(raw || {}) }

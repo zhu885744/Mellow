@@ -96,7 +96,7 @@ const groupDefs = [
     items: [
       '/admin/users', '/admin/comment', '/admin/placard', '/admin/banner',
       '/admin/tags', '/admin/level', '/admin/exp', '/admin/goods', '/admin/integral',
-      '/admin/message',
+      '/admin/checkin', '/admin/message',
       '/admin/links', '/admin/links/group', '/admin/attachment', '/admin/system'
     ]
   },

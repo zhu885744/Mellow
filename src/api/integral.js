@@ -57,9 +57,13 @@ export const listIntegralCards = (params = {}) =>
     params: { page: 1, limit: 20, order: 'id desc', ...params }
   })
 
-// 卡密统计（管理员）：总数 / 未使用 / 已使用 / 已过期 / 累计发放 / 已兑换
+// 卡密统计（管理员）：总数 / 未使用 / 已发放（待兑换）/ 已使用 / 已过期 / 累计发放 / 已兑换
 export const getIntegralCardStats = () =>
   call('integral', 'card-stats', { method: 'GET' })
+
+// 我的待兑换卡密（登录用户）：签到等活动发到账号里的卡密，在这里找回并兑换
+export const getMyIntegralCards = (params = {}) =>
+  call('integral', 'card-mine', { method: 'GET', params: { limit: 20, ...params } })
 
 // 生成卡密（管理员）：value 面额、count 数量、length 长度、expire 日期或 expire_time 时间戳、remark 备注
 export const generateIntegralCards = (data) =>

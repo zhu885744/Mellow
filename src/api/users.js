@@ -39,17 +39,9 @@ export const submitAppeal = (recordId, content) =>
   call('users', 'appeal', { method: 'POST', data: { record_id: recordId, content } })
 
 // ===== 签到 =====
-export const checkIn = () =>
-  call('exp', 'check-in', { method: 'POST' })
-
-export const checkInStatus = () =>
-  call('exp', 'check-in-status', { method: 'GET' })
-
-export const checkInRank = (params = {}) =>
-  call('exp', 'check-in-rank', { method: 'GET', params })
-
-export const checkInCalendar = (params = {}) =>
-  call('exp', 'check-in-calendar', { method: 'GET', params })
+// 签到已从经验模块独立出去（后端 /api/checkin/*，配置键 SYSTEM_CHECKIN_RULES），
+// 相关请求统一放在 @/api/checkin（getCheckinStatus / getCheckinCalendar / getCheckinRank /
+// signIn / makeupSign …）。这里不再保留 exp/check-in* 的旧封装，避免两套入口混用。
 
 export const expActive = (params = {}) =>
   call('exp', 'active', { method: 'GET', params })

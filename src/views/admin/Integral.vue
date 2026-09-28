@@ -287,7 +287,7 @@
                 <input
                   type="checkbox"
                   :checked="isCardSelected(item.id)"
-                  :disabled="busy || Number(item.status) === 1"
+                  :disabled="busy || Number(item.status) === 1 || Number(item.status) === 2"
                   :aria-label="`选择卡密 ${item.card}`"
                   @change="toggleCard(item.id)"
                 />
@@ -307,14 +307,23 @@
                   <span class="meta-text"><i class="bi bi-clock" /> {{ fromNow(item.create_time) }}</span>
                   <span class="meta-text"><i class="bi bi-hourglass-split" /> {{ expireText(item) }}</span>
                   <span v-if="Number(item.status) === 1" class="meta-text">
-                    <i class="bi bi-person-check" /> {{ item.nickname || `用户 ${item.uid}` }}
+                    <i class="bi bi-person-check" /> 已被 {{ item.nickname || `用户 ${item.uid}` }} 使用
+                  </span>
+                  <span v-else-if="Number(item.status) === 2" class="meta-text">
+                    <i class="bi bi-person-plus" /> 已发放给 {{ item.nickname || `用户 ${item.uid}` }}（待兑换）
                   </span>
                   <span v-if="item.remark" class="meta-text"><i class="bi bi-sticky" /> {{ item.remark }}</span>
                 </div>
               </div>
 
               <div class="card-actions">
-                <button class="btn btn-ghost btn-sm danger" title="删除" aria-label="删除" :disabled="busy" @click="askRemove(item)">
+                <button
+                  class="btn btn-ghost btn-sm danger"
+                  :title="Number(item.status) === 2 ? '已发放给用户的卡密不能删除' : '删除'"
+                  aria-label="删除"
+                  :disabled="busy || Number(item.status) === 2"
+                  @click="askRemove(item)"
+                >
                   <i class="bi bi-trash" />
                 </button>
                 <button class="btn btn-ghost btn-sm danger" title="彻底删除" aria-label="彻底删除" :disabled="busy" @click="askForceDelete(item)">
@@ -340,6 +349,12 @@
           <div>
             <h2 class="block-title">积分获取规则</h2>
             <p class="block-desc">各行为可获得的积分与每日上限，修改后立即影响后续发放</p>
+            <p class="block-desc">
+              <i class="bi bi-info-circle" />
+              每日签到的积分不在这里配置（签到已独立）——它的积分来自
+              <router-link to="/admin/checkin" class="stock-link">签到管理</router-link>
+              的基础奖励，用户端的「今日任务 / 获取途径」会自动跟随。
+            </p>
           </div>
         </header>
 
@@ -605,7 +620,7 @@ const views = [
     key: 'rules',
     label: '获取规则',
     icon: 'bi bi-coin',
-    desc: '配置签到、发文、评论等行为可获得的积分与每日上限'
+    desc: '配置发文、评论、登录等行为可获得的积分与每日上限（签到积分见「签到管理」）'
   }
 ]
 
@@ -626,9 +641,11 @@ const userSortOptions = [
 ]
 
 // 卡密状态筛选（后端用 status + expired 两个参数表达）
+// granted = 已发放：活动（如签到）发给用户的卡密，已绑定用户、等他自己兑换
 const cardTabs = [
   { key: 'all', label: '全部' },
   { key: 'unused', label: '未使用' },
+  { key: 'granted', label: '已发放' },
   { key: 'used', label: '已使用' },
   { key: 'expired', label: '已过期' }
 ]
@@ -692,6 +709,7 @@ const cardStatCards = computed(() => {
   return [
     { label: '卡密总数', value: s.total ?? 0, icon: 'bi bi-credit-card-2-front', color: 'var(--primary)' },
     { label: '未使用', value: s.unused ?? 0, icon: 'bi bi-patch-check', color: 'var(--success)' },
+    { label: '已发放', value: s.granted ?? 0, icon: 'bi bi-ticket-perforated', color: '#8b5cf6' },
     { label: '已使用', value: s.used ?? 0, icon: 'bi bi-check2-circle', color: '#0ea5e9' },
     { label: '已过期', value: s.expired ?? 0, icon: 'bi bi-hourglass-split', color: 'var(--warning)' },
     { label: '累计发放', value: s.value_total ?? 0, icon: 'bi bi-coin', color: 'var(--primary)' },
@@ -792,11 +810,14 @@ function isExpired(item) {
 
 function cardStateClass(item) {
   if (Number(item?.status) === 1) return 'is-used'
+  if (Number(item?.status) === 2) return 'is-granted'
   return isExpired(item) ? 'is-expired' : 'is-unused'
 }
 
 function cardStateLabel(item) {
   if (Number(item?.status) === 1) return '已使用'
+  // 已发放（活动奖励）：已绑定用户，等他到「我的积分 → 卡密兑换」兑换
+  if (Number(item?.status) === 2) return '已发放（待兑换）'
   return isExpired(item) ? '已过期' : '未使用'
 }
 
@@ -1012,6 +1033,10 @@ async function loadCards() {
         params.status = 0
         params.expired = '0'
         break
+      case 'granted':
+        // 已发放（活动奖励），可能已过期，这里不过滤有效期
+        params.status = 2
+        break
       case 'used':
         params.status = 1
         break
@@ -1179,7 +1204,10 @@ async function loadRules() {
   ruleLoading.value = true
   try {
     const res = await getIntegralRules()
-    rules.value = Array.isArray(res?.data) ? res.data : []
+    const list = Array.isArray(res?.data) ? res.data : []
+    // 签到已独立成模块（积分由「签到管理」的基础奖励决定），这条虚拟任务不在这里编辑，
+    // 否则保存规则时会把它写回 SYSTEM_INTEGRAL_RULES
+    rules.value = list.filter((item) => item?.source !== 'checkin')
   } catch {
     rules.value = []
   } finally {
@@ -1363,6 +1391,14 @@ onMounted(async () => {
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--text-muted);
+}
+/* 跳转到其它配置页的链接（如「签到管理」） */
+.stock-link {
+  margin: 0 2px;
+  color: var(--primary);
+}
+.stock-link:hover {
+  text-decoration: underline;
 }
 .head-actions {
   display: flex;
@@ -1698,6 +1734,10 @@ onMounted(async () => {
   padding: 1px 8px;
   font-size: 11px;
   border-radius: 3px;
+}
+.state-chip.is-granted {
+  color: #8b5cf6;
+  background: rgba(139, 92, 246, 0.12);
 }
 .state-chip.is-unused {
   color: var(--success);

@@ -150,14 +150,18 @@ function typeName(t) {
   return typeMap[t] || t || '经验变动'
 }
 
-// 签到记录的奖励构成（基础值之外的连续签到加成 / 里程碑奖励）
+// 签到记录的附加说明
+// 新签到模块（model/checkin.go）写入的是 { source, streak, cycle }；
+// 这里同时兼容旧记录里的 bonus / milestone 字段（历史流水不会重写）
 function logExtra(l) {
   const j = l.json
   if (!j || typeof j !== 'object') return ''
   const parts = []
+  if (Number(j.source) === 2) parts.push('补签')
   if (Number(j.bonus) > 0) parts.push(`连续签到加成 +${j.bonus}`)
   if (Number(j.milestone) > 0) parts.push(`里程碑奖励 +${j.milestone}`)
   if (Number(j.streak) > 0) parts.push(`已连续签到 ${j.streak} 天`)
+  if (Number(j.cycle) > 0) parts.push(`周期第 ${j.cycle} 天`)
   return parts.join(' · ')
 }
 

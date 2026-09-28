@@ -29,6 +29,7 @@ let lastMessage = ''
 let lastTime = 0
 
 function showToast(message, type = 'info', duration = 2400) {
+  if (!duration || duration <= 0) duration = 2400
   const c = getContainer()
   const now = Date.now()
   if (message === lastMessage && now - lastTime < 800) return
@@ -86,9 +87,10 @@ if (typeof document !== 'undefined' && !document.getElementById('toast-style')) 
   document.head.appendChild(style)
 }
 
+// duration 可选：卡密这类需要用户抄下来的长内容可以传更长的展示时间
 export const toast = {
-  info: (m) => showToast(m, 'info'),
-  success: (m) => showToast(m, 'success'),
-  error: (m) => showToast(m, 'error'),
-  warning: (m) => showToast(m, 'warning')
+  info: (m, duration) => showToast(m, 'info', duration),
+  success: (m, duration) => showToast(m, 'success', duration),
+  error: (m, duration) => showToast(m, 'error', duration),
+  warning: (m, duration) => showToast(m, 'warning', duration)
 }

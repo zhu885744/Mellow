@@ -125,6 +125,8 @@ const routes = [
       { path: 'exp', name: 'admin-exp', component: () => import('@/views/admin/Exp.vue'), meta: { title: '经验' } },
       { path: 'goods', name: 'admin-goods', component: () => import('@/views/admin/Goods.vue'), meta: { title: '商品' } },
       { path: 'integral', name: 'admin-integral', component: () => import('@/views/admin/Integral.vue'), meta: { title: '积分' } },
+      // 签到配置（独立模块：奖励项 / 周期 / 里程碑 / 月全勤 / 随机奖励 / 补签）
+      { path: 'checkin', name: 'admin-checkin', component: () => import('@/views/admin/Checkin.vue'), meta: { title: '签到' } },
       { path: 'message', name: 'admin-message', component: () => import('@/views/admin/Message.vue'), meta: { title: '消息' } },
       // 友链管理：Links.vue 承载统计概览，LinkList.vue 为列表子路由（子页通过 inject 联动筛选）
       {

@@ -59,6 +59,35 @@
       <p class="redeem-tip">
         <i class="bi bi-shield-check" /> 卡密不区分大小写，空格与连字符会被自动忽略；请勿向他人泄露你的卡密。
       </p>
+
+      <!-- 我的待兑换卡密：签到等活动直接发到账号里的卡密在这里找回 -->
+      <div v-if="myCards.length" class="mine-cards">
+        <div class="mine-cards__head">
+          <span class="mine-cards__title">
+            <i class="bi bi-ticket-perforated" /> 我的待兑换卡密（{{ myCards.length }}）
+          </span>
+          <button class="btn btn-sm" type="button" :disabled="redeeming" @click="redeemAll">
+            <i class="bi bi-lightning-charge" /> 全部兑换
+          </button>
+        </div>
+
+        <div v-for="item in myCards" :key="item.card_id || item.card" class="mine-card">
+          <code class="mine-card__code">{{ item.card }}</code>
+          <span class="mine-card__face">{{ item.value }} 积分</span>
+          <span v-if="item.source" class="mine-card__from">{{ cardSourceText(item.source) }}</span>
+          <span v-if="item.expired" class="mine-card__expired">已过期</span>
+          <button
+            class="btn btn-sm"
+            type="button"
+            :disabled="redeeming || item.expired"
+            @click="redeemCard(item)"
+          >兑换</button>
+        </div>
+
+        <p class="mine-cards__tip">
+          这些是签到等活动发到账号里的卡密，只有你的账号能兑换，点「兑换」立即到账。
+        </p>
+      </div>
     </div>
 
     <!-- 今日任务进度 -->
@@ -215,6 +244,8 @@
 import { ref, computed, onMounted } from 'vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import { getIntegral, getIntegralLogs, getIntegralRules, getIntegralTasks, getIntegralRank, redeemIntegralCard } from '@/api/goods'
+// 我的待兑换卡密（签到等活动的奖励发到账号里，这里找回并兑换）
+import { getMyIntegralCards } from '@/api/integral'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
 
@@ -237,6 +268,8 @@ const loadingRank = ref(false)
 // 卡密兑换
 const cardCode = ref('')
 const redeeming = ref(false)
+// 我的待兑换卡密（签到等活动发放的，后端状态=已发放）
+const myCards = ref([])
 
 // 明细筛选
 const direction = ref('')
@@ -408,12 +441,71 @@ async function redeem() {
     const value = Number(res?.data?.value) || 0
     toast.success(value > 0 ? `兑换成功，获得 ${value} 积分` : '兑换成功')
     cardCode.value = ''
-    await Promise.all([loadSummary(), loadLogs(), loadRank()])
+    await Promise.all([loadSummary(), loadLogs(), loadRank(), loadMyCards()])
   } catch {
     // 失败原因（卡密不存在/已使用/已过期/尝试过于频繁等）已由请求拦截器统一提示
   } finally {
     redeeming.value = false
   }
+}
+
+// ---------- 我的待兑换卡密（签到等活动发到账号里的） ----------
+
+// 卡密来源（后端存的是奖励流水类型）
+const cardSourceMap = {
+  'check-in': '签到获得'
+}
+
+function cardSourceText(source) {
+  return cardSourceMap[source] || '活动获得'
+}
+
+async function loadMyCards() {
+  if (!isLogged.value) {
+    myCards.value = []
+    return
+  }
+  try {
+    const res = await getMyIntegralCards({ limit: 20 })
+    myCards.value = Array.isArray(res?.data) ? res.data : []
+  } catch {
+    // 拿不到不影响页面其它部分
+    myCards.value = []
+  }
+}
+
+// 兑换列表里的某一张（等价于填入输入框再点兑换）
+async function redeemCard(item) {
+  if (redeeming.value || !item?.card) return
+  cardCode.value = item.card
+  await redeem()
+}
+
+// 一键兑换全部：逐张兑换，单张失败不影响其它（失败的会留在列表里）
+async function redeemAll() {
+  if (redeeming.value || !myCards.value.length) return
+
+  redeeming.value = true
+  let success = 0
+  let income = 0
+
+  for (const item of [...myCards.value]) {
+    if (item.expired) continue
+    try {
+      const res = await redeemIntegralCard(item.card)
+      if (Number(res?.code) === 200) {
+        success++
+        income += Number(res?.data?.value) || 0
+      }
+    } catch {
+      // 单张失败（已过期 / 已被使用等）跳过即可
+    }
+  }
+
+  redeeming.value = false
+  toast.success(success ? `已兑换 ${success} 张，共获得 ${income} 积分` : '没有可兑换的卡密')
+
+  await Promise.all([loadMyCards(), loadSummary(), loadLogs(), loadRank()])
 }
 
 onMounted(() => {
@@ -422,6 +514,7 @@ onMounted(() => {
   loadTasks()
   loadLogs()
   loadRank()
+  loadMyCards()
 })
 </script>
 
@@ -588,6 +681,75 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
   margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+/* ---------- 我的待兑换卡密（活动发放） ---------- */
+.mine-cards {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--border);
+}
+.mine-cards__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.mine-cards__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.mine-cards__title i {
+  color: var(--primary);
+}
+.mine-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.mine-card__code {
+  padding: 3px 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--primary-deep);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  user-select: all;
+}
+.mine-card__face {
+  font-size: 12px;
+  color: #d4a148;
+  font-weight: 600;
+}
+.mine-card__from {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.mine-card__expired {
+  font-size: 12px;
+  color: var(--danger);
+}
+.mine-card > button {
+  margin-left: auto;
+}
+.mine-cards__tip {
+  margin: 6px 0 0;
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-muted);
