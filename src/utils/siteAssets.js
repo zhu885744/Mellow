@@ -11,6 +11,8 @@
  *   所有布局共用（它们都挂在同一个 App 下），后台改完刷新一次即可看到效果。
  */
 
+import { setSiteName } from './pageTitle'
+
 // index.html 的默认值：配置为空时用它兜底
 const DEFAULT_ICON = '/favicon.ico'
 
@@ -87,8 +89,9 @@ export function applyFavicon(url) {
 export function applySiteAssets(config = {}) {
   if (typeof document === 'undefined') return
 
-  const title = String(config.title || '').trim()
-  if (title) document.title = title
+  // 标签标题 =「页面标题 - 站点名」：这里只提供站点名，
+  // 拼装与页面标题（路由 meta.title）由 utils/pageTitle.js 统一处理
+  setSiteName(config.title)
 
   applyMeta('description', config.description)
   applyMeta('keywords', config.keyword)

@@ -7,7 +7,7 @@
         我已阅读并同意
         <a class="agree-link" @click.stop.prevent="open('user')">《用户协议》</a>
         和
-        <a class="agree-link" @click.stop.prevent="open('privacy')">《隐私政策》</a>
+        <a class="agree-link" @click.stop.prevent="open('privacy')">《隐私协议》</a>
       </span>
     </label>
     <!-- 提示模式（登录/找回密码页） -->
@@ -15,7 +15,7 @@
       登录即代表同意
       <a class="agree-link" @click.stop.prevent="open('user')">《用户协议》</a>
       和
-      <a class="agree-link" @click.stop.prevent="open('privacy')">《隐私政策》</a>
+      <a class="agree-link" @click.stop.prevent="open('privacy')">《隐私协议》</a>
     </p>
 
     <!-- 协议弹窗 -->
@@ -79,7 +79,7 @@ async function load() {
 
 function open(type) {
   dialog.value = {
-    title: type === 'user' ? '用户协议' : '隐私政策',
+    title: type === 'user' ? '用户协议' : '隐私协议',
     content: type === 'user' ? conf.value.user : conf.value.privacy
   }
   document.body.style.overflow = 'hidden'

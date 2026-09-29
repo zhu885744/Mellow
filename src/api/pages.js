@@ -10,7 +10,7 @@ export const listPages = (params = {}) =>
       page: 1,
       limit: 15,
       order: 'create_time desc',
-      field: 'id,uid,key,title,remark,tags,audit,views,create_time,update_time,publish_time,delete_time',
+      field: 'id,uid,key,title,remark,tags,audit,reason,views,create_time,update_time,publish_time,delete_time',
       ...params
     }
   })
@@ -21,7 +21,7 @@ export const getPageForEdit = (id) =>
     method: 'GET',
     params: {
       id,
-      field: 'id,uid,key,title,content,remark,tags,editor,audit,json,create_time,update_time,publish_time'
+      field: 'id,uid,key,title,content,remark,tags,editor,audit,reason,json,create_time,update_time,publish_time'
     }
   })
 

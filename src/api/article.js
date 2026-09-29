@@ -65,7 +65,7 @@ export const getMyArticles = (uid, params = {}) =>
       order: 'create_time desc',
       page: 1,
       limit: 10,
-      field: 'id,uid,title,abstract,views,status,audit,covers,group,tags,create_time,update_time,publish_time',
+      field: 'id,uid,title,abstract,views,status,audit,reason,covers,group,tags,create_time,update_time,publish_time',
       ...params
     }
   })
@@ -83,7 +83,7 @@ export const getArticleForEdit = (id) =>
     method: 'GET',
     params: {
       id,
-      field: 'id,uid,title,abstract,content,covers,group,tags,status,audit,editor,json,create_time,update_time,publish_time'
+      field: 'id,uid,title,abstract,content,covers,group,tags,status,audit,reason,editor,json,create_time,update_time,publish_time'
     }
   })
 

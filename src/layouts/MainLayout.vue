@@ -124,35 +124,75 @@
 
     <!-- 全局页脚 -->
     <footer class="layout-footer">
-      <span class="footer-line">
-        <!-- 小黑屋（封禁公示） -->
-        <router-link to="/blackroom" active-class="active">
-          <span class="nav-zh">小黑屋</span>
-        </router-link>
-      </span>
-      <span class="footer-line">
-        © {{ year }} {{ site.title }}. 保留所有权利.
-      </span>
-      <template v-if="site.copyCode || site.policeCode">
-        <span v-if="site.copyCode" class="footer-line">
-          <a
-            v-if="site.copyLink"
-            :href="site.copyLink"
-            target="_blank"
-            rel="noopener noreferrer"
-          >{{ site.copyCode }}</a>
-          <template v-else>{{ site.copyCode }}</template>
-        </span>
-        <span v-if="site.policeCode" class="footer-line">
-          <a
-            v-if="site.policeLink"
-            :href="site.policeLink"
-            target="_blank"
-            rel="noopener noreferrer"
-          >{{ site.policeCode }}</a>
-          <template v-else>{{ site.policeCode }}</template>
-        </span>
-      </template>
+      <div class="footer-card">
+        <!-- 品牌 + 快捷链接 -->
+        <div class="footer-top">
+          <div class="footer-brand">
+            <span class="footer-brand__name">{{ site.title }}</span>
+            <p v-if="site.description" class="footer-brand__desc">{{ site.description }}</p>
+          </div>
+
+          <nav class="footer-links" aria-label="页脚导航">
+            <!-- 用户协议 -->
+            <router-link class="footer-link" to="/agreement" active-class="is-active">
+              <i class="bi bi-file-earmark-text" aria-hidden="true" />
+              <span>用户协议</span>
+            </router-link>
+            <!-- 隐私协议 -->
+            <router-link class="footer-link" to="/privacy" active-class="is-active">
+              <i class="bi bi-shield-check" aria-hidden="true" />
+              <span>隐私协议</span>
+            </router-link>
+            <!-- 小黑屋（封禁公示） -->
+            <router-link class="footer-link" to="/blackroom" active-class="is-active">
+              <i class="bi bi-door-closed" aria-hidden="true" />
+              <span>小黑屋</span>
+            </router-link>
+          </nav>
+        </div>
+
+        <div class="footer-divider" aria-hidden="true" />
+
+        <!-- 版权 / 备案 / 技术信息 -->
+        <div class="footer-bottom">
+          <p class="footer-copy">
+            <i class="bi bi-c-circle" aria-hidden="true" />
+            <span>{{ year }} {{ site.title }} · 保留所有权利</span>
+          </p>
+
+          <div class="footer-meta">
+            <span v-if="site.copyCode" class="footer-record">
+              <i class="bi bi-patch-check" aria-hidden="true" />
+              <a
+                v-if="site.copyLink"
+                :href="site.copyLink"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ site.copyCode }}</a>
+              <template v-else>{{ site.copyCode }}</template>
+            </span>
+            <span v-if="site.policeCode" class="footer-record">
+              <i class="bi bi-shield-check" aria-hidden="true" />
+              <a
+                v-if="site.policeLink"
+                :href="site.policeLink"
+                target="_blank"
+                rel="noopener noreferrer"
+              >{{ site.policeCode }}</a>
+              <template v-else>{{ site.policeCode }}</template>
+            </span>
+            <span class="footer-record footer-record--powered">
+              <i class="bi bi-brush" aria-hidden="true" />
+              <span>
+                Powered by
+                <a href="https://github.com/zhu885744/inisv1" target="_blank" rel="noopener noreferrer">inisv1</a>
+                ·
+                <a href="https://github.com/zhu885744/Mellow" target="_blank" rel="noopener noreferrer">Mellow</a>
+              </span>
+            </span>
+          </div>
+        </div>
+      </div>
     </footer>
 
     <!-- 移动端底部 Tab Bar（仅手机端显示） -->
@@ -533,40 +573,164 @@ onMounted(() => {
   border-radius: 2px;
 }
 
-.site-footer {
-  margin-top: auto;
-  padding-top: 32px;
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-muted);
-  line-height: 1.8;
-}
-.footer-line a {
-  color: var(--primary-deep);
-}
-
 .layout-main {
   min-width: 0;
 }
 
+/* ==================== 全局页脚 ==================== */
 .layout-footer {
   max-width: var(--content-max);
-  margin: 0 auto;
-  padding: 16px 24px 28px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
+  margin: 20px auto 0;
+  padding: 0 24px 32px;
   font-size: 12px;
   color: var(--text-muted);
-  border-top: 1px solid var(--border-soft);
 }
+/* 页脚本身做成一张「纸」：与内容卡同色系，靠边线区分层级（主题约定：阴影只给浮层） */
+.footer-card {
+  position: relative;
+  padding: 20px 24px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+/* 顶部朱砂细线：呼应站点主色，中间亮两端淡 */
+.footer-card::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--primary-soft) 42%,
+    var(--accent-glow) 50%,
+    var(--primary-soft) 58%,
+    transparent 100%
+  );
+  opacity: 0.85;
+}
+
+.footer-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px 24px;
+  flex-wrap: wrap;
+}
+.footer-brand {
+  min-width: 0;
+}
+.footer-brand__name {
+  display: inline-block;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: var(--text);
+}
+.footer-brand__desc {
+  margin: 5px 0 0;
+  max-width: 46ch;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 快捷链接：胶囊状，hover / 当前页有淡朱砂底 */
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  color: var(--text-muted);
+  transition: color 0.2s, background-color 0.2s;
+}
+.footer-link i {
+  font-size: 12px;
+  color: var(--text-light);
+  transition: color 0.2s;
+}
+.footer-link:hover {
+  color: var(--primary-deep);
+  background: var(--accent-wash);
+}
+.footer-link:hover i {
+  color: var(--primary);
+}
+.footer-link.is-active {
+  color: var(--primary-deep);
+  background: var(--accent-soft);
+}
+.footer-link.is-active i {
+  color: var(--primary);
+}
+
+.footer-divider {
+  height: 1px;
+  margin: 16px 0 12px;
+  background: linear-gradient(90deg, var(--border-soft), transparent 85%);
+}
+
+.footer-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 20px;
+  flex-wrap: wrap;
+  color: var(--text-light);
+}
+.footer-copy,
+.footer-meta,
+.footer-record {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+}
+.footer-meta {
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.footer-copy i,
+.footer-record i {
+  font-size: 12px;
+  color: var(--text-light);
+}
+.footer-record a,
 .layout-footer a {
   color: var(--text-muted);
   transition: color 0.2s;
 }
+.footer-record a:hover,
 .layout-footer a:hover {
   color: var(--primary);
+}
+
+/* 窄屏：品牌 / 链接 / 版权居中对齐（< 640px 时整个页脚由底部 Tab Bar 取代） */
+@media (max-width: 900px) {
+  .footer-top,
+  .footer-bottom {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .footer-brand__desc {
+    max-width: none;
+  }
+  .footer-links {
+    justify-content: center;
+  }
 }
 .layout-right {
   position: sticky;

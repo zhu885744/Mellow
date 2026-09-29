@@ -147,6 +147,11 @@
             </p>
 
             <div class="post-meta">
+              <!-- 驳回原因：审核驳回时填写，作者也会在通知与「我的文章」里看到
+                   只判 reason 是否存在（审核通过时后端会清空它） -->
+              <span v-if="item.reason" class="meta-chip is-reason" :title="item.reason">
+                <i class="bi bi-info-circle" /> {{ item.reason }}
+              </span>
               <span class="meta-chip"><i class="bi bi-person" /> {{ authorName(item) }}</span>
               <span v-if="groupNameOf(item)" class="meta-chip">
                 <i class="bi bi-folder2" /> {{ groupNameOf(item) }}
@@ -229,6 +234,23 @@
       :loading="confirm.loading"
       @confirm="runConfirm"
     />
+
+    <!-- 驳回原因（单条 / 批量共用） -->
+    <AuditDialog
+      :visible="auditDialog.visible"
+      :audit="auditDialog.audit"
+      :default-reason="auditDialog.target?.item?.reason || ''"
+      :owner-uid="auditDialog.target?.item?.uid || 0"
+      owner-label="作者"
+      :loading="auditDialog.loading"
+      :message="
+        auditDialog.target?.batch
+          ? `将驳回已选中的 ${selectedIds.length} 篇文章，原因会一并通知各自的作者。`
+          : '驳回后作者会收到通知，其中包含你填写的原因。'
+      "
+      @update:visible="closeAuditDialog"
+      @confirm="runAudit"
+    />
   </div>
 </template>
 
@@ -249,6 +271,7 @@ import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmojiText from '@/components/EmojiText.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
+import AuditDialog from '@/components/admin/AuditDialog.vue'
 import {
   getArticles,
   updateArticle,
@@ -281,7 +304,7 @@ const trash = ref(false)
 
 // 列表字段（避免拉取 content 等大字段）
 const ARTICLE_FIELDS =
-  'id,uid,title,abstract,covers,group,tags,top,status,audit,views,create_time,update_time,publish_time,delete_time'
+  'id,uid,title,abstract,covers,group,tags,top,status,audit,reason,views,create_time,update_time,publish_time,delete_time'
 
 // 状态筛选：与父级统计卡片共用同一份定义（utils/article.js），口径不会各写一份
 const tabs = ARTICLE_TABS
@@ -595,17 +618,68 @@ function patchPayload(item, patch) {
   }
 }
 
-async function audit(item, value) {
+// ---------- 审核（驳回需填原因） ----------
+// 驳回（audit=2）要先弹出原因输入框：原因会写进通知（邮件 + 站内信），
+// 作者也能在「我的文章」里看到，避免只有一句「未通过」
+const auditDialog = reactive({
+  visible: false,
+  audit: 2,
+  loading: false,
+  // 单条：{ item }；批量：{ batch: true }
+  target: null
+})
+
+async function applyAudit(item, value, reason = '') {
   busy.value = true
   try {
-    await updateArticle(patchPayload(item, { audit: value }))
+    await updateArticle(patchPayload(item, { audit: value, reason }))
     item.audit = value
+    item.reason = reason
     toast.success(value === 1 ? '已通过审核' : '已驳回')
+    return true
   } catch {
     /* 拦截器已提示 */
+    return false
   } finally {
     busy.value = false
   }
+}
+
+function audit(item, value) {
+  // 通过：直接生效；驳回：先让管理员填原因
+  if (Number(value) === 2) {
+    auditDialog.target = { item }
+    auditDialog.audit = 2
+    auditDialog.visible = true
+    return
+  }
+  applyAudit(item, value)
+}
+
+async function runAudit(reason) {
+  const target = auditDialog.target
+  if (!target) {
+    auditDialog.visible = false
+    return
+  }
+
+  auditDialog.loading = true
+  try {
+    if (target.batch) {
+      await batchPatch({ audit: auditDialog.audit, reason })
+      auditDialog.visible = false
+    } else if (await applyAudit(target.item, auditDialog.audit, reason)) {
+      auditDialog.visible = false
+    }
+  } finally {
+    auditDialog.loading = false
+  }
+}
+
+function closeAuditDialog(visible) {
+  auditDialog.visible = visible
+  if (visible) return
+  auditDialog.target = null
 }
 
 async function toggleTop(item) {
@@ -689,6 +763,13 @@ async function batchPatch(patch) {
 }
 
 function batchAudit(value) {
+  // 批量驳回同样要填原因（一份原因写给选中的所有文章，逐条各自通知作者）
+  if (Number(value) === 2) {
+    auditDialog.target = { batch: true }
+    auditDialog.audit = 2
+    auditDialog.visible = true
+    return
+  }
   batchPatch({ audit: value })
 }
 
@@ -1057,6 +1138,15 @@ onMounted(() => {
   padding: 2px 8px;
   background: var(--bg-muted);
   border-radius: 3px;
+}
+/* 驳回原因：单行省略，完整内容看 title */
+.meta-chip.is-reason {
+  max-width: 260px;
+  background: rgba(217, 84, 77, 0.1);
+  color: var(--danger);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .meta-text {
   display: inline-flex;

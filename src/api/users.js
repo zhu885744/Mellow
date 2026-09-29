@@ -60,8 +60,9 @@ export const getLevels = (params = {}) =>
 
 // ===== 后台（管理员）=====
 
-// 批量按 id 拉取用户基础信息（后台列表展示作者昵称/头像）
+// 批量按 id 拉取用户基础信息（后台列表展示作者昵称/头像/账号）
 // where 使用 $in，后端会转换为 `id` IN (...)
+// 仅后台页面使用（文章 / 动态 / 页面 / 友链列表），account 用于 hover 提示申请人身份
 export const listUsersByIds = (ids = []) => {
   const list = (Array.isArray(ids) ? ids : [ids]).map((i) => Number(i)).filter((i) => i > 0)
   if (!list.length) return Promise.resolve({ code: 204, data: null })
@@ -70,7 +71,7 @@ export const listUsersByIds = (ids = []) => {
     params: {
       page: 1,
       limit: 100,
-      field: 'id,nickname,avatar',
+      field: 'id,nickname,avatar,account',
       where: JSON.stringify({ id: { $in: list } })
     }
   })

@@ -7,6 +7,9 @@
     :loading="saving"
     @update:visible="onVisibleChange"
   >
+    <!-- 作者：管理员编辑他人动态时能看到这条是谁的（新建时 form.id 为空，不显示） -->
+    <OwnerInfo v-if="form.id" :uid="form.uid" label="作者" class="edit-owner" />
+
     <EmojiEditor v-model="form.content" placeholder="此刻的想法..." inline-picker>
       <template #extra>
         <button
@@ -98,6 +101,7 @@
  */
 import { ref, reactive, computed, watch } from 'vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
+import OwnerInfo from '@/components/admin/OwnerInfo.vue'
 import EmojiEditor from '@/components/EmojiEditor.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { updateMoment, uploadMomentImages } from '@/api/moments'
@@ -117,6 +121,8 @@ const emit = defineEmits(['update:visible', 'saved'])
 
 const form = reactive({
   id: null,
+  // 作者 uid：只用于展示「作者：昵称」，不参与提交
+  uid: 0,
   // 审核状态：moments/update 会依据 status 重算 audit，保存时必须回传原值
   audit: 1,
   content: '',
@@ -144,6 +150,7 @@ watch(
 function resetForm() {
   const item = props.moment || {}
   form.id = item.id ?? null
+  form.uid = Number(item.uid) || 0
   form.audit = Number(item.audit) || 0
   form.content = item.content || ''
   form.images = parseMomentImages(item.images)
@@ -257,6 +264,13 @@ async function submit() {
 <style scoped>
 .hidden-file {
   display: none;
+}
+
+/* 作者一行：与下面的正文编辑区留点距离 */
+.edit-owner {
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
 }
 
 .edit-images {

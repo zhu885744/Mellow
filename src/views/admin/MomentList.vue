@@ -166,6 +166,12 @@
               <div class="row-meta">
                 <span class="post-status" :class="statusClass(item)">{{ statusLabel(item) }}</span>
 
+                <!-- 驳回原因：审核驳回时填写，作者也会在通知与「我的动态」里看到
+                     只判 reason 是否存在（审核通过时后端会清空它），避免状态字段口径不一致时标签不显示 -->
+                <span v-if="item.reason" class="meta-chip is-reason" :title="item.reason">
+                  <i class="bi bi-info-circle" /> {{ item.reason }}
+                </span>
+
                 <span v-if="Number(item.top) === 1" class="meta-chip is-top">
                   <i class="bi bi-pin-angle-fill" /> 置顶
                 </span>
@@ -210,8 +216,9 @@
                 >
                   <i :class="Number(item.top) === 1 ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle'" />
                 </button>
-                <!-- 审核状态（0 待审核 / 1 已通过 / 2 未通过）：单选切换，当前状态高亮 -->
-                <div class="audit-switch" role="radiogroup" aria-label="审核状态">
+                <!-- 审核状态（0 待审核 / 1 已通过 / 2 未通过）：单选切换，当前状态高亮
+                     auditRevision 用于「取消驳回弹窗」后强制单选组重建，回到真实状态 -->
+                <div :key="`audit-${item.id}-${auditRevision}`" class="audit-switch" role="radiogroup" aria-label="审核状态">
                   <label
                     v-for="opt in AUDIT_OPTIONS"
                     :key="opt.key"
@@ -261,6 +268,23 @@
       @confirm="runConfirm"
     />
 
+    <!-- 驳回原因（单条 / 批量共用） -->
+    <AuditDialog
+      :visible="auditDialog.visible"
+      :audit="auditDialog.audit"
+      :default-reason="auditDialog.target?.item?.reason || ''"
+      :owner-uid="auditDialog.target?.item?.uid || 0"
+      owner-label="作者"
+      :loading="auditDialog.loading"
+      :message="
+        auditDialog.target?.batch
+          ? `将驳回已选中的 ${selectedIds.length} 条动态，原因会一并通知各自的作者。`
+          : '驳回后作者会收到通知，其中包含你填写的原因。'
+      "
+      @update:visible="closeAuditDialog"
+      @confirm="runAudit"
+    />
+
     <!-- 编辑弹窗 -->
     <MomentEditDialog v-model:visible="editVisible" :moment="editTarget" @saved="onSaved" />
   </div>
@@ -281,6 +305,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmojiText from '@/components/EmojiText.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import MomentEditDialog from '@/components/admin/MomentEditDialog.vue'
+import AuditDialog from '@/components/admin/AuditDialog.vue'
 import {
   listMomentsAdmin,
   updateMoment,
@@ -605,20 +630,75 @@ const AUDIT_OPTIONS = [
   { value: 2, key: 'reject', label: '未通过', icon: 'bi bi-slash-circle' }
 ]
 
-async function audit(item, value) {
+// ---------- 审核（驳回需填原因） ----------
+// 驳回（audit=2）要先弹出原因输入框：原因会写进通知（邮件 + 站内信），
+// 作者也能在「我的动态」里看到，避免只有一句「未通过」
+const auditDialog = reactive({
+  visible: false,
+  audit: 2,
+  loading: false,
+  // 单条：{ item }；批量：{ batch: true }
+  target: null
+})
+
+// 取消弹窗后强制单选组重建：点过的单选框已被浏览器选中，绑定的 audit 没变不会自动回退
+const auditRevision = ref(0)
+
+async function applyAudit(item, value, reason = '') {
   busy.value = true
   try {
-    await updateMoment(patchPayload(item, { audit: value }))
+    await updateMoment(patchPayload(item, { audit: value, reason }))
     item.audit = value
+    item.reason = reason
     toast.success(AUDIT_TIPS[value] || '操作成功')
     // 状态筛选下，审核状态变更都可能让条目不再属于当前标签
     if (status.value !== 'all') await afterMutation(0)
     else refreshStats()
+    return true
   } catch {
     /* 拦截器已提示 */
+    return false
   } finally {
     busy.value = false
   }
+}
+
+function audit(item, value) {
+  // 通过 / 打回待审核：直接生效；驳回：先让管理员填原因
+  if (Number(value) === 2) {
+    auditDialog.target = { item }
+    auditDialog.audit = 2
+    auditDialog.visible = true
+    return
+  }
+  applyAudit(item, value)
+}
+
+async function runAudit(reason) {
+  const target = auditDialog.target
+  if (!target) {
+    auditDialog.visible = false
+    return
+  }
+
+  auditDialog.loading = true
+  try {
+    if (target.batch) {
+      await batchPatch({ audit: auditDialog.audit, reason })
+      auditDialog.visible = false
+    } else if (await applyAudit(target.item, auditDialog.audit, reason)) {
+      auditDialog.visible = false
+    }
+  } finally {
+    auditDialog.loading = false
+  }
+}
+
+function closeAuditDialog(visible) {
+  auditDialog.visible = visible
+  if (visible) return
+  auditDialog.target = null
+  auditRevision.value += 1
 }
 
 async function toggleTop(item) {
@@ -706,6 +786,13 @@ async function batchPatch(patch) {
 }
 
 function batchAudit(value) {
+  // 批量驳回同样要填原因（一份原因写给选中的所有条目，逐条各自通知作者）
+  if (Number(value) === 2) {
+    auditDialog.target = { batch: true }
+    auditDialog.audit = 2
+    auditDialog.visible = true
+    return
+  }
   batchPatch({ audit: value })
 }
 
@@ -1084,6 +1171,15 @@ onMounted(load)
 .meta-chip.is-top {
   background: var(--gold-wash);
   color: var(--warning);
+}
+/* 驳回原因：单行省略，完整内容看 title */
+.meta-chip.is-reason {
+  max-width: 260px;
+  background: rgba(217, 84, 77, 0.1);
+  color: var(--danger);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .meta-text {
   display: inline-flex;

@@ -84,6 +84,11 @@
             <span class="meta-text"><i class="bi bi-eye" /> {{ item.views || 0 }}</span>
             <span class="meta-text"><i class="bi bi-clock" /> {{ fromNow(item.create_time) }}</span>
           </div>
+
+          <!-- 驳回原因：管理员审核未通过时填写，作者据此修改（审核通过后后端会清空） -->
+          <p v-if="item.reason" class="audit-reason">
+            <i class="bi bi-info-circle" /> 驳回原因：{{ item.reason }}
+          </p>
         </div>
 
         <div class="post-actions">
@@ -494,6 +499,14 @@ onMounted(() => {
 .post-status.is-draft {
   background: var(--bg-muted);
   color: var(--text-muted);
+}
+/* 驳回原因：文字可能较长，允许换行 */
+.audit-reason {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--danger);
+  word-break: break-word;
 }
 .post-status.is-audit {
   background: var(--gold-wash);

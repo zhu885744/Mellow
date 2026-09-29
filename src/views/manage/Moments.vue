@@ -75,12 +75,18 @@
               {{ item.status === 1 ? '已发布' : '草稿' }}
             </span>
             <span v-if="!item.audit" class="post-status is-pending">待审核</span>
+            <span v-if="Number(item.audit) === 2" class="post-status is-reject">未通过</span>
             <span v-if="item.location" class="meta-text">
               <i class="bi bi-geo-alt" /> {{ item.location }}
             </span>
             <span class="meta-text"><i class="bi bi-eye" /> {{ item.views || 0 }}</span>
             <span class="meta-text"><i class="bi bi-clock" /> {{ fromNow(item.create_time) }}</span>
           </div>
+
+          <!-- 驳回原因：管理员审核未通过时填写，作者据此修改（审核通过后后端会清空） -->
+          <p v-if="item.reason" class="audit-reason">
+            <i class="bi bi-info-circle" /> 驳回原因：{{ item.reason }}
+          </p>
         </div>
 
         <div class="m-actions">
@@ -670,6 +676,18 @@ onMounted(() => {
 .post-status.is-draft {
   background: var(--bg-muted);
   color: var(--text-muted);
+}
+.post-status.is-reject {
+  background: rgba(217, 84, 77, 0.12);
+  color: var(--danger);
+}
+/* 驳回原因：文字可能较长，允许换行 */
+.audit-reason {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--danger);
+  word-break: break-word;
 }
 .post-status.is-pending {
   background: var(--gold-soft);

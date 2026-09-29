@@ -88,7 +88,7 @@ import { ref, computed, provide, onMounted, onUnmounted } from 'vue'
 import { countLinks, listLinksAdmin, countLinkGroups } from '@/api/links'
 import { LINK_FILTERS, linkCountParams } from '@/utils/link'
 
-// 与列表筛选共用 LINK_FILTERS（all/pass/pending/trash），统计口径不会各写一份
+// 与列表筛选共用 LINK_FILTERS（all/pass/pending/reject/trash），统计口径不会各写一份
 const stats = ref(LINK_FILTERS.map((f) => ({ ...f, value: 0, error: '' })))
 const groupCount = ref(0)
 const refreshing = ref(false)

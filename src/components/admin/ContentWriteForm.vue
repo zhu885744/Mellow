@@ -130,6 +130,11 @@
             />
           </div>
 
+          <!-- 作者：管理员编辑他人文章 / 独立页面时能看到这条是谁的（与审核状态同一区块） -->
+          <div v-if="isAdminUser && isEdit" class="form-item">
+            <OwnerInfo :uid="ownerUid" label="作者" />
+          </div>
+
           <!-- 审核状态（仅管理员可见/可改） -->
           <div v-if="isAdminUser" class="form-item">
             <label class="form-label">审核状态</label>
@@ -137,6 +142,18 @@
             <p class="form-hint">
               仅管理员可设置：「通过」后{{ isPage ? '该页面对访客可见' : '文章对访客可见' }}；普通作者保存不会覆盖该状态
             </p>
+          </div>
+
+          <!-- 驳回原因（仅管理员、且选「不通过」时出现，作者会收到通知） -->
+          <div v-if="isAdminUser && Number(articleAudit) === 2" class="form-item">
+            <label class="form-label">驳回原因</label>
+            <textarea
+              v-model="articleReason"
+              class="textarea"
+              rows="2"
+              maxlength="512"
+              :placeholder="`说明不通过的原因，作者会在通知与「我的${isPage ? '页面' : '文章'}」里看到`"
+            />
           </div>
 
           <!-- 评论设置（json.comment：allow 允许/禁止，show 显示/隐藏） -->
@@ -251,6 +268,7 @@ import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
+import OwnerInfo from '@/components/admin/OwnerInfo.vue'
 import {
   createArticle,
   updateArticle,
@@ -339,6 +357,10 @@ const commentShowOptions = [
 // 审核状态（仅管理员可见/可改）：0 待审核 1 通过 2 不通过
 const isAdminUser = computed(() => isAdmin(user.value))
 const articleAudit = ref(1)
+// 驳回原因（仅管理员可写）：选「不通过」时填，作者会在通知与「我的文章 / 页面」里看到
+const articleReason = ref('')
+// 作者 uid：仅用于管理员编辑他人内容时展示「作者：昵称」，不参与提交
+const ownerUid = ref(0)
 const auditOptions = [
   { value: 0, label: '待审核' },
   { value: 1, label: '通过' },
@@ -516,7 +538,11 @@ function buildPayload(status) {
     const publishTime = resolvePublishTime(1)
     if (publishTime) pagePayload.publish_time = publishTime
     // 审核状态仅管理员可写（后端 root 才允许提交 audit 字段）
-    if (isAdminUser.value) pagePayload.audit = articleAudit.value
+    if (isAdminUser.value) {
+      pagePayload.audit = articleAudit.value
+      // 只有「不通过」才保留原因，其余状态清空，避免作者看到过期原因
+      pagePayload.reason = Number(articleAudit.value) === 2 ? articleReason.value.trim() : ''
+    }
     return pagePayload
   }
 
@@ -534,7 +560,11 @@ function buildPayload(status) {
   const publishTime = resolvePublishTime(status)
   if (publishTime) payload.publish_time = publishTime
   // 审核状态仅管理员可写（后端 root 才允许提交 audit 字段）
-  if (isAdminUser.value) payload.audit = articleAudit.value
+  if (isAdminUser.value) {
+    payload.audit = articleAudit.value
+    // 只有「不通过」才保留原因，其余状态清空，避免作者看到过期原因
+    payload.reason = Number(articleAudit.value) === 2 ? articleReason.value.trim() : ''
+  }
   return payload
 }
 
@@ -682,6 +712,9 @@ async function loadContent() {
     // 审核状态（仅管理员会用到，0 待审核 1 通过 2 不通过）
     const audit = Number(item.audit)
     articleAudit.value = [0, 1, 2].includes(audit) ? audit : 1
+    articleReason.value = String(item.reason || '')
+    // 作者（仅管理员编辑他人内容时展示）
+    ownerUid.value = Number(item.uid) || 0
 
     await loadMeta()
     // 发布时间：已有内容用原值，未设置则默认当前系统时间

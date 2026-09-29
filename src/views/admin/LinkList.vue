@@ -95,6 +95,9 @@
           <button class="btn btn-sm" :disabled="busy" @click="batchAudit(LINK_AUDIT_PASS)">
             <i class="bi bi-check2" /> 通过审核
           </button>
+          <button class="btn btn-sm btn-danger" :disabled="busy" @click="batchReject">
+            <i class="bi bi-slash-circle" /> 驳回
+          </button>
           <button class="btn btn-sm" :disabled="busy" @click="batchAudit(LINK_AUDIT_PENDING)">
             <i class="bi bi-hourglass-split" /> 取消通过
           </button>
@@ -154,7 +157,7 @@
           <div class="link-main">
             <div class="link-name-row">
               <span class="link-name">{{ item.nickname || '未命名' }}</span>
-              <span class="state-chip" :class="isLinkAudited(item) ? 'is-pass' : 'is-pending'">
+              <span class="state-chip" :class="linkAuditClass(item)">
                 {{ linkAuditLabel(item) }}
               </span>
               <span class="group-chip">
@@ -163,10 +166,19 @@
               <span class="id-chip">#{{ item.id }}</span>
             </div>
             <div class="link-meta">
+              <!-- 申请人：这条友链是谁提交的（uid=0 的老数据 / 管理员直接添加会显示「管理员添加」） -->
+              <span class="meta-text is-author" :title="authorTitle(item)">
+                <i class="bi bi-person" /> {{ authorName(item) }}
+              </span>
               <a class="link-url" :href="item.url || '#'" target="_blank" rel="noopener noreferrer" :title="item.url">
                 <i class="bi bi-box-arrow-up-right" /> {{ item.url || '—' }}
               </a>
               <span class="meta-text"><i class="bi bi-clock" /> {{ timeText(item) }}</span>
+              <!-- 驳回原因：作者也会在通知与「我的友链」里看到
+                   只判 reason 是否存在（审核通过时后端会清空它） -->
+              <span v-if="item.reason" class="meta-text is-reason" :title="item.reason">
+                <i class="bi bi-info-circle" /> {{ item.reason }}
+              </span>
               <span v-if="item.remark" class="meta-text"><i class="bi bi-sticky" /> {{ item.remark }}</span>
             </div>
             <p v-if="item.description" class="link-desc">{{ item.description }}</p>
@@ -182,14 +194,26 @@
               </button>
             </template>
             <template v-else>
+              <!-- 审核：待审核 / 未通过都能直接「通过」；已通过的可以「驳回」（要填原因） -->
               <button
+                v-if="!isLinkAudited(item)"
                 class="btn btn-ghost btn-sm"
-                :title="isLinkAudited(item) ? '取消通过' : '通过审核'"
-                :aria-label="isLinkAudited(item) ? '取消通过' : '通过审核'"
+                title="通过审核"
+                aria-label="通过审核"
                 :disabled="busy"
-                @click="toggleAudit(item)"
+                @click="setAudit(item, LINK_AUDIT_PASS)"
               >
-                <i :class="isLinkAudited(item) ? 'bi bi-hourglass-split' : 'bi bi-check2'" />
+                <i class="bi bi-check2-circle" />
+              </button>
+              <button
+                v-else
+                class="btn btn-ghost btn-sm danger"
+                title="驳回（需要填写原因）"
+                aria-label="驳回"
+                :disabled="busy"
+                @click="askReject(item)"
+              >
+                <i class="bi bi-slash-circle" />
               </button>
               <button class="btn btn-ghost btn-sm" title="编辑" aria-label="编辑" :disabled="busy" @click="openEdit(item)">
                 <i class="bi bi-pencil" />
@@ -220,6 +244,9 @@
       confirm-text="保存"
       @confirm="save"
     >
+      <!-- 申请人：管理员编辑他人申请的友链时能看到这条是谁提交的（新建时不显示） -->
+      <OwnerInfo v-if="edit.id" :uid="edit.uid" label="申请人" class="edit-owner" />
+
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">站点名称</label>
@@ -277,12 +304,27 @@
         <div class="form-item">
           <label class="form-label">审核状态</label>
           <SelectMenu v-model="edit.audit" variant="field" :options="AUDIT_OPTIONS" />
-          <p class="form-hint">审核状态与备注仅管理员可修改</p>
+          <p class="form-hint">审核状态、驳回原因与备注仅管理员可修改</p>
         </div>
         <div class="form-item">
           <label class="form-label">备注</label>
           <input v-model="edit.remark" class="input" type="text" placeholder="仅管理员可见" />
         </div>
+      </div>
+
+      <!-- 驳回原因：选「未通过」时填，作者会在通知与「我的友链」里看到 -->
+      <div class="form-item">
+        <label class="form-label">
+          驳回原因
+          <span class="form-hint-inline">选填 · 作者可见</span>
+        </label>
+        <textarea
+          v-model="edit.reason"
+          class="textarea"
+          rows="2"
+          maxlength="512"
+          placeholder="如：站点内容与本站定位不符 / 暂时无法访问"
+        />
       </div>
     </AdminFormDialog>
 
@@ -295,6 +337,23 @@
       :danger="confirm.danger"
       :loading="confirm.loading"
       @confirm="runConfirm"
+    />
+
+    <!-- 驳回原因（单条 / 批量共用） -->
+    <AuditDialog
+      :visible="auditDialog.visible"
+      :audit="LINK_AUDIT_REJECT"
+      :default-reason="auditDialog.target?.item?.reason || ''"
+      :owner-uid="auditDialog.target?.item?.uid || 0"
+      owner-label="申请人"
+      :loading="auditDialog.loading"
+      :message="
+        auditDialog.target?.batch
+          ? `将驳回已选中的 ${selectedIds.length} 条友链，原因会一并通知各自的申请者。`
+          : '驳回后申请者会收到通知，其中包含你填写的原因。'
+      "
+      @update:visible="closeAuditDialog"
+      @confirm="runAudit"
     />
   </div>
 </template>
@@ -320,6 +379,8 @@ import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
+import AuditDialog from '@/components/admin/AuditDialog.vue'
+import OwnerInfo from '@/components/admin/OwnerInfo.vue'
 import {
   listLinksAdmin,
   listLinkGroupsAdmin,
@@ -331,6 +392,7 @@ import {
   clearLinkRecycle
 } from '@/api/links'
 import { uploadAttachments } from '@/api/attachment'
+import { listUsersByIds } from '@/api/users'
 import {
   LINK_TABS,
   LINK_TRASH_KEY,
@@ -339,9 +401,11 @@ import {
   LINK_TARGET_OPTIONS,
   LINK_AUDIT_PASS,
   LINK_AUDIT_PENDING,
+  LINK_AUDIT_REJECT,
   LINK_GROUP_FIELD,
   linkListParams,
   linkAuditLabel,
+  linkAuditClass,
   isLinkAudited,
   linkGroupOf
 } from '@/utils/link'
@@ -356,9 +420,11 @@ const tabs = LINK_TABS
 const sortOptions = LINK_SORT_OPTIONS
 const searchFields = LINK_SEARCH_FIELDS
 
+// 审核三态：与文章 / 动态一致（0 待审核 / 1 已通过 / 2 未通过）
 const AUDIT_OPTIONS = [
   { value: LINK_AUDIT_PENDING, label: '待审核' },
-  { value: LINK_AUDIT_PASS, label: '已通过' }
+  { value: LINK_AUDIT_PASS, label: '已通过' },
+  { value: LINK_AUDIT_REJECT, label: '未通过' }
 ]
 
 // 父级 Links.vue 注入的联动能力（统计卡片 ←→ 列表筛选）
@@ -378,6 +444,8 @@ const keyword = ref('')
 const searchKey = ref('')
 const selectedIds = ref([])
 const groups = ref([])
+// 申请人信息（uid → 用户）：列表里展示「是谁申请的」，与文章/动态后台同一套做法
+const authorMap = ref({})
 
 // ===== 弹窗 =====
 const avatarRef = ref(null)
@@ -387,6 +455,8 @@ const edit = reactive({
   visible: false,
   loading: false,
   id: 0,
+  // 申请人 uid：只用于展示「申请人：昵称」，不参与提交
+  uid: 0,
   nickname: '',
   url: '',
   description: '',
@@ -394,7 +464,16 @@ const edit = reactive({
   group: 0,
   target: '_blank',
   audit: LINK_AUDIT_PENDING,
+  reason: '',
   remark: ''
+})
+
+// 驳回原因弹窗（单条 / 批量共用）
+const auditDialog = reactive({
+  visible: false,
+  loading: false,
+  // 单条：{ item }；批量：{ batch: true }
+  target: null
 })
 
 const confirm = reactive({
@@ -448,12 +527,55 @@ async function load() {
     list.value = res.data?.data || []
     total.value = res.data?.count || 0
     clearSelection()
+    loadAuthors(list.value) // 申请人昵称不阻塞列表首屏
   } catch {
     list.value = []
     total.value = 0
   } finally {
     loading.value = false
   }
+}
+
+// 批量拉取当前页申请人信息：只请求尚未缓存的 uid，一次请求搞定
+const requestedAuthors = new Set()
+
+async function loadAuthors(items) {
+  const ids = [...new Set((items || []).map((i) => Number(i.uid)).filter(Boolean))]
+  const missing = ids.filter((id) => !authorMap.value[id] && !requestedAuthors.has(id))
+  if (!missing.length) return
+  missing.forEach((id) => requestedAuthors.add(id))
+  try {
+    const res = await listUsersByIds(missing)
+    const map = { ...authorMap.value }
+    ;(res.data?.data || []).forEach((u) => {
+      if (u?.id) map[u.id] = u
+    })
+    authorMap.value = map
+  } catch {
+    // 申请人信息缺失时回退为「用户 ID」展示，不阻断列表；下次进入允许重试
+    missing.forEach((id) => requestedAuthors.delete(id))
+  }
+}
+
+// 申请人显示名：昵称优先，其次账号，没有则「用户 ID」
+function authorName(item) {
+  const uid = Number(item.uid)
+  if (!uid) return '管理员添加'
+  const user = authorMap.value[uid]
+  return user?.nickname || user?.account || `用户 ${uid}`
+}
+
+// 申请人 hover 提示：账号 / 昵称 / UID 都摆出来，方便核对是谁申请的
+function authorTitle(item) {
+  const uid = Number(item.uid)
+  if (!uid) return '这条友链由管理员直接添加'
+  const user = authorMap.value[uid]
+  if (!user) return `用户 UID：${uid}`
+  const parts = []
+  if (user.account) parts.push(`账号：${user.account}`)
+  if (user.nickname) parts.push(`昵称：${user.nickname}`)
+  parts.push(`UID：${uid}`)
+  return parts.join(' · ')
 }
 
 function reload() {
@@ -581,6 +703,7 @@ async function onAvatarChange(e) {
 // ---------- 新建 / 编辑 ----------
 function resetEdit() {
   edit.id = 0
+  edit.uid = 0
   edit.nickname = ''
   edit.url = ''
   edit.description = ''
@@ -588,6 +711,7 @@ function resetEdit() {
   edit.group = 0
   edit.target = '_blank'
   edit.audit = LINK_AUDIT_PENDING
+  edit.reason = ''
   edit.remark = ''
 }
 
@@ -598,13 +722,15 @@ function openCreate() {
 
 function openEdit(item) {
   edit.id = Number(item.id)
+  edit.uid = Number(item.uid) || 0
   edit.nickname = item.nickname || ''
   edit.url = item.url || ''
   edit.description = item.description || ''
   edit.avatar = item.avatar || ''
   edit.group = Number(item.group || 0)
   edit.target = item.target || '_blank'
-  edit.audit = Number(item.audit) === LINK_AUDIT_PASS ? LINK_AUDIT_PASS : LINK_AUDIT_PENDING
+  edit.audit = Number(item.audit || LINK_AUDIT_PENDING)
+  edit.reason = item.reason || ''
   edit.remark = item.remark || ''
   edit.visible = true
 }
@@ -633,8 +759,10 @@ async function save() {
     target: edit.target,
     group: Number(edit.group || 0)
   }
-  // 审核与备注仅管理员可写（非管理员会被后端忽略）
+  // 审核、驳回原因与备注仅管理员可写（非管理员会被后端忽略）
   payload.audit = Number(edit.audit)
+  // 只有「未通过」才保留原因：改为通过 / 待审核时一并清掉，避免作者看到过期原因
+  payload.reason = payload.audit === LINK_AUDIT_REJECT ? edit.reason.trim() : ''
   payload.remark = edit.remark.trim()
 
   edit.loading = true
@@ -669,29 +797,76 @@ function refreshStats() {
 }
 
 // ---------- 审核 ----------
-async function toggleAudit(item) {
-  const next = isLinkAudited(item) ? LINK_AUDIT_PENDING : LINK_AUDIT_PASS
+// 变更审核状态（驳回时由弹窗把原因传进来）
+async function setAudit(item, value, reason = '') {
   busy.value = true
   try {
-    await updateLink({ id: Number(item.id), audit: next })
-    toast.success(next === LINK_AUDIT_PASS ? '已通过审核' : '已取消通过')
+    await updateLink({ id: Number(item.id), audit: value, reason })
+    item.audit = value
+    item.reason = reason
+    toast.success(AUDIT_TIPS[value] || '操作成功')
     // 状态筛选下该条目可能已不属于当前标签
     if (status.value !== 'all') await afterMutation(0)
     else refreshStats()
+    return true
   } catch {
     /* 拦截器已提示 */
+    return false
   } finally {
     busy.value = false
   }
 }
 
-async function batchAudit(value) {
+const AUDIT_TIPS = {
+  [LINK_AUDIT_PENDING]: '已取消通过，回到待审核',
+  [LINK_AUDIT_PASS]: '已通过审核',
+  [LINK_AUDIT_REJECT]: '已驳回'
+}
+
+// 驳回要先填原因：原因会写进通知（邮件 + 站内信），申请者也能在「我的友链」里看到
+function askReject(item) {
+  auditDialog.target = { item }
+  auditDialog.visible = true
+}
+
+function batchReject() {
+  if (!selectedIds.value.length) return
+  auditDialog.target = { batch: true }
+  auditDialog.visible = true
+}
+
+async function runAudit(reason) {
+  const target = auditDialog.target
+  if (!target) {
+    auditDialog.visible = false
+    return
+  }
+
+  auditDialog.loading = true
+  try {
+    if (target.batch) {
+      await batchAudit(LINK_AUDIT_REJECT, reason)
+      auditDialog.visible = false
+    } else if (await setAudit(target.item, LINK_AUDIT_REJECT, reason)) {
+      auditDialog.visible = false
+    }
+  } finally {
+    auditDialog.loading = false
+  }
+}
+
+function closeAuditDialog(visible) {
+  auditDialog.visible = visible
+  if (!visible) auditDialog.target = null
+}
+
+async function batchAudit(value, reason = '') {
   const ids = [...selectedIds.value]
   busy.value = true
   let ok = 0
   for (const id of ids) {
     try {
-      await updateLink({ id, audit: value })
+      await updateLink({ id, audit: value, reason: value === LINK_AUDIT_REJECT ? reason : '' })
       ok++
     } catch {
       // 单条失败不中断，继续处理其它友链
@@ -1082,6 +1257,40 @@ onMounted(() => {
 .state-chip.is-pending {
   color: var(--warning);
   background: var(--gold-wash);
+}
+.state-chip.is-reject {
+  color: var(--danger);
+  background: rgba(217, 84, 77, 0.12);
+}
+/* 申请人：稍微突出一点，便于审核时核对是谁申请的 */
+.meta-text.is-author {
+  max-width: 180px;
+  font-weight: 500;
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 驳回原因：单行省略，完整内容看 title */
+.meta-text.is-reason {
+  max-width: 260px;
+  color: var(--danger);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 申请人一行：与下面的表单留点距离 */
+.edit-owner {
+  margin-bottom: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed var(--border);
+}
+/* 表单里的行内提示（驳回原因旁的「作者可见」） */
+.form-hint-inline {
+  margin-left: 4px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-light);
 }
 .group-chip {
   display: inline-flex;

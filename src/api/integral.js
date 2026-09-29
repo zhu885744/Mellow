@@ -70,6 +70,22 @@ export const generateIntegralCards = (data) =>
   call('integral', 'card-generate', { method: 'POST', data })
 
 // 导出未使用卡密（管理员，单次上限由后端控制，超出时返回 truncated=true）
+/**
+ * 手动设置卡密的兑换人（管理员）
+ *
+ * @param ids 卡密 id 数组（单张也传数组）
+ * @param uid 目标用户 id；传 0 表示解除绑定（已发放的卡密退回「未使用」）
+ * 语义：未使用的卡密 → 已发放并绑定该用户；已发放的卡密 → 改绑；已兑换的卡密会被后端跳过
+ */
+export const bindIntegralCards = (ids, uid) =>
+  call('integral', 'card-bind', {
+    method: 'POST',
+    data: {
+      ids: (Array.isArray(ids) ? ids : [ids]).map((i) => Number(i)).filter((i) => i > 0),
+      uid: Number(uid) || 0
+    }
+  })
+
 export const exportIntegralCards = (params = {}) =>
   call('integral', 'card-export', { method: 'GET', params })
 

@@ -250,6 +250,10 @@
         <div v-if="selectedIds.length" class="batch-bar">
           <span class="batch-count">已选 <strong>{{ selectedIds.length }}</strong> 张</span>
           <div class="batch-actions">
+            <!-- 批量把选中的未兑换卡密绑定给同一个用户 -->
+            <button class="btn btn-sm" :disabled="busy" @click="openBatchBind()">
+              <i class="bi bi-person-plus" /> 设置兑换人
+            </button>
             <button class="btn btn-sm btn-danger" :disabled="busy" @click="askBatchRemove()">
               <i class="bi bi-trash" /> 删除
             </button>
@@ -317,6 +321,16 @@
               </div>
 
               <div class="card-actions">
+                <!-- 设置 / 改绑兑换人：已兑换的卡密不能改（积分流水已落库） -->
+                <button
+                  class="btn btn-ghost btn-sm"
+                  :title="cardBindTitle(item)"
+                  :aria-label="cardBindTitle(item)"
+                  :disabled="busy || Number(item.status) === 1"
+                  @click="openBind(item)"
+                >
+                  <i :class="Number(item.uid) > 0 ? 'bi bi-person-gear' : 'bi bi-person-plus'" />
+                </button>
                 <button
                   class="btn btn-ghost btn-sm danger"
                   :title="Number(item.status) === 2 ? '已发放给用户的卡密不能删除' : '删除'"
@@ -494,6 +508,54 @@
       </div>
     </AdminFormDialog>
 
+    <!-- 设置 / 改绑卡密兑换人 -->
+    <AdminFormDialog
+      v-model:visible="bind.visible"
+      title="设置兑换人"
+      icon="bi bi-person-plus"
+      width="460px"
+      :loading="bind.loading"
+      confirm-text="保存"
+      @confirm="submitBind"
+    >
+      <div class="form-item">
+        <label class="form-label">操作</label>
+        <SelectMenu v-model="bind.mode" variant="field" :options="bindModeOptions" />
+      </div>
+
+      <template v-if="bind.mode === 'bind'">
+        <div class="form-item">
+          <label class="form-label">兑换人用户 ID</label>
+          <input
+            v-model="bind.uid"
+            class="input"
+            type="text"
+            inputmode="numeric"
+            placeholder="请输入用户 ID（可在「用户管理」中查看）"
+            @input="onBindUidInput"
+          />
+          <p class="form-hint">绑定后只有该用户能兑换这些卡密，其他用户兑换会提示「卡密已被使用」</p>
+        </div>
+
+        <!-- 目标用户回显：确认选对人 -->
+        <div class="bind-user">
+          <template v-if="bind.user">
+            <img v-if="bind.user.avatar" :src="bind.user.avatar" class="bind-avatar" alt="头像" />
+            <i v-else class="bi bi-person-circle bind-avatar is-icon" />
+            <span class="bind-user__name">{{ bind.user.nickname || bind.user.account }}</span>
+            <span v-if="bind.user.account" class="bind-user__account">{{ bind.user.account }}</span>
+          </template>
+          <span v-else-if="bind.checking" class="bind-user__hint">查询中...</span>
+          <span v-else-if="bind.checked" class="bind-user__hint is-error">
+            <i class="bi bi-exclamation-circle" /> 没有找到该用户，请检查用户 ID
+          </span>
+          <span v-else class="bind-user__hint">输入用户 ID 后会自动校验</span>
+        </div>
+      </template>
+
+      <p v-if="bindSummary" class="dialog-tip">{{ bindSummary }}</p>
+    </AdminFormDialog>
+
     <!-- 生成结果 / 导出结果 -->
     <AdminFormDialog
       v-model:visible="result.visible"
@@ -582,11 +644,12 @@ import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
-import { listUsers, countUsers } from '@/api/users'
+import { listUsers, countUsers, listUsersByIds } from '@/api/users'
 import {
   listIntegralCards,
   getIntegralCardStats,
   generateIntegralCards,
+  bindIntegralCards,
   exportIntegralCards,
   removeIntegralCards,
   forceDeleteIntegralCards,
@@ -699,20 +762,18 @@ const loadingStats = ref(false)
 const userStatCards = computed(() => [
   { label: '全部用户', value: userStats.total, icon: 'bi bi-people', color: 'var(--primary)' },
   { label: '有积分用户', value: userStats.hasIntegral, icon: 'bi bi-coin', color: 'var(--success)' },
-  { label: '零积分用户', value: Math.max(0, userStats.total - userStats.hasIntegral), icon: 'bi bi-dash-circle', color: 'var(--text-muted)' },
-  { label: '最高余额', value: userStats.topBalance, icon: 'bi bi-trophy', color: 'var(--warning)' },
-  { label: '累计获得榜首', value: userStats.topEarned, icon: 'bi bi-graph-up-arrow', color: '#0ea5e9' }
+  { label: '零积分用户', value: Math.max(0, userStats.total - userStats.hasIntegral), icon: 'bi bi-dash-circle', color: 'var(--text-muted)' }
 ])
 
 const cardStatCards = computed(() => {
   const s = cardStats.value || {}
   return [
     { label: '卡密总数', value: s.total ?? 0, icon: 'bi bi-credit-card-2-front', color: 'var(--primary)' },
-    { label: '未使用', value: s.unused ?? 0, icon: 'bi bi-patch-check', color: 'var(--success)' },
-    { label: '已发放', value: s.granted ?? 0, icon: 'bi bi-ticket-perforated', color: '#8b5cf6' },
-    { label: '已使用', value: s.used ?? 0, icon: 'bi bi-check2-circle', color: '#0ea5e9' },
-    { label: '已过期', value: s.expired ?? 0, icon: 'bi bi-hourglass-split', color: 'var(--warning)' },
-    { label: '累计发放', value: s.value_total ?? 0, icon: 'bi bi-coin', color: 'var(--primary)' },
+    { label: '未使用「卡密」', value: s.unused ?? 0, icon: 'bi bi-patch-check', color: 'var(--success)' },
+    { label: '已发放「卡密」', value: s.granted ?? 0, icon: 'bi bi-ticket-perforated', color: '#8b5cf6' },
+    { label: '已使用「卡密」', value: s.used ?? 0, icon: 'bi bi-check2-circle', color: '#0ea5e9' },
+    { label: '已过期「卡密」', value: s.expired ?? 0, icon: 'bi bi-hourglass-split', color: 'var(--warning)' },
+    { label: '累计发放「积分」', value: s.value_total ?? 0, icon: 'bi bi-coin', color: 'var(--primary)' },
     { label: '已兑换', value: s.value_used ?? 0, icon: 'bi bi-cart-check', color: 'var(--success)' }
   ]
 })
@@ -760,6 +821,57 @@ const gen = reactive({
   length: 16,
   expire: '',
   remark: ''
+})
+
+// 设置 / 改绑卡密兑换人（卡片可绑定给指定用户，也可解除绑定）
+const bind = reactive({
+  visible: false,
+  loading: false,
+  // bind：绑定 / 改绑给指定用户；unbind：解除绑定（退回未使用）
+  mode: 'bind',
+  uid: '',
+  user: null,
+  checking: false,
+  checked: false,
+  ids: []
+})
+
+const bindModeOptions = [
+  { value: 'bind', label: '绑定 / 改绑给指定用户' },
+  { value: 'unbind', label: '解除绑定（退回未使用）' }
+]
+
+// 可设置兑换人的选中卡密：已兑换（status=1）的不能改，流水已落库
+const bindableSelectedIds = computed(() =>
+  cards.value
+    .filter((item) => isCardSelected(item.id) && Number(item.status) !== 1)
+    .map((item) => Number(item.id))
+)
+
+// 弹窗底部说明：这次操作会影响哪些卡密（张数 / 总面额 / 是否涉及改绑）
+const bindSummary = computed(() => {
+  const target = cards.value.filter((item) => bind.ids.includes(Number(item.id)))
+  if (!target.length) return ''
+
+  const total = target.reduce((sum, item) => sum + Number(item.value || 0), 0)
+  const granted = target.filter((item) => Number(item.status) === 2)
+
+  if (bind.mode === 'unbind') {
+    return granted.length
+      ? `将解除 ${granted.length} 张已发放卡密的绑定，退回「未使用」（之后任何用户都能兑换）`
+      : '选中的卡密本来就没有绑定用户，无需解绑'
+  }
+
+  let text =
+    target.length > 1 ? `共 ${target.length} 张卡密，合计 ${total} 积分` : `面额 ${total} 积分`
+  if (granted.length) {
+    const names = granted
+      .map((item) => item.nickname || `用户 ${item.uid}`)
+      .slice(0, 3)
+      .join('、')
+    text += `；其中 ${granted.length} 张已发放给 ${names}，保存后会改绑`
+  }
+  return text
 })
 
 const result = reactive({
@@ -1289,6 +1401,99 @@ async function runConfirm() {
     // 请求失败时保持弹窗打开，错误提示已由请求拦截器统一给出
   } finally {
     confirm.loading = false
+  }
+}
+
+// ---------- 设置 / 改绑卡密兑换人 ----------
+
+// 行内按钮文案：已兑换的卡密不能改绑
+function cardBindTitle(item) {
+  if (Number(item.status) === 1) return '已兑换的卡密不能改绑'
+  return Number(item.uid) > 0 ? '改绑兑换人' : '设置兑换人'
+}
+
+// 打开弹窗时的公共准备：复用上次填的用户 ID，但每次都重新校验一次，
+// 避免用到过期 / 已被改名的用户信息
+function prepareBind() {
+  bind.user = null
+  bind.checked = false
+  bind.checking = false
+  if (Number(bind.uid) > 0) onBindUidInput()
+}
+
+function openBind(item) {
+  bind.ids = [Number(item.id)]
+  bind.mode = 'bind'
+  prepareBind()
+  bind.visible = true
+}
+
+// 批量设置兑换人：只针对选中的、未兑换的卡密
+function openBatchBind() {
+  const ids = bindableSelectedIds.value
+  if (!ids.length) {
+    toast.warning('选中的卡密都已兑换，不能设置兑换人')
+    return
+  }
+  bind.ids = ids
+  bind.mode = 'bind'
+  prepareBind()
+  bind.visible = true
+}
+
+// 输入用户 ID 后自动校验（防抖），确认选对人再提交
+let bindUidTimer = null
+function onBindUidInput() {
+  clearTimeout(bindUidTimer)
+  bind.user = null
+  bind.checked = false
+
+  const uid = Number(bind.uid)
+  if (!uid) {
+    bind.checking = false
+    return
+  }
+
+  bind.checking = true
+  bindUidTimer = setTimeout(async () => {
+    try {
+      const res = await listUsersByIds([uid])
+      bind.user = (res.data?.data || [])[0] || null
+    } catch {
+      bind.user = null
+    } finally {
+      bind.checking = false
+      bind.checked = true
+    }
+  }, 350)
+}
+
+async function submitBind() {
+  if (!bind.ids.length) return
+
+  const uid = bind.mode === 'unbind' ? 0 : Number(bind.uid)
+  if (bind.mode === 'bind') {
+    if (!uid) {
+      toast.warning('请输入兑换人的用户 ID')
+      return
+    }
+    if (!bind.user) {
+      toast.warning('没有查询到该用户，请检查用户 ID')
+      return
+    }
+  }
+
+  bind.loading = true
+  try {
+    const res = await bindIntegralCards(bind.ids, uid)
+    toast.success(res.msg || '已保存')
+    bind.visible = false
+    clearSelection()
+    await Promise.all([loadCards(), loadStats()])
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    bind.loading = false
   }
 }
 
@@ -1843,6 +2048,41 @@ onMounted(async () => {
   line-height: 1.6;
   color: var(--text-muted);
 }
+/* 设置兑换人：目标用户回显 */
+.bind-user {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.bind-user .bind-avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.bind-user .bind-avatar.is-icon {
+  font-size: 22px;
+  color: var(--text-light);
+}
+.bind-user__name {
+  font-weight: 600;
+  color: var(--text);
+}
+.bind-user__account {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.bind-user__hint {
+  font-size: 12px;
+  color: var(--text-light);
+}
+.bind-user__hint.is-error {
+  color: var(--danger);
+}
+
 .dialog-tip {
   margin: 0;
   padding: 10px 12px;

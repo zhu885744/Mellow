@@ -170,6 +170,10 @@ const typeOptions = [
   { value: 'like', label: '点赞' },
   { value: 'follow', label: '关注' },
   { value: 'collect', label: '收藏' },
+  { value: 'article', label: '文章' },
+  { value: 'page', label: '页面' },
+  { value: 'links', label: '友链' },
+  { value: 'moments', label: '动态' },
   { value: 'system', label: '系统' }
 ]
 
@@ -192,6 +196,10 @@ const typeMap = {
   like: '点赞',
   follow: '关注',
   collect: '收藏',
+  article: '文章',
+  page: '页面',
+  links: '友链',
+  moments: '动态',
   system: '系统'
 }
 
@@ -236,7 +244,17 @@ function typeLabel(t) {
 }
 
 function iconOf(t) {
-  return ({ comment: 'bi bi-chat-dots', like: 'bi bi-hand-thumbs-up', follow: 'bi bi-people', collect: 'bi bi-star', system: 'bi bi-megaphone' })[t] || 'bi bi-bell'
+  return ({
+    comment: 'bi bi-chat-dots',
+    like: 'bi bi-hand-thumbs-up',
+    follow: 'bi bi-people',
+    collect: 'bi bi-star',
+    article: 'bi bi-file-text',
+    page: 'bi bi-file-earmark',
+    links: 'bi bi-link-45deg',
+    moments: 'bi bi-chat-square-text',
+    system: 'bi bi-megaphone'
+  })[t] || 'bi bi-bell'
 }
 
 async function readAll() {
@@ -294,6 +312,12 @@ async function onClick(n) {
   // 跳转
   if (n.bind_type === 'article' && n.bind_id) {
     router.push(`/archives/${n.bind_id}`)
+  } else if (n.bind_type === 'links' && n.bind_id) {
+    // 友链审核结果：去「我的友链」看状态与驳回原因
+    router.push('/manage/links')
+  } else if (n.bind_type === 'integral-card') {
+    // 管理员绑定的积分卡密：去「我的积分 → 卡密兑换」兑换
+    router.push('/user/integral')
   } else if (n.bind_type === 'moments' && n.bind_id) {
     router.push('/moments')
   } else if (n.bind_type === 'user' && n.bind_id) {
@@ -459,6 +483,10 @@ onMounted(load)
 .notif-icon.type-like { background: rgba(217, 84, 77, 0.12); color: var(--danger); }
 .notif-icon.type-follow { background: rgba(108, 154, 77, 0.12); color: var(--success); }
 .notif-icon.type-collect { background: var(--gold-soft); color: var(--warning); }
+.notif-icon.type-article { background: var(--accent-soft); color: var(--primary-deep); }
+.notif-icon.type-page { background: rgba(138, 138, 130, 0.14); color: #8a8a82; }
+.notif-icon.type-links { background: rgba(106, 168, 79, 0.14); color: #6aa84f; }
+.notif-icon.type-moments { background: rgba(127, 109, 189, 0.12); color: #7f6dbd; }
 .notif-icon.type-system { background: rgba(74, 144, 226, 0.12); color: #4a90e2; }
 
 .notif-body {

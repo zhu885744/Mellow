@@ -53,7 +53,7 @@ export const listMomentsAdmin = (params = {}) =>
       limit: 15,
       order: 'top desc, create_time desc',
       field:
-        'id,uid,content,images,location,top,views,audit,status,create_time,update_time,publish_time,delete_time',
+        'id,uid,content,images,location,top,views,audit,reason,status,create_time,update_time,publish_time,delete_time',
       ...params
     }
   })

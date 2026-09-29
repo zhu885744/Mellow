@@ -8,14 +8,16 @@
 
 // 列表查询字段：需要 result（内含分组信息），但不拉取 json/text 等大字段
 export const LINK_LIST_FIELD =
-  'id,uid,nickname,description,url,avatar,target,audit,remark,group,create_time,update_time,delete_time,result'
+  'id,uid,nickname,description,url,avatar,target,audit,reason,remark,group,create_time,update_time,delete_time,result'
 
 // 分组查询字段
 export const LINK_GROUP_FIELD = 'id,name,description,avatar,create_time,update_time,delete_time'
 
 // 审核状态（与后端 model.Links.Audit 对应，非管理员只能看到 audit=1 的友链）
+// 与文章 / 动态一致：0 待审核、1 已通过、2 未通过（驳回时管理员要填原因，作者能看到）
 export const LINK_AUDIT_PENDING = 0
 export const LINK_AUDIT_PASS = 1
+export const LINK_AUDIT_REJECT = 2
 
 // 回收站 key：不属于状态标签，需要单独的查询参数（onlyTrashed）
 export const LINK_TRASH_KEY = 'trash'
@@ -52,6 +54,14 @@ export const LINK_FILTERS = [
     icon: 'bi bi-hourglass-split',
     color: 'var(--warning)',
     where: { audit: LINK_AUDIT_PENDING }
+  },
+  {
+    key: 'reject',
+    label: '未通过',
+    tabLabel: '未通过',
+    icon: 'bi bi-slash-circle',
+    color: 'var(--danger)',
+    where: { audit: LINK_AUDIT_REJECT }
   },
   {
     key: LINK_TRASH_KEY,
@@ -93,9 +103,20 @@ export const LINK_TARGET_OPTIONS = [
   { value: '_self', label: '当前窗口打开' }
 ]
 
-/** 审核状态文案：仅区分「已通过 / 待审核」，其余数值按待审核处理 */
+/** 审核状态文案：已通过 / 待审核 / 未通过（未知数值按待审核处理） */
 export function linkAuditLabel(item) {
-  return Number(item?.audit) === LINK_AUDIT_PASS ? '已通过' : '待审核'
+  const audit = Number(item?.audit)
+  if (audit === LINK_AUDIT_PASS) return '已通过'
+  if (audit === LINK_AUDIT_REJECT) return '未通过'
+  return '待审核'
+}
+
+/** 审核状态配色 class（列表状态芯片用） */
+export function linkAuditClass(item) {
+  const audit = Number(item?.audit)
+  if (audit === LINK_AUDIT_PASS) return 'is-pass'
+  if (audit === LINK_AUDIT_REJECT) return 'is-reject'
+  return 'is-pending'
 }
 
 /** 是否已通过审核 */

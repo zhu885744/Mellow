@@ -6,8 +6,9 @@
  */
 
 // 列表查询字段：不拉取 json/text 等大字段
+// 注意：reason（驳回原因）必须在这里，否则后台列表刷新后拿不到原因、行内的原因标签会消失
 export const MOMENT_LIST_FIELD =
-  'id,uid,content,images,location,top,views,audit,status,create_time,update_time,publish_time,delete_time'
+  'id,uid,content,images,location,top,views,audit,reason,status,create_time,update_time,publish_time,delete_time'
 
 // 回收站 key：不属于状态标签，需要单独的查询参数（onlyTrashed）
 export const MOMENT_TRASH_KEY = 'trash'

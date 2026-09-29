@@ -440,7 +440,11 @@ const typeOptions = [
   { value: 'comment', label: '评论/回复' },
   { value: 'like', label: '点赞' },
   { value: 'collect', label: '收藏' },
-  { value: 'follow', label: '关注' }
+  { value: 'follow', label: '关注' },
+  { value: 'article', label: '文章' },
+  { value: 'page', label: '页面' },
+  { value: 'links', label: '友链' },
+  { value: 'moments', label: '动态' }
 ]
 
 const targetOptions = [
@@ -583,6 +587,10 @@ const TYPE_LABEL = {
   like: '点赞',
   collect: '收藏',
   follow: '关注',
+  article: '文章',
+  page: '页面',
+  links: '友链',
+  moments: '动态',
   system: '短消息'
 }
 

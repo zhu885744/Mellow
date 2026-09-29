@@ -16,7 +16,13 @@
     <!-- 审核状态提示：只有作者本人 / 管理员能看到未审核文章，这里说明可见范围 -->
     <div v-if="auditTip" class="audit-banner" :class="auditTip.type">
       <i :class="auditTip.icon" aria-hidden="true" />
-      <span>{{ auditTip.text }}</span>
+      <span>
+        {{ auditTip.text }}
+        <!-- 驳回原因：管理员审核未通过时填写 -->
+        <template v-if="auditTip.reason">
+          <br />驳回原因：{{ auditTip.reason }}
+        </template>
+      </span>
     </div>
 
     <div v-if="article.abstract" class="abstract">
@@ -190,7 +196,12 @@ const auditTip = computed(() => {
     return { type: 'is-audit', icon: 'bi bi-clock-history', text: '待审核，通过后其他访客才能看到' }
   }
   if (audit === 2) {
-    return { type: 'is-reject', icon: 'bi bi-exclamation-triangle', text: '未通过审核，仅自己（与管理员）可见' }
+    return {
+      type: 'is-reject',
+      icon: 'bi bi-exclamation-triangle',
+      text: '未通过审核，仅自己（与管理员）可见',
+      reason: String(item.reason || '').trim()
+    }
   }
   return null
 })

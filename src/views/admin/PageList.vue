@@ -125,6 +125,10 @@
               <code v-if="item.key" class="page-key">/{{ item.key }}</code>
               <span v-else class="page-key warning">未设置标识</span>
               <span class="meta-chip"><i class="bi bi-person" /> {{ authorName(item) }}</span>
+              <!-- 驳回原因：审核驳回时填写，作者也会在通知与编辑页看到（审核通过后后端会清空） -->
+              <span v-if="item.reason" class="meta-chip is-reason" :title="item.reason">
+                <i class="bi bi-info-circle" /> {{ item.reason }}
+              </span>
               <span class="meta-text"><i class="bi bi-eye" /> {{ item.views || 0 }}</span>
               <span class="meta-text"><i class="bi bi-clock" /> {{ timeText(item) }}</span>
             </div>
@@ -193,6 +197,23 @@
       />
     </div>
 
+    <!-- 驳回原因（单条 / 批量共用，审核时能看到这条是谁的） -->
+    <AuditDialog
+      :visible="auditDialog.visible"
+      :audit="auditDialog.audit"
+      :default-reason="auditDialog.target?.item?.reason || ''"
+      :owner-uid="auditDialog.target?.item?.uid || 0"
+      owner-label="作者"
+      :loading="auditDialog.loading"
+      :message="
+        auditDialog.target?.batch
+          ? `将驳回已选中的 ${selectedIds.length} 个页面，原因会一并通知各自的作者。`
+          : '驳回后作者会收到通知，其中包含你填写的原因。'
+      "
+      @update:visible="closeAuditDialog"
+      @confirm="runAudit"
+    />
+
     <!-- 操作确认 -->
     <ConfirmDialog
       v-model:visible="confirm.visible"
@@ -211,6 +232,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import AuditDialog from '@/components/admin/AuditDialog.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import {
   listPages,
@@ -437,21 +459,72 @@ function patchPayload(item, patch) {
   }
 }
 
-async function audit(item, value) {
+// ---------- 审核（驳回需填原因） ----------
+// 驳回（audit=2）要先弹出原因输入框：原因会写进通知（邮件 + 站内信），
+// 作者也能在编辑页看到；弹窗里同时显示作者，审核时不必回列表核对
+const auditDialog = reactive({
+  visible: false,
+  audit: 2,
+  loading: false,
+  // 单条：{ item }；批量：{ batch: true }
+  target: null
+})
+
+async function applyAudit(item, value, reason = '') {
   if (!item.key) {
     toast.warning('该页面缺少唯一标识，请先编辑补全后再审核')
-    return
+    return false
   }
   busy.value = true
   try {
-    await updatePage(patchPayload(item, { audit: value }))
+    await updatePage(patchPayload(item, { audit: value, reason }))
     item.audit = value
+    item.reason = reason
     toast.success(value === 1 ? '已通过审核' : '已驳回')
+    return true
   } catch {
     /* 拦截器已提示 */
+    return false
   } finally {
     busy.value = false
   }
+}
+
+function audit(item, value) {
+  // 通过：直接生效；驳回：先让管理员填原因
+  if (Number(value) === 2) {
+    auditDialog.target = { item }
+    auditDialog.audit = 2
+    auditDialog.visible = true
+    return
+  }
+  applyAudit(item, value)
+}
+
+async function runAudit(reason) {
+  const target = auditDialog.target
+  if (!target) {
+    auditDialog.visible = false
+    return
+  }
+
+  auditDialog.loading = true
+  try {
+    if (target.batch) {
+      await batchPatch({ audit: auditDialog.audit, reason })
+      auditDialog.visible = false
+    } else if (await applyAudit(target.item, auditDialog.audit, reason)) {
+      auditDialog.visible = false
+    }
+  } finally {
+    auditDialog.loading = false
+  }
+}
+
+function closeAuditDialog(visible) {
+  auditDialog.visible = visible
+  if (visible) return
+  auditDialog.target = null
 }
 
 function askRemove(item) {
@@ -524,6 +597,13 @@ async function batchPatch(patch) {
 }
 
 function batchAudit(value) {
+  // 批量驳回同样要填原因（一份原因写给选中的所有页面，逐条各自通知作者）
+  if (Number(value) === 2) {
+    auditDialog.target = { batch: true }
+    auditDialog.audit = 2
+    auditDialog.visible = true
+    return
+  }
   batchPatch({ audit: value })
 }
 
@@ -869,6 +949,15 @@ onMounted(load)
   padding: 2px 8px;
   background: var(--bg-muted);
   border-radius: 3px;
+}
+/* 驳回原因：单行省略，完整内容看 title */
+.meta-chip.is-reason {
+  max-width: 260px;
+  background: rgba(217, 84, 77, 0.1);
+  color: var(--danger);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .meta-text {
   display: inline-flex;

@@ -26,6 +26,10 @@
           </div>
           <div class="link-url">{{ host(item.url) }}</div>
           <p class="link-desc">{{ item.description || '暂无描述' }}</p>
+          <!-- 驳回原因：管理员审核未通过时填写，作者据此修改后重新申请（审核通过后后端会清空） -->
+          <p v-if="item.reason" class="audit-reason">
+            <i class="bi bi-info-circle" /> 驳回原因：{{ item.reason }}
+          </p>
         </div>
         <div class="link-actions">
           <button class="btn btn-ghost btn-sm" title="编辑" @click="openEdit(item)">
@@ -119,7 +123,7 @@ async function load() {
       page: 1,
       limit: 200,
       where: JSON.stringify({ uid: uid.value }),
-      field: 'id,nickname,url,description,avatar,group,audit,create_time'
+      field: 'id,nickname,url,description,avatar,group,audit,reason,create_time'
     })
     list.value = res.data?.data || []
   } catch {
@@ -265,6 +269,14 @@ onMounted(load)
 .link-status.is-pending {
   background: var(--gold-wash);
   color: var(--warning);
+}
+/* 驳回原因：文字可能较长，允许换行 */
+.audit-reason {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--danger);
+  word-break: break-word;
 }
 .link-status.is-reject {
   background: rgba(217, 84, 77, 0.12);
