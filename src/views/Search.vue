@@ -3,22 +3,26 @@
     <!-- 搜索区：大输入框 + 范围切换 -->
     <section class="search-hero card card-pad">
       <form class="search-form" role="search" @submit.prevent="submit">
-        <i class="bi bi-search search-form__icon" aria-hidden="true" />
-        <input
-          ref="inputRef"
-          v-model="keyword"
-          class="search-form__input"
-          type="search"
-          :placeholder="placeholder"
-          aria-label="搜索"
-          autocomplete="off"
-          @input="onInput"
-          @keydown.down.prevent="move(1)"
-          @keydown.up.prevent="move(-1)"
-        />
-        <button v-if="keyword" type="button" class="search-form__clear" aria-label="清空" @click="clearKeyword">
-          <i class="bi bi-x" />
-        </button>
+        <!-- 图标 / 输入框 / 清空按钮放在同一个相对定位容器里：
+             直接挂在 form 上的话，手机端表单换行成两行后绝对定位的元素会垂直错位 -->
+        <div class="search-form__field">
+          <i class="bi bi-search search-form__icon" aria-hidden="true" />
+          <input
+            ref="inputRef"
+            v-model="keyword"
+            class="search-form__input"
+            type="search"
+            :placeholder="placeholder"
+            aria-label="搜索"
+            autocomplete="off"
+            @input="onInput"
+            @keydown.down.prevent="move(1)"
+            @keydown.up.prevent="move(-1)"
+          />
+          <button v-if="keyword" type="button" class="search-form__clear" aria-label="清空" @click="clearKeyword">
+            <i class="bi bi-x" />
+          </button>
+        </div>
         <button type="submit" class="btn btn-primary search-form__submit">
           <i class="bi bi-search" /> 搜索
         </button>
@@ -108,8 +112,37 @@
               @mouseenter="selected = item._index"
               @click="goResult(item)"
             >
-              <span class="result-badge" :class="`is-${item._type}`">{{ typeName(item._type) }}</span>
-              <span class="result-title" v-html="titleText(item)" />
+              <!-- 缩略图：文章封面 / 标签、用户、友链头像 / 动态首图；没有或加载失败时退回类型图标 -->
+              <span class="result-thumb" :class="`is-${item._type}`">
+                <img
+                  v-if="thumbOf(item)"
+                  :src="thumbOf(item)"
+                  :alt="titlePlain(item)"
+                  loading="lazy"
+                  referrerpolicy="no-referrer"
+                  @error="markThumbBroken(item)"
+                />
+                <i v-else :class="group.icon" aria-hidden="true" />
+              </span>
+
+              <div class="result-main">
+                <div class="result-line">
+                  <span class="result-badge" :class="`is-${item._type}`">{{ typeName(item._type) }}</span>
+                  <span class="result-title" v-html="titleText(item)" />
+                </div>
+
+                <!-- 摘要 / 正文片段 / 简介（后端已做 <mark> 高亮） -->
+                <p v-if="summaryOf(item)" class="result-summary" v-html="summaryOf(item)" />
+
+                <!-- 元信息：标签、地址、位置、阅读量、时间等 -->
+                <div v-if="metaOf(item).length" class="result-meta">
+                  <span v-for="(meta, i) in metaOf(item)" :key="i" class="result-meta__item">
+                    <i :class="meta.icon" aria-hidden="true" />
+                    <span v-html="meta.text" />
+                  </span>
+                </div>
+              </div>
+
               <i class="bi bi-chevron-right result-arrow" aria-hidden="true" />
             </li>
           </ul>
@@ -134,6 +167,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import EmptyState from '@/components/EmptyState.vue'
 import { call } from '@/api/request'
+import { fromNow } from '@/utils/time'
 
 const route = useRoute()
 const router = useRouter()
@@ -373,6 +407,10 @@ async function searchType(scopeKey, word) {
 }
 
 // ---------- 结果展示 ----------
+
+// 图片加载失败的条目（退回类型图标，避免留下空白方块）
+const brokenThumbs = ref(new Set())
+
 function typeName(type) {
   return TYPE_NAMES[type] || '内容'
 }
@@ -382,6 +420,114 @@ function titleText(item) {
   if (type === 'users' || type === 'links') return item.nickname || item.name || item.title || '未知'
   if (type === 'moments') return truncateHtml(item.content || '', 40) || '动态'
   return item.title || item.name || '未知'
+}
+
+// 纯文本标题（用于 img 的 alt / 无障碍）
+function titlePlain(item) {
+  return stripTags(titleText(item))
+}
+
+function stripTags(text) {
+  return String(text || '').replace(/<[^>]*>/g, '')
+}
+
+// 逗号分隔的多图字段（covers / images 都是这种存法）取第一张
+function firstImage(value) {
+  if (!value) return ''
+  const list = Array.isArray(value) ? value : String(value).split(',')
+  return String(list.find((url) => String(url || '').trim()) || '').trim()
+}
+
+function markThumbBroken(item) {
+  brokenThumbs.value = new Set(brokenThumbs.value).add(item._index)
+}
+
+// 缩略图：文章 → 封面；标签 / 用户 / 友链 → 头像；动态 → 首图
+function thumbOf(item) {
+  if (brokenThumbs.value.has(item._index)) return ''
+
+  switch (item._type) {
+    case 'article':
+      return firstImage(item.covers)
+    case 'moments':
+      return firstImage(item.images)
+    case 'tag':
+    case 'users':
+    case 'links':
+      return String(item.avatar || '').trim()
+    default:
+      return ''
+  }
+}
+
+// 摘要 / 简介：搜索结果里最有信息量的那一段（保留后端返回的 <mark> 高亮）
+//
+// 文章优先用手写的 abstract，没有就用后端从正文里截的 snippet；
+// 页面没有摘要，直接用 snippet（正文片段）。
+function summaryOf(item) {
+  const limit = 120
+  switch (item._type) {
+    case 'article':
+      return truncateHtml(item.abstract || item.snippet || '', limit)
+    case 'page':
+      return truncateHtml(item.snippet || '', limit)
+    case 'moments':
+      return truncateHtml(item.content || '', limit)
+    case 'tag':
+    case 'users':
+    case 'links':
+      return truncateHtml(item.description || '', limit)
+    default:
+      return ''
+  }
+}
+
+function hostOf(url) {
+  try {
+    return new URL(url).host
+  } catch {
+    return String(url || '')
+  }
+}
+
+// 元信息：随类型展示不同维度（地址 / 位置 / 阅读量 / 时间 / 邮箱）
+// 注：文章不展示标签（tags），搜索结果里标签噪声大且与摘要重复
+function metaOf(item) {
+  const meta = []
+  const time = item.create_time ? fromNow(item.create_time) : ''
+
+  // 除摘要外的高亮字段（如用户职位）也要保留 <mark>
+  const mark = (text) => String(text || '').trim()
+
+  switch (item._type) {
+    case 'article':
+      if (Number(item.views) > 0) meta.push({ icon: 'bi bi-eye', text: `${item.views} 阅读` })
+      if (time) meta.push({ icon: 'bi bi-clock', text: time })
+      break
+    case 'page':
+      if (item.key) meta.push({ icon: 'bi bi-link-45deg', text: `/${item.key}` })
+      if (Number(item.views) > 0) meta.push({ icon: 'bi bi-eye', text: `${item.views} 阅读` })
+      if (time) meta.push({ icon: 'bi bi-clock', text: time })
+      break
+    case 'users':
+      if (item.title) meta.push({ icon: 'bi bi-award', text: mark(item.title) })
+      if (item.email) meta.push({ icon: 'bi bi-envelope', text: item.email })
+      break
+    case 'links':
+      if (item.url) meta.push({ icon: 'bi bi-box-arrow-up-right', text: hostOf(item.url) })
+      break
+    case 'moments': {
+      if (item.location) meta.push({ icon: 'bi bi-geo-alt', text: mark(item.location) })
+      const images = firstImage(item.images) ? String(item.images).split(',').filter(Boolean).length : 0
+      if (images > 1) meta.push({ icon: 'bi bi-images', text: `${images} 张图` })
+      if (time) meta.push({ icon: 'bi bi-clock', text: time })
+      break
+    }
+    default:
+      break
+  }
+
+  return meta
 }
 
 // 截断带 <mark> 高亮的文本（保留标签闭合，避免截断破坏高亮）
@@ -468,19 +614,29 @@ onMounted(() => {
   gap: 14px;
 }
 .search-form {
-  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
 }
+/* 图标与清空按钮的定位基准 */
+.search-form__field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
 .search-form__icon {
   position: absolute;
   left: 16px;
+  top: 50%;
+  transform: translateY(-50%);
   color: var(--text-muted);
   pointer-events: none;
 }
 .search-form__input {
   flex: 1;
+  width: 100%;
   min-width: 0;
   height: var(--control-h-lg);
   padding: 0 42px 0 44px;
@@ -490,6 +646,21 @@ onMounted(() => {
   color: var(--text);
   font-size: 15px;
   transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+}
+/* 隐藏 type=search 的原生清除按钮：否则会和下面自定义的 ❌ 同时出现（两个叉）
+   各内核的伪元素都写一遍，避免浏览器差异 */
+.search-form__input::-webkit-search-cancel-button,
+.search-form__input::-webkit-search-decoration,
+.search-form__input::-webkit-search-results-button,
+.search-form__input::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+.search-form__input::-ms-clear {
+  display: none;
+  width: 0;
+  height: 0;
 }
 .search-form__input::placeholder {
   color: var(--text-light);
@@ -502,7 +673,9 @@ onMounted(() => {
 }
 .search-form__clear {
   position: absolute;
-  right: 108px;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
   width: 28px;
   height: 28px;
   display: flex;
@@ -662,16 +835,45 @@ onMounted(() => {
 }
 .result-item {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 10px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background-color 0.15s;
 }
+.result-item + .result-item {
+  border-top: 1px dashed var(--border-soft, var(--border));
+}
 .result-item:hover,
 .result-item.selected {
   background: var(--bg-muted);
+}
+/* 缩略图：没有图 / 图挂了时展示类型图标 */
+.result-thumb {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 18px;
+}
+.result-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+/* 头像类图片用圆形更自然 */
+.result-thumb.is-users img,
+.result-thumb.is-links img,
+.result-thumb.is-tag img {
+  border-radius: 50%;
 }
 .result-badge {
   flex-shrink: 0;
@@ -686,23 +888,74 @@ onMounted(() => {
 .result-badge.is-links { background: #6aa84f; }
 .result-badge.is-users { background: #c98a2d; }
 .result-badge.is-moments { background: #7f6dbd; }
+.result-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.result-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
 .result-title {
   flex: 1;
   min-width: 0;
   font-size: 14px;
+  font-weight: 600;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.result-title :deep(mark) {
+.result-title :deep(mark),
+.result-summary :deep(mark),
+.result-meta :deep(mark) {
   padding: 0 1px;
   border-radius: 2px;
   background: var(--accent-glow);
   color: inherit;
 }
+/* 摘要：最多两行，超出省略 */
+.result-summary {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-soft);
+  word-break: break-word;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+/* 元信息：标签 / 地址 / 位置 / 阅读量 / 时间 */
+.result-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  font-size: 12px;
+  color: var(--text-light);
+}
+.result-meta__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.result-meta__item i {
+  color: var(--text-muted);
+}
 .result-arrow {
   flex-shrink: 0;
+  align-self: center;
   color: var(--text-light);
 }
 
@@ -726,12 +979,13 @@ onMounted(() => {
   .search-form {
     flex-wrap: wrap;
   }
+  /* 输入框独占一行（按钮换到下一行），图标 / 清空按钮的定位基准是 __field，不会错位 */
+  .search-form__field {
+    flex: 1 1 100%;
+  }
   .search-form__input {
     /* 16px 可避免 iOS 聚焦输入框时页面被放大 */
     font-size: 16px;
-  }
-  .search-form__clear {
-    right: 12px;
   }
   .search-form__submit {
     width: 100%;
@@ -751,8 +1005,21 @@ onMounted(() => {
   .result-hint {
     display: none;
   }
+  .result-item {
+    gap: 10px;
+    padding: 10px 6px;
+  }
+  .result-thumb {
+    width: 44px;
+    height: 44px;
+    font-size: 16px;
+  }
   .result-title {
     white-space: normal;
+  }
+  .result-summary {
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
   }
 }
 </style>
