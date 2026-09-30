@@ -10,7 +10,15 @@
         <span v-if="author.level" class="c-level">Lv.{{ author.level }}</span>
         <span v-if="author.title" :class="['c-title', titleClass]">{{ author.title }}</span>
         <span v-if="author.id === authorId" class="c-badge">作者</span>
-        <span class="c-time">{{ formatDate(comment.create_time) }}</span>
+        <!-- 时间 + 设备：设备取自后端返回的 comment.agent（普通用户为脱敏值），
+             解析成「系统 · 浏览器」展示，原始 UA 放在 title 里悬停可见 -->
+        <span class="c-meta">
+          <span class="c-time">{{ formatDate(comment.create_time) }}</span>
+          <span v-if="device.label" class="c-device" :title="agentRaw">
+            <i :class="device.icon" aria-hidden="true" />
+            <span>{{ device.label }}</span>
+          </span>
+        </span>
       </div>
 
       <div class="c-content" :class="{ 'c-content-link': authorLink }" v-html="renderedContent" @click="goAuthor"></div>
@@ -133,6 +141,7 @@ import { formatDate } from '@/utils/time'
 import { useUserStore } from '@/stores/user'
 import { isAdmin, pickCommentAuthor, getTitleColorClass } from '@/utils/helper'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
+import { parseUserAgent } from '@/utils/ua'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import EmojiEditor from './EmojiEditor.vue'
 import AttachmentLibrary from './AttachmentLibrary.vue'
@@ -161,6 +170,11 @@ const replyText = ref('')
 // 后端把评论作者放在 result.author
 const author = computed(() => pickCommentAuthor(props.comment))
 const renderedContent = computed(() => renderEmojiWithBreaks(props.comment.content))
+
+// 评论者 UA（后端 comment.agent；普通用户看到的是脱敏后的截断值，管理员是完整值）
+const agentRaw = computed(() => String(props.comment.agent || '').trim())
+// 解析成简短设备描述（如「Windows 10 · Chrome 120」），无法识别时 label 为空，标签自动隐藏
+const device = computed(() => parseUserAgent(agentRaw.value))
 
 // 评论图片：后端以逗号分隔字符串存储，这里统一解析为数组，兼容数组形式
 const images = computed(() => {
@@ -378,13 +392,39 @@ function submitReply() {
   background: var(--accent-soft);
   color: var(--accent);
 }
+/* 时间 + 设备：独占一行，显示在昵称下面 */
+.c-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 2px 10px;
+  flex-basis: 100%;
+}
 .c-time {
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
   line-height: 1.3;
   font-variant-numeric: tabular-nums;
-  flex-basis: 100%; /* 日期独占一行，显示在昵称下面 */
+}
+/* 设备标签：弱化处理，不抢正文注意力；hover 显示原始 UA（title） */
+.c-device {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-muted);
+  cursor: default;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.c-device > i {
+  font-size: 12px;
+  flex-shrink: 0;
+  color: var(--text-light);
 }
 .c-del {
   color: var(--text-muted);
@@ -536,6 +576,12 @@ function submitReply() {
   }
   .c-time {
     font-size: 12px;
+  }
+  .c-meta {
+    gap: 2px 8px;
+  }
+  .c-device {
+    font-size: 11px;
   }
   /* 子评论缩进收紧，更适配窄屏 */
   .c-children {

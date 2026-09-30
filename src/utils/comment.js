@@ -12,6 +12,8 @@
  */
 
 // 列表查询字段：不拉取 json/text/agent 等大字段，但需要 result（内含作者与来源）
+// 注：前台评论树走 comment/flat 且不传 field（返回全字段），所以能拿到 agent 用来
+// 展示「来自什么设备」（见 components/CommentItem.vue + utils/ua.js）；
 export const COMMENT_LIST_FIELD =
   'id,pid,uid,content,images,ip,bind_id,bind_type,editor,create_time,update_time,delete_time,result'
 
