@@ -9,6 +9,6 @@
  * - socketUri socket 地址，如 'wss://api.example.com/socket'；留空表示同源。
  */
 window.__INIS_CONFIG__ = {
-  apiUri: 'https://zhuxu.asia',
+  apiUri: '',
   socketUri: ''
 }

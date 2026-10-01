@@ -185,6 +185,9 @@ export const getTitleColorClass = (title) => {
  */
 export const isAdmin = (user) => {
   if (!user || typeof user !== 'object') return false
+  // 系统管理员（id=1）恒为管理员：与后端口径一致（adminGroupId=1），
+  // 避免个别响应没带 result.auth 时把管理员当普通用户
+  if (Number(user?.id) === 1) return true
   // 兼容 result.auth 和顶层 auth
   const auth = user?.result?.auth || user?.auth
   if (!auth) return false
@@ -229,6 +232,9 @@ export const adminAllowedPaths = (user, flat) => {
  */
 export const canEnterAdmin = (user) => {
   if (!user || typeof user !== 'object') return false
+  // 系统管理员（id=1）始终显示后台入口：即使某个响应没带 result.auth，
+  // 也不该把管理员挡在后台外面（后端同样把 id=1 视作系统管理员）
+  if (Number(user?.id) === 1) return true
   const auth = user?.result?.auth || user?.auth
   if (!auth) return false
   if (auth.all === true || auth.all === 1) return true

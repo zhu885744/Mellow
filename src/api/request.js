@@ -65,9 +65,30 @@ devService.interceptors.response.use(
 // INIS 鉴权说明（参考 Cardify-inis 实现，实测 /api/comm/check-token 返回 "Authorization 不能为空！"）：
 // 后端校验的是请求头 Authorization: <token>（裸 JWT，不要加 "Bearer " 前缀）。
 // 登录/注册等匿名接口不带 token；check-token 等鉴权接口需要带 token（由拦截器统一注入）。
+// 不需要带 token 的接口：登录 / 注册 / 校验登录态 / 退出 / 找回密码 / 邮箱验证
+//
+// 这些接口**绝对不能**附带残留的旧 token：一旦带上失效 token，后端会先按「token 无效」
+// 把请求拦成 401（登录接口自己都进不去），表现就是「输入账号密码点登录毫无反应」。
+const AUTH_ENDPOINTS = [
+  '/comm/login',
+  '/comm/register',
+  '/comm/check-token',
+  '/comm/logout',
+  '/comm/reset-password',
+  '/comm/verify-email',
+  '/comm/send-verify-mail'
+]
+
+const isAuthEndpoint = (url = '') => AUTH_ENDPOINTS.some((item) => String(url).includes(item))
+
 service.interceptors.request.use((config) => {
+  // 已确认「未安装」：/api 请求一律不再发出（后端也全会拦成 412，发出去只是噪音）
+  if (installGate) {
+    return Promise.reject({ code: 'ERR_CANCELED', message: '安装引导未完成' })
+  }
+
   const token = readToken()
-  if (token) {
+  if (token && !isAuthEndpoint(config.url)) {
     config.headers.Authorization = token
   }
   // 上传文件：手动设置的 "multipart/form-data" 不带 boundary，Go 后端无法解析
@@ -82,6 +103,25 @@ service.interceptors.request.use((config) => {
   }
   return config
 })
+
+// ---------- 安装引导 ----------
+// 未完成安装时后端会把所有 /api 请求拦下（{code:412, gate:'install'}）。
+// 这种情况不是登录失效，不能走 401 那套弹窗 —— 否则未安装的站点每发一个请求就弹一次
+// 「登录状态异常」（外壳挂载时会连发好几个，看起来就是「一直弹」）。
+// 处理方式：静默置标志 + 跳转安装向导，并让后续 /api 请求直接取消（连发都不再发出）。
+let installGate = false
+
+/** 是否已进入「安装引导未完成」状态（供布局等外部逻辑判断） */
+export const isInstallGate = () => installGate
+
+const enterInstallGate = () => {
+  if (installGate) return
+  installGate = true
+  if (router.currentRoute.value?.name !== 'install') {
+    // 跳转失败（如与当前导航冲突）不影响后续判断，忽略即可
+    Promise.resolve(router.replace({ name: 'install' })).catch(() => {})
+  }
+}
 
 // 是否正在登出中，防止重复触发
 let isLoggingOut = false
@@ -115,6 +155,33 @@ const handleUnauthorized = (msg) => {
   showAuthDialog(msg, confirmClearAndRelogin)
 }
 
+// ---------- 「没登录」与「登录态异常」的区分 ----------
+// 两者都是 401/412，但含义完全不同：
+//   - 没登录：匿名请求了需要登录的接口（刚装完还没登录就打开后台、旧 token 指向的用户已不存在、
+//     /api/comm/check-token 没带 Authorization…）——这属于正常状态，静默清理即可；
+//   - 登录态异常：带了 token 但服务端判为无效/过期/签名不符——才需要提示用户重新登录。
+// 以前两者都会弹「登录状态异常（需要您自行手动清除）」的弹窗，装完站第一次打开就中招。
+const GUEST_MESSAGES = ['请先登录！', 'Authorization 不能为空！', '禁止非法操作！']
+
+/** 请求是否带了登录凭证（AxiosHeaders 与普通对象都兼容） */
+function sentCredential(config) {
+  const headers = config?.headers
+  if (!headers) return false
+  if (typeof headers.get === 'function') return Boolean(headers.get('Authorization'))
+  return Boolean(headers.Authorization)
+}
+
+/** 是否是「没登录」（而不是登录态异常） */
+function isGuestAuth(data, config) {
+  // 后端在「未登录」分支会带 auth:'guest'（见 app/api/middleware/rule.go）
+  if (data?.auth === 'guest') return true
+  // 请求压根没带 Authorization，服务端自然只能说你没登录
+  if (!sentCredential(config)) return true
+  // 其余按后端文案兜底（各控制器自己返回的 401「请先登录！」也走这里）
+  const message = String(data?.msg || '')
+  return GUEST_MESSAGES.some((item) => message.includes(item))
+}
+
 service.interceptors.response.use(
   (res) => {
     const data = res.data
@@ -132,6 +199,18 @@ service.interceptors.response.use(
       // 若调用方传了 skipAuthLogout（如 check-token 需要拿到原始码做本地状态清理），
       // 则不触发全局登出，原样返回给调用方处理（参考 Cardify-inis 实现）
       if (data.code === 401 || data.code === 412) {
+        // 安装引导未完成（后端带 gate:'install'）：静默去安装向导，不是登录问题
+        if (data.gate === 'install') {
+          enterInstallGate()
+          return Promise.reject({ ...data, code: data.code })
+        }
+        // 没登录（不是登录态异常）：静默清掉本地登录态即可，别弹「需要您自行手动清除」的框
+        if (isGuestAuth(data, res.config)) {
+          if (!res.config?.skipAuthLogout) {
+            handleLogout()
+          }
+          return Promise.reject({ ...data, code: data.code })
+        }
         if (!res.config?.skipAuthLogout) {
           handleUnauthorized(data.msg)
         }

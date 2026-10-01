@@ -3,6 +3,14 @@ import { progressStart, progressDone } from '@/utils/progress'
 import { applyRouteTitle } from '@/utils/pageTitle'
 
 const routes = [
+  // 安装向导：未安装时后端 Install 中间件会把首页 302 到这里（见 app/middleware/install.go）。
+  // 独立于所有布局，且不依赖任何 /api 数据（未安装时 /api 会被拦住）。
+  {
+    path: '/install',
+    name: 'install',
+    component: () => import('@/views/install/Index.vue'),
+    meta: { title: '安装向导' }
+  },
   {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
