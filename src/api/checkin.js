@@ -50,3 +50,12 @@ export const getCheckinConfig = () =>
 /** 保存签到配置（后端会顺带清除签到配置缓存） */
 export const saveCheckinConfig = (json) =>
   call('config', 'save', { method: 'POST', data: { key: CHECKIN_RULES_KEY, json } })
+
+/**
+ * 卡密库存（管理员）：传该奖励项当前填写的卡密内容（数组或一行一个的文本）
+ *
+ * 返回 { total, issued, remain }：total = 填写的张数、issued = 已发出、remain = 还剩几张。
+ * 后端会顺带把新填的卡密补进库存（幂等），所以后台不用等发放就能看到库存。
+ */
+export const getRewardCardStock = (codes) =>
+  call('checkin', 'card-stock', { method: 'POST', data: { codes } })

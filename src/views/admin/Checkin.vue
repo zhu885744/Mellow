@@ -8,7 +8,8 @@
           <p class="block-desc">
             签到奖励不再只有经验和积分：基础奖励、周期奖励、连签加成、里程碑、月度全勤、随机奖励
             都能单独配置；奖励类型由后端「奖励资产表」提供（内置经验 / 积分 / <strong>卡密</strong>，可扩展）。
-            想「连签满 N 天送一张卡密」，在对应奖励里把类型选成「卡密」、数值填面额即可。
+            想「连签满 N 天送一张卡密」，在对应奖励里把类型选成「卡密」、数值填面额，
+            并在行下方写上要发的那几张卡密（一行一个）。
           </p>
         </div>
         <div class="head-actions">
@@ -28,9 +29,9 @@
         保存后立即生效，已签到的用户当天不会重复发放。
       </p>
       <p class="hint">
-        <i class="bi bi-ticket-perforated" /> 卡密池：
-        <strong>可用 {{ cardStock.available }} 张</strong>（未使用且未过期，已发放待兑换 {{ cardStock.granted }} 张）
-        <router-link to="/admin/integral" class="stock-link">去「积分 → 卡密」生成/管理</router-link>
+        <i class="bi bi-ticket-perforated" /> 卡密奖励发的是<strong>你在奖励项里填写的卡密</strong>（纯卡密，
+        与积分、与「积分 → 卡密」的池子都无关）；每发一次消耗一张，<strong>库存发完即失效</strong>，
+        不会改发别的奖励。
       </p>
     </section>
 
@@ -286,7 +287,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import RewardItemsEditor from '@/components/admin/RewardItemsEditor.vue'
 import { getCheckinConfig, saveCheckinConfig, getCheckinRules } from '@/api/checkin'
-import { getIntegralCardStats } from '@/api/integral'
+// 卡密奖励不再依赖「积分 → 卡密」的池子（卡密内容在奖励项里自己填），因此这里不再拉卡密统计
 import { toast } from '@/utils/toast'
 
 const RESET_HOURS = [
@@ -302,9 +303,6 @@ const RESET_HOURS = [
 const loading = ref(false)
 const saving = ref(false)
 const assets = ref([])
-
-// 卡密池库存（可用 = 未使用且未过期），用于提示「送卡密」类奖励还有没有货
-const cardStock = reactive({ available: 0, granted: 0 })
 
 const form = reactive({
   enabled: 1,
@@ -326,11 +324,12 @@ function toItem(item = {}) {
   const asset = item.asset || 'exp'
   return {
     asset,
-    value: Number(item.value || 0),
+    // 卡密是纯卡密、没有面额，数值固定为 1（奖励引擎要求非 0，且它不参与卡密逻辑）
+    value: asset === 'card' ? 1 : Number(item.value || 0),
     label: item.label || '',
     chance: Number(item.chance || 0),
-    // 卡密：卡密池为空时的降级方式，缺省改发等额积分（与后端一致）
-    fallback: item.fallback || (asset === 'card' ? 'integral' : '')
+    // 卡密内容在表单里按「一行一个」编辑（配置里存的是数组）
+    codesText: Array.isArray(item.codes) ? item.codes.join('\n') : String(item.codes || '')
   }
 }
 
@@ -339,8 +338,20 @@ function cleanItem(item) {
   const result = { asset: item.asset || 'exp', value: Number(item.value || 0) }
   if (item.label) result.label = item.label
   if (Number(item.chance) > 0) result.chance = Number(item.chance)
-  // 卡密的降级方式只在明确指定时写入（缺省由后端按 integral 处理）
-  if (item.asset === 'card' && item.fallback) result.fallback = item.fallback
+
+  if (item.asset === 'card') {
+    // 卡密是纯卡密：数值固定 1（占位，不代表面额）
+    result.value = 1
+    delete result.chance
+
+    // 卡密内容（一行一个）就是库存清单，留空则这份奖励不发卡密
+    const codes = String(item.codesText || '')
+      .split(/[\n\r,，;；]/)
+      .map((code) => code.trim())
+      .filter(Boolean)
+    if (codes.length) result.codes = codes
+  }
+
   return result
 }
 
@@ -441,19 +452,10 @@ function serialize() {
 async function load() {
   loading.value = true
   try {
-    const [configRes, rulesRes, statsRes] = await Promise.all([
-      getCheckinConfig(),
-      getCheckinRules(),
-      // 卡密统计需要管理员权限，失败时不影响页面其它部分
-      getIntegralCardStats().catch(() => null)
-    ])
+    const [configRes, rulesRes] = await Promise.all([getCheckinConfig(), getCheckinRules()])
 
     const rules = rulesRes?.data || {}
     assets.value = rules.assets || []
-
-    const stats = statsRes?.data || {}
-    cardStock.available = Number(stats.unused || 0)
-    cardStock.granted = Number(stats.granted || 0)
 
     // 已保存过就以 config 为准；老站点没这条配置时用规则接口（后端默认值）兜底
     const saved = configRes?.data?.json || null
@@ -560,13 +562,6 @@ onMounted(load)
   padding: 0 4px;
   background: var(--bg-muted);
   border-radius: 3px;
-}
-.stock-link {
-  margin-left: 6px;
-  color: var(--primary);
-}
-.stock-link:hover {
-  text-decoration: underline;
 }
 .grid-2 {
   display: grid;

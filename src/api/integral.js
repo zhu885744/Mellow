@@ -69,6 +69,17 @@ export const getMyIntegralCards = (params = {}) =>
 export const generateIntegralCards = (data) =>
   call('integral', 'card-generate', { method: 'POST', data })
 
+/**
+ * 导入自定义卡密（管理员）：codes 卡密内容（一行一个的文本，或已拆好的数组）、value 面额、
+ * expire 日期或 expire_time 时间戳、remark 备注
+ *
+ * 与「生成卡密」的区别：卡密内容由管理员自己填写，不再随机生成。
+ * 返回 data.cards 为实际写入的卡密明文，data.report 说明被跳过的卡密与原因
+ * （total / success / skipped / skipped_count / truncated）。
+ */
+export const importIntegralCards = (data) =>
+  call('integral', 'card-import', { method: 'POST', data })
+
 // 导出未使用卡密（管理员，单次上限由后端控制，超出时返回 truncated=true）
 /**
  * 手动设置卡密的兑换人（管理员）

@@ -106,31 +106,25 @@
           </div>
         </section>
 
-        <!-- 今日获得的卡密（发放后才拿得到明文） -->
+        <!-- 今日获得的卡密（发放后才拿得到明文；纯卡密，站内无需兑换） -->
         <section v-if="todayCards.length" class="card card-pad">
           <header class="block-head">
             <h3 class="block-title"><i class="bi bi-ticket-perforated" /> 今日获得的卡密</h3>
-            <router-link to="/user/integral" class="points-link">
-              去兑换 <i class="bi bi-arrow-right" />
-            </router-link>
           </header>
 
           <div v-for="(item, index) in todayCards" :key="index" class="card-row">
             <template v-if="item.card">
               <code class="card-code">{{ item.card }}</code>
-              <span class="card-face">面额 {{ item.value }} 积分</span>
               <button class="btn btn-sm" type="button" @click="copyText(item.card)">
                 <i class="bi bi-clipboard" /> 复制
               </button>
             </template>
-            <span v-else class="card-face">
-              卡密池暂无库存，本次已改发 {{ item.fallback_value }} {{ unitOf(item.fallback || 'integral') }}
-            </span>
+            <span v-else class="card-face">活动卡密已发完（库存不足），本次未发放</span>
           </div>
 
           <p class="card-tip">
             <i class="bi bi-info-circle" />
-            卡密已绑定到你的账号，去「我的积分 → 卡密兑换」输入即可到账（其它人拿到也兑换不了）。
+            这是本次获得的卡密，请自行保存 / 使用（纯卡密，与积分无关，站内不做兑换）。
           </p>
         </section>
 
@@ -486,12 +480,12 @@ const totalChips = computed(() => {
 })
 
 // 今日获得的卡密（后端在发放后写入明细的 extra，未签到 / 没配卡密时为空）
+// 纯卡密：只有卡密明文，没有面额；库存发完时 card 为空、card_missing 为 true
 const todayCards = computed(() =>
   (status.cards || []).map((item) => ({
     card: item.card || '',
-    value: Number(item.value || 0),
-    fallback: item.fallback || 'integral',
-    fallback_value: Number(item.fallback_value || 0)
+    missing: Boolean(item.card_missing),
+    reason: item.reason || ''
   }))
 )
 
@@ -525,10 +519,8 @@ function chipText(item) {
   }
 
   const extra = item.extra || {}
-  if (extra.card_missing) {
-    return `卡密（暂无库存，已改发 ${extra.fallback_value || item.value} ${unitOf(extra.fallback || 'integral')}）`
-  }
-  return `卡密（面额 ${item.value} 积分）`
+  if (extra.card_missing) return '卡密（库存已发完）'
+  return '卡密 1 张'
 }
 
 // 复制文本（卡密）：优先用剪贴板 API，非 HTTPS / 老浏览器走 execCommand 兜底

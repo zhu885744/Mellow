@@ -12,6 +12,9 @@
             <button class="btn btn-sm" :disabled="busy" @click="exportCards">
               <i class="bi bi-download" /> 导出未使用
             </button>
+            <button class="btn btn-sm" @click="openImport">
+              <i class="bi bi-upload" /> 自定义导入
+            </button>
             <button class="btn btn-primary btn-sm" @click="openGenerate">
               <i class="bi bi-plus-lg" /> 生成卡密
             </button>
@@ -508,6 +511,48 @@
       </div>
     </AdminFormDialog>
 
+    <!-- 自定义导入卡密（卡密内容自己填，不随机生成） -->
+    <AdminFormDialog
+      v-model:visible="imp.visible"
+      title="自定义导入卡密"
+      icon="bi bi-upload"
+      :loading="imp.loading"
+      confirm-text="导入"
+      width="560px"
+      @confirm="submitImport"
+    >
+      <div class="form-item">
+        <label class="form-label">卡密内容</label>
+        <textarea
+          v-model="imp.codes"
+          class="textarea"
+          rows="8"
+          placeholder="一行一个，例如：&#10;SN2026000001&#10;SN2026000002"
+        />
+        <p class="form-hint">
+          每行一个，长度 8 ~ 64 位；会自动去掉空格与连字符并转成大写（与用户兑换时的输入规则一致），
+          与系统里已有卡密重复的会被跳过，单次最多 1000 张。
+        </p>
+      </div>
+
+      <div class="form-grid">
+        <div class="form-item">
+          <label class="form-label">积分面额</label>
+          <input v-model="imp.value" class="input" type="number" min="1" step="1" placeholder="每张卡密兑换的积分" />
+        </div>
+        <div class="form-item">
+          <label class="form-label">有效期</label>
+          <input v-model="imp.expire" class="input" type="date" />
+          <p class="form-hint">留空表示永久有效</p>
+        </div>
+      </div>
+
+      <div class="form-item">
+        <label class="form-label">备注</label>
+        <input v-model="imp.remark" class="input" type="text" maxlength="255" placeholder="可选，便于区分批次用途" />
+      </div>
+    </AdminFormDialog>
+
     <!-- 设置 / 改绑卡密兑换人 -->
     <AdminFormDialog
       v-model:visible="bind.visible"
@@ -567,6 +612,10 @@
       @confirm="result.visible = false"
     >
       <p class="dialog-tip">{{ result.tip }}</p>
+      <!-- 导入时被跳过的卡密明细（重复 / 长度不合法等） -->
+      <ul v-if="result.details.length" class="result-details">
+        <li v-for="(item, index) in result.details" :key="index">{{ item }}</li>
+      </ul>
       <textarea ref="resultRef" v-model="result.text" class="textarea" rows="8" readonly />
       <div class="result-actions">
         <button class="btn btn-sm" @click="copyText(result.text)">
@@ -649,6 +698,7 @@ import {
   listIntegralCards,
   getIntegralCardStats,
   generateIntegralCards,
+  importIntegralCards,
   bindIntegralCards,
   exportIntegralCards,
   removeIntegralCards,
@@ -813,6 +863,16 @@ const adjust = reactive({
   title: '调整积分'
 })
 
+// 自定义导入卡密（卡密内容由管理员自己填写，不随机生成）
+const imp = reactive({
+  visible: false,
+  loading: false,
+  codes: '',
+  value: 100,
+  expire: '',
+  remark: ''
+})
+
 const gen = reactive({
   visible: false,
   loading: false,
@@ -878,6 +938,8 @@ const result = reactive({
   visible: false,
   title: '生成结果',
   tip: '',
+  // details：导入卡密时被跳过的卡密明细（生成 / 导出结果为空数组）
+  details: [],
   text: ''
 })
 const resultRef = ref(null)
@@ -1277,6 +1339,7 @@ async function submitGenerate() {
     gen.visible = false
     result.title = `生成成功（批次 ${res?.data?.batch || '-'}）`
     result.tip = '卡密明文仅返回这一次，请立即复制保存；关闭后无法再次查看。'
+    result.details = []
     result.text = list.join('\n')
     result.visible = true
     toast.success(`已生成 ${list.length} 张卡密`)
@@ -1285,6 +1348,72 @@ async function submitGenerate() {
     // 失败提示由请求拦截器统一给出（如面额超限、有效期早于当前时间）
   } finally {
     gen.loading = false
+  }
+}
+
+// ---------- 自定义导入卡密 ----------
+function openImport() {
+  imp.codes = ''
+  imp.value = 100
+  imp.expire = ''
+  imp.remark = ''
+  imp.visible = true
+}
+
+/** 按行拆出卡密（去掉空行，供前端校验数量；后端也会再解析一次） */
+function importCodes() {
+  return String(imp.codes || '')
+    .split(/[\n\r,，;；]/)
+    .map((item) => item.trim())
+    .filter(Boolean)
+}
+
+async function submitImport() {
+  const value = positiveInt(imp.value)
+  if (value === null) {
+    toast.warning('积分面额必须为大于 0 的整数')
+    return
+  }
+
+  const codes = importCodes()
+  if (!codes.length) {
+    toast.warning('请先填写卡密内容，每行一个')
+    return
+  }
+  if (codes.length > 1000) {
+    toast.warning('单次最多导入 1000 张，请分批导入')
+    return
+  }
+
+  imp.loading = true
+  try {
+    const res = await importIntegralCards({
+      codes,
+      value,
+      // 日期字符串由后端解析为当天 23:59:59；留空表示永久有效
+      expire: imp.expire || '',
+      remark: imp.remark.trim()
+    })
+
+    const data = res?.data || {}
+    const report = data.report || {}
+    const skipped = Array.isArray(report.skipped) ? report.skipped : []
+
+    imp.visible = false
+    result.title = `导入成功 ${data.count || 0} 张（批次 ${data.batch || '-'}）`
+    result.tip = skipped.length
+      ? `成功导入 ${data.count || 0} 张；跳过 ${report.skipped_count || skipped.length} 张（明细见下方，重复或格式不合法）：`
+      : `成功导入 ${data.count || 0} 张，没有重复或不合法的卡密。`
+    result.details = skipped.map((item) => `${item.code}：${item.reason}`)
+    result.text = (data.cards || []).join('\n')
+    result.visible = true
+
+    toast.success(`已导入 ${data.count || 0} 张卡密`)
+    await Promise.all([loadCards(), loadStats()])
+  } catch {
+    // 失败提示由请求拦截器统一给出（如所有卡密都重复、超过单次上限）
+  } finally {
+    imp.loading = false
   }
 }
 
@@ -1302,6 +1431,7 @@ async function exportCards() {
     result.tip = res?.data?.truncated
       ? '数量超过单次导出上限，已截断；可通过筛选分批导出。'
       : '仅包含未使用且未过期的卡密。'
+    result.details = []
     result.text = list.join('\n')
     result.visible = true
   } catch {
@@ -2096,6 +2226,21 @@ onMounted(async () => {
   display: flex;
   justify-content: flex-end;
   margin-top: 8px;
+}
+/* 导入结果里被跳过的卡密明细 */
+.result-details {
+  margin: 0;
+  padding: 10px 12px 10px 28px;
+  max-height: 132px;
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.8;
+  color: var(--text-soft);
+  background: var(--bg-muted);
+  border-radius: var(--radius);
+}
+.result-details li {
+  word-break: break-all;
 }
 
 .adjust-user {
