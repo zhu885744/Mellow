@@ -5,8 +5,8 @@ import path from 'path'
 export default defineConfig(({ mode }) => {
   // 读取 .env 中的后端地址（VITE_API_URI 等）
   const env = loadEnv(mode, process.cwd(), '')
-  const API_URI = env.VITE_API_URI || 'https://cs.zhuxu.asia'
-  const SOCKET_URI = env.VITE_SOCKET || 'wss://cs.zhuxu.asia/socket'
+  const API_URI = env.VITE_API_URI || 'https://inis.zhuxu.asia'
+  const SOCKET_URI = env.VITE_SOCKET || 'wss://inis.zhuxu.asia/socket'
 
   return {
     plugins: [vue()],

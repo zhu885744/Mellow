@@ -119,7 +119,23 @@
         <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-file-earmark-text'" :text="emptyText" />
       </div>
 
-      <ul v-else class="post-list">
+      <template v-else>
+        <!-- 本页全选 -->
+        <div class="list-head-row">
+          <label class="pick" title="全选本页">
+            <input
+              ref="selectAllRef"
+              type="checkbox"
+              :checked="pageAllSelected"
+              :disabled="busy || !list.length"
+              aria-label="全选本页"
+              @change="toggleSelectAll"
+            />
+          </label>
+          <span class="list-head-text">本页 {{ list.length }} 篇 · 共 {{ total }} 篇</span>
+        </div>
+
+        <ul class="post-list">
         <li v-for="item in list" :key="item.id" class="post-row" :class="{ selected: isSelected(item.id) }">
           <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
             <input
@@ -213,7 +229,8 @@
             </template>
           </div>
         </li>
-      </ul>
+        </ul>
+      </template>
 
       <Pagination
         v-if="!loading && total > pageSize"
@@ -264,7 +281,7 @@
  * 说明：此前 /admin/article 直接指向本文件，统计概览缺失且全部逻辑堆在一页；
  * 现已与用户管理（Users/UserList）、友链管理（Links/LinkList）保持同一结构。
  */
-import { ref, reactive, computed, inject, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, inject, onMounted, onUnmounted, watchEffect } from 'vue'
 import { useRouter } from 'vue-router'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
@@ -557,10 +574,25 @@ function isSelected(id) {
   return selectedIds.value.includes(id)
 }
 
+// 本页全选：以当前列表为范围（跨页选择不保留，翻页时 load() 会清空）
+const pageAllSelected = computed(
+  () => list.value.length > 0 && list.value.every((i) => isSelected(i.id))
+)
+const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSelected.value)
+const selectAllRef = ref(null)
+
+watchEffect(() => {
+  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+})
+
 function toggleSelect(id) {
   const idx = selectedIds.value.indexOf(id)
   if (idx > -1) selectedIds.value.splice(idx, 1)
   else selectedIds.value.push(id)
+}
+
+function toggleSelectAll() {
+  selectedIds.value = pageAllSelected.value ? [] : list.value.map((i) => i.id)
 }
 
 function clearSelection() {
@@ -1023,6 +1055,17 @@ onMounted(() => {
 }
 .post-row.selected {
   background: var(--accent-wash);
+}
+
+.list-head-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px 4px;
+}
+.list-head-text {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .pick {

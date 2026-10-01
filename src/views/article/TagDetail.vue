@@ -128,12 +128,12 @@ async function loadTag() {
 }
 
 // 获取标签下文章数量
-// GET /api/article/count?like=["tags","|id|"]&where={"audit":1}
+// GET /api/article/count?like=["tags","|id|"]&where={"audit":1,"status":1}
 async function loadArticleCount(tagId) {
   try {
     const res = await call('article', 'count', {
       method: 'GET',
-      params: { where: { audit: 1 }, like: tagLike(tagId) }
+      params: { where: { audit: 1, status: 1 }, like: tagLike(tagId) }
     })
     articleCount.value = res.data || 0
   } catch {
@@ -143,7 +143,7 @@ async function loadArticleCount(tagId) {
 
 // 获取标签下文章列表
 // GET /api/article/all?page=1&like=["tags","|id|"]&field=id,title,abstract,covers,views,create_time,publish_time&order=create_time desc
-// where 非 root 用户后端自动加 audit=1，无需前端处理
+// where 非 root 用户后端自动加 audit=1 与 status=1（排除草稿），无需前端处理
 async function loadArticles() {
   const tagId = tagInfo.value?.id
   if (!tagId) return

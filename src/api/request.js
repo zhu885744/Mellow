@@ -65,18 +65,17 @@ devService.interceptors.response.use(
 // INIS 鉴权说明（参考 Cardify-inis 实现，实测 /api/comm/check-token 返回 "Authorization 不能为空！"）：
 // 后端校验的是请求头 Authorization: <token>（裸 JWT，不要加 "Bearer " 前缀）。
 // 登录/注册等匿名接口不带 token；check-token 等鉴权接口需要带 token（由拦截器统一注入）。
-// 不需要带 token 的接口：登录 / 注册 / 校验登录态 / 退出 / 找回密码 / 邮箱验证
+// 不需要带 token 的接口：登录 / 验证码登录 / 注册 / 校验登录态 / 退出 / 找回密码
 //
 // 这些接口**绝对不能**附带残留的旧 token：一旦带上失效 token，后端会先按「token 无效」
 // 把请求拦成 401（登录接口自己都进不去），表现就是「输入账号密码点登录毫无反应」。
 const AUTH_ENDPOINTS = [
   '/comm/login',
+  '/comm/sign-code',
   '/comm/register',
   '/comm/check-token',
   '/comm/logout',
-  '/comm/reset-password',
-  '/comm/verify-email',
-  '/comm/send-verify-mail'
+  '/comm/reset-password'
 ]
 
 const isAuthEndpoint = (url = '') => AUTH_ENDPOINTS.some((item) => String(url).includes(item))

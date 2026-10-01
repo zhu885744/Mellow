@@ -4,7 +4,18 @@
     <section class="card card-pad panel">
       <header class="panel-head">
         <div>
-          <h2 class="block-title">附件管理</h2>
+          <h2 class="block-title">
+            附件管理
+            <span
+              v-if="storage.name"
+              class="store-badge"
+              :class="{ 'is-cloud': storage.driver === 'cos' }"
+              :title="`当前启用的存储方式：${storage.name}（新上传的文件会存到这里）`"
+            >
+              <i :class="storage.driver === 'cos' ? 'bi bi-cloud-check' : 'bi bi-hdd'" />
+              {{ storage.name }}
+            </span>
+          </h2>
           <p class="block-desc">
             管理全站上传附件：预览、重命名、删除与回收站
             <template v-if="total > 0"> · 共 {{ total }} 个</template>
@@ -337,7 +348,8 @@ import {
   forceDeleteAttachments,
   restoreAttachments,
   clearAttachmentRecycle,
-  uploadAttachments
+  uploadAttachments,
+  getAttachmentStorage
 } from '@/api/attachment'
 import {
   ATTACHMENT_FIELD,
@@ -381,6 +393,9 @@ const selectedIds = ref([])
 // ===== 统计 =====
 const loadingStats = ref(false)
 const stats = reactive({ total: 0, size: 0, image: 0, trash: 0 })
+
+// 当前启用的存储方式（后端读 config/storage.toml 的 default，未知值回退本地存储）
+const storage = reactive({ driver: '', name: '' })
 
 // ===== 上传 =====
 const fileRef = ref(null)
@@ -486,6 +501,18 @@ async function loadStats() {
     /* 统计失败不阻塞列表 */
   } finally {
     loadingStats.value = false
+  }
+}
+
+// 存储方式只在挂载时取一次：它来自配置文件，页面停留期间不会变；
+// 取不到就不显示徽章（不影响其余功能）
+async function loadStorage() {
+  try {
+    const res = await getAttachmentStorage()
+    storage.driver = res?.data?.driver || ''
+    storage.name = res?.data?.name || ''
+  } catch {
+    /* 忽略：请求失败由拦截器统一提示 */
   }
 }
 
@@ -792,6 +819,7 @@ function askClearRecycle() {
 onMounted(() => {
   load()
   loadStats()
+  loadStorage()
 })
 </script>
 
@@ -820,6 +848,28 @@ onMounted(() => {
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* 标题右侧的存储方式徽章 */
+.store-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.6;
+  vertical-align: middle;
+}
+.store-badge.is-cloud {
+  border-color: var(--primary-soft);
+  background: var(--primary-soft);
+  color: var(--primary-deep);
 }
 .head-actions {
   display: flex;

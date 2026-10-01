@@ -54,6 +54,16 @@ export const countAttachments = (params = {}) =>
 export const sumAttachmentSize = (params = {}) =>
   call('attachment', 'sum', { method: 'GET', params: { field: 'file_size', ...params } })
 
+/**
+ * 当前启用的存储方式（返回 { driver, name }）
+ *
+ * 注意与附件记录里的 storage_driver 区分：后者是**每个附件上传时**用的驱动（历史数据可能
+ * 残留已下线的 oss / kodo），本接口返回的是配置里当前生效的驱动，即「新上传的文件存到哪儿」。
+ * driver 只有 local（本地存储）/ cos（腾讯云 COS），后端对未知值已回退 local。
+ */
+export const getAttachmentStorage = () =>
+  call('attachment', 'storage', { method: 'GET' })
+
 // 更新附件：允许字段仅 original_name / target_type / target_id
 export const updateAttachment = (data) =>
   call('attachment', 'update', { method: 'PUT', data })

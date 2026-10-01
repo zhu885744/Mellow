@@ -182,9 +182,7 @@ const routes = [
     children: [
       { path: 'login', name: 'login', component: () => import('@/views/auth/Login.vue') },
       { path: 'register', name: 'register', component: () => import('@/views/auth/Register.vue') },
-      { path: 'forgot', name: 'forgot', component: () => import('@/views/auth/Forgot.vue') },
-      // 注册邮箱验证落地页：邮件里的链接形如 /auth/verify?token=xxx
-      { path: 'verify', name: 'verify-email', component: () => import('@/views/auth/VerifyEmail.vue') }
+      { path: 'forgot', name: 'forgot', component: () => import('@/views/auth/Forgot.vue') }
     ]
   },
   // 小黑屋（封禁公示）：独立于前台 MainLayout 的顶级路由，页面自己撑满视口，

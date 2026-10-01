@@ -151,7 +151,10 @@ function resetForm() {
   const item = props.moment || {}
   form.id = item.id ?? null
   form.uid = Number(item.uid) || 0
-  form.audit = Number(item.audit) || 0
+  // 审核状态：0 待审核 / 1 通过 / 2 未通过。缺省按「通过」处理，
+  // 避免旧数据没有该字段时 `Number(undefined) || 0` 把动态打回待审核
+  const audit = Number(item.audit)
+  form.audit = [0, 1, 2].includes(audit) ? audit : 1
   form.content = item.content || ''
   form.images = parseMomentImages(item.images)
   form.location = item.location || ''

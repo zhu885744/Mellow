@@ -105,7 +105,23 @@
         <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-file-earmark'" :text="emptyText" />
       </div>
 
-      <ul v-else class="page-list">
+      <template v-else>
+        <!-- 本页全选 -->
+        <div class="list-head-row">
+          <label class="pick" title="全选本页">
+            <input
+              ref="selectAllRef"
+              type="checkbox"
+              :checked="pageAllSelected"
+              :disabled="busy || !list.length"
+              aria-label="全选本页"
+              @change="toggleSelectAll"
+            />
+          </label>
+          <span class="list-head-text">本页 {{ list.length }} 个 · 共 {{ total }} 个</span>
+        </div>
+
+        <ul class="page-list">
         <li v-for="item in list" :key="item.id" class="page-row" :class="{ selected: isSelected(item.id) }">
           <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
             <input type="checkbox" :checked="isSelected(item.id)" @change="toggleSelect(item.id)" />
@@ -186,7 +202,8 @@
             </template>
           </div>
         </li>
-      </ul>
+        </ul>
+      </template>
 
       <Pagination
         v-if="!loading && total > pageSize"
@@ -228,7 +245,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watchEffect } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -409,10 +426,25 @@ function isSelected(id) {
   return selectedIds.value.includes(id)
 }
 
+// 本页全选：以当前列表为范围（翻页时 load() 会清空选择）
+const pageAllSelected = computed(
+  () => list.value.length > 0 && list.value.every((i) => isSelected(i.id))
+)
+const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSelected.value)
+const selectAllRef = ref(null)
+
+watchEffect(() => {
+  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+})
+
 function toggleSelect(id) {
   const idx = selectedIds.value.indexOf(id)
   if (idx > -1) selectedIds.value.splice(idx, 1)
   else selectedIds.value.push(id)
+}
+
+function toggleSelectAll() {
+  selectedIds.value = pageAllSelected.value ? [] : list.value.map((i) => i.id)
 }
 
 function clearSelection() {
@@ -853,6 +885,17 @@ onMounted(load)
 }
 .page-row:hover {
   background: var(--bg-muted);
+}
+
+.list-head-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px 4px;
+}
+.list-head-text {
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 .pick {

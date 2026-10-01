@@ -20,14 +20,14 @@ export const getArticleGroups = (params = {}) =>
 export const countArticlesByGroup = (groupId) =>
   call('article', 'count', {
     method: 'GET',
-    params: { like: `group|%7C${groupId}%7C`, where: JSON.stringify({ audit: 1 }) }
+    params: { like: `group|%7C${groupId}%7C`, where: JSON.stringify({ audit: 1, status: 1 }) }
   })
 
 // 统计某作者发布的文章数量
 export const countArticlesByAuthor = (uid) =>
   call('article', 'count', {
     method: 'GET',
-    params: { where: JSON.stringify({ uid, audit: 1 }) }
+    params: { where: JSON.stringify({ uid, audit: 1, status: 1 }) }
   })
 
 // 统计某个分类下的文章数（后台用：管理员查询不限审核状态）
@@ -42,7 +42,7 @@ export const getAuthorArticles = (uid, params = {}) =>
   call('article', 'all', {
     method: 'GET',
     params: {
-      where: JSON.stringify({ uid, audit: 1 }),
+      where: JSON.stringify({ uid, audit: 1, status: 1 }),
       field: 'id,title,abstract,views,create_time,group,login',
       order: 'create_time desc',
       page: 1,

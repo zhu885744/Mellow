@@ -191,7 +191,7 @@ async function loadArticles() {
     const res = await listArticles({
       page: 1,
       limit: 8,
-      where: { audit: 1 },
+      where: { audit: 1, status: 1 },
       order: 'top desc, publish_time desc'
     })
     articles.value = res.data?.data || []

@@ -65,7 +65,7 @@ async function load() {
     const res = await listArticles({
       page: 1,
       limit: 999,
-      where: { audit: 1 },
+      where: { audit: 1, status: 1 },
       order: 'publish_time desc',
       field: 'id,title,create_time,publish_time'
     })

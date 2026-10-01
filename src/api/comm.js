@@ -65,6 +65,26 @@ export const login = async (account, password) => {
   })
 }
 
+/**
+ * 验证码登录 - 发送验证码
+ * 后端 /api/comm/sign-code：code 为空时只发码（返回 201），不会登录
+ */
+export const signCodeSend = (social) =>
+  call('comm', 'sign-code', {
+    method: 'POST',
+    data: { social }
+  })
+
+/**
+ * 验证码登录 - 校验并登录
+ * 返回结构与密码登录一致（data: { user, token, valid_time }）
+ */
+export const signCode = (social, code) =>
+  call('comm', 'sign-code', {
+    method: 'POST',
+    data: { social, code }
+  })
+
 // 注册（发送验证码）
 export const registerSendCode = (social) =>
   call('comm', 'register', {
@@ -95,26 +115,6 @@ export const register = async (social, code, password, account = '', nickname = 
     config: { headers, timeout: 10000 }
   })
 }
-
-/**
- * 邮箱验证：注册验证方式为「Email 验证」时，用户点击邮件里的链接后调用
- * 后端 comm/verify-email（公共接口，无需登录）
- */
-export const verifyEmail = (token) =>
-  call('comm', 'verify-email', {
-    method: 'POST',
-    data: { token }
-  })
-
-/**
- * 重发注册验证邮件（仅对「已注册且邮箱未验证」的账号真正发信）
- * 后端 comm/send-verify-mail，60 秒内同一账号只允许发一次
- */
-export const sendVerifyMail = (email) =>
-  call('comm', 'send-verify-mail', {
-    method: 'POST',
-    data: { email }
-  })
 
 // 重置密码 - 发送验证码
 export const resetPasswordSendCode = (social) =>

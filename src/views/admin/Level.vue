@@ -72,6 +72,27 @@
         </button>
       </div>
 
+      <!-- 批量操作栏（选中后出现） -->
+      <div v-if="selectedIds.length" class="batch-bar">
+        <span class="batch-count">已选 <strong>{{ selectedIds.length }}</strong> 个</span>
+        <div class="batch-actions">
+          <template v-if="trash">
+            <button class="btn btn-sm" :disabled="busy" @click="batchRestore()">
+              <i class="bi bi-arrow-counterclockwise" /> 批量恢复
+            </button>
+            <button class="btn btn-sm btn-danger" :disabled="busy" @click="askBatchForceDelete()">
+              <i class="bi bi-x-octagon" /> 批量彻底删除
+            </button>
+          </template>
+          <template v-else>
+            <button class="btn btn-sm btn-danger" :disabled="busy" @click="askBatchRemove()">
+              <i class="bi bi-trash" /> 批量删除
+            </button>
+          </template>
+          <button class="btn btn-sm btn-ghost" :disabled="busy" @click="clearSelection">取消选择</button>
+        </div>
+      </div>
+
       <!-- 列表 -->
       <div v-if="loading" class="loading">
         <span class="spinner" /> 加载中...
@@ -81,9 +102,40 @@
         <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-bar-chart'" :text="emptyText" />
       </div>
 
-      <ul v-else class="level-list">
-        <li v-for="item in list" :key="item.id" class="level-row">
-          <span class="level-badge">Lv.{{ item.value }}</span>
+      <template v-else>
+        <!-- 本页全选 -->
+        <div class="list-head-row">
+          <label class="pick" title="全选本页">
+            <input
+              ref="selectAllRef"
+              type="checkbox"
+              :checked="pageAllSelected"
+              :disabled="busy || !list.length"
+              aria-label="全选本页"
+              @change="toggleSelectAll"
+            />
+          </label>
+          <span class="list-head-text">本页 {{ list.length }} 个 · 共 {{ total }} 个</span>
+        </div>
+
+        <ul class="level-list">
+          <li
+            v-for="item in list"
+            :key="item.id"
+            class="level-row"
+            :class="{ selected: isSelected(item.id) }"
+          >
+            <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
+              <input
+                type="checkbox"
+                :checked="isSelected(item.id)"
+                :disabled="busy"
+                :aria-label="`选择等级 ${item.name || `Lv.${item.value}`}`"
+                @change="toggleSelect(item.id)"
+              />
+            </label>
+
+            <span class="level-badge">Lv.{{ item.value }}</span>
 
           <div class="level-main">
             <div class="level-name-row">
@@ -120,7 +172,8 @@
             </template>
           </div>
         </li>
-      </ul>
+        </ul>
+      </template>
 
       <Pagination
         v-if="!loading && total > pageSize"
@@ -214,7 +267,7 @@
  * - 等级值 / 经验都是整数，允许 0（后端没有 Is.Empty 校验，0 可正常写入）；
  * - 用户当前等级由 Users 模型按 exp 查询得出（result.level），改动等级会直接影响前台展示。
  */
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watchEffect } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -294,6 +347,7 @@ function timeText(item) {
 // ---------- 数据加载 ----------
 async function load() {
   loading.value = true
+  selectedIds.value = []
   try {
     const params = {
       page: page.value,
@@ -500,6 +554,89 @@ function askClearRecycle() {
   })
 }
 
+// ---------- 多选 ----------
+const selectedIds = ref([])
+const selectedSet = computed(() => new Set(selectedIds.value))
+const pageAllSelected = computed(
+  () => list.value.length > 0 && list.value.every((i) => selectedSet.value.has(i.id))
+)
+const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSelected.value)
+const selectAllRef = ref(null)
+
+watchEffect(() => {
+  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+})
+
+function isSelected(id) {
+  return selectedSet.value.has(id)
+}
+
+function toggleSelect(id) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = [...next]
+}
+
+function toggleSelectAll() {
+  selectedIds.value = pageAllSelected.value ? [] : list.value.map((i) => i.id)
+}
+
+function clearSelection() {
+  selectedIds.value = []
+}
+
+// ---------- 批量操作 ----------
+function askBatchRemove() {
+  const ids = [...selectedIds.value]
+  if (!ids.length) return
+  openConfirm({
+    title: '批量删除',
+    message: `确定删除选中的 ${ids.length} 个等级吗？删除后可在回收站找回。`,
+    confirmText: '删除',
+    danger: true,
+    action: async () => {
+      await removeLevels(ids)
+      toast.success(`已删除 ${ids.length} 个等级`)
+      selectedIds.value = []
+      await load()
+    }
+  })
+}
+
+async function batchRestore() {
+  const ids = [...selectedIds.value]
+  if (!ids.length) return
+  busy.value = true
+  try {
+    await restoreLevels(ids)
+    toast.success(`已恢复 ${ids.length} 个等级`)
+    selectedIds.value = []
+    await load()
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    busy.value = false
+  }
+}
+
+function askBatchForceDelete() {
+  const ids = [...selectedIds.value]
+  if (!ids.length) return
+  openConfirm({
+    title: '批量彻底删除',
+    message: `确定彻底删除选中的 ${ids.length} 个等级吗？此操作不可恢复！`,
+    confirmText: '彻底删除',
+    danger: true,
+    action: async () => {
+      await forceDeleteLevels(ids)
+      toast.success(`已彻底删除 ${ids.length} 个等级`)
+      selectedIds.value = []
+      await load()
+    }
+  })
+}
+
 onMounted(load)
 </script>
 
@@ -622,6 +759,59 @@ onMounted(load)
   border-radius: var(--radius);
 }
 
+/* ---------- 批量操作栏 ---------- */
+.batch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--accent-wash);
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius);
+}
+.batch-count {
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.batch-count strong {
+  color: var(--primary-deep);
+}
+.batch-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.list-head-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 8px 4px;
+}
+.list-head-text {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.pick {
+  display: flex;
+  align-items: center;
+  align-self: center;
+  cursor: pointer;
+}
+.pick input {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.pick input:disabled {
+  cursor: not-allowed;
+  opacity: 0.4;
+}
+
 /* ---------- 列表 ---------- */
 .loading {
   padding: 40px;
@@ -650,6 +840,9 @@ onMounted(load)
 }
 .level-row:hover {
   background: var(--bg-muted);
+}
+.level-row.selected {
+  background: var(--accent-wash);
 }
 
 .level-badge {

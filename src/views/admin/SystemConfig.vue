@@ -159,7 +159,7 @@
               <div>
                 <h3 class="cfg-title">{{ CONTENT_KEYS[tab].title }}</h3>
                 <p class="cfg-desc">
-                  编辑器、审核与评论开关；审核开启后，新建内容默认进入待审核
+                  编辑器、审核与评论开关；审核开启后，用户新发布的内容默认进入待审核
                 </p>
               </div>
             </header>
@@ -180,6 +180,10 @@
                   variant="field"
                   :options="ON_OFF"
                 />
+                <p class="form-hint">
+                  开启后，用户新发布的{{ CONTENT_KEYS[tab].name }}需管理员审核通过才对外可见；关闭则发布即通过。
+                  已存在的{{ CONTENT_KEYS[tab].name }}二次编辑保存不会被打回待审核
+                </p>
               </div>
               <div class="form-item">
                 <label class="form-label">允许评论</label>
@@ -388,7 +392,7 @@
               <header class="cfg-head">
                 <div>
                   <h3 class="cfg-title">注册后发布欢迎消息</h3>
-                  <p class="cfg-desc">两项可同时开启；人工审核模式下通过审核时发送，邮箱验证模式下验证通过时发送</p>
+                  <p class="cfg-desc">两项可同时开启；人工审核模式下管理员通过审核时发送</p>
                 </div>
               </header>
               <div class="form-grid">
@@ -809,7 +813,7 @@
                 <div>
                   <h3 class="cfg-title">发件队列</h3>
                   <p class="cfg-desc">
-                    通知类邮件统一入队后分批发送（验证码 / 注册验证邮件入队即发，不受分批限制），
+                    通知类邮件统一入队后分批发送（验证码入队即发，不受分批限制），
                     失败按「重试延迟」重新入队，达到「最大尝试次数」后标记失败并丢弃；
                     保存后立即生效，无需重启
                   </p>
@@ -1104,9 +1108,9 @@
  *   邮件统一走邮箱队列（app/facade/mail_queue.go）分批投递，失败自动延迟重试；
  * - ALLOW_REGISTER 的 json 存注册扩展设置（见 app/model/register.go）：
  *   email_domain_mode（off/whitelist/blacklist）+ email_whitelist / email_blacklist、
- *   verify_mode（none/email/manual）、welcome_message / welcome_email；
- *   none 直接注册并登录，email 会标记 email_verified=0 并发验证邮件（/auth/verify），
- *   manual 会把 status 置为 2（待审核），两者都需通过后才能登录；
+ *   verify_mode（none/manual）、welcome_message / welcome_email；
+ *   none 直接注册并登录（注册本身已用邮箱/短信验证码证明所有权），
+ *   manual 会把 status 置为 2（待审核），需管理员通过后才能登录；
  * - 内容配置 ARTICLE / MOMENTS / PAGE 结构相同（editor / audit / comment{allow,show}），
  *   分别由 article.go、moments.go、pages.go 的 config() 读取，audit 决定新建内容的默认审核态；
  *   评论配置 COMMENT 结构独立（allow / rate_limit / max_length / require_chinese /
@@ -1217,10 +1221,10 @@ const SMS_DRIVERS = [
   { value: 'tencent', label: '腾讯云短信' }
 ]
 
-// 新用户注册验证方式（对应后端 model.RegisterVerify* 三个常量）
+// 新用户注册验证方式（对应后端 model.RegisterVerify* 常量）
+// 邮箱验证已移除：注册本身就要求邮箱/手机验证码，邮箱所有权在注册时已证明
 const REGISTER_VERIFY_OPTIONS = [
   { value: 'none', label: '无（注册后直接登录）' },
-  { value: 'email', label: 'Email 验证（验证通过后才能登录）' },
   { value: 'manual', label: '人工审核（管理员通过后才能登录）' }
 ]
 
@@ -1249,10 +1253,11 @@ const modules = [
 ]
 
 // 内容配置的 key 与展示名（PAGE / ARTICLE / MOMENTS 三份结构相同）
+// name 用于审核开关等说明文案，避免把「文章配置」整串写进句子
 const CONTENT_KEYS = {
-  article: { key: 'ARTICLE', title: '文章配置' },
-  moments: { key: 'MOMENTS', title: '动态配置' },
-  pagesCfg: { key: 'PAGE', title: '独立页面配置' }
+  article: { key: 'ARTICLE', title: '文章配置', name: '文章' },
+  moments: { key: 'MOMENTS', title: '动态配置', name: '动态' },
+  pagesCfg: { key: 'PAGE', title: '独立页面配置', name: '独立页面' }
 }
 
 const EDITOR_OPTIONS = [
@@ -1397,7 +1402,7 @@ const cfg = reactive({
  * 默认值与取值范围改动时两边要同步。
  */
 const MAIL_QUEUE_FIELDS = [
-  { key: 'batch_size', label: '每批数量', def: 10, min: 1, max: 1000, hint: '一个批次窗口内最多发送多少封通知类邮件；验证码 / 注册验证邮件不受此限制，入队即发' },
+  { key: 'batch_size', label: '每批数量', def: 10, min: 1, max: 1000, hint: '一个批次窗口内最多发送多少封通知类邮件；验证码不受此限制，入队即发' },
   { key: 'batch_interval', label: '批次间隔（秒）', def: 600, min: 1, max: 86400, hint: '一批发满后等待多久再开下一个窗口（600 = 10 分钟）' },
   { key: 'retry_delay', label: '重试延迟（秒）', def: 60, min: 1, max: 86400, hint: '发送失败后延迟多久重新入队重试' },
   { key: 'max_attempts', label: '最大尝试次数', def: 3, min: 1, max: 10, hint: '含首次发送，达到上限后标记失败并丢弃，不会无限重试' },
@@ -1542,16 +1547,11 @@ function parseDomainText(text) {
 }
 
 // 注册验证方式 / 域名限制的说明文案
-const registerVerifyHint = computed(() => {
-  switch (cfg.register.verifyMode) {
-    case 'email':
-      return '选择「Email 验证」将向用户注册 Email 发送一封验证邮件以确认邮箱的有效性，验证通过前无法登录'
-    case 'manual':
-      return '选择「人工审核」将由管理员在「用户管理」中逐个确定是否允许新用户登录'
-    default:
-      return '选择「无」用户可直接注册成功（仍需要邮箱/短信验证码）'
-  }
-})
+const registerVerifyHint = computed(() =>
+  cfg.register.verifyMode === 'manual'
+    ? '选择「人工审核」将由管理员在「用户管理」中逐个确定是否允许新用户登录'
+    : '选择「无」用户可直接注册成功（注册本身已需要邮箱/短信验证码）'
+)
 const registerDomainHint = computed(() => {
   switch (cfg.register.domainMode) {
     case 'whitelist':
@@ -1599,8 +1599,8 @@ function readRegisterConfig(raw) {
   cfg.register.whitelistText = domainText(json.email_whitelist)
   cfg.register.blacklistText = domainText(json.email_blacklist)
 
-  // 注册验证方式
-  cfg.register.verifyMode = ['email', 'manual'].includes(json.verify_mode) ? json.verify_mode : 'none'
+  // 注册验证方式（历史配置里残留的 email 已废弃，不再提供，一律按「无」处理）
+  cfg.register.verifyMode = json.verify_mode === 'manual' ? 'manual' : 'none'
 
   // 欢迎消息 / 欢迎邮件
   cfg.register.welcomeMessage = Number(json.welcome_message) ? '1' : '0'

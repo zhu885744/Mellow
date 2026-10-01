@@ -370,7 +370,7 @@ async function loadSiteInfo() {
 async function loadStats() {
   try {
     const [a, m, l] = await Promise.all([
-      call('article', 'count', { method: 'GET', params: { where: { audit: 1 } } }),
+      call('article', 'count', { method: 'GET', params: { where: { audit: 1, status: 1 } } }),
       call('moments', 'count', { method: 'GET', params: { where: { audit: 1, status: 1 } } }),
       call('links', 'count', { method: 'GET' })
     ])

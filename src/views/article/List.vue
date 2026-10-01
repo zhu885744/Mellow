@@ -85,7 +85,7 @@ async function load() {
     const params = {
       page: page.value,
       limit: pageSize,
-      where: { audit: 1 },
+      where: { audit: 1, status: 1 },
       order: filter.value.sort
     }
     // 分组过滤：group 字段直接匹配
