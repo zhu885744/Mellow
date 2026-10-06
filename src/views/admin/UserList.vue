@@ -250,6 +250,11 @@
                   <i class="bi bi-box-arrow-up-right" />
                 </router-link>
 
+                <!-- 查看该用户拥有 / 佩戴中的装扮（只读） -->
+                <button class="btn btn-ghost btn-sm" title="查看装扮" aria-label="查看装扮" @click="openDecorations(item)">
+                  <i class="bi bi-gem" />
+                </button>
+
                 <button class="btn btn-ghost btn-sm" title="编辑资料" aria-label="编辑资料" @click="openEdit(item)">
                   <i class="bi bi-pencil" />
                 </button>
@@ -595,6 +600,58 @@
       </div>
     </AdminFormDialog>
 
+    <!-- 查看用户装扮（只读）：佩戴中的用标签标出，含有效期与获得来源 -->
+    <AdminFormDialog
+      v-model:visible="decos.visible"
+      title="用户装扮"
+      icon="bi bi-gem"
+      width="620px"
+      :loading="decos.loading"
+    >
+      <p class="dialog-tip">
+        <strong>{{ decos.nickname || `用户 ${decos.uid}` }}</strong> 的装扮清单（含系统默认装扮，标注「默认」）。
+        发放 / 回收请到「装扮管理」操作。
+      </p>
+
+      <div v-if="decos.loading" class="loading"><span class="spinner" /> 加载中...</div>
+
+      <template v-else>
+        <div v-if="!decos.groups.length" class="dialog-empty">该用户暂无任何装扮</div>
+
+        <div v-for="group in decos.groups" :key="group.type" class="deco-group">
+          <div class="deco-group-head">
+            <span><i :class="group.icon" /> {{ group.name }}</span>
+            <span class="deco-group-count">{{ group.items.length }} 件</span>
+          </div>
+          <ul class="deco-item-list">
+            <li v-for="item in group.items" :key="item.id" class="deco-item">
+              <img
+                v-if="item.type === 'avatar_frame'"
+                :src="item.preview || item.payload?.image"
+                class="deco-thumb"
+                :alt="item.name"
+              />
+              <i v-else class="bi bi-award deco-thumb-icon" />
+
+              <span class="deco-item-name">{{ item.name }}</span>
+              <span v-if="item.wearing" class="deco-tag is-wearing">佩戴中</span>
+              <span v-else-if="item.expired" class="deco-tag is-expired">已过期</span>
+              <span v-else-if="item.off_shelf" class="deco-tag is-expired">已下架</span>
+              <span v-else-if="item.is_default" class="deco-tag">默认</span>
+
+              <span class="deco-item-meta">
+                {{ decoDuration(item) }}<template v-if="item.source"> · {{ decoSource(item) }}</template>
+              </span>
+            </li>
+          </ul>
+        </div>
+      </template>
+
+      <template #footer>
+        <button class="btn" type="button" @click="decos.visible = false">关闭</button>
+      </template>
+    </AdminFormDialog>
+
     <!-- 操作确认 -->
     <ConfirmDialog
       v-model:visible="confirm.visible"
@@ -660,6 +717,7 @@ import {
   clearUserRecycle
 } from '@/api/users'
 import { listAuthGroups, setUserAuthGroups } from '@/api/auth-group'
+import { getUserDecorations } from '@/api/decoration'
 import { uploadAttachments } from '@/api/attachment'
 import { fromNow, formatTime } from '@/utils/time'
 import { debounce } from '@/utils/helper'
@@ -1535,6 +1593,64 @@ async function submitBan() {
   }
 }
 
+// ---------- 用户装扮（只读查看） ----------
+// 数据来自 decoration/user-decorations（管理员），结构同「我的装扮」：
+// { user, types, wearing, list }，list 按类型分组，含系统默认装扮。
+const decos = reactive({
+  visible: false,
+  loading: false,
+  uid: 0,
+  nickname: '',
+  groups: []
+})
+
+const DECORATION_SOURCE_TEXT = {
+  shop: '商城兑换',
+  admin: '管理员发放',
+  activity: '活动获得',
+  level: '等级解锁',
+  gacha: '抽卡获得',
+  default: '系统默认'
+}
+
+function decoSource(item) {
+  return DECORATION_SOURCE_TEXT[item.source] || item.source
+}
+
+// 有效期文案：已过期 / 永久 / 剩余 N 天
+function decoDuration(item) {
+  if (item.expired) return '已过期'
+  const expire = Number(item.expire_time) || 0
+  if (!expire) return '永久有效'
+  const days = Math.ceil((expire * 1000 - Date.now()) / 86400000)
+  return days <= 0 ? '即将过期' : `剩余 ${days} 天`
+}
+
+async function openDecorations(item) {
+  decos.uid = Number(item.id)
+  decos.nickname = item.nickname || ''
+  decos.groups = []
+  decos.visible = true
+  decos.loading = true
+  try {
+    const res = await getUserDecorations(decos.uid)
+    const data = res?.data || {}
+    decos.groups = (data.types || [])
+      .map((type) => ({
+        type: type.type,
+        name: type.name,
+        icon: type.icon,
+        items: data.list?.[type.type] || []
+      }))
+      // 只展示该用户确实有内容的分类，避免一堆空分区
+      .filter((group) => group.items.length > 0)
+  } catch {
+    decos.groups = []
+  } finally {
+    decos.loading = false
+  }
+}
+
 // ---------- 权限组 ----------
 const groups = reactive({
   visible: false,
@@ -2211,6 +2327,79 @@ onUnmounted(() => {
 .ban-clear-option input {
   margin-top: 2px;
   flex-shrink: 0;
+}
+
+/* ---------- 查看用户装扮 ---------- */
+.deco-group + .deco-group {
+  margin-top: 14px;
+}
+.deco-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 13px;
+  font-weight: 600;
+}
+.deco-group-count {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
+.deco-item-list {
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.deco-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+}
+.deco-thumb {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+.deco-thumb-icon {
+  width: 26px;
+  text-align: center;
+  color: var(--primary);
+}
+.deco-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.deco-tag {
+  flex-shrink: 0;
+  padding: 0 6px;
+  font-size: 11px;
+  line-height: 18px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+.deco-tag.is-wearing {
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+}
+.deco-tag.is-expired {
+  background: rgba(217, 84, 77, 0.12);
+  color: var(--danger);
+}
+.deco-item-meta {
+  margin-left: auto;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 
 @media (max-width: 768px) {

@@ -58,22 +58,28 @@
           </div>
         </div>
 
-        <!-- 头像框 -->
+        <!-- 头像框：数据来自「我的装扮」，可在商城解锁更多 -->
         <div class="preset-section">
           <div class="preset-label">
             <span><i class="bi bi-border-style" /> 头像框</span>
-            <button v-if="form.frame" class="btn-link" @click="form.frame = ''">移除</button>
-          </div>
-          <div class="frame-grid">
-            <button
-              v-for="(url, idx) in PRESET_FRAMES"
-              :key="idx"
-              :class="['frame-item', { selected: form.frame === url }]"
-              @click="form.frame = form.frame === url ? '' : url"
-            >
-              <img :src="url" :alt="`头像框 ${idx + 1}`" />
+            <button v-if="wearingIds.avatar_frame" class="btn-link" @click="unwearDecorationItem('avatar_frame')">
+              移除
             </button>
           </div>
+          <div v-if="ownedFrames.length" class="frame-grid">
+            <button
+              v-for="item in ownedFrames"
+              :key="item.id"
+              :class="['frame-item', { selected: wearingIds.avatar_frame === item.id }]"
+              :title="item.name"
+              @click="wearDecorationItem(item)"
+            >
+              <img :src="item.preview || item.payload?.image" :alt="item.name" />
+            </button>
+          </div>
+          <p v-else class="hint">
+            暂无可用的头像框，<RouterLink to="/goods?tab=decoration">前往装扮商城</RouterLink>
+          </p>
         </div>
       </div>
 
@@ -97,33 +103,58 @@
 
           <div class="form-item">
             <label class="form-label">头衔</label>
-            <!-- 当前头衔标签 -->
+            <!-- 当前佩戴的头衔（样式由装扮 payload 驱动） -->
             <div class="current-title-row">
               <span class="current-title-label">当前头衔：</span>
-              <span
-                v-if="form.title"
-                :class="['current-title', getTitleColorClass(form.title), { 'is-custom': isCustomTitle }]"
-              >
-                {{ form.title }}
-                <i v-if="isCustomTitle" class="bi bi-patch-exclamation" title="自定义头衔（预设中不存在）" />
-              </span>
+              <TitleBadge
+                v-if="decorationStore.wearing?.title"
+                :payload="currentTitlePayload"
+                :text="form.title"
+              />
+              <span v-else-if="form.title" class="current-title">{{ form.title }}</span>
               <span v-else class="current-title empty">未设置</span>
-              <button v-if="form.title" type="button" class="btn-link clear-title" @click="clearTitle">清除</button>
-            </div>
-            <div class="preset-titles">
               <button
-                v-for="title in PRESET_TITLES"
-                :key="title"
+                v-if="decorationStore.wearing?.title"
                 type="button"
-                :class="['preset-title', getTitleColorClass(title), { selected: form.title === title }]"
-                @click="selectPresetTitle(title)"
+                class="btn-link clear-title"
+                @click="unwearDecorationItem('title')"
               >
-                <i v-if="form.title === title" class="bi bi-check-circle-fill" />
-                {{ title }}
+                卸下
               </button>
             </div>
-            <p v-if="isCustomTitle" class="hint custom-title-hint">
-              <i class="bi bi-info-circle" /> 当前为自定义头衔，不在上方预设列表中，保存后将继续保留。
+
+            <!-- 已拥有的头衔 -->
+            <div class="preset-titles">
+              <button
+                v-for="item in ownedTitles"
+                :key="item.id"
+                type="button"
+                :class="['preset-title', { selected: wearingIds.title === item.id }]"
+                @click="wearDecorationItem(item)"
+              >
+                <i v-if="wearingIds.title === item.id" class="bi bi-check-circle-fill" />
+                {{ item.payload?.text || item.name }}
+              </button>
+            </div>
+
+            <!-- 纯样式类头衔：佩戴前需要自填文字 -->
+            <div v-if="pendingTitle" class="custom-title-editor">
+              <input
+                v-model="customTitleInput"
+                class="input"
+                maxlength="10"
+                placeholder="请输入头衔文字（最多 10 字）"
+              />
+              <div class="custom-title-actions">
+                <button type="button" class="btn btn-primary" @click="applyWear(pendingTitle, customTitleInput)">
+                  确定佩戴
+                </button>
+                <button type="button" class="btn" @click="pendingTitle = null">取消</button>
+              </div>
+            </div>
+
+            <p class="hint">
+              头衔与头像框均可在商城中解锁，<RouterLink to="/goods?tab=decoration">前往装扮商城</RouterLink>
             </p>
           </div>
 
@@ -158,8 +189,10 @@
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { updateUser, uploadAvatar } from '@/api/users'
+import { getMyDecorations, wearDecoration, unwearDecoration } from '@/api/decoration'
 import { toast } from '@/utils/toast'
 import AvatarFrame from '@/components/AvatarFrame.vue'
+import TitleBadge from '@/components/TitleBadge.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 
 const userStore = useUserStore()
@@ -172,30 +205,73 @@ const DEFAULT_AVATARS = [
   'https://img.zhuxu.asia/tx/5.png'
 ]
 
-const PRESET_FRAMES = [
-  'https://img.zhuxu.asia/txk/1.gif',
-  'https://img.zhuxu.asia/txk/2.png',
-  'https://img.zhuxu.asia/txk/3.gif',
-  'https://img.zhuxu.asia/txk/4.png',
-  'https://img.zhuxu.asia/txk/5.gif',
-  'https://img.zhuxu.asia/txk/6.png',
-  'https://img.zhuxu.asia/txk/7.gif',
-  'https://img.zhuxu.asia/txk/8.png',
-  'https://img.zhuxu.asia/txk/9.gif',
-  'https://img.zhuxu.asia/txk/10.png',
-  'https://img.zhuxu.asia/txk/11.gif',
-  'https://img.zhuxu.asia/txk/12.png',
-  'https://img.zhuxu.asia/txk/13.gif',
-  'https://img.zhuxu.asia/txk/14.png',
-  'https://img.zhuxu.asia/txk/15.gif',
-  'https://img.zhuxu.asia/txk/16.png',
-  'https://img.zhuxu.asia/txk/17.gif',
-  'https://img.zhuxu.asia/txk/18.png',
-  'https://img.zhuxu.asia/txk/19.gif',
-  'https://img.zhuxu.asia/txk/20.png'
-]
+// ===== 装扮（头像框 / 头衔）=====
+// 全部来自后台「装扮管理」，前端不再硬编码：后台增删改装扮后前端自动生效。
+const decorationStore = ref({ types: [], wearing: {}, list: {} })
 
-const PRESET_TITLES = ['掌门', '长老', '护法', '内门弟子', '外门弟子', '炼气修士', '筑基修士', '结丹修士', '元婴老祖', '化神大能']
+// 已拥有且未过期的装扮
+const ownedDecorations = (type) =>
+  (decorationStore.value.list?.[type] || []).filter((item) => item.owned && !item.expired)
+
+const ownedFrames = computed(() => ownedDecorations('avatar_frame'))
+const ownedTitles = computed(() => ownedDecorations('title'))
+
+// 各类型当前佩戴中的装扮ID
+const wearingIds = computed(() => {
+  const map = {}
+  Object.values(decorationStore.value.wearing || {}).forEach((item) => {
+    if (item?.id) map[item.type] = item.id
+  })
+  return map
+})
+
+// 当前头衔样式（供 TitleBadge 渲染）
+const currentTitlePayload = computed(() => decorationStore.value.wearing?.title?.payload || {})
+
+async function loadDecorations() {
+  try {
+    const res = await getMyDecorations()
+    decorationStore.value = res.data || { types: [], wearing: {}, list: {} }
+  } catch {
+    decorationStore.value = { types: [], wearing: {}, list: {} }
+  }
+}
+
+// 纯样式类头衔需要用户自填文字
+const pendingTitle = ref(null)
+const customTitleInput = ref('')
+
+// 点击装扮：样式模板且无自带文字时，先让用户填写文字
+function wearDecorationItem(item) {
+  if (item.type === 'title' && !item.payload?.text) {
+    pendingTitle.value = item
+    customTitleInput.value = item.custom_text || ''
+    return
+  }
+  applyWear(item, '')
+}
+
+async function applyWear(item, text = '') {
+  try {
+    await wearDecoration(item.id, text)
+    toast.success(item.type === 'title' ? '头衔已佩戴' : '头像框已佩戴')
+    pendingTitle.value = null
+    customTitleInput.value = ''
+    await Promise.all([loadDecorations(), userStore.checkLoginState()])
+  } catch {
+    // 错误已由拦截器提示
+  }
+}
+
+async function unwearDecorationItem(type) {
+  try {
+    await unwearDecoration(type)
+    toast.success(type === 'title' ? '头衔已卸下' : '头像框已移除')
+    await Promise.all([loadDecorations(), userStore.checkLoginState()])
+  } catch {
+    // 错误已由拦截器提示
+  }
+}
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/></svg>'
 
@@ -214,22 +290,6 @@ const form = reactive({
   frame: ''
 })
 const originalData = reactive({})
-
-function getTitleColorClass(title) {
-  const map = {
-    '掌门': 'title-zhangmen',
-    '长老': 'title-zhanglao',
-    '护法': 'title-hufa',
-    '内门弟子': 'title-neimen',
-    '外门弟子': 'title-waimen',
-    '炼气修士': 'title-lianqi',
-    '筑基修士': 'title-zhuji',
-    '结丹修士': 'title-jiedan',
-    '元婴老祖': 'title-yuanying',
-    '化神大能': 'title-huashen'
-  }
-  return map[title] || 'title-default'
-}
 
 function onAvatarFileChange(e) {
   const file = e.target.files?.[0]
@@ -296,19 +356,6 @@ function selectDefaultAvatar(url) {
   toast.success('已选择默认头像，请点击「保存修改」完成更新')
 }
 
-function selectPresetTitle(title) {
-  form.title = title
-  toast.success('头衔已应用，请点击「保存修改」完成更新')
-}
-
-// 当前头衔是否为预设之外的自定义头衔
-const isCustomTitle = computed(() => !!form.title && !PRESET_TITLES.includes(form.title))
-
-function clearTitle() {
-  form.title = ''
-  toast.info('已清除头衔，请点击「保存修改」完成更新')
-}
-
 function removeAvatar() {
   form.avatar = ''
   toast.info('头像已移除，请点击「保存修改」完成更新')
@@ -326,6 +373,7 @@ function fetchUserInfo() {
     else form.gender = 0
     form.description = u.description || ''
     form.avatar = u.avatar || ''
+    // title / frame 由装扮系统维护（佩戴时服务端自动回写），这里仅用于展示
     form.title = u.title || ''
     form.frame = u.json?.frame || ''
     Object.assign(originalData, { ...form })
@@ -343,17 +391,16 @@ async function save() {
   try {
     // 性别映射：1->boy, 2->girl, 0->空
     const genderMap = { 1: 'boy', 2: 'girl', 0: '' }
-    // 合并既有 json，只更新 frame
+    // 头衔 / 头像框由装扮系统维护（佩戴走 /decoration/wear 服务端回写），
+    // 这里不再提交，避免把服务端已写入的值覆盖回旧值；json 原样回传以防后端整体替换
     const currentJson = (userStore.user?.json && typeof userStore.user.json === 'object') ? { ...userStore.user.json } : {}
-    const mergedJson = { ...currentJson, frame: form.frame || '' }
 
     const payload = {
       id: form.id,
       nickname: form.nickname,
       description: form.description,
       avatar: form.avatar,
-      title: form.title,
-      json: mergedJson
+      json: currentJson
     }
     if (form.gender !== 0) {
       payload.gender = genderMap[form.gender]
@@ -371,7 +418,10 @@ async function save() {
   }
 }
 
-onMounted(fetchUserInfo)
+onMounted(() => {
+  fetchUserInfo()
+  loadDecorations()
+})
 watch(() => userStore.user, (nu) => {
   if (nu && Object.keys(nu).length > 0) fetchUserInfo()
 }, { immediate: true })
@@ -568,6 +618,26 @@ watch(() => userStore.user, (nu) => {
 }
 .custom-title-hint {
   margin-top: 10px;
+}
+/* 纯样式类头衔：佩戴前自填文字 */
+.custom-title-editor {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.custom-title-editor .input {
+  flex: 1;
+  min-width: 160px;
+}
+.custom-title-actions {
+  display: flex;
+  gap: 8px;
 }
 /* 头衔颜色（与评论/动态/作者主页统一） */
 .title-zhangmen { background: linear-gradient(135deg, #c8a04a, #b07d2e); }

@@ -174,6 +174,7 @@ const typeOptions = [
   { value: 'page', label: '页面' },
   { value: 'links', label: '友链' },
   { value: 'moments', label: '动态' },
+  { value: 'decoration', label: '装扮' },
   { value: 'system', label: '系统' }
 ]
 
@@ -200,6 +201,8 @@ const typeMap = {
   page: '页面',
   links: '友链',
   moments: '动态',
+  // 装扮：获得 / 续期 / 被回收 / 即将过期 / 已过期
+  decoration: '装扮',
   system: '系统'
 }
 
@@ -253,6 +256,7 @@ function iconOf(t) {
     page: 'bi bi-file-earmark',
     links: 'bi bi-link-45deg',
     moments: 'bi bi-chat-square-text',
+    decoration: 'bi bi-gem',
     system: 'bi bi-megaphone'
   })[t] || 'bi bi-bell'
 }
@@ -318,6 +322,9 @@ async function onClick(n) {
   } else if (n.bind_type === 'integral-card') {
     // 管理员绑定的积分卡密：去「我的积分 → 卡密兑换」兑换
     router.push('/user/integral')
+  } else if (n.bind_type === 'decoration') {
+    // 装扮（获得 / 续期 / 回收 / 过期）：去「我的装扮」查看与佩戴
+    router.push('/user/decorations')
   } else if (n.bind_type === 'moments' && n.bind_id) {
     router.push('/moments')
   } else if (n.bind_type === 'user' && n.bind_id) {

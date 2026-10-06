@@ -87,7 +87,7 @@ export const redeemIntegralCard = (card) =>
 
 // 后台商品列表字段：管理员需要 cards / deliver_content（非管理员会被后端剔除）
 export const GOODS_ADMIN_FIELD =
-  'id,title,description,cover,price,stock,status,type,deliver_type,deliver_content,cards,category,limit_per_user,min_exp,start_time,end_time,sort,sold,create_time,update_time,delete_time'
+  'id,title,description,cover,price,stock,status,type,deliver_type,deliver_content,cards,decoration_id,category,limit_per_user,min_exp,start_time,end_time,sort,sold,create_time,update_time,delete_time'
 
 /**
  * 商品列表（管理员：默认含下架商品；传 onlyTrashed=true 看回收站）

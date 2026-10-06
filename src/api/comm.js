@@ -143,3 +143,10 @@ export const checkToken = (renew = false) =>
 // 退出登录
 export const logout = () =>
   call('comm', 'logout', { method: 'DELETE' })
+
+/**
+ * 滑块验证题（公开接口）
+ * 正常流程中题目随 428 响应一起下发；这里用于「题目过期 / 校验失败次数超限作废」后换一题
+ */
+export const getSliderCaptcha = () =>
+  call('comm', 'captcha', { method: 'GET', config: { silent: true, dedupe: false } })

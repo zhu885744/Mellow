@@ -24,6 +24,20 @@ export const fromNow = (timestamp) => {
 }
 
 /**
+ * 有效期（秒）-> 可读文本
+ * 0 / 空值 / 负数表示永久有效（装扮、虚拟商品等「获得后可用多久」的展示统一走这里）
+ */
+export const formatDuration = (seconds) => {
+  const s = Number(seconds) || 0
+  if (s <= 0) return '永久'
+  const days = s / 86400
+  if (days >= 1) return `${Math.round(days)} 天`
+  const hours = s / 3600
+  if (hours >= 1) return `${Math.round(hours)} 小时`
+  return `${Math.max(1, Math.round(s / 60))} 分钟`
+}
+
+/**
  * unix 秒 -> <input type="datetime-local"> 需要的本地时间字符串（YYYY-MM-DDTHH:mm）
  * 无有效时间戳时返回空串（输入框显示为空）
  */

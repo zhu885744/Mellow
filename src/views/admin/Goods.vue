@@ -489,6 +489,7 @@
           <textarea v-model="edit.cardsText" class="textarea" rows="4" placeholder="一行一个卡密，发货时随机抽取并移除" />
           <p class="form-hint">仅管理员可见；已发出的卡密会由后端自动移出卡密池</p>
         </div>
+
       </section>
     </AdminFormDialog>
 
@@ -597,6 +598,8 @@ const TYPE_OPTIONS = [
 ]
 
 // 发货方式（仅虚拟商品）
+// 说明：装扮商城已独立（装扮自带价格 / 库存 / 限购，兑换走 decoration/buy），
+// 商品不再提供「装扮发货」，避免同一件装扮出现两个售卖入口。
 const DELIVER_OPTIONS = [
   { value: '', label: '无需发货' },
   { value: 'text', label: '文本发货' },

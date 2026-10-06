@@ -68,6 +68,8 @@ const routes = [
       { path: 'security', name: 'user-security', component: () => import('@/views/user/Security.vue') },
       { path: 'exp', name: 'user-exp', component: () => import('@/views/user/Exp.vue') },
       { path: 'integral', name: 'user-integral', component: () => import('@/views/user/Integral.vue') },
+      // 我的装扮：查看/佩戴已拥有的头像框与头衔（商城只负责兑换，管理集中在这里）
+      { path: 'decorations', name: 'user-decorations', component: () => import('@/views/user/Decorations.vue') },
       { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
       // 站点配置（管理员）：已迁至后台 /admin/system 的「网站设置」模块，旧地址保留为重定向
       {
@@ -151,6 +153,8 @@ const routes = [
       { path: 'exp', name: 'admin-exp', component: () => import('@/views/admin/Exp.vue'), meta: { title: '经验管理' } },
       { path: 'goods', name: 'admin-goods', component: () => import('@/views/admin/Goods.vue'), meta: { title: '商品管理' } },
       { path: 'integral', name: 'admin-integral', component: () => import('@/views/admin/Integral.vue'), meta: { title: '积分管理' } },
+      // 装扮管理：头像框 / 头衔等装扮的增删改查、批量发放与回收（关联商城商品自动同步）
+      { path: 'decoration', name: 'admin-decoration', component: () => import('@/views/admin/Decoration.vue'), meta: { title: '装扮管理' } },
       // 签到配置（独立模块：奖励项 / 周期 / 里程碑 / 月全勤 / 随机奖励 / 补签）
       { path: 'checkin', name: 'admin-checkin', component: () => import('@/views/admin/Checkin.vue'), meta: { title: '签到管理' } },
       { path: 'message', name: 'admin-message', component: () => import('@/views/admin/Message.vue'), meta: { title: '消息管理' } },

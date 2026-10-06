@@ -1,5 +1,7 @@
 <template>
   <RouterView />
+  <!-- 全局滑块验证：发送验证码被判定为频繁时，由 request.js 的拦截器唤起（见 utils/captchaGate） -->
+  <SliderCaptcha />
 </template>
 
 <script setup>
@@ -7,6 +9,7 @@ import { watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import { useSiteStore } from '@/stores/site'
 import { applySiteAssets } from '@/utils/siteAssets'
+import SliderCaptcha from '@/components/SliderCaptcha.vue'
 
 const siteStore = useSiteStore()
 const route = useRoute()

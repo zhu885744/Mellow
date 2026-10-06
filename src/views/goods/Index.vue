@@ -52,6 +52,31 @@
       <router-link to="/auth/login" class="btn btn-sm btn-primary">立即登录</router-link>
     </div>
 
+    <!-- 商城分区：积分商品 / 装扮（装扮来自后台「装扮管理」，可自由扩展类型） -->
+    <div class="shop-tabs">
+      <button
+        type="button"
+        class="shop-tab"
+        :class="{ active: activeTab === 'goods' }"
+        @click="activeTab = 'goods'"
+      >
+        <i class="bi bi-bag" aria-hidden="true" /> 积分商品
+      </button>
+      <!-- 装扮分区受后台「装扮配置」的总开关与「商城显示」开关控制 -->
+      <button
+        v-if="decorationVisible"
+        type="button"
+        class="shop-tab"
+        :class="{ active: activeTab === 'decoration' }"
+        @click="switchTab('decoration')"
+      >
+        <i class="bi bi-palette" aria-hidden="true" /> 装扮
+      </button>
+    </div>
+
+    <!-- 装扮分区被后台关闭时，始终回落到积分商品，避免出现空白区 -->
+    <template v-if="activeTab === 'goods' || !decorationVisible">
+
     <!-- 商品分类 -->
     <div v-if="categories.length > 1" class="category-bar">
       <button
@@ -95,6 +120,13 @@
             </span>
             <span v-if="Number(g.min_exp) > 0" class="goods-tag">需经验达到 {{ g.min_exp }} 可兑换</span>
             <span v-if="Number(g.sold) > 0" class="goods-tag">已兑 {{ g.sold }}</span>
+            <!-- 装扮类商品：展示关联装扮的有效期（永久 / N 天），兑换前就告知使用期限 -->
+            <span
+              v-if="g.decoration_duration !== undefined && g.decoration_duration !== null"
+              class="goods-tag is-duration"
+            >
+              <i class="bi bi-clock-history" aria-hidden="true" /> 有效期 {{ formatDuration(g.decoration_duration) }}
+            </span>
             <!-- 距结束倒计时（1 小时内转为警示色） -->
             <span
               v-if="g._endCountdown"
@@ -214,6 +246,13 @@
               <div class="confirm-tip">
                 兑换后立即发货，确定使用 <strong>{{ confirmGoods?.price }}</strong> 积分兑换吗？
               </div>
+              <!-- 装扮类商品：兑换前说明有效期与后续佩戴入口 -->
+              <div
+                v-if="confirmGoods?.decoration_duration !== undefined && confirmGoods?.decoration_duration !== null"
+                class="confirm-tip"
+              >
+                有效期：<strong>{{ formatDuration(confirmGoods.decoration_duration) }}</strong>，兑换后可前往「我的装扮」佩戴。
+              </div>
             </div>
             <div class="modal-footer">
               <button class="btn btn-ghost" @click="showConfirm = false">取消</button>
@@ -287,11 +326,16 @@
       :loading="cancelingId !== null"
       @confirm="doCancel"
     />
+    </template>
+
+    <!-- 装扮商城：头像框 / 头衔（类型分区由后端元数据驱动） -->
+    <DecorationShop v-else-if="decorationVisible" @purchased="onDecorationPurchased" />
   </div>
 </template>
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import {
   getGoods,
@@ -305,11 +349,31 @@ import {
 } from '@/api/goods'
 import { toast } from '@/utils/toast'
 import { formatCountdown, remainSeconds } from '@/utils/countdown'
+import { formatDuration } from '@/utils/time'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import DecorationShop from '@/components/DecorationShop.vue'
+import { getDecorationConfig } from '@/api/decoration'
 
+const route = useRoute()
 const userStore = useUserStore()
+
+// 商城分区：goods 积分商品 / decoration 装扮
+const activeTab = ref(route.query.tab === 'decoration' ? 'decoration' : 'goods')
+// 装扮分区是否展示（受后台「装扮配置」的 enabled + show_in_goods 控制）
+const decorationVisible = ref(false)
+
+async function loadDecorationConfig() {
+  try {
+    const res = await getDecorationConfig()
+    const data = res?.data || {}
+    decorationVisible.value = Number(data.enabled) === 1 && Number(data.show_in_goods) === 1
+    if (!decorationVisible.value && activeTab.value === 'decoration') activeTab.value = 'goods'
+  } catch {
+    decorationVisible.value = false
+  }
+}
 
 const goodsList = ref([])
 const orders = ref([])
@@ -628,7 +692,20 @@ async function copyDeliverText(text) {
   }
 }
 
+// 切换分区：装扮分区的数据由 DecorationShop 自己加载
+function switchTab(tab) {
+  activeTab.value = tab
+}
+
+// 装扮兑换 / 佩戴成功后刷新积分与统计
+function onDecorationPurchased() {
+  loadBalance()
+  loadMyStats()
+  loadOrders()
+}
+
 onMounted(() => {
+  loadDecorationConfig()
   loadGoods()
   loadBalance()
   loadOrders()
@@ -743,6 +820,39 @@ onMounted(() => {
 .stat-label {
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* 商城分区切换：积分商品 / 装扮 */
+.shop-tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 10px;
+  background: var(--bg-muted);
+  align-self: flex-start;
+}
+.shop-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 18px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.shop-tab:hover {
+  color: var(--primary);
+}
+.shop-tab.active {
+  background: var(--bg-card);
+  color: var(--primary-deep);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 /* 商品分类 */
@@ -907,6 +1017,14 @@ onMounted(() => {
 .goods-tag.is-deadline.is-urgent {
   background: var(--accent-soft);
   color: var(--danger);
+}
+/* 有效期标签（装扮类商品） */
+.goods-tag.is-duration {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--gold-wash);
+  color: #c7902f;
 }
 
 .status-tag {

@@ -5,6 +5,7 @@ import router from '@/router'
 import { cache } from '@/utils/cache'
 import { getCookie } from '@/utils/cookie'
 import { showAuthDialog, clearLocalAuthData } from '@/utils/authDialog'
+import { requestSliderCaptcha } from '@/utils/captchaGate'
 import { API_BASE_URL, API_ROOT_URL } from '@/utils/runtimeConfig'
 
 // 与 stores/user.js、Login.vue、Register.vue 保持一致的 token cookie 名
@@ -194,6 +195,12 @@ service.interceptors.response.use(
       if (data.code === 204) {
         return { code: 204, data: null, msg: data.msg }
       }
+      // 发送验证码防刷：后端要求先过滑块（428 + need_captcha）
+      // 统一在这里弹滑块，通过后自动重放原请求 —— 业务调用方完全无感知。
+      // __captchaRetried 用于防止「重放后仍被判频繁」时无限弹窗
+      if (data.code === 428 && data.data?.need_captcha && !res.config?.__captchaRetried) {
+        return retryWithSlider(res)
+      }
       // 401/412 未登录或 token 失效：清理本地状态并弹窗提示
       // 若调用方传了 skipAuthLogout（如 check-token 需要拿到原始码做本地状态清理），
       // 则不触发全局登出，原样返回给调用方处理（参考 Cardify-inis 实现）
@@ -250,6 +257,66 @@ service.interceptors.response.use(
     return Promise.reject(err)
   }
 )
+
+/**
+ * 滑块重试：把「需要滑块」的 428 响应换成「弹滑块 → 重放原请求」
+ *
+ * 失败 / 用户取消时按普通错误 reject，调用方拿到的仍是后端原始 body
+ * （取消是用户主动行为，不再弹全局错误提示，避免与滑块弹窗重复打扰）。
+ */
+async function retryWithSlider(res) {
+  const body = res.data
+  const ticket = await requestSliderCaptcha(body?.data?.captcha)
+
+  if (!ticket?.token) {
+    return Promise.reject({ ...body, code: body.code })
+  }
+
+  try {
+    return await service.request(buildSliderReplayConfig(res.config, ticket))
+  } catch (err) {
+    toast.error(err?.msg || '滑块验证未通过，请重试')
+    return Promise.reject({ ...body, code: body.code })
+  }
+}
+
+/**
+ * 重放请求的参数：票据按 HTTP 方法放进 query（GET/DELETE）或 body（POST/PUT）
+ * 说明：axios 的 transformRequest 可能已把 config.data 序列化成 JSON 字符串，这里先还原再合并
+ */
+function buildSliderReplayConfig(config, ticket) {
+  const next = { ...config, __captchaRetried: true }
+  const method = String(config.method || 'get').toLowerCase()
+
+  if (['get', 'delete', 'head'].includes(method)) {
+    next.params = { ...(config.params || {}), captcha_token: ticket.token, captcha_value: ticket.value }
+    return next
+  }
+
+  let body = config.data
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body)
+    } catch {
+      body = {}
+    }
+  }
+
+  // 上传类请求（FormData）不能整体替换，只能追加字段
+  if (typeof FormData !== 'undefined' && body instanceof FormData) {
+    body.append('captcha_token', ticket.token)
+    body.append('captcha_value', String(ticket.value))
+    next.data = body
+    return next
+  }
+
+  next.data = {
+    ...(body || {}),
+    captcha_token: ticket.token,
+    captcha_value: ticket.value
+  }
+  return next
+}
 
 export default service
 export { cache }

@@ -148,6 +148,49 @@
                 </button>
               </div>
             </section>
+
+            <!-- 安全验证（滑块）：发送验证码防刷 + 敏感操作人机校验 -->
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">安全验证（滑块）</h3>
+                  <p class="cfg-desc">
+                    给短信 / 邮件验证码与敏感操作加一层人机校验：命中时前台弹出滑块，
+                    拖动对齐后自动继续原来的请求，用户不需要重新提交表单
+                  </p>
+                </div>
+              </header>
+
+              <div class="form-item">
+                <label class="form-label">发送验证码防刷</label>
+                <SelectMenu v-model="cfg.captcha.send_code" variant="field" :options="ON_OFF" />
+                <p class="form-hint">
+                  开启后：同一手机号 / 邮箱 5 分钟内重复请求发送验证码时要求滑块（首次发送不受影响）
+                </p>
+              </div>
+
+              <div class="form-item">
+                <label class="form-label">敏感操作（勾选后每次提交都要求滑块）</label>
+                <div class="check-grid is-block">
+                  <label v-for="item in CAPTCHA_SCENE_OPTIONS" :key="item.key" class="check-line">
+                    <input v-model="cfg.captcha[item.key]" type="checkbox" :true-value="1" :false-value="0" />
+                    <span>
+                      {{ item.label }}
+                      <span class="group-key">{{ item.hint }}</span>
+                    </span>
+                  </label>
+                </div>
+                <p class="form-hint">
+                  滑块通过后 5 分钟内重试同一操作不会重复弹窗（例如密码输错后重试）；关闭则完全不影响原有流程
+                </p>
+              </div>
+
+              <div class="cfg-foot">
+                <button class="btn btn-primary btn-sm" :disabled="isSaving('captcha')" @click="saveCaptcha">
+                  <i class="bi bi-check2" /> 保存
+                </button>
+              </div>
+            </section>
           </template>
 
           <!-- ============ 网站设置（站点信息 / 导航 / 备案 / 协议 / 悬浮按钮）============ -->
@@ -268,6 +311,70 @@
 
             <div class="cfg-foot">
               <button class="btn btn-primary btn-sm" :disabled="isSaving('comment')" @click="saveComment">
+                <i class="bi bi-check2" /> 保存
+              </button>
+            </div>
+          </section>
+
+          <!-- ============ 装扮（头像框 / 头衔，SYSTEM_DECORATION）============ -->
+          <section v-else-if="tab === 'decoration'" class="card card-pad">
+            <header class="cfg-head">
+              <div>
+                <h3 class="cfg-title">装扮配置</h3>
+                <p class="cfg-desc">
+                  头衔 / 头像框的全局开关；具体装扮的增删改查、价格与样式在「装扮管理」中维护
+                </p>
+              </div>
+              <RouterLink class="btn btn-sm" to="/admin/decoration">
+                <i class="bi bi-box-arrow-up-right" /> 装扮管理
+              </RouterLink>
+            </header>
+
+            <div class="form-grid">
+              <div class="form-item">
+                <label class="form-label">装扮功能</label>
+                <SelectMenu v-model="cfg.decoration.enabled" variant="field" :options="ON_OFF" />
+                <p class="form-hint">关闭后所有用户都无法佩戴 / 卸下装扮，已佩戴的样式仍会正常展示</p>
+              </div>
+              <div class="form-item">
+                <label class="form-label">商城显示装扮分区</label>
+                <SelectMenu v-model="cfg.decoration.showInGoods" variant="field" :options="ON_OFF" />
+                <p class="form-hint">关闭后积分商城只显示普通商品，装扮仍可通过后台发放</p>
+              </div>
+            </div>
+
+            <h4 class="cfg-sub-title">头像框</h4>
+            <div class="form-grid">
+              <div class="form-item">
+                <label class="form-label">启用头像框</label>
+                <SelectMenu v-model="cfg.decoration.frameEnabled" variant="field" :options="ON_OFF" />
+              </div>
+              <div class="form-item">
+                <label class="form-label">默认缩放比例</label>
+                <input v-model="cfg.decoration.frameScale" class="input" type="number" step="0.05" min="0.5" max="3" />
+                <p class="form-hint">装扮未单独设置 scale 时使用，1 为贴合头像，建议 1.1 ~ 1.3</p>
+              </div>
+            </div>
+
+            <h4 class="cfg-sub-title">头衔</h4>
+            <div class="form-grid">
+              <div class="form-item">
+                <label class="form-label">启用头衔</label>
+                <SelectMenu v-model="cfg.decoration.titleEnabled" variant="field" :options="ON_OFF" />
+              </div>
+              <div class="form-item">
+                <label class="form-label">允许用户自填文字</label>
+                <SelectMenu v-model="cfg.decoration.titleAllowCustom" variant="field" :options="ON_OFF" />
+                <p class="form-hint">开启后，未内置文字的「纯样式」头衔可由用户佩戴时自行输入</p>
+              </div>
+              <div class="form-item">
+                <label class="form-label">头衔最大字数</label>
+                <input v-model="cfg.decoration.titleMaxLength" class="input" type="number" min="1" max="20" />
+              </div>
+            </div>
+
+            <div class="cfg-foot">
+              <button class="btn btn-primary btn-sm" :disabled="isSaving('decoration')" @click="saveDecoration">
                 <i class="bi bi-check2" /> 保存
               </button>
             </div>
@@ -1098,6 +1205,8 @@
  * 后端要点（app/api/controller/toml.go、app/api/middleware/*、app/model/config.go）：
  * - SYSTEM_API_KEY / SYSTEM_QPS / SYSTEM_QPS_BLOCK / SYSTEM_QPS_NOTIFY / SYSTEM_PAGE_LIMIT /
  *   ALLOW_REGISTER 均为 config 表记录，value 是 "0"/"1" 字符串；
+ * - SYSTEM_CAPTCHA 只用 json（各场景滑块开关，见 app/model/captcha-config.go）：
+ *   send_code 是「发送验证码 5 分钟内重复要滑块」的总开关，其余是登录/注册/改密/改绑/注销每次提交都要滑块的开关；
  * - ALLOW_REGISTER 另用 text 存「新用户默认权限组」的 ID 列表（如 "1,2"，空表示不分组），
  *   注册成功后由 Comm.auth() 读取（utils.Unity.Ids 按数字提取），把新用户写进对应 auth-group 的 uids；
  * - SYSTEM_MAIL_NOTIFY 是「统一邮件通知」记录（见 app/model/mail-notify.go）：
@@ -1243,6 +1352,7 @@ const modules = [
   { key: 'moments', label: '动态配置', icon: 'bi bi-chat-square-text' },
   { key: 'pagesCfg', label: '独立页面配置', icon: 'bi bi-window' },
   { key: 'comment', label: '评论配置', icon: 'bi bi-chat-dots' },
+  { key: 'decoration', label: '装扮', icon: 'bi bi-palette' },
   { key: 'page', label: '分页限制', icon: 'bi bi-list-ol' },
   { key: 'jwt', label: 'JWT 认证', icon: 'bi bi-key' },
   { key: 'register', label: '注册', icon: 'bi bi-person-plus' },
@@ -1356,6 +1466,17 @@ const cfg = reactive({
   qpsBlock: { value: '0', json: { count: 3, second: '60 * 60' } },
   qpsNotify: { value: '0', json: { email: '', webhook: '' } },
   pageLimit: { value: '1', text: '50' },
+  // 安全验证（SYSTEM_CAPTCHA）：
+  // send_code 用下拉（"0"/"1"），其余场景用复选框（0/1），保存时统一归一为 0/1
+  captcha: {
+    send_code: '1',
+    login: 0,
+    code_login: 0,
+    register: 0,
+    reset_password: 0,
+    change_contact: 0,
+    destroy: 0
+  },
   // 注册设置（同属 ALLOW_REGISTER 一条记录）
   // - value     → value 字段：是否允许自行注册
   // - ids       → text 字段：新用户默认权限组 ID 列表
@@ -1387,6 +1508,21 @@ const cfg = reactive({
   },
   // 敏感词按「一行一个」编辑，保存时拆成数组
   sensitiveText: '',
+  // 装扮配置（SYSTEM_DECORATION 一条记录，见 app/model/decoration.go）
+  // - enabled         → json.enabled：总开关，关闭后前台不可佩戴任何装扮
+  // - showInGoods     → json.show_in_goods：装扮分区是否显示在商城页
+  // - frame*          → json.avatar_frame：头像框开关与默认缩放
+  // - title*          → json.title：头衔开关、是否允许自填文字、最大字数
+  // 装扮本身的增删改查在「装扮管理」（/admin/decoration），这里只控制全局开关
+  decoration: {
+    enabled: '1',
+    showInGoods: '1',
+    frameEnabled: '1',
+    frameScale: 1.2,
+    titleEnabled: '1',
+    titleAllowCustom: '1',
+    titleMaxLength: 10
+  },
   // 统一邮件通知（SYSTEM_MAIL_NOTIFY 一条记录）
   // - enabled     → json.enabled：总开关
   // - adminEmail  → json.admin_email：管理员收件邮箱（多个逗号分隔，空则用超管邮箱）
@@ -1584,6 +1720,31 @@ function readContentConfig(raw) {
   }
 }
 
+/**
+ * 滑块验证场景（SYSTEM_CAPTCHA 的 json 字段，与后端 model/captcha-config.go 的场景键一一对应）
+ * send_code 单独用一个下拉控制（它是防刷策略），其余是「敏感操作」开关
+ */
+const CAPTCHA_SCENE_OPTIONS = [
+  { key: 'login', label: '密码登录', hint: '每次密码登录都要滑块' },
+  { key: 'code_login', label: '验证码登录', hint: '提交验证码登录时校验' },
+  { key: 'register', label: '注册', hint: '提交注册时校验，可挡批量注册脚本' },
+  { key: 'reset_password', label: '重置 / 找回密码', hint: '提交新密码时校验' },
+  { key: 'change_contact', label: '修改邮箱 / 手机号', hint: '提交验证码改绑时校验' },
+  { key: 'destroy', label: '注销账户', hint: '提交注销验证时校验' }
+]
+
+// 安全验证配置：只认已知场景，缺失项按后端默认值兜底（send_code 默认开，其余默认关）
+function readCaptchaConfig(raw) {
+  const json = parseJson(raw?.json, {})
+  const fallback = (key) => (key === 'send_code' ? 1 : 0)
+
+  cfg.captcha.send_code = toText(json.send_code, '1')
+  CAPTCHA_SCENE_OPTIONS.forEach((item) => {
+    const value = json[item.key]
+    cfg.captcha[item.key] = Number(value === undefined || value === null ? fallback(item.key) : value) ? 1 : 0
+  })
+}
+
 // 注册配置（ALLOW_REGISTER）：value 是注册开关，text 是默认权限组，json 是扩展设置
 function readRegisterConfig(raw) {
   const json = parseJson(raw?.json, {})
@@ -1646,19 +1807,39 @@ function readMailConfig(raw) {
   cfg.mail.scenes = form
 }
 
+/**
+ * 读取装扮配置（SYSTEM_DECORATION）
+ * 用后端默认值打底：后台缺字段时不会把表单清空，保存时再补回完整结构
+ */
+function readDecorationConfig(raw) {
+  const json = parseJson(raw?.json, {})
+  const frame = json.avatar_frame && typeof json.avatar_frame === 'object' ? json.avatar_frame : {}
+  const title = json.title && typeof json.title === 'object' ? json.title : {}
+
+  cfg.decoration.enabled = toText(json.enabled, '1')
+  cfg.decoration.showInGoods = toText(json.show_in_goods, '1')
+  cfg.decoration.frameEnabled = toText(frame.enabled, '1')
+  cfg.decoration.frameScale = Number(frame.frame_scale || 1.2)
+  cfg.decoration.titleEnabled = toText(title.enabled, '1')
+  cfg.decoration.titleAllowCustom = toText(title.allow_custom, '1')
+  cfg.decoration.titleMaxLength = Number(title.max_length || 10)
+}
+
 async function loadConfigs() {
-  const [apiKey, qps, block, notify, pageLimit, register, article, moments, pages, comment, mailNotify] = await Promise.all([
+  const [apiKey, qps, block, notify, pageLimit, captcha, register, article, moments, pages, comment, mailNotify, decoration] = await Promise.all([
     readConfig('SYSTEM_API_KEY'),
     readConfig('SYSTEM_QPS'),
     readConfig('SYSTEM_QPS_BLOCK'),
     readConfig('SYSTEM_QPS_NOTIFY'),
     readConfig('SYSTEM_PAGE_LIMIT'),
+    readConfig('SYSTEM_CAPTCHA'),
     readConfig('ALLOW_REGISTER'),
     readConfig('ARTICLE'),
     readConfig('MOMENTS'),
     readConfig('PAGE'),
     readConfig('COMMENT'),
-    readConfig('SYSTEM_MAIL_NOTIFY')
+    readConfig('SYSTEM_MAIL_NOTIFY'),
+    readConfig('SYSTEM_DECORATION')
   ])
 
   if (apiKey) cfg.apiKey.value = toText(apiKey.value, '0')
@@ -1678,6 +1859,10 @@ async function loadConfigs() {
     cfg.pageLimit.value = toText(pageLimit.value, '1')
     cfg.pageLimit.text = toText(pageLimit.text, '50')
   }
+  // 安全验证：配置不存在时保持默认值（send_code 开、敏感操作关）
+  if (captcha) {
+    readCaptchaConfig(captcha)
+  }
   if (register) {
     readRegisterConfig(register)
   }
@@ -1696,6 +1881,9 @@ async function loadConfigs() {
   }
   if (mailNotify) {
     readMailConfig(mailNotify)
+  }
+  if (decoration) {
+    readDecorationConfig(decoration)
   }
 }
 
@@ -1838,6 +2026,24 @@ function saveApiKey() {
   return saveConfigItem('apiKey', { key: 'SYSTEM_API_KEY', data: { value: cfg.apiKey.value } }, '已保存')
 }
 
+/**
+ * 保存安全验证配置（SYSTEM_CAPTCHA）
+ *
+ * 只提交 json：滑块开关是纯策略配置，不需要 value / text 字段；
+ * 保存后回读一次，保证「字符串 / 数字」口径与后端一致（后端统一按 0/1 处理）。
+ */
+async function saveCaptcha() {
+  const setting = { send_code: Number(cfg.captcha.send_code) ? 1 : 0 }
+  CAPTCHA_SCENE_OPTIONS.forEach((item) => {
+    setting[item.key] = Number(cfg.captcha[item.key]) ? 1 : 0
+  })
+
+  await saveConfigItem('captcha', { key: 'SYSTEM_CAPTCHA', data: { json: setting } }, '已保存')
+
+  const fresh = await readConfig('SYSTEM_CAPTCHA')
+  if (fresh) readCaptchaConfig(fresh)
+}
+
 function saveQps() {
   return saveConfigItem(
     'qps',
@@ -1911,6 +2117,38 @@ async function saveMail() {
   )
 
   cfg.mail.rawScenes = { ...scenes }
+}
+
+/**
+ * 保存装扮配置（SYSTEM_DECORATION）
+ * 写入完整结构（含 currency / presets 兜底），避免后台只改一个开关就把其它字段清空；
+ * 装扮本身的价格、样式等仍在「装扮管理」（/admin/decoration）里维护。
+ */
+async function saveDecoration() {
+  await saveConfigItem(
+    'decoration',
+    {
+      key: 'SYSTEM_DECORATION',
+      data: {
+        value: cfg.decoration.enabled,
+        json: {
+          enabled: Number(cfg.decoration.enabled) === 1 ? 1 : 0,
+          show_in_goods: Number(cfg.decoration.showInGoods) === 1 ? 1 : 0,
+          currency: 'integral',
+          avatar_frame: {
+            enabled: Number(cfg.decoration.frameEnabled) === 1 ? 1 : 0,
+            frame_scale: Number(cfg.decoration.frameScale) || 1.2
+          },
+          title: {
+            enabled: Number(cfg.decoration.titleEnabled) === 1 ? 1 : 0,
+            allow_custom: Number(cfg.decoration.titleAllowCustom) === 1 ? 1 : 0,
+            max_length: Math.max(1, Number(cfg.decoration.titleMaxLength) || 10)
+          }
+        }
+      }
+    },
+    '已保存'
+  )
 }
 
 function savePageLimit() {
@@ -2286,6 +2524,15 @@ onMounted(loadAll)
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 0 12px;
+}
+/* 同一面板内的小节标题（如装扮页的「头像框 / 头衔」） */
+.cfg-sub-title {
+  margin: 18px 0 10px;
+  padding-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border-soft);
 }
 .form-hint {
   margin: 6px 0 0;
