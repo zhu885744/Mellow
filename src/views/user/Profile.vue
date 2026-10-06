@@ -58,29 +58,11 @@
           </div>
         </div>
 
-        <!-- 头像框：数据来自「我的装扮」，可在商城解锁更多 -->
-        <div class="preset-section">
-          <div class="preset-label">
-            <span><i class="bi bi-border-style" /> 头像框</span>
-            <button v-if="wearingIds.avatar_frame" class="btn-link" @click="unwearDecorationItem('avatar_frame')">
-              移除
-            </button>
-          </div>
-          <div v-if="ownedFrames.length" class="frame-grid">
-            <button
-              v-for="item in ownedFrames"
-              :key="item.id"
-              :class="['frame-item', { selected: wearingIds.avatar_frame === item.id }]"
-              :title="item.name"
-              @click="wearDecorationItem(item)"
-            >
-              <img :src="item.preview || item.payload?.image" :alt="item.name" />
-            </button>
-          </div>
-          <p v-else class="hint">
-            暂无可用的头像框，<RouterLink to="/goods?tab=decoration">前往装扮商城</RouterLink>
-          </p>
-        </div>
+        <!-- 头像框只在预览里体现（佩戴后自动生效）；换框 / 卸框统一在「我的装扮」里操作 -->
+        <p class="hint">
+          头像框在「我的装扮」中佩戴后会自动显示在预览里，
+          <RouterLink to="/user/decorations">前往我的装扮</RouterLink>
+        </p>
       </div>
 
       <!-- 基本信息表单 -->
@@ -103,59 +85,13 @@
 
           <div class="form-item">
             <label class="form-label">头衔</label>
-            <!-- 当前佩戴的头衔（样式由装扮 payload 驱动） -->
+            <!-- 只读展示当前头衔：佩戴 / 卸下 / 换字统一在「我的装扮」里操作 -->
             <div class="current-title-row">
               <span class="current-title-label">当前头衔：</span>
-              <TitleBadge
-                v-if="decorationStore.wearing?.title"
-                :payload="currentTitlePayload"
-                :text="form.title"
-              />
-              <span v-else-if="form.title" class="current-title">{{ form.title }}</span>
-              <span v-else class="current-title empty">未设置</span>
-              <button
-                v-if="decorationStore.wearing?.title"
-                type="button"
-                class="btn-link clear-title"
-                @click="unwearDecorationItem('title')"
-              >
-                卸下
-              </button>
+              <span :class="['current-title', { empty: !form.title }]">{{ form.title || '未设置' }}</span>
+              <RouterLink to="/user/decorations" class="deco-link">去我的装扮更换</RouterLink>
             </div>
-
-            <!-- 已拥有的头衔 -->
-            <div class="preset-titles">
-              <button
-                v-for="item in ownedTitles"
-                :key="item.id"
-                type="button"
-                :class="['preset-title', { selected: wearingIds.title === item.id }]"
-                @click="wearDecorationItem(item)"
-              >
-                <i v-if="wearingIds.title === item.id" class="bi bi-check-circle-fill" />
-                {{ item.payload?.text || item.name }}
-              </button>
-            </div>
-
-            <!-- 纯样式类头衔：佩戴前需要自填文字 -->
-            <div v-if="pendingTitle" class="custom-title-editor">
-              <input
-                v-model="customTitleInput"
-                class="input"
-                maxlength="10"
-                placeholder="请输入头衔文字（最多 10 字）"
-              />
-              <div class="custom-title-actions">
-                <button type="button" class="btn btn-primary" @click="applyWear(pendingTitle, customTitleInput)">
-                  确定佩戴
-                </button>
-                <button type="button" class="btn" @click="pendingTitle = null">取消</button>
-              </div>
-            </div>
-
-            <p class="hint">
-              头衔与头像框均可在商城中解锁，<RouterLink to="/goods?tab=decoration">前往装扮商城</RouterLink>
-            </p>
+            <p class="hint">头衔与头像框统一在「我的装扮」中佩戴、卸下。</p>
           </div>
 
           <div class="form-item">
@@ -186,13 +122,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { updateUser, uploadAvatar } from '@/api/users'
-import { getMyDecorations, wearDecoration, unwearDecoration } from '@/api/decoration'
 import { toast } from '@/utils/toast'
 import AvatarFrame from '@/components/AvatarFrame.vue'
-import TitleBadge from '@/components/TitleBadge.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 
 const userStore = useUserStore()
@@ -205,73 +139,8 @@ const DEFAULT_AVATARS = [
   'https://img.zhuxu.asia/tx/5.png'
 ]
 
-// ===== 装扮（头像框 / 头衔）=====
-// 全部来自后台「装扮管理」，前端不再硬编码：后台增删改装扮后前端自动生效。
-const decorationStore = ref({ types: [], wearing: {}, list: {} })
-
-// 已拥有且未过期的装扮
-const ownedDecorations = (type) =>
-  (decorationStore.value.list?.[type] || []).filter((item) => item.owned && !item.expired)
-
-const ownedFrames = computed(() => ownedDecorations('avatar_frame'))
-const ownedTitles = computed(() => ownedDecorations('title'))
-
-// 各类型当前佩戴中的装扮ID
-const wearingIds = computed(() => {
-  const map = {}
-  Object.values(decorationStore.value.wearing || {}).forEach((item) => {
-    if (item?.id) map[item.type] = item.id
-  })
-  return map
-})
-
-// 当前头衔样式（供 TitleBadge 渲染）
-const currentTitlePayload = computed(() => decorationStore.value.wearing?.title?.payload || {})
-
-async function loadDecorations() {
-  try {
-    const res = await getMyDecorations()
-    decorationStore.value = res.data || { types: [], wearing: {}, list: {} }
-  } catch {
-    decorationStore.value = { types: [], wearing: {}, list: {} }
-  }
-}
-
-// 纯样式类头衔需要用户自填文字
-const pendingTitle = ref(null)
-const customTitleInput = ref('')
-
-// 点击装扮：样式模板且无自带文字时，先让用户填写文字
-function wearDecorationItem(item) {
-  if (item.type === 'title' && !item.payload?.text) {
-    pendingTitle.value = item
-    customTitleInput.value = item.custom_text || ''
-    return
-  }
-  applyWear(item, '')
-}
-
-async function applyWear(item, text = '') {
-  try {
-    await wearDecoration(item.id, text)
-    toast.success(item.type === 'title' ? '头衔已佩戴' : '头像框已佩戴')
-    pendingTitle.value = null
-    customTitleInput.value = ''
-    await Promise.all([loadDecorations(), userStore.checkLoginState()])
-  } catch {
-    // 错误已由拦截器提示
-  }
-}
-
-async function unwearDecorationItem(type) {
-  try {
-    await unwearDecoration(type)
-    toast.success(type === 'title' ? '头衔已卸下' : '头像框已移除')
-    await Promise.all([loadDecorations(), userStore.checkLoginState()])
-  } catch {
-    // 错误已由拦截器提示
-  }
-}
+// 注意：头像框 / 头衔的佩戴、卸下、换字全部收口在「我的装扮」(/user/decorations)，
+// 本页只做「头像上传 + 基本信息」——这里不再拉取装扮数据、也不提供装扮设置控件。
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/></svg>'
 
@@ -420,7 +289,6 @@ async function save() {
 
 onMounted(() => {
   fetchUserInfo()
-  loadDecorations()
 })
 watch(() => userStore.user, (nu) => {
   if (nu && Object.keys(nu).length > 0) fetchUserInfo()
@@ -503,14 +371,6 @@ watch(() => userStore.user, (nu) => {
   margin-right: 6px;
   color: var(--primary);
 }
-.btn-link {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 12px;
-  cursor: pointer;
-  text-decoration: underline;
-}
 .frame-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -548,37 +408,7 @@ watch(() => userStore.user, (nu) => {
   margin-top: 0;
 }
 
-.preset-titles {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.preset-title {
-  padding: 5px 12px;
-  font-size: 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-muted);
-  color: #fff;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-.preset-title:hover {
-  transform: translateY(-1px);
-  border-color: var(--primary);
-}
-.preset-title.selected {
-  border-color: var(--primary-deep);
-  box-shadow: 0 0 0 3px var(--accent-glow);
-  transform: translateY(-1px);
-  outline: 2px solid var(--primary-deep);
-  font-weight: 600;
-}
-.preset-title.selected i {
-  margin-right: 3px;
-  vertical-align: -1px;
-}
-/* 当前头衔标签 */
+/* 当前头衔：只读展示（佩戴 / 卸下 / 换字都在「我的装扮」） */
 .current-title-row {
   display: flex;
   align-items: center;
@@ -597,60 +427,28 @@ watch(() => userStore.user, (nu) => {
 .current-title {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
   padding: 3px 10px;
   font-size: 12px;
   font-weight: 600;
-  color: #fff;
-  border-radius: 999px;
-}
-.current-title.is-custom {
-  outline: 2px dashed rgba(255, 255, 255, 0.7);
+  color: var(--text);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
 }
 .current-title.empty {
-  background: #6c757d;
-  color: #fff;
+  color: var(--text-muted);
   font-weight: 400;
 }
-.clear-title {
-  font-size: 12px;
+/* 去「我的装扮」的入口 */
+.deco-link {
   margin-left: auto;
+  font-size: 12px;
+  color: var(--primary);
+  text-decoration: none;
 }
-.custom-title-hint {
-  margin-top: 10px;
+.deco-link:hover {
+  text-decoration: underline;
 }
-/* 纯样式类头衔：佩戴前自填文字 */
-.custom-title-editor {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-  padding: 10px;
-  background: var(--bg-muted);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
-}
-.custom-title-editor .input {
-  flex: 1;
-  min-width: 160px;
-}
-.custom-title-actions {
-  display: flex;
-  gap: 8px;
-}
-/* 头衔颜色（与评论/动态/作者主页统一） */
-.title-zhangmen { background: linear-gradient(135deg, #c8a04a, #b07d2e); }
-.title-zhanglao { background: linear-gradient(135deg, #8e6f3e, #6c4f24); }
-.title-hufa { background: linear-gradient(135deg, #c0392b, #a93226); }
-.title-neimen { background: linear-gradient(135deg, #2980b9, #1f618d); }
-.title-waimen { background: linear-gradient(135deg, #16a085, #117a65); }
-.title-lianqi { background: linear-gradient(135deg, #27ae60, #1e8449); }
-.title-zhuji { background: linear-gradient(135deg, #7cb342, #558b2f); }
-.title-jiedan { background: linear-gradient(135deg, #e67e22, #ca6f1e); }
-.title-yuanying { background: linear-gradient(135deg, #6c5ce7, #5a3fd4); }
-.title-huashen { background: linear-gradient(135deg, #f6d365, #fda085); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.25); }
-.title-default { background: #6c757d; }
 
 .radio-row {
   display: flex;

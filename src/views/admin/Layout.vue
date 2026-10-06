@@ -49,8 +49,53 @@
         </button>
         <div class="admin-topbar-title">{{ currentTitle }}</div>
         <div class="admin-topbar-right">
-          <img :src="user?.avatar || defaultAvatar" class="admin-avatar" alt="avatar" />
-          <span class="admin-user-name">{{ user?.nickname }}</span>
+          <!-- 浅色 / 深色模式切换：与前台悬浮按钮共用 theme store（localStorage 持久化，刷新后保持） -->
+          <button
+            class="admin-icon-btn"
+            type="button"
+            :title="isDark ? '切换为浅色模式' : '切换为深色模式'"
+            :aria-label="isDark ? '切换为浅色模式' : '切换为深色模式'"
+            @click="toggleTheme"
+          >
+            <i :class="isDark ? 'bi bi-sun' : 'bi bi-moon-stars'" />
+          </button>
+
+          <!-- 用户菜单：头像 + 昵称收进下拉（个人资料 / 返回前台 / 退出登录） -->
+          <div class="admin-user" ref="userMenuRef">
+            <button
+              class="admin-user-btn"
+              :class="{ open: userMenuOpen }"
+              type="button"
+              aria-haspopup="menu"
+              :aria-expanded="userMenuOpen"
+              @click="userMenuOpen = !userMenuOpen"
+            >
+              <img :src="user?.avatar || defaultAvatar" class="admin-avatar" alt="avatar" />
+              <span class="admin-user-name">{{ user?.nickname || '未登录' }}</span>
+              <i class="bi bi-chevron-down admin-user-caret" />
+            </button>
+
+            <div v-if="userMenuOpen" class="admin-user-menu" role="menu">
+              <RouterLink to="/user/profile" class="admin-menu-item" @click="userMenuOpen = false">
+                <i class="bi bi-person" />
+                <span>个人资料</span>
+              </RouterLink>
+              <RouterLink to="/" class="admin-menu-item" @click="userMenuOpen = false">
+                <i class="bi bi-house" />
+                <span>返回前台</span>
+              </RouterLink>
+              <div class="admin-menu-divider" />
+              <button
+                class="admin-menu-item is-danger"
+                type="button"
+                :disabled="loggingOut"
+                @click="onLogout"
+              >
+                <i class="bi bi-box-arrow-right" />
+                <span>{{ loggingOut ? '退出中…' : '退出登录' }}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -62,11 +107,12 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useAuthPagesStore } from '@/stores/auth-pages'
+import { useThemeStore } from '@/stores/theme'
 import { adminAllowedPaths, canEnterAdmin } from '@/utils/helper'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
@@ -76,9 +122,44 @@ const router = useRouter()
 const userStore = useUserStore()
 const { user } = storeToRefs(userStore)
 const authPagesStore = useAuthPagesStore()
+const themeStore = useThemeStore()
 
 const collapsed = ref(false)
 const authReady = ref(false)
+
+// ---------- 顶栏：主题切换 + 用户下拉 ----------
+const isDark = computed(() => themeStore.isDark)
+
+// 后台只要两态（浅色 ⇄ 深色）：点一次即固定下来，不再走前台的 auto 循环
+function toggleTheme() {
+  themeStore.set(isDark.value ? 'light' : 'dark')
+}
+
+const userMenuOpen = ref(false)
+const userMenuRef = ref(null)
+const loggingOut = ref(false)
+
+// 点击菜单外部 / 按 Esc 关闭下拉
+function onDocClick(e) {
+  if (!userMenuOpen.value) return
+  if (userMenuRef.value && !userMenuRef.value.contains(e.target)) userMenuOpen.value = false
+}
+function onDocKeydown(e) {
+  if (e.key === 'Escape') userMenuOpen.value = false
+}
+
+// 退出登录：清登录态 + 清 token + 回首页都在 store 里完成
+// （「退出后必须落在 / 而不是被 401 抢去登录页」的修复见 stores/user.js 与 utils/authFlow.js）
+async function onLogout() {
+  userMenuOpen.value = false
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await userStore.logout()
+  } finally {
+    loggingOut.value = false
+  }
+}
 
 // 分组定义：与参考主题一致（创作 / 管理 / 安全）
 const groupDefs = [
@@ -215,14 +296,22 @@ function guardRoute(path = route.path) {
 }
 
 onMounted(async () => {
+  document.addEventListener('click', onDocClick)
+  document.addEventListener('keydown', onDocKeydown)
   await authPagesStore.ensureLoaded()
   authReady.value = true
   guardRoute()
 })
 
-// 路由变化：校验页面权限；移动端顺带自动收起抽屉（桌面端保持用户选择的折叠状态）
+onUnmounted(() => {
+  document.removeEventListener('click', onDocClick)
+  document.removeEventListener('keydown', onDocKeydown)
+})
+
+// 路由变化：校验页面权限；关闭用户下拉；移动端顺带自动收起抽屉（桌面端保持用户选择的折叠状态）
 watch(() => route.path, (path) => {
   guardRoute(path)
+  userMenuOpen.value = false
   if (window.innerWidth <= 768) collapsed.value = false
 })
 </script>
@@ -359,6 +448,129 @@ watch(() => route.path, (path) => {
 .admin-user-name {
   font-size: 14px;
   color: var(--text-soft);
+}
+
+/* ---------- 顶栏图标按钮（主题切换） ---------- */
+.admin-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-soft);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s, background 0.18s;
+}
+.admin-icon-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary-soft);
+  background: var(--bg-muted);
+}
+.admin-icon-btn:focus-visible {
+  outline: 2px solid var(--primary-soft);
+  outline-offset: 2px;
+}
+
+/* ---------- 顶栏用户下拉 ---------- */
+.admin-user {
+  position: relative;
+}
+.admin-user-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s, background 0.18s;
+}
+.admin-user-btn:hover,
+.admin-user-btn.open {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--bg-muted);
+}
+.admin-user-caret {
+  font-size: 11px;
+  color: var(--text-light);
+  transition: transform 0.18s;
+}
+.admin-user-btn.open .admin-user-caret {
+  transform: rotate(180deg);
+}
+.admin-user-menu {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  min-width: 172px;
+  padding: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: var(--shadow-md);
+}
+.admin-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.admin-menu-item i {
+  font-size: 15px;
+  color: var(--text-light);
+  transition: color 0.15s;
+}
+.admin-menu-item:hover {
+  background: var(--bg-muted);
+  color: var(--text);
+}
+.admin-menu-item:hover i {
+  color: var(--primary);
+}
+.admin-menu-item.is-danger {
+  color: var(--danger);
+}
+.admin-menu-item.is-danger i {
+  color: var(--danger);
+}
+.admin-menu-item.is-danger:hover {
+  background: rgba(217, 84, 77, 0.1);
+  color: var(--danger);
+}
+.admin-menu-item.is-danger:hover i {
+  color: var(--danger);
+}
+.admin-menu-item:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.admin-menu-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border-soft);
 }
 .admin-content {
   padding: 22px;

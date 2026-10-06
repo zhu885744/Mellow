@@ -6,6 +6,8 @@ import { toast } from '@/utils/toast'
 import { getCookie, setCookie, clearCookie } from '@/utils/cookie'
 import { TOKEN_NAME } from '@/api/request'
 import { useSiteStore } from '@/stores/site'
+import { useNotificationStore } from '@/stores/notification'
+import { logoutState } from '@/utils/authFlow'
 import router from '@/router'
 
 const TOKEN_KEY = 'blog_user'
@@ -198,16 +200,58 @@ export const useUserStore = defineStore('user', () => {
     return siteInfo.value
   }
 
-  async function logout() {
+  // 防止重复触发退出（按钮连点 / 多处入口同时调用）
+  let loggingOut = false
+
+  /**
+   * 回到站点首页，保证「退出登录 → 首页」这个结果稳定：
+   * 1. 先按前端路由跳（保留 SPA 体验，不整页刷新）；
+   * 2. 跳转未落地（被并发跳转改道 / 守卫抛错）则再试一次；
+   * 3. 仍然没回到首页时兜底整页跳转 —— 退出登录必须回首页，不能停在后台/用户中心。
+   */
+  async function gotoHome() {
     try {
-      await apiLogout()
+      await router.replace('/')
     } catch {}
-    clear()
-    // 清除 token（cookie + localStorage）
-    clearToken()
-    toast.success('已退出登录')
-    // 退出后立即跳转首页
-    router.replace('/')
+    if (router.currentRoute.value.path === '/') return
+
+    try {
+      await router.replace('/')
+    } catch {}
+    if (router.currentRoute.value.path === '/') return
+
+    window.location.assign('/')
+  }
+
+  async function logout() {
+    if (loggingOut) return
+    loggingOut = true
+    // 告诉请求拦截器：本次退出期间的路由跳转由这里独占（见 utils/authFlow.js）
+    logoutState.active = true
+    try {
+      // 服务端登出「只发不等」：接口慢或异常都不该拖住本地退出流程
+      // （接口本身是幂等的，且前端清理 cookie/token 与它无关）
+      apiLogout().catch(() => {})
+
+      clear()
+      // 清除 token（cookie + localStorage）
+      clearToken()
+      toast.success('已退出登录')
+
+      // 停掉消息轮询：侧栏（MainLayout）才会在登出时停它，
+      // 从用户中心退出时没有侧栏，定时器会残留并持续发请求
+      try {
+        useNotificationStore().stopPolling()
+      } catch {}
+
+      await gotoHome()
+    } finally {
+      loggingOut = false
+      // 留一点余量窗口：尚未结束的请求可能还会返回 401，继续让路给「回首页」
+      setTimeout(() => {
+        logoutState.active = false
+      }, 1000)
+    }
   }
 
   return {

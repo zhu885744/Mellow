@@ -73,7 +73,7 @@
           <i class="bi bi-shield-lock" />
           <span class="user-nav-text">管理后台</span>
         </RouterLink>
-        <button type="button" class="user-logout" @click="userStore.logout">
+        <button type="button" class="user-logout" :disabled="loggingOut" @click="onLogout">
           <i class="bi bi-box-arrow-right" />
           <span class="user-nav-text">退出登录</span>
         </button>
@@ -87,8 +87,42 @@
         </button>
         <div class="user-topbar-title">{{ currentTitle }}</div>
         <div class="user-topbar-right">
-          <img :src="user?.avatar || defaultAvatar" class="user-topbar-avatar" alt="avatar" />
-          <span class="user-topbar-name">{{ user?.nickname }}</span>
+          <!-- 用户菜单：头像 + 昵称收进下拉（个人资料 / 返回前台 / 退出登录） -->
+          <div class="user-menu" ref="userMenuRef">
+            <button
+              class="user-menu-btn"
+              :class="{ open: userMenuOpen }"
+              type="button"
+              aria-haspopup="menu"
+              :aria-expanded="userMenuOpen"
+              @click="userMenuOpen = !userMenuOpen"
+            >
+              <img :src="user?.avatar || defaultAvatar" class="user-topbar-avatar" alt="avatar" />
+              <span class="user-topbar-name">{{ user?.nickname || '未登录' }}</span>
+              <i class="bi bi-chevron-down user-menu-caret" />
+            </button>
+
+            <div v-if="userMenuOpen" class="user-menu-panel" role="menu">
+              <RouterLink to="/user/profile" class="user-menu-item" @click="userMenuOpen = false">
+                <i class="bi bi-person" />
+                <span>个人资料</span>
+              </RouterLink>
+              <RouterLink to="/" class="user-menu-item" @click="userMenuOpen = false">
+                <i class="bi bi-house" />
+                <span>返回前台</span>
+              </RouterLink>
+              <div class="user-menu-divider" />
+              <button
+                class="user-menu-item is-danger"
+                type="button"
+                :disabled="loggingOut"
+                @click="onLogout"
+              >
+                <i class="bi bi-box-arrow-right" />
+                <span>{{ loggingOut ? '退出中…' : '退出登录' }}</span>
+              </button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -103,7 +137,7 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
@@ -178,9 +212,47 @@ const currentTitle = computed(() => {
   return hit?.name || '用户中心'
 })
 
+// ---------- 顶栏用户下拉 ----------
+const userMenuOpen = ref(false)
+const userMenuRef = ref(null)
+const loggingOut = ref(false)
+
 // 移动端：路由变化后自动收起抽屉（桌面端保持用户选择的折叠状态不变）
 watch(() => route.path, () => {
+  userMenuOpen.value = false
   if (window.innerWidth <= 768) collapsed.value = false
+})
+
+// 点击菜单外部 / 按 Esc 关闭下拉
+function onDocClick(e) {
+  if (!userMenuOpen.value) return
+  if (userMenuRef.value && !userMenuRef.value.contains(e.target)) userMenuOpen.value = false
+}
+function onDocKeydown(e) {
+  if (e.key === 'Escape') userMenuOpen.value = false
+}
+
+// 退出登录：清登录态 + 清 token + 回首页都在 store 里完成
+// （侧边栏与顶栏下拉共用这一个入口，避免连点与重复调用）
+async function onLogout() {
+  userMenuOpen.value = false
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await userStore.logout()
+  } finally {
+    loggingOut.value = false
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('click', onDocClick)
+  document.addEventListener('keydown', onDocKeydown)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('click', onDocClick)
+  document.removeEventListener('keydown', onDocKeydown)
 })
 </script>
 
@@ -468,6 +540,103 @@ watch(() => route.path, () => {
 .user-topbar-name {
   font-size: 14px;
   color: var(--text-soft);
+}
+
+/* ---------- 顶栏用户下拉（与后台顶栏同一套观感，圆角统一 4px） ---------- */
+.user-menu {
+  position: relative;
+}
+.user-menu-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.18s, border-color 0.18s, background 0.18s;
+}
+.user-menu-btn:hover,
+.user-menu-btn.open {
+  color: var(--text);
+  border-color: var(--border);
+  background: var(--bg-muted);
+}
+.user-menu-caret {
+  font-size: 11px;
+  color: var(--text-light);
+  transition: transform 0.18s;
+}
+.user-menu-btn.open .user-menu-caret {
+  transform: rotate(180deg);
+}
+.user-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 20;
+  min-width: 172px;
+  padding: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: var(--shadow-md);
+}
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.user-menu-item i {
+  font-size: 15px;
+  color: var(--text-light);
+  transition: color 0.15s;
+}
+.user-menu-item:hover {
+  background: var(--bg-muted);
+  color: var(--text);
+}
+.user-menu-item:hover i {
+  color: var(--primary);
+}
+.user-menu-item.is-danger {
+  color: var(--danger);
+}
+.user-menu-item.is-danger i {
+  color: var(--danger);
+}
+.user-menu-item.is-danger:hover {
+  background: rgba(217, 84, 77, 0.1);
+  color: var(--danger);
+}
+.user-menu-item.is-danger:hover i {
+  color: var(--danger);
+}
+.user-menu-item:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.user-menu-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--border-soft);
 }
 .user-content {
   padding: 22px;

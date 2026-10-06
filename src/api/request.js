@@ -5,6 +5,7 @@ import router from '@/router'
 import { cache } from '@/utils/cache'
 import { getCookie } from '@/utils/cookie'
 import { showAuthDialog, clearLocalAuthData } from '@/utils/authDialog'
+import { logoutState } from '@/utils/authFlow'
 import { requestSliderCaptcha } from '@/utils/captchaGate'
 import { API_BASE_URL, API_ROOT_URL } from '@/utils/runtimeConfig'
 
@@ -131,10 +132,15 @@ const handleLogout = () => {
   isLoggingOut = true
   const userStore = useUserStore()
   userStore.clear()
-  // 仅当前页面需要登录时才跳转
-  const current = router.currentRoute.value
-  if (current.meta?.auth) {
-    router.push({ name: 'login', query: { redirect: current.fullPath } })
+  // 用户主动退出登录期间：路由由 stores/user.js#logout() 独占（它负责跳回首页），
+  // 这里只清登录态、不抢跳转 —— 否则后台这类 meta.auth 页面里退出时，
+  // 页面上仍在飞的接口返回的 401 会把路由抢到登录页，导致「退出后回不到首页」
+  if (!logoutState.active) {
+    // 仅当前页面需要登录时才跳转
+    const current = router.currentRoute.value
+    if (current.meta?.auth) {
+      router.push({ name: 'login', query: { redirect: current.fullPath } })
+    }
   }
   setTimeout(() => { isLoggingOut = false }, 2000)
 }
@@ -208,6 +214,12 @@ service.interceptors.response.use(
         // 安装引导未完成（后端带 gate:'install'）：静默去安装向导，不是登录问题
         if (data.gate === 'install') {
           enterInstallGate()
+          return Promise.reject({ ...data, code: data.code })
+        }
+        // 用户主动退出登录期间：页面上尚未结束的请求必然拿到 401/412，
+        // 这里只静默清理，既不弹「登录态异常」框，也不抢路由跳转（由 logout() 统一回首页）
+        if (logoutState.active) {
+          useUserStore().clear()
           return Promise.reject({ ...data, code: data.code })
         }
         // 没登录（不是登录态异常）：静默清掉本地登录态即可，别弹「需要您自行手动清除」的框
