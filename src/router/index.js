@@ -186,7 +186,10 @@ const routes = [
     children: [
       { path: 'login', name: 'login', component: () => import('@/views/auth/Login.vue') },
       { path: 'register', name: 'register', component: () => import('@/views/auth/Register.vue') },
-      { path: 'forgot', name: 'forgot', component: () => import('@/views/auth/Forgot.vue') }
+      { path: 'forgot', name: 'forgot', component: () => import('@/views/auth/Forgot.vue') },
+      // 第三方登录回调页（QQ / GitHub / Gitee 授权后跳回，见 views/auth/OAuth.vue）
+      // 必须与其他 auth 子页同一个回调地址，因此不带 query（平台信息记在 sessionStorage）
+      { path: 'oauth', name: 'auth-oauth', component: () => import('@/views/auth/OAuth.vue') }
     ]
   },
   // 小黑屋（封禁公示）：独立于前台 MainLayout 的顶级路由，页面自己撑满视口，

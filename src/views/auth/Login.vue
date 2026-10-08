@@ -99,6 +99,9 @@
       <AuthAgreement />
     </form>
 
+    <!-- 第三方登录（QQ / GitHub / Gitee）：后台开启后才会出现 -->
+    <SocialLogin mode="login" />
+
     <div class="auth-bottom">
       还没有账号？<router-link to="/auth/register">立即注册</router-link>
     </div>
@@ -111,7 +114,9 @@ import { useRouter, useRoute } from 'vue-router'
 import { login, signCode, signCodeSend } from '@/api/comm'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
+import { finishPendingBind } from '@/utils/oauth'
 import AuthAgreement from '@/components/AuthAgreement.vue'
+import SocialLogin from '@/components/SocialLogin.vue'
 
 // 登录方式：password 账号密码 / code 验证码（免密）
 const mode = ref('password')
@@ -136,7 +141,7 @@ const router = useRouter()
 const route = useRoute()
 
 // 登录成功后的统一收尾：持久化 token / 用户信息 → 刷新登录态 → 回跳
-function afterLogin(data, message) {
+async function afterLogin(data, message) {
   const validTime = Number(data.valid_time) > 0 ? Number(data.valid_time) : 15 * 24 * 60 * 60
   // 关键：持久化 token（cookie + localStorage），后续请求拦截器注入 Authorization 才能通过鉴权
   if (data.token) {
@@ -145,6 +150,8 @@ function afterLogin(data, message) {
   userStore.setUser(data.user, validTime)
   // 用 check-token 的权威结构刷新用户信息（确保 result.auth 等字段完整）
   userStore.checkLoginState()
+  // 登录前若发起过第三方登录但未绑定，这里自动补上绑定（票据来自 /auth/oauth 回调页）
+  await finishPendingBind()
   toast.success(message)
   const redirect = route.query.redirect || '/'
   router.replace(redirect)
@@ -159,7 +166,7 @@ async function handleLogin() {
   try {
     const res = await login(account.value, password.value)
     if (res.code === 200 || res.code === 201) {
-      afterLogin(res.data || {}, '登录成功')
+      await afterLogin(res.data || {}, '登录成功')
     }
   } catch (e) {
     // toast 已显示
@@ -205,7 +212,7 @@ async function handleCodeLogin() {
     // 注意：验证码一经校验即失效，失败需重新发送，因此不做自动重试
     const res = await signCode(codeForm.value.social, codeForm.value.code)
     if (res.code === 200) {
-      afterLogin(res.data || {}, '登录成功')
+      await afterLogin(res.data || {}, '登录成功')
     }
   } catch (e) {
     // toast 已显示

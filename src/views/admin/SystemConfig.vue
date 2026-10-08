@@ -1188,6 +1188,73 @@
               </dl>
             </section>
           </template>
+          <!-- ============ 第三方登录（QQ / GitHub / Gitee，SYSTEM_OAUTH）============ -->
+          <template v-else-if="tab === 'oauth'">
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">第三方登录</h3>
+                  <p class="cfg-desc">
+                    配置 QQ / GitHub / Gitee 开放平台应用。AppKey 只保存在服务端（接口不下发到前端）；
+                    回调地址必须与第三方后台登记的完全一致，否则换取 token 会失败。
+                  </p>
+                </div>
+              </header>
+
+              <div class="form-grid">
+                <div class="form-item">
+                  <label class="form-label">未绑定时自动注册新账号</label>
+                  <SelectMenu v-model="cfg.oauth.autoRegister" variant="field" :options="ON_OFF" />
+                  <p class="form-hint">
+                    关闭后：未绑定过的第三方账号不会建号，而是提示「先登录再绑定」，绑定入口在用户中心 → 账号安全
+                  </p>
+                </div>
+                <div class="form-item">
+                  <label class="form-label">请求超时（秒）</label>
+                  <input v-model.number="cfg.oauth.timeout" class="input" type="number" min="3" max="60" step="1" />
+                  <p class="form-hint">第三方接口请求超时，3 ~ 60 秒（默认 15）</p>
+                </div>
+                <div class="form-item">
+                  <label class="form-label">HTTP 代理</label>
+                  <input v-model.trim="cfg.oauth.proxy" class="input" type="text" placeholder="http://127.0.0.1:7890（留空表示直连）" />
+                  <p class="form-hint">
+                    GitHub 在部分网络环境下直连不通（报 context deadline exceeded），此时填服务器上的代理地址即可，支持 http / socks5
+                  </p>
+                </div>
+              </div>
+
+              <template v-for="item in OAUTH_PLATFORMS" :key="item.key">
+                <h4 class="cfg-sub-title">{{ item.label }}</h4>
+                <div class="form-grid">
+                  <div class="form-item">
+                    <label class="form-label">启用</label>
+                    <SelectMenu v-model="cfg.oauth[item.key].enable" variant="field" :options="ON_OFF" />
+                    <p class="form-hint">{{ item.hint }}</p>
+                  </div>
+                  <div class="form-item">
+                    <label class="form-label">AppID / Client ID</label>
+                    <input v-model.trim="cfg.oauth[item.key].appId" class="input" type="text" placeholder="开放平台应用 ID" />
+                  </div>
+                  <div class="form-item">
+                    <label class="form-label">AppKey / Client Secret</label>
+                    <input v-model.trim="cfg.oauth[item.key].appKey" class="input" type="text" placeholder="开放平台应用密钥" />
+                    <p class="form-hint">仅服务端使用，不会返回给前端</p>
+                  </div>
+                  <div class="form-item">
+                    <label class="form-label">回调地址</label>
+                    <input v-model.trim="cfg.oauth[item.key].redirect" class="input" type="text" :placeholder="oauthRedirectPlaceholder" />
+                    <p class="form-hint">建议填：{{ oauthRedirectPlaceholder }}</p>
+                  </div>
+                </div>
+              </template>
+
+              <div class="cfg-foot">
+                <button class="btn btn-primary btn-sm" :disabled="isSaving('oauth')" @click="saveOauth">
+                  <i class="bi bi-check2" /> 保存
+                </button>
+              </div>
+            </section>
+          </template>
         </template>
       </div>
     </div>
@@ -1356,6 +1423,7 @@ const modules = [
   { key: 'page', label: '分页限制', icon: 'bi bi-list-ol' },
   { key: 'jwt', label: 'JWT 认证', icon: 'bi bi-key' },
   { key: 'register', label: '注册', icon: 'bi bi-person-plus' },
+  { key: 'oauth', label: '第三方登录', icon: 'bi bi-share' },
   { key: 'cache', label: '缓存', icon: 'bi bi-database' },
   { key: 'storage', label: '存储', icon: 'bi bi-hdd' },
   { key: 'sms', label: '短信', icon: 'bi bi-send' },
@@ -1528,7 +1596,18 @@ const cfg = reactive({
   // - adminEmail  → json.admin_email：管理员收件邮箱（多个逗号分隔，空则用超管邮箱）
   // - scenes      → json.scenes：各场景开关（key 见 MAIL_SCENES）
   // - rawScenes   → 后端原始 scenes，保存时与表单合并（避免覆盖掉前端未知的新场景）
-  mail: { enabled: '1', adminEmail: '', scenes: defaultMailScenes(), rawScenes: {} }
+  mail: { enabled: '1', adminEmail: '', scenes: defaultMailScenes(), rawScenes: {} },
+  // 第三方登录（SYSTEM_OAUTH 一条记录，见 app/model/oauth.go）
+  // - autoRegister → json.auto_register：第三方账号未绑定时是否自动建号
+  // - qq/github/gitee → json.{平台}.{enable, app_id, app_key, redirect}
+  oauth: {
+    autoRegister: '1',
+    timeout: 15,
+    proxy: '',
+    qq: { enable: '0', appId: '', appKey: '', redirect: '' },
+    github: { enable: '0', appId: '', appKey: '', redirect: '' },
+    gitee: { enable: '0', appId: '', appKey: '', redirect: '' }
+  }
 })
 
 // ===== toml 配置 =====
@@ -1825,8 +1904,38 @@ function readDecorationConfig(raw) {
   cfg.decoration.titleMaxLength = Number(title.max_length || 10)
 }
 
+// 第三方登录平台（顺序与前台按钮、后端 model/oauth.go 的平台列表一致）
+const OAUTH_PLATFORMS = [
+  { key: 'qq', label: 'QQ', hint: 'QQ 互联 connect.qq.com → 网站应用' },
+  { key: 'github', label: 'GitHub', hint: 'GitHub → Settings → Developer settings → OAuth Apps' },
+  { key: 'gitee', label: 'Gitee', hint: 'Gitee → 设置 → 第三方应用 → 创建应用' }
+]
+
+// 建议的回调地址：三个平台可共用同一个（平台信息由前端记在 sessionStorage，见 utils/oauth.js）
+const oauthRedirectPlaceholder = computed(() => `${window.location.origin}/auth/oauth`)
+
+/**
+ * 读取第三方登录配置（SYSTEM_OAUTH）
+ * 用默认值打底：后台缺字段时不会把表单清空，保存时再补回完整结构
+ */
+function readOauthConfig(raw) {
+  const json = parseJson(raw?.json, {})
+
+  cfg.oauth.autoRegister = toText(json.auto_register, '1')
+  cfg.oauth.timeout = Number(json.timeout || 15)
+  cfg.oauth.proxy = toText(json.proxy, '')
+
+  OAUTH_PLATFORMS.forEach((item) => {
+    const platform = json[item.key] && typeof json[item.key] === 'object' ? json[item.key] : {}
+    cfg.oauth[item.key].enable = toText(platform.enable, '0')
+    cfg.oauth[item.key].appId = toText(platform.app_id, '')
+    cfg.oauth[item.key].appKey = toText(platform.app_key, '')
+    cfg.oauth[item.key].redirect = toText(platform.redirect, '')
+  })
+}
+
 async function loadConfigs() {
-  const [apiKey, qps, block, notify, pageLimit, captcha, register, article, moments, pages, comment, mailNotify, decoration] = await Promise.all([
+  const [apiKey, qps, block, notify, pageLimit, captcha, register, article, moments, pages, comment, mailNotify, decoration, oauth] = await Promise.all([
     readConfig('SYSTEM_API_KEY'),
     readConfig('SYSTEM_QPS'),
     readConfig('SYSTEM_QPS_BLOCK'),
@@ -1839,7 +1948,8 @@ async function loadConfigs() {
     readConfig('PAGE'),
     readConfig('COMMENT'),
     readConfig('SYSTEM_MAIL_NOTIFY'),
-    readConfig('SYSTEM_DECORATION')
+    readConfig('SYSTEM_DECORATION'),
+    readConfig('SYSTEM_OAUTH')
   ])
 
   if (apiKey) cfg.apiKey.value = toText(apiKey.value, '0')
@@ -1884,6 +1994,9 @@ async function loadConfigs() {
   }
   if (decoration) {
     readDecorationConfig(decoration)
+  }
+  if (oauth) {
+    readOauthConfig(oauth)
   }
 }
 
@@ -2149,6 +2262,34 @@ async function saveDecoration() {
     },
     '已保存'
   )
+}
+
+/**
+ * 保存第三方登录配置（SYSTEM_OAUTH）
+ * 每次提交完整结构（三个平台都带上），避免只改一个平台把其它平台的密钥清空
+ */
+async function saveOauth() {
+  const json = {
+    auto_register: Number(cfg.oauth.autoRegister) === 1 ? 1 : 0,
+    timeout: Math.min(60, Math.max(3, Number(cfg.oauth.timeout) || 15)),
+    proxy: String(cfg.oauth.proxy || '').trim()
+  }
+
+  OAUTH_PLATFORMS.forEach((item) => {
+    const platform = cfg.oauth[item.key]
+    json[item.key] = {
+      enable: Number(platform.enable) === 1 ? 1 : 0,
+      app_id: String(platform.appId || '').trim(),
+      app_key: String(platform.appKey || '').trim(),
+      redirect: String(platform.redirect || '').trim()
+    }
+  })
+
+  await saveConfigItem('oauth', { key: 'SYSTEM_OAUTH', data: { value: String(json.auto_register), json } }, '已保存')
+
+  // 回读一次统一口径（后端会补默认值）
+  const latest = await readConfig('SYSTEM_OAUTH')
+  if (latest) readOauthConfig(latest)
 }
 
 function savePageLimit() {

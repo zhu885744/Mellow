@@ -68,6 +68,9 @@
       </button>
     </form>
 
+    <!-- 第三方注册（QQ / GitHub / Gitee）：后台开启后才会出现 -->
+    <SocialLogin mode="register" />
+
     <div class="auth-bottom">
       已有账号？<router-link to="/auth/login">立即登录</router-link>
     </div>
@@ -80,7 +83,9 @@ import { useRouter } from 'vue-router'
 import { register, registerSendCode } from '@/api/comm'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
+import { finishPendingBind } from '@/utils/oauth'
 import AuthAgreement from '@/components/AuthAgreement.vue'
+import SocialLogin from '@/components/SocialLogin.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -154,6 +159,8 @@ async function handleRegister() {
         userStore.persistToken(data.token, validTime)
       }
       userStore.setUser(data.user, validTime)
+      // 注册前若发起过第三方登录但未绑定，这里自动补上绑定（票据来自 /auth/oauth 回调页）
+      await finishPendingBind()
       toast.success('注册成功，已自动登录')
       router.replace('/')
     }

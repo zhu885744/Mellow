@@ -132,6 +132,44 @@
       </ul>
     </div>
 
+    <!-- 第三方账号绑定（QQ / GitHub / Gitee）：未开启任何平台时整块不显示 -->
+    <div v-if="oauthLoading || oauthList.length || oauthAvailable.length" class="card card-pad">
+      <h2 class="block-title">第三方账号</h2>
+      <p class="oauth-tip">
+        绑定后可用第三方账号一键登录。解绑前请确认已设置密码（或绑定了其它方式），否则会无法登录本站。
+      </p>
+
+      <div v-if="oauthLoading" class="oauth-loading"><span class="spinner" /> 加载中…</div>
+      <ul v-else class="oauth-list">
+        <!-- 已绑定 -->
+        <li v-for="item in oauthList" :key="item.platform" class="oauth-item">
+          <i class="oauth-brand-icon" :class="platformIcon(item.platform)" />
+          <span class="oauth-info">
+            <span class="oauth-name">{{ item.name }}</span>
+            <span class="oauth-sub" :title="item.nickname">{{ item.nickname || '已绑定' }}</span>
+          </span>
+          <button
+            class="btn btn-sm btn-outline-danger"
+            :disabled="!!oauthActing"
+            @click="askUnbind(item)"
+          >
+            {{ oauthActing === item.platform ? '解绑中…' : '解绑' }}
+          </button>
+        </li>
+        <!-- 未绑定 -->
+        <li v-for="item in oauthAvailable" :key="item.platform" class="oauth-item">
+          <i class="oauth-brand-icon" :class="platformIcon(item.platform)" />
+          <span class="oauth-info">
+            <span class="oauth-name">{{ item.name }}</span>
+            <span class="oauth-sub">未绑定</span>
+          </span>
+          <button class="btn btn-sm btn-primary" :disabled="!!oauthActing" @click="bindOauth(item)">
+            绑定
+          </button>
+        </li>
+      </ul>
+    </div>
+
     <!-- 账号注销 -->
     <div class="card card-pad">
       <h2 class="block-title danger-title">账号注销</h2>
@@ -209,6 +247,18 @@
       </div>
     </div>
   </div>
+
+  <!-- 解绑第三方账号确认 -->
+  <ConfirmDialog
+    v-model:visible="oauthConfirmVisible"
+    title="解绑第三方账号"
+    :message="oauthConfirmMessage"
+    confirm-text="确定解绑"
+    cancel-text="再想想"
+    loading-text="解绑中..."
+    :loading="!!oauthActing"
+    @confirm="doUnbind"
+  />
 </template>
 
 <script setup>
@@ -218,6 +268,9 @@ import { useUserStore } from '@/stores/user'
 // updateUser 仅供「账号修改」使用，功能暂时关闭
 import { destroy, destroySendCode } from '@/api/users'
 import { resetPasswordSendCode, resetPassword } from '@/api/comm'
+import { getMyOauth, oauthUnbind } from '@/api/oauth'
+import { enabledPlatforms, platformIcon, startOauth } from '@/utils/oauth'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { toast } from '@/utils/toast'
 
 const userStore = useUserStore()
@@ -232,6 +285,64 @@ const CONST = {
 
 // ===== 账号展示（账号修改功能暂时关闭） =====
 const currentAccount = ref('')
+
+// ===== 第三方账号绑定（QQ / GitHub / Gitee） =====
+// 已绑定列表来自 /api/oauth/mine；可绑定平台来自 /api/oauth/config（过滤掉已绑定的）
+const oauthLoading = ref(false)
+const oauthList = ref([])
+const oauthAvailable = ref([])
+const oauthActing = ref('')
+const oauthConfirmVisible = ref(false)
+const oauthConfirmItem = ref(null)
+
+const oauthConfirmMessage = computed(() => {
+  const name = oauthConfirmItem.value?.name || '第三方账号'
+  return `确定解绑 ${name} 吗？解绑后将无法再用它登录。`
+})
+
+async function loadOauthMine() {
+  oauthLoading.value = true
+  try {
+    const [res, platforms] = await Promise.all([getMyOauth(), enabledPlatforms()])
+    const list = Array.isArray(res?.data?.list) ? res.data.list : []
+    oauthList.value = list
+    const bound = new Set(list.map((item) => item.platform))
+    oauthAvailable.value = platforms.filter((item) => !bound.has(item.platform))
+  } catch {
+    // 接口失败（如平台全未开启）时整块不渲染，不打扰用户
+    oauthList.value = []
+    oauthAvailable.value = []
+  } finally {
+    oauthLoading.value = false
+  }
+}
+
+// 绑定：跳第三方授权页；回调页识别到已登录会直接把该平台绑到当前账号（mode=bind）
+function bindOauth(item) {
+  startOauth(item, { mode: 'bind', redirect: '/user/security' })
+}
+
+function askUnbind(item) {
+  oauthConfirmItem.value = item
+  oauthConfirmVisible.value = true
+}
+
+async function doUnbind() {
+  const item = oauthConfirmItem.value
+  if (!item) return
+  oauthActing.value = item.platform
+  try {
+    await oauthUnbind(item.platform)
+    toast.success(`${item.name} 已解绑`)
+    oauthConfirmVisible.value = false
+    oauthConfirmItem.value = null
+    await loadOauthMine()
+  } catch {
+    // 错误已由拦截器提示（例如「解绑后你将无法登录本站」）
+  } finally {
+    oauthActing.value = ''
+  }
+}
 
 /* 账号修改功能暂时关闭，恢复时取消注释即可
 const accountLoading = ref(false)
@@ -521,7 +632,10 @@ function fetchUserInfo() {
   fillContact()
 }
 
-onMounted(fetchUserInfo)
+onMounted(() => {
+  fetchUserInfo()
+  loadOauthMine()
+})
 // 刷新页面时 user 可能晚于组件挂载，登录态就绪后补填一次
 watch(() => userStore.user?.id, () => fetchUserInfo())
 onUnmounted(() => {
@@ -716,5 +830,67 @@ onUnmounted(() => {
 }
 @keyframes spin {
   to { transform: rotate(360deg); }
+}
+
+/* ===== 第三方账号绑定 ===== */
+.oauth-tip {
+  margin: -4px 0 14px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-muted);
+}
+.oauth-loading {
+  display: flex;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+/* 本页 .spinner 是给危险按钮用的白圈，浅色卡片上要换成主题色 */
+.oauth-loading .spinner {
+  border-color: var(--border);
+  border-top-color: var(--primary);
+}
+.oauth-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.oauth-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-soft);
+}
+.oauth-item:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+.oauth-brand-icon {
+  width: 26px;
+  flex-shrink: 0;
+  font-size: 20px;
+  text-align: center;
+  color: var(--text);
+}
+.oauth-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.oauth-name {
+  font-size: 14px;
+  color: var(--text);
+}
+.oauth-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 </style>
