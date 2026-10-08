@@ -187,7 +187,20 @@
                 <span v-if="item.account" class="contact-item"><i class="bi bi-person-badge" /> {{ item.account }}</span>
                 <span v-if="item.email" class="contact-item"><i class="bi bi-envelope" /> {{ item.email }}</span>
                 <span v-if="item.phone" class="contact-item"><i class="bi bi-telephone" /> {{ item.phone }}</span>
-                <span v-if="!item.account && !item.email && !item.phone" class="contact-item is-empty">未绑定账号 / 邮箱 / 手机号</span>
+                <!-- 第三方账号绑定（QQ / GitHub / Gitee）：后端只对管理员返回该字段，
+                     悬停可看第三方昵称 -->
+                <span
+                  v-for="oa in item.oauth || []"
+                  :key="oa.platform"
+                  class="contact-item is-oauth"
+                  :title="`${oa.name}${oa.nickname ? '：' + oa.nickname : ''}`"
+                >
+                  <i :class="platformIcon(oa.platform)" /> {{ oa.name }}
+                </span>
+                <span
+                  v-if="!item.account && !item.email && !item.phone && !(item.oauth || []).length"
+                  class="contact-item is-empty"
+                >未绑定账号 / 邮箱 / 手机号</span>
               </div>
 
               <div class="user-meta">
@@ -446,6 +459,22 @@
           <label class="form-label">管理员备注</label>
           <input v-model="edit.remark" class="input" type="text" placeholder="仅后台可见" />
         </div>
+      </section>
+
+      <!-- 第三方账号（只读）：该用户绑定的 QQ / GitHub / Gitee -->
+      <section v-if="edit.mode === 'edit'" class="form-section">
+        <h4 class="section-title">第三方账号</h4>
+        <p v-if="edit.oauthLoading" class="form-hint">加载中…</p>
+        <p v-else-if="!edit.oauth.length" class="form-hint">该用户未绑定第三方账号</p>
+        <ul v-else class="uo-list">
+          <li v-for="oa in edit.oauth" :key="oa.platform" class="uo-item">
+            <i class="uo-icon" :class="platformIcon(oa.platform)" />
+            <span class="uo-name">{{ oa.name }}</span>
+            <span class="uo-nick" :title="oa.nickname">{{ oa.nickname || '已绑定' }}</span>
+            <span v-if="oa.create_time" class="uo-time">{{ fromNow(oa.create_time) }}绑定</span>
+          </li>
+        </ul>
+        <p class="form-hint">绑定 / 解绑由用户在「账号安全」里自行操作，后台仅查看</p>
       </section>
     </AdminFormDialog>
 
@@ -718,6 +747,9 @@ import {
 } from '@/api/users'
 import { listAuthGroups, setUserAuthGroups } from '@/api/auth-group'
 import { getUserDecorations } from '@/api/decoration'
+// 第三方登录平台图标（bi-tencent-qq / bi-github / bi-git）
+import { platformIcon } from '@/utils/oauth'
+import { getMyOauth } from '@/api/oauth'
 import { uploadAttachments } from '@/api/attachment'
 import { fromNow, formatTime } from '@/utils/time'
 import { debounce } from '@/utils/helper'
@@ -1354,7 +1386,10 @@ const edit = reactive({
   remark: '',
   source: 'default',
   password: '',
-  status: USER_STATUS_NORMAL
+  status: USER_STATUS_NORMAL,
+  // 第三方账号绑定（只读展示，见「第三方账号」分组）
+  oauth: [],
+  oauthLoading: false
 })
 
 function resetEdit() {
@@ -1372,6 +1407,8 @@ function resetEdit() {
   edit.source = 'default'
   edit.password = ''
   edit.status = USER_STATUS_NORMAL
+  edit.oauth = []
+  edit.oauthLoading = false
 }
 
 function openCreate() {
@@ -1399,7 +1436,28 @@ function openEdit(item) {
     ? Number(item.status)
     : USER_STATUS_NORMAL
   edit.dialogTitle = `编辑用户 #${item.id}`
+  // 列表行里已经带回了绑定信息，先占位显示，再拉一次最新的（管理员可查任意用户）
+  edit.oauth = Array.isArray(item.oauth) ? item.oauth : []
   edit.visible = true
+  loadEditOauth(edit.id)
+}
+
+// loadEditOauth - 拉取指定用户的第三方绑定（编辑弹窗里的「第三方账号」分组）
+async function loadEditOauth(uid) {
+  const target = Number(uid)
+  if (!target) return
+
+  edit.oauthLoading = true
+  try {
+    const res = await getMyOauth({ uid: target })
+    // 期间可能已经切到别的用户，避免串数据
+    if (Number(edit.id) !== target) return
+    if (Array.isArray(res?.data?.list)) edit.oauth = res.data.list
+  } catch {
+    // 失败就保留列表带过来的数据，不打断编辑流程
+  } finally {
+    if (Number(edit.id) === target) edit.oauthLoading = false
+  }
 }
 
 function pickAvatar() {
@@ -2004,6 +2062,10 @@ onUnmounted(() => {
 .contact-item.is-empty {
   color: var(--text-light);
 }
+/* 第三方账号绑定：图标带一点主题色，与账号/邮箱这类本站信息区分开 */
+.contact-item.is-oauth i {
+  color: var(--primary);
+}
 
 .user-meta {
   display: flex;
@@ -2164,6 +2226,44 @@ onUnmounted(() => {
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-muted);
+}
+/* 编辑弹窗里的「第三方账号」只读列表 */
+.uo-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.uo-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  background: var(--bg-muted);
+  font-size: 13px;
+}
+.uo-icon {
+  font-size: 16px;
+  color: var(--primary);
+}
+.uo-name {
+  color: var(--text);
+  font-weight: 600;
+}
+.uo-nick {
+  color: var(--text-soft);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.uo-time {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-light);
 }
 
 .check-grid {

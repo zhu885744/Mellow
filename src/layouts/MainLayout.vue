@@ -123,7 +123,8 @@
     </div>
 
     <!-- 全局页脚 -->
-    <footer class="layout-footer">
+    <!-- is-no-record：未配置任何备案号（ICP / 公安备案）——手机端只展示备案号，此时不必留一张空卡片 -->
+    <footer class="layout-footer" :class="{ 'is-no-record': !site.copyCode && !site.policeCode }">
       <div class="footer-card">
         <!-- 品牌 + 快捷链接 -->
         <div class="footer-top">
@@ -195,6 +196,31 @@
       </div>
     </footer>
 
+    <!-- 发布面板遮罩：点空白收起（z-index 低于 Tab Bar，方便直接切其它 tab） -->
+    <Transition name="publish-fade">
+      <div v-if="publishOpen" class="publish-mask" @click="publishOpen = false" />
+    </Transition>
+
+    <!-- 发布面板：中间「发布」按钮展开，发文章 / 发动态 -->
+    <Transition name="publish-pop">
+      <div v-if="publishOpen" class="publish-panel" role="menu" aria-label="发布">
+        <button
+          v-for="item in PUBLISH_ACTIONS"
+          :key="item.key"
+          type="button"
+          class="publish-item"
+          role="menuitem"
+          @click="goPublish(item)"
+        >
+          <span class="publish-item__icon"><i :class="item.icon" aria-hidden="true" /></span>
+          <span class="publish-item__text">
+            <strong>{{ item.label }}</strong>
+            <small>{{ item.desc }}</small>
+          </span>
+        </button>
+      </div>
+    </Transition>
+
     <!-- 移动端底部 Tab Bar（仅手机端显示） -->
     <nav class="mobile-tabbar" aria-label="主导航">
       <button
@@ -202,10 +228,15 @@
         :key="tab.key"
         type="button"
         class="tab-item"
-        :class="{ active: isActive(tab), highlight: tab.highlight }"
+        :class="{
+          active: isActive(tab),
+          highlight: tab.highlight,
+          'is-open': tab.action === 'publish' && publishOpen
+        }"
         :aria-label="tab.label"
         :aria-current="isActive(tab) ? 'page' : undefined"
-        @click="goTab(tab)"
+        :aria-expanded="tab.action === 'publish' ? publishOpen : undefined"
+        @click="onTabClick(tab)"
       >
         <span v-if="tab.badge" class="tab-badge">{{ tab.badge }}</span>
         <i class="bi tab-icon" :class="tab.icon" />
@@ -255,6 +286,8 @@ function onGlobalKey(e) {
     e.preventDefault()
     openSearch()
   }
+  // Esc 收起发布面板（窄窗口调试时顺手）
+  if (e.key === 'Escape') publishOpen.value = false
 }
 onMounted(() => window.addEventListener('keydown', onGlobalKey))
 onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
@@ -317,7 +350,9 @@ const tabs = computed(() => {
   return [
     { key: 'home', to: '/', icon: 'bi-house-door-fill', label: '首页', exact: true },
     { key: 'goods', to: '/goods', icon: 'bi-shop', label: '商城', badge: '新' },
-    { key: 'publish', to: '/manage/posts/write', icon: 'bi-plus-circle-fill', label: '发布', needLogin: true, highlight: true },
+    // 发布：不直接跳转，点击展开「发文章 / 发动态」面板（见 PUBLISH_ACTIONS）
+    // to 仅用于高亮判定（在写文章页时保持选中态）
+    { key: 'publish', to: '/manage/posts/write', icon: 'bi-plus-circle-fill', label: '发布', needLogin: true, highlight: true, action: 'publish' },
     { key: 'notif', to: '/user/notifications', icon: 'bi-bell-fill', label: '消息', needLogin: true },
     { key: 'mine', to: uid ? `/author/${uid}` : '/user', icon: 'bi-person-fill', label: '我的', needLogin: true }
   ]
@@ -336,6 +371,41 @@ function goTab(tab) {
   }
   router.push(tab.to)
 }
+
+// 中间「发布」按钮：展开面板；其余 tab 正常跳转
+function onTabClick(tab) {
+  if (tab.action === 'publish') {
+    togglePublish()
+    return
+  }
+  goTab(tab)
+}
+
+// 发布面板：发文章 / 发动态（两个入口都需要登录）
+const publishOpen = ref(false)
+const PUBLISH_ACTIONS = [
+  { key: 'post', label: '发文章', desc: '写一篇图文文章', icon: 'bi-pencil-square', to: '/manage/posts/write' },
+  { key: 'moment', label: '发动态', desc: '分享此刻的想法', icon: 'bi-chat-square-dots', to: '/moments' }
+]
+
+function togglePublish() {
+  // 与其它 tab 的 needLogin 口径一致：未登录直接去登录页
+  if (!userStore.isLogged) {
+    router.push('/auth/login')
+    return
+  }
+  publishOpen.value = !publishOpen.value
+}
+
+function goPublish(item) {
+  publishOpen.value = false
+  router.push(item.to)
+}
+
+// 跳走（含点面板里的选项、切其它 tab）后自动收起
+watch(() => route.path, () => {
+  publishOpen.value = false
+})
 
 // 解析自定义导航链接：格式 "跳转文字 || 跳转链接"，一行一个
 const customNavLinks = computed(() => {
@@ -433,6 +503,8 @@ onMounted(() => {
   font-size: 21px;
   line-height: 1;
   margin-bottom: 3px;
+  /* 发布面板展开时「+」会转成「×」，这里给个过渡 */
+  transition: transform 0.18s ease;
 }
 .tab-label {
   font-size: 11px;
@@ -479,6 +551,102 @@ onMounted(() => {
 }
 .tab-item.highlight .tab-label {
   color: var(--text-soft);
+}
+/* 发布面板展开时：中间按钮的「+」转 45° 变「×」 */
+.tab-item.is-open .tab-icon {
+  transform: rotate(45deg);
+}
+
+/* ---------- 发布面板（发文章 / 发动态） ---------- */
+.publish-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 150;
+  background: rgba(0, 0, 0, 0.28);
+}
+.publish-panel {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(56px + env(safe-area-inset-bottom) + 10px);
+  z-index: 202;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border: 1px solid var(--border-soft);
+  border-radius: 4px;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-md);
+}
+.publish-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.16s;
+}
+.publish-item:hover,
+.publish-item:active {
+  background: var(--bg-muted);
+}
+.publish-item__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-size: 16px;
+}
+.publish-item__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.publish-item__text strong {
+  font-size: 14px;
+  font-weight: 600;
+}
+.publish-item__text small {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+/* 入场 / 收起动效 */
+.publish-pop-enter-active,
+.publish-pop-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.publish-pop-enter-from,
+.publish-pop-leave-to {
+  opacity: 0;
+  transform: translateY(8px);
+}
+.publish-fade-enter-active,
+.publish-fade-leave-active {
+  transition: opacity 0.18s ease;
+}
+.publish-fade-enter-from,
+.publish-fade-leave-to {
+  opacity: 0;
+}
+/* 宽屏（Tab Bar 不显示）时面板与遮罩一并隐藏：避免从手机端拉宽后残留 */
+@media (min-width: 641px) {
+  .publish-mask,
+  .publish-panel {
+    display: none;
+  }
 }
 
 .layout-body {
@@ -717,7 +885,7 @@ onMounted(() => {
   color: var(--primary);
 }
 
-/* 窄屏：品牌 / 链接 / 版权居中对齐（< 640px 时整个页脚由底部 Tab Bar 取代） */
+/* 窄屏：品牌 / 链接 / 版权居中对齐（< 640px 时页脚只保留备案号，见「响应式 - 手机」） */
 @media (max-width: 900px) {
   .footer-top,
   .footer-bottom {
@@ -783,14 +951,43 @@ onMounted(() => {
     flex-shrink: 0;
     object-fit: contain;
   }
-  /* 手机端隐藏左栏与底部 footer，由顶栏 + 底部 Tab Bar 接管导航 */
-  .layout-left,
+  /* 手机端隐藏左栏（导航由顶栏 + 底部 Tab Bar 接管） */
+  .layout-left {
+    display: none;
+  }
+  /* 手机端页脚：保留备案号一行（品牌 / 快捷链接 / 版权 / Powered by 收起），
+     底部留出固定 Tab Bar 的高度，避免备案号被挡住 */
   .layout-footer {
+    margin-top: 12px;
+    padding: 0 16px calc(72px + env(safe-area-inset-bottom));
+  }
+  .footer-card {
+    padding: 10px 14px;
+  }
+  .footer-top,
+  .footer-divider,
+  .footer-copy,
+  .footer-record--powered {
+    display: none;
+  }
+  .footer-bottom {
+    justify-content: center;
+    text-align: center;
+    gap: 4px 12px;
+  }
+  .footer-meta {
+    justify-content: center;
+    gap: 6px 16px;
+  }
+  /* 没有配置备案号时不渲染卡片（页脚仍保留底部让位，供固定 Tab Bar 使用） */
+  .layout-footer.is-no-record .footer-card {
     display: none;
   }
   .layout-body {
     grid-template-columns: 1fr;
-    padding: 16px 16px calc(72px + env(safe-area-inset-bottom));
+    /* 底部让位交给页脚（手机端页脚始终渲染，且位于最后一个元素）：
+       这里只留一点间距，避免内容与备案号之间出现大段空白 */
+    padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
   }
   /* 底部 Tab Bar */
   .mobile-tabbar {

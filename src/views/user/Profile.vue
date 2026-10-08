@@ -58,11 +58,97 @@
           </div>
         </div>
 
-        <!-- 头像框只在预览里体现（佩戴后自动生效）；换框 / 卸框统一在「我的装扮」里操作 -->
-        <p class="hint">
-          头像框在「我的装扮」中佩戴后会自动显示在预览里，
-          <RouterLink to="/user/decorations">前往我的装扮</RouterLink>
-        </p>
+        <!-- 主页封面（存 users.json.cover）：自定义图片 / 自定义颜色 二选一，用户主页顶部横幅使用 -->
+        <div class="preset-section">
+          <div class="preset-label">
+            <span><i class="bi bi-image" /> 主页封面</span>
+            <button v-if="hasCover" type="button" class="btn btn-xs" @click="clearCover">恢复默认</button>
+          </div>
+
+          <!-- 封面类型：图片 / 颜色 -->
+          <div class="cover-mode">
+            <button
+              v-for="m in COVER_MODES"
+              :key="m.key"
+              type="button"
+              class="cover-mode__item"
+              :class="{ active: coverMode === m.key }"
+              @click="switchCoverMode(m.key)"
+            >
+              <i :class="m.icon" aria-hidden="true" /> {{ m.label }}
+            </button>
+          </div>
+
+          <!-- 自定义图片 -->
+          <template v-if="coverMode === 'image'">
+            <div class="cover-preview" :class="{ 'is-empty': !form.cover }">
+              <img v-if="form.cover" :src="form.cover" alt="主页封面预览" />
+              <span v-else>未设置封面，用户主页将使用主题色渐变</span>
+            </div>
+            <div class="cover-actions">
+              <label class="btn btn-sm btn-primary">
+                <i class="bi bi-cloud-upload" /> {{ coverUploading ? '上传中...' : '上传封面' }}
+                <input
+                  v-if="!coverUploading"
+                  type="file"
+                  accept="image/*"
+                  hidden
+                  @change="onCoverFileChange"
+                />
+              </label>
+              <button type="button" class="btn btn-sm" title="从附件库选择封面" @click="showCoverLibrary = true">
+                <i class="bi bi-folder2-open" /> 从附件库选择
+              </button>
+            </div>
+            <p class="hint">建议 16:9 或更宽（如 1200×480）；保存后点「保存修改」生效。</p>
+          </template>
+
+          <!-- 自定义颜色 -->
+          <template v-else>
+            <div
+              class="cover-preview is-color"
+              :style="{ background: form.coverColor || DEFAULT_COVER_COLOR }"
+            >
+              <span class="cover-color-hex">{{ form.coverColor || DEFAULT_COVER_COLOR }}</span>
+            </div>
+            <div class="cover-actions">
+              <input
+                v-model="coverColorPicker"
+                type="color"
+                class="cover-color-input"
+                aria-label="选择封面颜色"
+              />
+              <input
+                v-model="form.coverColor"
+                class="input cover-color-text"
+                maxlength="7"
+                placeholder="#c7482a"
+                aria-label="封面颜色色值"
+              />
+              <button
+                v-for="c in COVER_COLORS"
+                :key="c"
+                type="button"
+                class="cover-swatch"
+                :class="{ active: (form.coverColor || '').toLowerCase() === c }"
+                :style="{ background: c }"
+                :title="c"
+                :aria-label="`使用颜色 ${c}`"
+                @click="form.coverColor = c"
+              />
+            </div>
+            <p class="hint">用取色器或直接填色值都可以；保存后点「保存修改」生效。</p>
+          </template>
+        </div>
+
+        <!-- 附件库（选择已上传图片作为封面） -->
+        <AttachmentLibrary
+          v-model:visible="showCoverLibrary"
+          title="选择封面"
+          accept="image"
+          @select="onCoverLibrarySelect"
+        />
+
       </div>
 
       <!-- 基本信息表单 -->
@@ -122,7 +208,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { updateUser, uploadAvatar } from '@/api/users'
 import { toast } from '@/utils/toast'
@@ -148,6 +234,55 @@ const loading = ref(false)
 const uploading = ref(false)
 const showAvatarUrlInput = ref(false)
 const customAvatarUrl = ref('')
+// 主页封面：上传状态 + 附件库开关
+const coverUploading = ref(false)
+const showCoverLibrary = ref(false)
+
+// ===== 主页封面：自定义图片 / 自定义颜色 二选一 =====
+// 当前选择的封面类型：image 自定义图片 / color 自定义颜色
+const coverMode = ref('image')
+const COVER_MODES = [
+  { key: 'image', label: '自定义图片', icon: 'bi-image' },
+  { key: 'color', label: '自定义颜色', icon: 'bi-palette' }
+]
+// 常用色（第一枚即站点朱砂主色），点一下直接套用
+const COVER_COLORS = ['#c7482a', '#c8a04a', '#2e7a5c', '#2f6f8f', '#6c5ce7', '#4a4f57']
+// 默认封面色：优先取当前主题的主色（--primary），取不到时用朱砂兜底
+const DEFAULT_COVER_COLOR = (() => {
+  const value = typeof document !== 'undefined'
+    ? getComputedStyle(document.documentElement).getPropertyValue('--primary').trim()
+    : ''
+  return /^#[0-9a-f]{6}$/i.test(value) ? value.toLowerCase() : '#c7482a'
+})()
+
+const hasCover = computed(() => !!(form.cover || form.coverColor))
+
+// #rgb / #rrggbb → #rrggbb（<input type="color"> 只认 6 位色值）
+function normalizeHex(value) {
+  const raw = String(value || '').trim()
+  if (/^#[0-9a-f]{3}$/i.test(raw)) {
+    return `#${raw[1]}${raw[1]}${raw[2]}${raw[2]}${raw[3]}${raw[3]}`.toLowerCase()
+  }
+  return /^#[0-9a-f]{6}$/i.test(raw) ? raw.toLowerCase() : ''
+}
+
+// 取色器只接受合法色值：为空或非法时先给默认色，保证「不动它也能保存」
+const coverColorPicker = computed({
+  get: () => normalizeHex(form.coverColor) || DEFAULT_COVER_COLOR,
+  set: (value) => { form.coverColor = value }
+})
+
+function switchCoverMode(mode) {
+  coverMode.value = mode
+  // 切到颜色模式且还没选过颜色时，先给一个主题主色，避免预览空白
+  if (mode === 'color' && !form.coverColor) form.coverColor = DEFAULT_COVER_COLOR
+}
+
+function clearCover() {
+  form.cover = ''
+  form.coverColor = ''
+  coverMode.value = 'image'
+}
 
 const form = reactive({
   id: '',
@@ -156,7 +291,11 @@ const form = reactive({
   description: '',
   avatar: '',
   title: '',
-  frame: ''
+  frame: '',
+  // 主页封面（存 users.json.cover）：用户主页顶部横幅，图片 / 颜色二选一
+  cover: '',
+  // 颜色封面的色值（json.cover = { type: 'color', value }）
+  coverColor: ''
 })
 const originalData = reactive({})
 
@@ -191,6 +330,48 @@ function onAvatarFileChange(e) {
       uploading.value = false
       e.target.value = ''
     })
+}
+
+// 主页封面上传（存 json.cover，手机端用户主页顶部横幅使用）
+function onCoverFileChange(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  if (file.size > 10 * 1024 * 1024) {
+    toast.warning('图片大小不能超过 10MB')
+    return
+  }
+  if (!['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(file.type)) {
+    toast.warning('请选择 JPG、PNG、GIF 或 WebP 格式的图片')
+    return
+  }
+  coverUploading.value = true
+  const params = new FormData()
+  params.append('file', file, file.name)
+  uploadAvatar(params)
+    .then((res) => {
+      const url = res.data?.results?.[0]?.full_url || res.data?.results?.[0]?.url || ''
+      if (url) {
+        form.cover = url
+        toast.success('封面上传成功，请点击「保存修改」完成更新')
+      } else {
+        toast.error('上传失败，请重试')
+      }
+    })
+    .catch(() => {
+      toast.error('上传失败，请稍后重试')
+    })
+    .finally(() => {
+      coverUploading.value = false
+      e.target.value = ''
+    })
+}
+
+// 附件库：选择已上传图片作为封面
+function onCoverLibrarySelect(urls = []) {
+  const url = urls[0]
+  if (!url) return
+  form.cover = url
+  toast.success('封面已应用，请点击「保存修改」完成更新')
 }
 
 // 附件库：选择已上传图片作为头像
@@ -245,6 +426,27 @@ function fetchUserInfo() {
     // title / frame 由装扮系统维护（佩戴时服务端自动回写），这里仅用于展示
     form.title = u.title || ''
     form.frame = u.json?.frame || ''
+    // 主页封面：兼容早期「字符串 = 图片地址」与 { type, value } 两种写法
+    const rawCover = u.json?.cover
+    if (typeof rawCover === 'string' && rawCover) {
+      form.cover = rawCover
+      form.coverColor = ''
+      coverMode.value = 'image'
+    } else if (rawCover && typeof rawCover === 'object' && rawCover.value) {
+      if (rawCover.type === 'color') {
+        form.coverColor = normalizeHex(rawCover.value) || DEFAULT_COVER_COLOR
+        form.cover = ''
+        coverMode.value = 'color'
+      } else {
+        form.cover = rawCover.value
+        form.coverColor = ''
+        coverMode.value = 'image'
+      }
+    } else {
+      form.cover = ''
+      form.coverColor = ''
+      coverMode.value = 'image'
+    }
     Object.assign(originalData, { ...form })
   }
 }
@@ -263,6 +465,15 @@ async function save() {
     // 头衔 / 头像框由装扮系统维护（佩戴走 /decoration/wear 服务端回写），
     // 这里不再提交，避免把服务端已写入的值覆盖回旧值；json 原样回传以防后端整体替换
     const currentJson = (userStore.user?.json && typeof userStore.user.json === 'object') ? { ...userStore.user.json } : {}
+    // 主页封面写入 json.cover（图片 / 颜色二选一）；未设置时删掉该键，回到主题色渐变
+    if (coverMode.value === 'color') {
+      // 颜色模式下色值非法时回落到默认色，避免「填错就静默清空封面」
+      currentJson.cover = { type: 'color', value: normalizeHex(form.coverColor) || DEFAULT_COVER_COLOR }
+    } else if (coverMode.value === 'image' && form.cover) {
+      currentJson.cover = { type: 'image', value: form.cover }
+    } else {
+      delete currentJson.cover
+    }
 
     const payload = {
       id: form.id,
@@ -371,6 +582,110 @@ watch(() => userStore.user, (nu) => {
   margin-right: 6px;
   color: var(--primary);
 }
+/* ---------- 主页封面（手机端用户主页顶部横幅使用） ---------- */
+.cover-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 92px;
+  margin-bottom: 10px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-muted);
+  overflow: hidden;
+}
+.cover-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* 未设置封面：虚线框 + 一行说明，明确会回落到主题色渐变 */
+.cover-preview.is-empty {
+  border-style: dashed;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.cover-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+/* 封面类型切换：自定义图片 / 自定义颜色 */
+.cover-mode {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: 10px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+}
+.cover-mode__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.cover-mode__item:hover {
+  color: var(--primary);
+}
+.cover-mode__item.active {
+  background: var(--bg-card);
+  color: var(--primary-deep);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+/* 颜色模式预览：铺满所选颜色，中间标出色值 */
+.cover-preview.is-color {
+  border-color: transparent;
+}
+.cover-color-hex {
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.cover-color-input {
+  width: 40px;
+  height: var(--control-h-sm);
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-card);
+  cursor: pointer;
+}
+.cover-color-text {
+  width: 104px;
+  font-variant-numeric: tabular-nums;
+}
+.cover-swatch {
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.cover-swatch:hover {
+  transform: translateY(-1px);
+}
+.cover-swatch.active {
+  box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--primary);
+}
 .frame-grid {
   display: grid;
   grid-template-columns: repeat(8, 1fr);
@@ -470,10 +785,23 @@ watch(() => userStore.user, (nu) => {
   grid-template-columns: 1fr 1fr;
   gap: 8px;
 }
+/* 只读展示：这两格是 <div>，不是 <input>。
+   .input 的垂直居中原本依赖 <input> 自身的行内居中，div 只会把这一行按 line-height
+   排在盒顶（看起来「偏上」），所以这里手动用 flex 居中。 */
 .input.disabled {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* 只读值可能较长（尤其手机端两列更窄）：保持单行，右侧裁掉，不撑破固定高度 */
+  white-space: nowrap;
+  overflow: hidden;
   background: var(--bg-muted);
   color: var(--text-muted);
   cursor: not-allowed;
+}
+.input.disabled i {
+  flex-shrink: 0;
+  color: var(--text-light);
 }
 .btn-row {
   display: flex;

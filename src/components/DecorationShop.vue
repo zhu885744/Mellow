@@ -12,16 +12,32 @@
       >
         <i :class="t.icon" aria-hidden="true" /> {{ t.name }}
       </button>
-      <!-- 商城主打「兑换」；已拥有装扮的查看 / 佩戴 / 卸下集中在「我的装扮」页 -->
-      <RouterLink v-if="userStore.isLogged" to="/user/decorations" class="mine-link">
-        <i class="bi bi-gem" aria-hidden="true" /> 我的装扮
-      </RouterLink>
+      <!-- 右侧：价格筛选 + 我的装扮 -->
+      <div class="category-bar__right">
+        <!-- 价格筛选：全部 / 免费 / 付费（分段控件，与左侧类型 chip 区分开） -->
+        <div class="price-seg" role="group" aria-label="按价格筛选">
+          <button
+            v-for="p in PRICE_TABS"
+            :key="p.key || 'all'"
+            type="button"
+            class="price-seg__item"
+            :class="{ active: activePrice === p.key }"
+            @click="switchPrice(p.key)"
+          >
+            {{ p.label }}
+          </button>
+        </div>
+        <!-- 商城主打「兑换」；已拥有装扮的查看 / 佩戴 / 卸下集中在「我的装扮」页 -->
+        <RouterLink v-if="userStore.isLogged" to="/user/decorations" class="mine-link">
+          <i class="bi bi-gem" aria-hidden="true" /> 我的装扮
+        </RouterLink>
+      </div>
     </div>
 
     <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
     <div v-else-if="!list.length" class="card card-pad">
       <!-- 接口失败（无权限 / 未开启等）时显示真实原因，避免看起来像「本来就没有装扮」 -->
-      <EmptyState icon="bi bi-palette" :text="loadError || '暂无可兑换的装扮'" />
+      <EmptyState icon="bi bi-palette" :text="loadError || emptyText" />
     </div>
     <div v-else class="decoration-grid">
       <div v-for="item in list" :key="item.id" class="decoration-card card">
@@ -134,17 +150,31 @@ const list = ref([])
 const loadError = ref('')
 const types = ref([])
 const activeType = ref('')
+// 价格筛选：'' 全部 / free 免费 / paid 付费（= 非免费）
+const activePrice = ref('')
 const owning = ref({ wearing: {}, list: {} })
 
 const buyingId = ref(null)
 const showConfirm = ref(false)
 const confirmItem = ref(null)
 
+// 价格档位：与后端 decoration/shop 的 price_type 参数一一对应
+const PRICE_TABS = [
+  { key: '', label: '全部' },
+  { key: 'free', label: '免费' },
+  { key: 'paid', label: '付费' }
+]
+
 // 类型分区：始终提供「全部」+ 后端声明的类型
 const typeTabs = computed(() => [
   { type: '', name: '全部', icon: 'bi-grid' },
   ...types.value.map((t) => ({ type: t.type, name: t.name, icon: t.icon }))
 ])
+
+// 空状态文案：有筛选条件时说明「没有符合条件的」，避免看起来像商城里本来就没有装扮
+const emptyText = computed(() =>
+  activeType.value || activePrice.value ? '没有符合筛选条件的装扮' : '暂无可兑换的装扮'
+)
 
 const ownedIds = computed(() => {
   const ids = []
@@ -178,7 +208,11 @@ async function loadShop() {
   loading.value = true
   loadError.value = ''
   try {
-    const res = await getDecorationShop(activeType.value ? { type: activeType.value } : {})
+    // 类型 + 价格两个筛选条件都交给后端（装饰列表不做前端过滤，避免分页/统计不一致）
+    const params = {}
+    if (activeType.value) params.type = activeType.value
+    if (activePrice.value) params.price_type = activePrice.value
+    const res = await getDecorationShop(params)
     const data = res.data
     // 后端「装扮商城未开启」等业务性拒绝：200 + 空 data + 说明性 msg
     if (!data) {
@@ -212,6 +246,12 @@ async function loadMine() {
 function switchType(type) {
   if (activeType.value === type) return
   activeType.value = type
+  loadShop()
+}
+
+function switchPrice(key) {
+  if (activePrice.value === key) return
+  activePrice.value = key
   loadShop()
 }
 
@@ -311,6 +351,44 @@ defineExpose({ refresh: () => Promise.all([loadShop(), loadMine()]) })
 .mine-link:hover {
   border-color: var(--primary-soft);
   color: var(--primary);
+}
+
+/* 分类条右侧组合：价格分段 + 我的装扮入口 */
+.category-bar__right {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+/* 价格筛选：全部 / 免费 / 付费 */
+.price-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+}
+.price-seg__item {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.price-seg__item:hover {
+  color: var(--primary);
+}
+.price-seg__item.active {
+  background: var(--bg-card);
+  color: var(--primary-deep);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 
 .decoration-grid {

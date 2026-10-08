@@ -82,6 +82,19 @@
                 <i :class="t.icon" aria-hidden="true" /> {{ t.name }}
               </button>
             </div>
+            <!-- 价格筛选：全部 / 免费 / 付费 -->
+            <div class="price-seg" role="group" aria-label="按价格筛选">
+              <button
+                v-for="p in PRICE_TABS"
+                :key="p.key || 'all'"
+                type="button"
+                class="price-seg__item"
+                :class="{ active: priceFilter === p.key }"
+                @click="switchPrice(p.key)"
+              >
+                {{ p.label }}
+              </button>
+            </div>
             <div class="search-box">
               <i class="bi bi-search" aria-hidden="true" />
               <input
@@ -556,6 +569,14 @@ const STATUS_TABS = [
   { key: 'trash', label: '回收站' }
 ]
 
+// 价格筛选：'' 全部 / free 免费 / paid 付费（= price_type 非 free）
+// 与后端 decoration/all 的 price_type 参数一一对应（见 model.FilterDecorationPrice）
+const PRICE_TABS = [
+  { key: '', label: '全部' },
+  { key: 'free', label: '免费' },
+  { key: 'paid', label: '付费' }
+]
+
 const DURATION_OPTIONS = [
   { value: 0, label: '按装扮自身配置' },
   { value: 86400 * 7, label: '7 天' },
@@ -591,6 +612,8 @@ const busy = ref(false)
 
 const statusFilter = ref('all')
 const typeFilter = ref('')
+// 价格筛选：'' 全部 / free 免费 / paid 付费
+const priceFilter = ref('')
 const keyword = ref('')
 // 搜索防抖：输入时只改这个值，watchEffect 之外的请求由它驱动
 const searchKey = ref('')
@@ -639,6 +662,7 @@ async function load() {
     if (statusFilter.value === 'off') params.status = 0
     if (trash.value) params.onlyTrashed = 'true'
     if (typeFilter.value) params.type = typeFilter.value
+    if (priceFilter.value) params.price_type = priceFilter.value
     if (searchKey.value) params.keyword = searchKey.value
 
     const res = await listDecorationsAdmin(params)
@@ -691,6 +715,13 @@ function switchStatus(key) {
 function switchType(type) {
   if (typeFilter.value === type) return
   typeFilter.value = type
+  page.value = 1
+  load()
+}
+
+function switchPrice(key) {
+  if (priceFilter.value === key) return
+  priceFilter.value = key
   page.value = 1
   load()
 }
@@ -1341,6 +1372,35 @@ onMounted(() => {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+}
+/* 价格筛选：全部 / 免费 / 付费（分段控件，与类型 chip 区分开） */
+.price-seg {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+}
+.price-seg__item {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.5;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+.price-seg__item:hover {
+  color: var(--primary);
+}
+.price-seg__item.active {
+  background: var(--bg-card);
+  color: var(--primary-deep);
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
 }
 .chip {
   display: inline-flex;

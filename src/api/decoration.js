@@ -23,6 +23,7 @@ export const getDecorationConfig = () => call('decoration', 'config', { method: 
 
 // 商城装扮列表（公开，仅上架，附带 goods_id / price / stock / on_sale）
 // type 可选：avatar_frame 头像框 / title 头衔
+// price_type 可选：free 只看免费 / paid 只看付费（= 非免费）；不传为全部
 export const getDecorationShop = (params = {}) =>
   call('decoration', 'shop', { method: 'GET', params })
 
@@ -62,6 +63,7 @@ export const DECORATION_ADMIN_FIELD =
   'id,type,name,description,preview,payload,price_type,price,rarity,duration,unlock,category,status,sort,sold,is_default,create_time,update_time,delete_time'
 
 // 装扮列表（管理员：默认含下架；传 onlyTrashed=true 看回收站）
+// 可用筛选：type 类型 / status 0下架 1上架 / price_type free 免费 · paid 付费 / keyword 名称模糊
 export const listDecorationsAdmin = (params = {}) =>
   call('decoration', 'all', {
     method: 'GET',

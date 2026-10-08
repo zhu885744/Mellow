@@ -31,5 +31,6 @@ export const oauthUnbind = (platform) =>
   call('oauth', 'unbind', { method: 'POST', data: { platform } })
 
 // 我绑定的第三方账号 + 还能绑哪些（需登录）
-export const getMyOauth = (config) =>
-  call('oauth', 'mine', { method: 'GET', config: { silent: true, ...config } })
+// 管理员可传 { uid } 查询指定用户的绑定（后台「用户详情」弹窗用）
+export const getMyOauth = (params = {}, config = {}) =>
+  call('oauth', 'mine', { method: 'GET', params, config: { silent: true, ...config } })

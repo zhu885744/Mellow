@@ -240,7 +240,7 @@ async function publish() {
     newContent.value = ''
     newImages.value = []
     newLocation.value = ''
-    toast.success('发布成功')
+    toast.success('发布成功，请耐心等待审核！审核通过后即可显示动态内容。')
     page.value = 1
     load()
   } catch {} finally {

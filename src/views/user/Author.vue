@@ -1,7 +1,7 @@
 <template>
   <div class="author-page">
-    <!-- 用户资料卡 -->
-    <div class="card card-pad author-card">
+    <!-- 用户资料卡（手机端顶部横幅使用 users.json.cover，见下方 640px 适配） -->
+    <div class="card card-pad author-card" :style="coverStyle">
       <div class="author-head">
         <AvatarFrame
           :src="profile.avatar"
@@ -25,6 +25,8 @@
               {{ banStatusText }}
             </span>
           </div>
+          <!-- 用户 ID：仅手机端展示（参考移动端个人主页的 ID 行） -->
+          <div v-if="profile.id" class="author-id">ID {{ profile.id }}</div>
           <div class="author-desc">{{ profile.description || '这个人很懒，什么都没留下' }}</div>
           <a
             v-if="website && website.url"
@@ -65,6 +67,11 @@
           </div>
         </div>
       </div>
+
+      <!-- 更换背景：仅本人可见，点进「我的资料 → 主页封面」上传图片或选颜色 -->
+      <RouterLink v-if="isSelf" to="/user/profile" class="author-cover-edit">
+        <i class="bi bi-image" aria-hidden="true" /> 更换背景
+      </RouterLink>
 
       <!-- 封禁提示条：该账号处于封禁中，展示关键信息并提供详情 / 申诉入口 -->
       <div v-if="isBanned" class="author-ban-bar">
@@ -191,6 +198,32 @@ const website = computed(() => (profile.value?.json && profile.value.json.websit
 
 // 头像框（来自 json.frame，用户在 Profile 页设置）
 const frame = computed(() => (profile.value?.json && profile.value.json.frame) || '')
+
+// 主页封面（来自 json.cover）：用户在「我的资料」里二选一
+//   { type: 'image', value: 'https://...' }  自定义图片
+//   { type: 'color', value: '#c7482a' }      自定义颜色
+// 兼容早期只存字符串（图片地址）的写法。
+const cover = computed(() => {
+  const raw = profile.value?.json && profile.value.json.cover
+  if (!raw) return null
+  if (typeof raw === 'string') return { type: 'image', value: raw }
+  if (typeof raw === 'object' && raw.value) {
+    return { type: raw.type === 'color' ? 'color' : 'image', value: raw.value }
+  }
+  return null
+})
+
+// 交给 CSS 变量 --author-cover：图片用 url()，纯色用「同色渐变」
+// （background-image 不接受裸颜色值，必须包成渐变）。
+// 未设置封面时不写该变量，由 CSS 里的主题色渐变兜底。
+const coverStyle = computed(() => {
+  const item = cover.value
+  if (!item) return {}
+  if (item.type === 'color') {
+    return { '--author-cover': `linear-gradient(0deg, ${item.value}, ${item.value})` }
+  }
+  return { '--author-cover': `url("${item.value}")` }
+})
 
 // 头衔（与 Profile 页一致的颜色映射）
 const PRESET_TITLES = ['掌门', '长老', '护法', '内门弟子', '外门弟子', '炼气修士', '筑基修士', '结丹修士', '元婴老祖', '化神大能']
@@ -699,6 +732,64 @@ watch(() => route.params.id, () => {
 .author-card {
   margin-bottom: 16px;
 }
+/* 封面横幅（桌面 / 手机共用）：优先用 users.json.cover（组件里由 :style 写成 --author-cover），
+   未设置时用主色渐变兜底；底部叠一层暗色，让压边的头像与文字更清楚。
+   --author-card-pad 必须与各断点下卡片的内边距保持一致，横幅才能「满幅出血」铺满卡片顶部 */
+.author-page > .author-card {
+  --author-card-pad: 24px;
+  --author-cover-h: 156px;
+  position: relative;
+  overflow: hidden;
+  padding: 0 var(--author-card-pad) var(--author-card-pad);
+}
+.author-card::before {
+  content: '';
+  display: block;
+  height: var(--author-cover-h);
+  margin: 0 calc(-1 * var(--author-card-pad));
+  background-color: var(--primary-deep);
+  background-image:
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.26) 100%),
+    var(--author-cover, linear-gradient(135deg, var(--primary) 0%, var(--primary-deep) 100%));
+  background-size: cover, cover;
+  background-position: center;
+}
+/* 头像上浮压住横幅下沿；描一圈卡片底色，任何封面上都清晰（头像框装饰不受影响） */
+.author-head .avatar-frame {
+  margin-top: -34px;
+  background: var(--bg-card);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--bg-card);
+}
+/* 「更换背景」：仅本人可见，贴在封面右下角（横幅高度随断点变，用变量算位置） */
+.author-cover-edit {
+  position: absolute;
+  top: calc(var(--author-cover-h) - 36px);
+  right: 10px;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 28px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 12px;
+  line-height: 1;
+  text-decoration: none;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background-color 0.18s, color 0.18s;
+}
+.author-cover-edit:hover {
+  background: rgba(0, 0, 0, 0.72);
+  color: #fff;
+}
+.author-cover-edit .bi {
+  font-size: 13px;
+}
 .author-head {
   display: flex;
   gap: 20px;
@@ -717,6 +808,10 @@ watch(() => route.params.id, () => {
 .author-name {
   font-size: 20px;
   font-weight: 700;
+}
+/* 用户 ID：默认不展示，仅手机端页面显示（见文件末尾的 640px 适配） */
+.author-id {
+  display: none;
 }
 .author-level {
   font-size: 12px;
@@ -1048,9 +1143,93 @@ watch(() => route.params.id, () => {
   .author-stats {
     gap: 22px;
   }
-  /* 卡片内边距收紧，与移动端容器留白保持一致 */
-  .author-page > .card {
+  /* 卡片内边距收紧，与移动端容器留白保持一致
+     （资料卡自己用 --author-card-pad 控制，避免把封面横幅顶出一条内边距空白） */
+  .author-page > .card:not(.author-card) {
     padding: 16px;
+  }
+  .author-page > .author-card {
+    --author-card-pad: 16px;
+  }
+}
+
+/* ========== 手机端个人主页（参考移动端 UI：横幅 + 头像压边 + 内联数据 + 横向标签页）========== */
+@media (max-width: 640px) {
+  /* 资料卡：横幅与头像压边在基础样式里已生效，这里只按手机端尺寸调变量 */
+  .author-page > .author-card {
+    --author-card-pad: 14px;
+    --author-cover-h: 112px;
+    margin-bottom: 12px;
+  }
+  /* 信息换到头像下方（头像仍由基础样式的负 margin 压住横幅下沿） */
+  .author-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 0 10px;
+  }
+  .author-meta {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .author-name-row {
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .author-name {
+    font-size: 19px;
+  }
+  /* ID 行：手机端才显示 */
+  .author-id {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .author-desc {
+    margin: 6px 0 10px;
+  }
+  /* 数据行：数字 + 文案并排，用竖线分隔 */
+  .author-stats {
+    align-items: center;
+    gap: 0;
+    margin-bottom: 12px;
+  }
+  .author-stats .stat {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 4px;
+  }
+  .author-stats .stat + .stat {
+    margin-left: 14px;
+    padding-left: 14px;
+    border-left: 1px solid var(--border-soft);
+  }
+  .author-stats .stat strong {
+    font-size: 15px;
+  }
+  /* 操作按钮：等宽并排，方便拇指点击 */
+  .author-actions {
+    gap: 8px;
+  }
+  .author-actions .btn {
+    flex: 1;
+    min-width: 0;
+  }
+  /* 内容区与标签页：内边距收紧
+     注意：必须排除资料卡（.author-card 同时也是 .card）—— 它自己用 padding-top: 0
+     让封面横幅铺满卡片顶部，这里若一并命中，两条规则特异性相同会由书写顺序决定胜负，
+     横幅顶部就会多出一条内边距空白。 */
+  .author-page > .card:not(.author-card) {
+    padding: 12px 14px 14px;
+  }
+  .tab-bar {
+    gap: 4px;
+    margin-bottom: 6px;
+  }
+  .tab {
+    padding: 9px 12px;
+    font-size: 13px;
   }
 }
 </style>
