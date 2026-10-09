@@ -46,7 +46,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { oauthSignIn } from '@/api/oauth'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
-import { finishPendingBind, saveBindTicket, takeCallbackContext } from '@/utils/oauth'
+import { finishPendingBind, platformFromState, saveBindTicket, takeCallbackContext } from '@/utils/oauth'
 
 const route = useRoute()
 const router = useRouter()
@@ -121,12 +121,16 @@ async function handle(code, state, context) {
 onMounted(() => {
   // 带走并清空发起时记录的信息（刷新页面后由于 state 已焚，会给出「请重新发起」的提示）
   const context = takeCallbackContext()
-  const platform = String(route.query.platform || context.platform || '')
-  platformCode.value = platform
 
   const code = String(route.query.code || '')
   const state = String(route.query.state || '')
   const error = String(route.query.error || '')
+
+  // 平台来源：URL 参数 → 发起时记录的上下文 → state 前缀。
+  // 手机端（尤其从 QQ 应用内发起）回调页常在新标签 / 内置浏览器里打开，
+  // sessionStorage 是空的，这时只能从 state 前缀还原，否则会误报「未找到发起平台」。
+  const platform = String(route.query.platform || context.platform || platformFromState(state) || '')
+  platformCode.value = platform
 
   if (error) {
     fail(error === 'access_denied' ? '你取消了授权，或第三方平台拒绝了本次请求' : `第三方平台返回错误：${error}`)

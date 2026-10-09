@@ -11,9 +11,13 @@ import { useUserStore } from '@/stores/user'
  *      所以这里不给 redirect_uri 附加任何参数）；
  *   3. 回调页校验 state → 调 /api/oauth/{platform} → 按返回结果收尾（登录 / 引导绑定 / 待审核）。
  *
- * 为什么 platform 存 sessionStorage 而不是放 redirect_uri 的 query：
+ * 为什么 platform 不放在 redirect_uri 的 query：
  * QQ / Gitee 对 redirect_uri 是「全字符串精确匹配」，多一个 query 就会报 redirect_uri 不一致，
- * 因此三个平台可以共用同一个回调地址，平台信息由前端自己记住。
+ * 因此三个平台共用同一个回调地址，平台信息由前端自己记住。
+ *
+ * 注意：本地存储不能作为唯一依据 —— 手机端（尤其从 QQ 应用内发起）回调页常常
+ * 在新标签 / 内置浏览器里打开，sessionStorage 是空的，只靠它会误报「未找到发起平台」。
+ * 所以 state 用「平台名 + 随机串」，回调页可以从 state 前缀还原平台（platformFromState）。
  */
 
 // 平台图标（Bootstrap Icons v1.13+ 自带品牌图标）
@@ -34,6 +38,16 @@ const MODE_KEY = 'mellow_oauth_mode'
 const REDIRECT_KEY = 'mellow_oauth_redirect'
 // 未绑定时后端下发的「先登录再绑定」票据：登录成功后由 finishPendingBind 消费
 const TICKET_KEY = 'mellow_oauth_ticket'
+
+// 已支持的第三方平台（与后端 oauth 平台一致）：state 前缀按此还原
+const PLATFORMS = ['github', 'gitee', 'qq']
+
+/** 从 state 前缀还原平台（回调页拿不到本地存储时的兜底） */
+export function platformFromState(state) {
+  const value = String(state || '').trim().toLowerCase()
+  if (!value) return ''
+  return PLATFORMS.find((item) => value.startsWith(item)) || ''
+}
 
 const store = {
   get(key) {
@@ -147,8 +161,9 @@ export function startOauth(item, options = {}) {
     return
   }
 
-  // state：防 CSRF，回调时比对；同时把平台 / 场景 / 落地页记下来（见文件头说明）
-  const state = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
+  // state：防 CSRF，回调时比对；前缀带上平台，回调页在本地存储缺失时也能还原
+  // （全是字母数字，兼容各平台对 state 的透传）
+  const state = `${item.platform}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
   store.set(STATE_KEY, state)
   store.set(PLATFORM_KEY, item.platform)
   store.set(MODE_KEY, options.mode || 'login')
