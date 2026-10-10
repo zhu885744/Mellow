@@ -398,11 +398,6 @@
         </div>
 
         <div class="form-item">
-          <label class="form-label">头衔</label>
-          <input v-model="edit.title" class="input" type="text" maxlength="32" placeholder="可选，展示在用户资料页" />
-        </div>
-
-        <div class="form-item">
           <label class="form-label">个人简介</label>
           <textarea v-model="edit.description" class="textarea" rows="2" maxlength="256" placeholder="可选，最多 256 字" />
         </div>
@@ -1372,7 +1367,7 @@ const edit = reactive({
   visible: false,
   loading: false,
   mode: 'create',
-  // 弹窗标题（与表单里的「头衔」edit.title 区分开，避免互相覆盖）
+  // 弹窗标题（与用户头衔无关，命名上避免和 title 字段混淆）
   dialogTitle: '',
   id: 0,
   account: '',
@@ -1380,7 +1375,8 @@ const edit = reactive({
   email: '',
   phone: '',
   avatar: '',
-  title: '',
+  // 注：不再提供 title（头衔）—— 头衔由「我的装扮」统一管理：
+  // 后台在「装扮管理」发放头衔，用户在自己的「我的装扮」里佩戴 / 更换。
   gender: '',
   description: '',
   remark: '',
@@ -1400,7 +1396,6 @@ function resetEdit() {
   edit.email = ''
   edit.phone = ''
   edit.avatar = ''
-  edit.title = ''
   edit.gender = ''
   edit.description = ''
   edit.remark = ''
@@ -1427,7 +1422,6 @@ function openEdit(item) {
   edit.email = item.email || ''
   edit.phone = item.phone || ''
   edit.avatar = item.avatar || ''
-  edit.title = item.title || ''
   edit.gender = item.gender === 'boy' || item.gender === 'girl' ? item.gender : ''
   edit.description = item.description || ''
   edit.remark = item.remark || ''
@@ -1531,10 +1525,11 @@ function validateEdit() {
 async function saveUser() {
   if (!validateEdit()) return
 
+  // 注：不再提交 title —— 头衔由「我的装扮」统一管理（后台在「装扮管理」发放，
+  // 用户在「我的装扮」佩戴 / 更换）；后端 users/update、users/save 也已把 title 收紧为管理员专用字段
   const payload = {
     nickname: edit.nickname.trim(),
     avatar: edit.avatar.trim(),
-    title: edit.title.trim(),
     gender: edit.gender,
     description: edit.description.trim()
   }

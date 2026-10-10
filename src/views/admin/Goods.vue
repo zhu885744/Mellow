@@ -184,6 +184,18 @@
                   </span>
                   <span v-if="item.category" class="type-chip">{{ item.category }}</span>
                   <span class="type-chip">{{ typeLabel(item) }}</span>
+                  <!-- 兑换时间窗口：只有设置了「结束时间」才显示（0 = 不限）
+                       - 未到期：限时 10-20 12:00
+                       - 已到期：已结束（该商品此时用户已无法兑换，见后端 BuyGoods 的窗口校验） -->
+                  <span
+                    v-if="Number(item.end_time) > 0"
+                    class="state-chip"
+                    :class="isEnded(item) ? 'is-expired' : 'is-limited'"
+                    :title="endTimeTip(item)"
+                  >
+                    <i class="bi bi-clock-history" />
+                    {{ isEnded(item) ? '已结束' : '限时' }} {{ formatTime(item.end_time).slice(5) }}
+                  </span>
                 </div>
                 <div class="goods-meta">
                   <span class="meta-text"><i class="bi bi-coin" /> {{ item.price }} 积分</span>
@@ -579,7 +591,7 @@ import {
   setOrderStatus
 } from '@/api/goods'
 import { uploadAttachments } from '@/api/attachment'
-import { fromNow, toLocalInput, fromLocalInput } from '@/utils/time'
+import { fromNow, formatTime, toLocalInput, fromLocalInput } from '@/utils/time'
 import { debounce, copyText } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
@@ -752,6 +764,23 @@ function typeLabel(item) {
 function timeText(item) {
   if (trash.value) return `删除于 ${fromNow(item.delete_time)}`
   return fromNow(item.create_time)
+}
+
+// 是否已过兑换结束时间（口径与后端一致：end_time = 0 表示不限时间）
+function isEnded(item) {
+  const end = Number(item?.end_time) || 0
+  return end > 0 && Math.floor(Date.now() / 1000) > end
+}
+
+// 结束时间标签的悬停提示：完整时间 + 剩余时长（已结束则提示用户已无法兑换）
+function endTimeTip(item) {
+  const end = Number(item?.end_time) || 0
+  if (end <= 0) return ''
+  const full = formatTime(end)
+  if (isEnded(item)) return `兑换结束时间：${full}（已结束，用户无法再兑换）`
+  const left = end - Math.floor(Date.now() / 1000)
+  const remain = left >= 86400 ? `${Math.ceil(left / 86400)} 天` : `${Math.max(1, Math.ceil(left / 3600))} 小时`
+  return `兑换结束时间：${full}（还剩约 ${remain}）`
 }
 
 function orderStatusLabel(value) {
@@ -1654,6 +1683,15 @@ onMounted(() => {
 .state-chip.is-off {
   color: var(--text-muted);
   background: var(--bg-muted);
+}
+/* 兑换时间窗口标签：限时（未到期）/ 已结束 */
+.state-chip.is-limited {
+  color: #0ea5e9;
+  background: rgba(14, 165, 233, 0.12);
+}
+.state-chip.is-expired {
+  color: var(--danger);
+  background: rgba(220, 38, 38, 0.12);
 }
 .type-chip {
   padding: 1px 8px;
