@@ -6,6 +6,7 @@
         <AvatarFrame
           :src="profile.avatar"
           :frame="frame"
+          :animated="frameAnimated"
           :fallback="defaultAvatar"
           :size="'75px'"
           :frame-scale="1.6"
@@ -15,8 +16,15 @@
           <div class="author-name-row">
             <span class="author-name">{{ profile.nickname }}</span>
             <span v-if="level" class="author-level">Lv.{{ level }}</span>
+            <!-- 有装扮样式用 TitleBadge 还原后台配色（文字色 / 背景 / 边框 / 发光 / 图标 / 动效） -->
+            <TitleBadge
+              v-if="profile.title && titlePayload"
+              :payload="titlePayload"
+              :text="profile.title"
+              size="md"
+            />
             <span
-              v-if="profile.title"
+              v-else-if="profile.title"
               :class="['author-title', titleClass]"
             >{{ profile.title }}</span>
             <!-- 封禁标识（后端 users/one 的 result.ban）：申诉中 / 申诉驳回期间也保持显示 -->
@@ -171,6 +179,7 @@ import { ref, computed, onMounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ArticleCard from '@/components/ArticleCard.vue'
 import AvatarFrame from '@/components/AvatarFrame.vue'
+import TitleBadge from '@/components/TitleBadge.vue'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import { getUser } from '@/api/users'
 import { getAuthorArticles, countArticlesByAuthor } from '@/api/article'
@@ -179,6 +188,7 @@ import { call } from '@/api/request'
 import { useUserStore } from '@/stores/user'
 import { fromNow, formatDate } from '@/utils/time'
 import { banTypeText } from '@/utils/user'
+import { pickUserTitlePayload, pickUserFrameAnimated } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 import { renderEmoji } from '@/utils/emoji'
 import EmptyState from '@/components/EmptyState.vue'
@@ -196,8 +206,9 @@ const level = ref(0)
 // 个人网站（来自 json.website，用户在 Contact 页设置）
 const website = computed(() => (profile.value?.json && profile.value.json.website) || null)
 
-// 头像框（来自 json.frame，用户在 Profile 页设置）
+// 头像框（来自 json.frame，佩戴头像框时由服务端回写；frame_animated 为动效开关）
 const frame = computed(() => (profile.value?.json && profile.value.json.frame) || '')
+const frameAnimated = computed(() => pickUserFrameAnimated(profile.value))
 
 // 主页封面（来自 json.cover）：用户在「我的资料」里二选一
 //   { type: 'image', value: 'https://...' }  自定义图片
@@ -245,6 +256,8 @@ function getTitleColorClass(title) {
   return titleColorMap[title] || 'title-default'
 }
 const titleClass = computed(() => getTitleColorClass(profile.value.title))
+// 头衔样式：装扮系统写入的 payload；无装扮时返回 null，走上面的色板兜底
+const titlePayload = computed(() => pickUserTitlePayload(profile.value))
 const stats = ref({ article: 0, follow: 0, fans: 0 })
 const following = ref(false)
 const isSelf = computed(() => userStore.isLogged && Number(userStore.user?.id) === uid.value)

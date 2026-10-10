@@ -30,8 +30,8 @@
           :key="m.key"
           type="button"
           class="cfg-nav-item"
-          :class="{ active: tab === m.key }"
-          @click="tab = m.key"
+          :class="{ active: activeGroup.key === m.key }"
+          @click="selectGroup(m)"
         >
           <i :class="m.icon" />
           <span>{{ m.label }}</span>
@@ -42,6 +42,20 @@
         <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
 
         <template v-else>
+          <!-- 分组内层分页：仅当该分组由多个模块合并而成时显示 -->
+          <div v-if="activeTabs.length > 1" class="cfg-subtabs" role="tablist">
+            <button
+              v-for="item in activeTabs"
+              :key="item.key"
+              type="button"
+              class="cfg-subtab"
+              :class="{ active: tab === item.key }"
+              @click="tab = item.key"
+            >
+              <i :class="item.icon" /> {{ item.label }}
+            </button>
+          </div>
+
           <!-- ============ 安全 ============ -->
           <template v-if="tab === 'security'">
             <section class="card card-pad">
@@ -212,7 +226,7 @@
           <!-- ============ 网站设置（站点信息 / 导航 / 备案 / 协议 / 悬浮按钮）============ -->
           <SiteSettingsForm v-else-if="tab === 'site'" />
 
-          <!-- ============ 内容配置（文章 / 动态 / 独立页面，三份结构相同）============ -->
+          <!-- ============ 内容配置（文章 / 动态 / 独立页面三份结构相同，组内分页切换）============ -->
           <section v-else-if="CONTENT_KEYS[tab]" class="card card-pad">
             <header class="cfg-head">
               <div>
@@ -222,6 +236,7 @@
                 </p>
               </div>
             </header>
+
             <div class="form-grid">
               <div class="form-item">
                 <label class="form-label">编辑器</label>
@@ -264,8 +279,12 @@
               </div>
             </div>
             <div class="cfg-foot">
-              <button class="btn btn-primary btn-sm" :disabled="isSaving(`content_${tab}`)" @click="saveContent(tab)">
-                <i class="bi bi-check2" /> 保存
+              <button
+                class="btn btn-primary btn-sm"
+                :disabled="isSaving(`content_${tab}`)"
+                @click="saveContent(tab)"
+              >
+                <i class="bi bi-check2" /> 保存{{ CONTENT_KEYS[tab].title }}
               </button>
             </div>
           </section>
@@ -280,6 +299,14 @@
             </header>
 
             <div class="form-grid">
+              <div class="form-item">
+                <label class="form-label">内容审核</label>
+                <SelectMenu v-model="cfg.comment.audit" variant="field" :options="ON_OFF" />
+                <p class="form-hint">
+                  开启后前台新评论进入待审核（在「评论管理」里通过 / 驳回），未通过的评论前台不可见；
+                  关闭则提交即通过
+                </p>
+              </div>
               <div class="form-item">
                 <label class="form-label">允许评论</label>
                 <SelectMenu v-model="cfg.comment.allow" variant="field" :options="ON_OFF" />
@@ -327,6 +354,31 @@
 
             <div class="cfg-foot">
               <button class="btn btn-primary btn-sm" :disabled="isSaving('comment')" @click="saveComment">
+                <i class="bi bi-check2" /> 保存
+              </button>
+            </div>
+          </section>
+
+          <!-- ============ 友链配置（LINKS）============ -->
+          <section v-else-if="tab === 'links'" class="card card-pad">
+            <header class="cfg-head">
+              <div>
+                <h3 class="cfg-title">友链配置</h3>
+                <p class="cfg-desc">前台「申请友链」的审核策略</p>
+              </div>
+            </header>
+
+            <div class="form-item">
+              <label class="form-label">内容审核</label>
+              <SelectMenu v-model="cfg.links.audit" variant="field" :options="ON_OFF" />
+              <p class="form-hint">
+                开启后前台提交的友链进入待审核（在「友链管理」里通过 / 驳回，申请时会通知管理员）；
+                关闭则提交即通过。管理员在后台自行添加的友链不受该开关影响
+              </p>
+            </div>
+
+            <div class="cfg-foot">
+              <button class="btn btn-primary btn-sm" :disabled="isSaving('links')" @click="saveLinks">
                 <i class="bi bi-check2" /> 保存
               </button>
             </div>
@@ -1219,10 +1271,11 @@
 
               <div class="form-grid">
                 <div class="form-item">
-                  <label class="form-label">未绑定时自动注册新账号</label>
+                  <label class="form-label">允许第三方账号创建新账号</label>
                   <SelectMenu v-model="cfg.oauth.autoRegister" variant="field" :options="ON_OFF" />
                   <p class="form-hint">
-                    关闭后：未绑定过的第三方账号不会建号，而是提示「先登录再绑定」，绑定入口在用户中心 → 账号安全
+                    未绑定的第三方账号登录后，回调页会让用户自己选「创建新账号」或「绑定已有账号」（输入账号密码）。
+                    开启：两个选项都提供；关闭：只提供「绑定已有账号」（同时受「系统设置 → 注册」总开关约束）
                   </p>
                 </div>
                 <div class="form-item">
@@ -1427,23 +1480,63 @@ const REGISTER_DOMAIN_OPTIONS = [
   { value: 'blacklist', label: '黑名单模式' }
 ]
 
+// 侧边导航 = 「分组」，每项可用 tabs 声明组内分页（只有一项时分页自动隐藏）。
+// 分组规则：按管理动作归类 —— 登录注册、内容发布、用户互动、运行环境、通知渠道；
+// 目的：把 15 个平铺项收成 7 项，避免侧边导航过长。
+// 说明：tab（当前页）始终存叶子 key，所以下面各配置区块的 v-if 判断不受分组影响。
 const modules = [
-  { key: 'security', label: '安全', icon: 'bi bi-shield-lock' },
-  { key: 'mail', label: '邮件通知', icon: 'bi bi-envelope-paper' },
   { key: 'site', label: '网站设置', icon: 'bi bi-globe2' },
-  { key: 'article', label: '文章配置', icon: 'bi bi-file-earmark-text' },
-  { key: 'moments', label: '动态配置', icon: 'bi bi-chat-square-text' },
-  { key: 'pagesCfg', label: '独立页面配置', icon: 'bi bi-window' },
-  { key: 'comment', label: '评论配置', icon: 'bi bi-chat-dots' },
+  {
+    key: 'account',
+    label: '账号与登录',
+    icon: 'bi bi-person-badge',
+    tabs: [
+      { key: 'security', label: '安全与限流', icon: 'bi bi-shield-lock' },
+      { key: 'jwt', label: 'JWT 认证', icon: 'bi bi-key' },
+      { key: 'register', label: '注册', icon: 'bi bi-person-plus' },
+      { key: 'oauth', label: '第三方登录', icon: 'bi bi-share' }
+    ]
+  },
+  {
+    key: 'content',
+    label: '内容配置',
+    icon: 'bi bi-file-earmark-text',
+    tabs: [
+      { key: 'article', label: '文章配置', icon: 'bi bi-file-earmark-text' },
+      { key: 'moments', label: '动态配置', icon: 'bi bi-chat-square-text' },
+      { key: 'pagesCfg', label: '独立页面配置', icon: 'bi bi-window' }
+    ]
+  },
+  {
+    key: 'interaction',
+    label: '互动配置',
+    icon: 'bi bi-chat-dots',
+    tabs: [
+      { key: 'comment', label: '评论配置', icon: 'bi bi-chat-dots' },
+      { key: 'links', label: '友链配置', icon: 'bi bi-link-45deg' }
+    ]
+  },
   { key: 'decoration', label: '装扮', icon: 'bi bi-palette' },
-  { key: 'page', label: '分页限制', icon: 'bi bi-list-ol' },
-  { key: 'jwt', label: 'JWT 认证', icon: 'bi bi-key' },
-  { key: 'register', label: '注册', icon: 'bi bi-person-plus' },
-  { key: 'oauth', label: '第三方登录', icon: 'bi bi-share' },
-  { key: 'cache', label: '缓存', icon: 'bi bi-database' },
-  { key: 'storage', label: '存储', icon: 'bi bi-hdd' },
-  { key: 'sms', label: '短信', icon: 'bi bi-send' },
-  { key: 'notify', label: '通知与日志', icon: 'bi bi-bell' }
+  {
+    key: 'service',
+    label: '服务与存储',
+    icon: 'bi bi-hdd-stack',
+    tabs: [
+      { key: 'cache', label: '缓存', icon: 'bi bi-database' },
+      { key: 'storage', label: '存储', icon: 'bi bi-hdd' },
+      { key: 'page', label: '分页限制', icon: 'bi bi-list-ol' }
+    ]
+  },
+  {
+    key: 'message',
+    label: '通知与消息',
+    icon: 'bi bi-bell',
+    tabs: [
+      { key: 'mail', label: '邮件通知', icon: 'bi bi-envelope-paper' },
+      { key: 'sms', label: '短信', icon: 'bi bi-send' },
+      { key: 'notify', label: '消息与日志', icon: 'bi bi-archive' }
+    ]
+  }
 ]
 
 // 内容配置的 key 与展示名（PAGE / ARTICLE / MOMENTS 三份结构相同）
@@ -1473,19 +1566,48 @@ const COMMENT_SHOW_OPTIONS = [
 // 模块定位：支持 /admin/system?tab=site 这类直达链接（如用户中心跳「网站设置」）
 const route = useRoute()
 const router = useRouter()
-const MODULE_KEYS = modules.map((m) => m.key)
-const initialTab = MODULE_KEYS.includes(String(route.query.tab)) ? String(route.query.tab) : 'security'
+
+// ===== 导航分组 =====
+// modules 是「导航分组」，每组用 tabs 声明组内分页（只有一项的组会自动隐藏分页行）。
+// tab（当前页）存的始终是叶子 key（site / security / jwt / article …），
+// 因此各配置区块的 v-if="tab === 'xxx'" 判断不受分组影响，互不耦合：
+//   - 点侧边导航 → selectGroup()：落到该组第一个分页（组内已选中则保持不动）；
+//   - 点组内分页 → 直接改 tab。
+const LEAF_GROUP = {} // 叶子 key → 所属分组
+modules.forEach((group) => {
+  const tabs = group.tabs && group.tabs.length ? group.tabs : [group]
+  group.tabs = tabs
+  tabs.forEach((item) => {
+    LEAF_GROUP[item.key] = group
+  })
+})
+const LEAF_KEYS = Object.keys(LEAF_GROUP)
+const DEFAULT_TAB = 'security'
+const initialTab = LEAF_KEYS.includes(String(route.query.tab))
+  ? String(route.query.tab)
+  : // 兼容上一版的 ?tab=content&sub=moments 写法与旧的独立内容模块链接（?tab=moments 等）
+    LEAF_KEYS.includes(String(route.query.sub))
+    ? String(route.query.sub)
+    : DEFAULT_TAB
 const tab = ref(initialTab)
-// 切换模块时把当前模块写回地址栏，便于刷新/分享后停留在同一模块
+// 当前分组（侧边导航高亮）与组内分页
+const activeGroup = computed(() => LEAF_GROUP[tab.value] || modules[0])
+const activeTabs = computed(() => activeGroup.value.tabs || [])
+function selectGroup(group) {
+  // 组内已选中时保持当前分页，不跳回第一项
+  if ((group.tabs || []).some((item) => item.key === tab.value)) return
+  tab.value = (group.tabs && group.tabs[0] && group.tabs[0].key) || group.key
+}
+// 切换页面（含组内分页）时写回地址栏，便于刷新/分享后停留原位（?tab=jwt 这类直达链接照旧可用）
 watch(tab, (value) => {
   if (String(route.query.tab || '') === value) return
   router.replace({ query: { ...route.query, tab: value } })
 })
-// 地址栏被外部改动（如侧栏再点一次直达链接）时同步模块
+// 地址栏被外部改动（如侧栏再点一次直达链接）时同步
 watch(
   () => route.query.tab,
   (value) => {
-    const next = MODULE_KEYS.includes(String(value)) ? String(value) : 'security'
+    const next = LEAF_KEYS.includes(String(value)) ? String(value) : DEFAULT_TAB
     if (next !== tab.value) tab.value = next
   }
 )
@@ -1584,11 +1706,17 @@ const cfg = reactive({
   // 评论配置：COMMENT（结构与内容配置不同，字段更多）
   // 注：评论 / 回复的邮件开关不在评论模块，已统一到 SYSTEM_MAIL_NOTIFY（见下方 mail）
   comment: {
+    // audit：COMMENT 的 json.audit，1 开启审核（前台评论进待审核）0 直接通过
+    audit: '1',
     allow: '1',
     rate_limit: { enabled: '1', max_count: 5, time_window: 60 },
     max_length: 500,
     require_chinese: '1',
     sensitive_filter: '1'
+  },
+  // 友链配置（LINKS 一条记录）：目前只有审核开关
+  links: {
+    audit: '1'
   },
   // 敏感词按「一行一个」编辑，保存时拆成数组
   sensitiveText: '',
@@ -1614,7 +1742,7 @@ const cfg = reactive({
   // - rawScenes   → 后端原始 scenes，保存时与表单合并（避免覆盖掉前端未知的新场景）
   mail: { enabled: '1', adminEmail: '', scenes: defaultMailScenes(), rawScenes: {} },
   // 第三方登录（SYSTEM_OAUTH 一条记录，见 app/model/oauth.go）
-  // - autoRegister → json.auto_register：第三方账号未绑定时是否自动建号
+  // - autoRegister → json.auto_register：是否允许第三方账号创建新账号（未绑定时回调页选项之一）
   // - qq/github/gitee → json.{平台}.{enable, app_id, app_key, redirect}
   oauth: {
     autoRegister: '1',
@@ -1870,6 +1998,8 @@ function readCommentConfig(raw) {
   const rate = json.rate_limit && typeof json.rate_limit === 'object' ? json.rate_limit : {}
   const words = Array.isArray(json.sensitive_words) ? json.sensitive_words : []
   return {
+    // 缺省按「开启审核」处理：老配置里可能还没有该字段（与后端 contentAuditSwitch 口径一致）
+    audit: toText(json.audit, '1'),
     allow: toText(json.allow, '1'),
     rate_limit: {
       enabled: toText(rate.enabled, '1'),
@@ -1951,7 +2081,7 @@ function readOauthConfig(raw) {
 }
 
 async function loadConfigs() {
-  const [apiKey, apiKeyLocal, qps, block, notify, pageLimit, captcha, register, article, moments, pages, comment, mailNotify, decoration, oauth] = await Promise.all([
+  const [apiKey, apiKeyLocal, qps, block, notify, pageLimit, captcha, register, article, moments, pages, comment, links, mailNotify, decoration, oauth] = await Promise.all([
     readConfig('SYSTEM_API_KEY'),
     readConfig('SYSTEM_API_KEY_LOCAL'),
     readConfig('SYSTEM_QPS'),
@@ -1964,6 +2094,7 @@ async function loadConfigs() {
     readConfig('MOMENTS'),
     readConfig('PAGE'),
     readConfig('COMMENT'),
+    readConfig('LINKS'),
     readConfig('SYSTEM_MAIL_NOTIFY'),
     readConfig('SYSTEM_DECORATION'),
     readConfig('SYSTEM_OAUTH')
@@ -2002,6 +2133,7 @@ async function loadConfigs() {
   if (pages) cfg.content.PAGE = readContentConfig(pages)
   if (comment) {
     const parsed = readCommentConfig(comment)
+    cfg.comment.audit = parsed.audit
     cfg.comment.allow = parsed.allow
     cfg.comment.rate_limit = parsed.rate_limit
     cfg.comment.max_length = parsed.max_length
@@ -2009,6 +2141,8 @@ async function loadConfigs() {
     cfg.comment.sensitive_filter = parsed.sensitive_filter
     cfg.sensitiveText = parsed.words.join('\n')
   }
+  // 友链配置（LINKS）：缺省按「开启审核」处理，与后端 contentAuditSwitch 一致
+  cfg.links.audit = links ? toText(parseJson(links.json, {}).audit, '1') : '1'
   if (mailNotify) {
     readMailConfig(mailNotify)
   }
@@ -2400,6 +2534,7 @@ async function saveComment() {
     await saveSystemConfig({
       key: 'COMMENT',
       json: {
+        audit: Number(cfg.comment.audit),
         allow: Number(cfg.comment.allow),
         rate_limit: {
           enabled: Number(cfg.comment.rate_limit.enabled),
@@ -2416,8 +2551,22 @@ async function saveComment() {
     const fresh = await readConfig('COMMENT')
     if (fresh) {
       const parsed = readCommentConfig(fresh)
+      cfg.comment.audit = parsed.audit
       cfg.sensitiveText = parsed.words.join('\n')
     }
+  })
+}
+
+/** 保存友链配置（LINKS）：目前只有审核开关 */
+async function saveLinks() {
+  await withSaving('links', async () => {
+    await saveSystemConfig({
+      key: 'LINKS',
+      json: { audit: Number(cfg.links.audit) }
+    })
+    toast.success('已保存')
+    const fresh = await readConfig('LINKS')
+    cfg.links.audit = fresh ? toText(parseJson(fresh.json, {}).audit, '1') : cfg.links.audit
   })
 }
 
@@ -2651,6 +2800,37 @@ onMounted(loadAll)
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+}
+
+/* 内容配置的内层分页（文章 / 动态 / 独立页面） */
+.cfg-subtabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border-soft, var(--border));
+}
+.cfg-subtab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.cfg-subtab:hover {
+  color: var(--text);
+  border-color: var(--primary);
+}
+.cfg-subtab.active {
+  color: var(--primary-deep, var(--primary));
+  border-color: var(--primary);
+  background: var(--primary-wash, var(--bg-muted));
 }
 
 /* ---------- 卡片 ---------- */

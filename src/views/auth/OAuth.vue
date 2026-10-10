@@ -3,9 +3,9 @@
     第三方登录回调页（/auth/oauth）
     第三方带 code/state 跳回来，这里校验 state 后把 code 交给后端换登录态：
       - 已绑定 → 直接登录（收尾同密码登录：持久化 token + 用户信息）
-      - 未绑定 + 后台允许自动注册 → 后端建号并登录
-      - 未绑定 + 不允许自动注册 → 记下票据，引导先登录（登录成功后自动绑定）
-      - 已登录状态下发起 → 直接绑定到当前账号
+      - 未绑定 + 未登录 → 展示选择页：创建新账号 / 输入账号密码绑定已有账号
+      - 未绑定 + 已登录 → 直接绑定到当前账号
+    选择页需要「创建新账号」时由后端 can_register 决定是否可选（注册总开关 + 后台允许第三方建号）。
   -->
   <div class="oauth-callback">
     <!-- 处理中 -->
@@ -27,6 +27,79 @@
       </div>
     </template>
 
+    <!-- 未绑定：选择「创建新账号」或「绑定已有账号」 -->
+    <template v-else-if="status === 'choice'">
+      <div class="oauth-peer">
+        <img v-if="peer.avatar" class="oauth-peer-avatar" :src="peer.avatar" alt="" />
+        <div class="oauth-peer-info">
+          <div class="oauth-peer-name">{{ peer.nickname || '第三方账号' }}</div>
+          <div class="oauth-peer-tip">该 {{ platformName }} 账号还未绑定本站账号</div>
+        </div>
+      </div>
+
+      <div class="oauth-choice">
+        <button
+          type="button"
+          class="oauth-choice-item"
+          :class="{ active: mode === 'register' }"
+          :disabled="!canRegister"
+          @click="mode = 'register'"
+        >
+          <i class="bi bi-person-plus" />
+          <span>创建新账号</span>
+        </button>
+        <button
+          type="button"
+          class="oauth-choice-item"
+          :class="{ active: mode === 'bind' }"
+          @click="mode = 'bind'"
+        >
+          <i class="bi bi-link-45deg" />
+          <span>绑定已有账号</span>
+        </button>
+      </div>
+
+      <p v-if="!canRegister" class="oauth-note">
+        本站未开放「第三方账号创建新账号」，请用已有账号绑定；还没有账号请先
+        <router-link to="/auth/register">注册</router-link>。
+      </p>
+
+      <!-- 创建新账号：用第三方昵称/头像建号，建号即绑定 -->
+      <div v-if="mode === 'register'" class="oauth-form">
+        <p class="oauth-note">
+          将使用 {{ platformName }} 的昵称与头像创建新账号（账号密码可稍后在「账号安全」中设置）。
+        </p>
+        <button class="btn btn-primary btn-block" :disabled="submitting" @click="doRegister">
+          {{ submitting ? '处理中…' : '创建并登录' }}
+        </button>
+      </div>
+
+      <!-- 绑定已有账号：账号 + 密码校验通过后绑定并登录 -->
+      <form v-else class="oauth-form" @submit.prevent="doBindAccount">
+        <input
+          v-model="form.account"
+          class="input"
+          type="text"
+          autocomplete="username"
+          placeholder="账号 / 邮箱 / 手机号"
+        />
+        <input
+          v-model="form.password"
+          class="input"
+          type="password"
+          autocomplete="current-password"
+          placeholder="密码"
+        />
+        <button class="btn btn-primary btn-block" type="submit" :disabled="submitting">
+          {{ submitting ? '绑定中…' : '绑定并登录' }}
+        </button>
+      </form>
+
+      <div class="oauth-actions">
+        <router-link class="btn btn-block" to="/auth/login">去登录页</router-link>
+      </div>
+    </template>
+
     <!-- 失败 -->
     <template v-else>
       <div class="oauth-icon is-error"><i class="bi bi-exclamation-triangle" /></div>
@@ -43,19 +116,34 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { oauthSignIn } from '@/api/oauth'
+import { oauthBindAccount, oauthRegisterByTicket, oauthSignIn } from '@/api/oauth'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
-import { finishPendingBind, platformFromState, saveBindTicket, takeCallbackContext } from '@/utils/oauth'
+import {
+  clearBindTicket,
+  finishPendingBind,
+  platformFromState,
+  saveBindTicket,
+  takeCallbackContext
+} from '@/utils/oauth'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-// loading / audit / error
+// loading / choice / audit / error
 const status = ref('loading')
 const message = ref('')
 const platformCode = ref('')
+
+// 未绑定时「选择页」的状态
+const ticket = ref('')                            // 后端下发的一次性票据（10 分钟）
+const callbackContext = ref(null)                 // 发起时记录的 redirect / platform
+const mode = ref('register')                      // register：创建新账号；bind：绑定已有账号
+const canRegister = ref(false)                    // 后端 can_register：注册开关 + 允许第三方建号
+const submitting = ref(false)
+const peer = ref({ nickname: '', avatar: '' })    // 第三方昵称 / 头像（选择页展示）
+const form = ref({ account: '', password: '' })
 
 const nameMap = { qq: 'QQ', github: 'GitHub', gitee: 'Gitee' }
 const platformName = computed(() => nameMap[platformCode.value] || '第三方账号')
@@ -78,6 +166,68 @@ function afterSignIn(data, context) {
   router.replace(context.redirect || '/')
 }
 
+// 选择页：未登录 + 未绑定，由用户决定「创建新账号」还是「绑定已有账号」
+function beginChoice(data, context) {
+  ticket.value = String(data.ticket || '')
+  peer.value = { nickname: data.nickname || '', avatar: data.avatar || '' }
+  // 后端下发的是布尔值（true/false），Number(true) === 1 兼容两种写法
+  canRegister.value = Number(data.can_register) === 1
+  mode.value = canRegister.value ? 'register' : 'bind'
+  callbackContext.value = context
+  // 票据同时留一份在 sessionStorage：万一用户刷新了选择页，
+  // 仍可走「去登录页 → 登录成功后自动绑定」这条兜底路径（后端票据未消费）
+  saveBindTicket(ticket.value)
+  status.value = 'choice'
+}
+
+/** 选择页两条路（创建新账号 / 绑定已有账号）的统一收尾 */
+function applyAuthResult(data) {
+  if (data.token && data.user) {
+    clearBindTicket()
+    afterSignIn(data, callbackContext.value || {})
+    return
+  }
+  if (data.need_audit) {
+    status.value = 'audit'
+    return
+  }
+  fail('第三方登录未完成，请重新发起登录')
+}
+
+async function doRegister() {
+  if (submitting.value) return
+  submitting.value = true
+  try {
+    const res = await oauthRegisterByTicket(ticket.value)
+    applyAuthResult(res?.data || {})
+  } catch {
+    // 失败原因（票据过期 / 未开放建号 / 已绑别的账号等）由请求拦截器统一 toast，这里保持选择页
+  } finally {
+    submitting.value = false
+  }
+}
+
+async function doBindAccount() {
+  if (submitting.value) return
+  if (!form.value.account.trim() || !form.value.password) {
+    toast.warning('请填写账号和密码')
+    return
+  }
+  submitting.value = true
+  try {
+    const res = await oauthBindAccount({
+      key: ticket.value,
+      account: form.value.account.trim(),
+      password: form.value.password
+    })
+    applyAuthResult(res?.data || {})
+  } catch {
+    // 密码错误 / 账户不存在 / 票据已过期等由请求拦截器统一 toast，这里停在表单上便于重试
+  } finally {
+    submitting.value = false
+  }
+}
+
 async function handle(code, state, context) {
   try {
     const res = await oauthSignIn(context.platform, code, state)
@@ -95,11 +245,9 @@ async function handle(code, state, context) {
       return
     }
 
-    // 3) 未登录且未绑定：记下票据，引导先登录，登录成功后自动绑定
-    if (data.need_bind) {
-      saveBindTicket(data.ticket)
-      toast.info('该第三方账号还未绑定本站账号，登录后将自动完成绑定')
-      router.replace({ path: '/auth/login', query: context.redirect && context.redirect !== '/' ? { redirect: context.redirect } : {} })
+    // 3) 未登录且未绑定：展示选择页（创建新账号 / 绑定已有账号）
+    if (data.need_choice || data.need_bind) {
+      beginChoice(data, context)
       return
     }
 
@@ -193,5 +341,86 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 10px;
+}
+
+/* ---------- 未绑定「选择页」 ---------- */
+.oauth-peer {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 320px;
+  margin: 0 auto 16px;
+  text-align: left;
+}
+.oauth-peer-avatar {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+.oauth-peer-info {
+  min-width: 0;
+}
+.oauth-peer-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.oauth-peer-tip {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.oauth-choice {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.oauth-choice-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 8px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm, 6px);
+  background: var(--bg-card);
+  color: var(--text-soft);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.oauth-choice-item i {
+  font-size: 18px;
+}
+.oauth-choice-item:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--text);
+}
+.oauth-choice-item.active {
+  border-color: var(--primary);
+  color: var(--primary-deep, var(--primary));
+  background: var(--primary-wash, var(--bg-muted));
+}
+.oauth-choice-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.oauth-form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.oauth-note {
+  margin: 0 0 4px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-muted);
 }
 </style>

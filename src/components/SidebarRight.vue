@@ -6,6 +6,7 @@
         <AvatarFrame
           :src="user?.avatar"
           :frame="user?.json?.frame"
+          :animated="Number(user?.json?.frame_animated) === 1"
           :fallback="defaultAvatar"
           :size="'75px'"
           :frame-scale="1.6"

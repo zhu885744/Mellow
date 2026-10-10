@@ -78,9 +78,6 @@
               库存 {{ item.stock }}
             </span>
             <span v-else-if="item.sold_out" class="decoration-stock is-sold-out">已售罄</span>
-            <span v-if="Number(item.limit_per_user) > 0" class="decoration-stock">
-              限购 {{ item.limit_per_user }} 件<template v-if="Number(item.limit_remain) >= 0"> · 剩 {{ item.limit_remain }}</template>
-            </span>
             <!-- 有效期：已拥有的显示剩余天数，未拥有的显示装扮自身的有效期（永久 / N 天） -->
             <span class="decoration-stock is-duration">
               <i class="bi bi-clock-history" aria-hidden="true" /> {{ durationText(item) }}

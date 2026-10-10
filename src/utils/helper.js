@@ -179,6 +179,43 @@ export const getTitleColorClass = (title) => {
 }
 
 /**
+ * 提取用户佩戴的头衔样式（装扮系统写入 users.json.title_decoration.payload）
+ *
+ * 有值时应当用 <TitleBadge :payload="..." :text="user.title" /> 渲染 ——
+ * 后台配的文字颜色 / 背景 / 边框 / 发光 / 图标 / 动效都在 payload 里，
+ * 只按文字查色板（getTitleColorClass）会把这些样式全部丢掉
+ * （表现为「后台设了颜色，前台一直显示默认色」）。
+ *
+ * 没有样式（空 payload / 历史纯文本头衔）时返回 null，调用方回退到旧色板渲染。
+ */
+export const pickUserTitlePayload = (user) => {
+  const deco = user?.json?.title_decoration
+  if (!deco) return null
+
+  // 兼容两种历史写法：{id, name, payload} 与「直接就是 payload」
+  let payload = deco.payload ?? deco
+  if (!payload) return null
+  if (typeof payload === 'string') {
+    try {
+      payload = JSON.parse(payload)
+    } catch {
+      return null
+    }
+  }
+  if (typeof payload !== 'object') return null
+
+  // 一个样式字段都没有时视为「无样式」，交给色板兜底（避免套上 TitleBadge 的默认皮肤）
+  const styleKeys = ['color', 'bg', 'border', 'glow', 'icon', 'animated']
+  return styleKeys.some((key) => payload[key]) ? payload : null
+}
+
+/** 头像框是否开启动效（后端佩戴时回写 users.json.frame_animated） */
+export const pickUserFrameAnimated = (user) => {
+  const flag = user?.json?.frame_animated
+  return flag === true || Number(flag) === 1
+}
+
+/**
  * 判断用户是否为管理员
  * 兼容两种用户结构：user.auth（顶层）和 user.result.auth（嵌套）
  * 参考主题实现：auth.all 或 auth.group.list 中存在 key === 'admin'

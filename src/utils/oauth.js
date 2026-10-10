@@ -192,6 +192,11 @@ export function saveBindTicket(ticket) {
   if (ticket) store.set(TICKET_KEY, ticket)
 }
 
+/** 清除待绑定票据（回调页已自行完成绑定/建号时调用，避免登录流程再试一次） */
+export function clearBindTicket() {
+  store.del(TICKET_KEY)
+}
+
 export function hasBindTicket() {
   return !!store.get(TICKET_KEY)
 }

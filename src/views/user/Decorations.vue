@@ -10,7 +10,13 @@
 
     <!-- 当前佩戴：头像框 + 头衔，一眼看清现在用的是什么 -->
     <div class="card card-pad wearing-card">
-      <AvatarFrame :src="user?.avatar" :frame="wearingFrame" :fallback="defaultAvatar" size="64px" />
+      <AvatarFrame
+        :src="user?.avatar"
+        :frame="wearingFrame"
+        :animated="!!(wearingFrame && wearingFrame.payload && wearingFrame.payload.animated)"
+        :fallback="defaultAvatar"
+        size="64px"
+      />
       <div class="wearing-info">
         <div class="wearing-label">当前佩戴</div>
         <div class="wearing-row">

@@ -11,6 +11,7 @@
             <AvatarFrame
               :src="form.avatar"
               :frame="form.frame"
+              :animated="frameAnimated"
               :fallback="defaultAvatar"
               :size="'75px'"
               :frame-scale="1.6"
@@ -174,7 +175,15 @@
             <!-- 只读展示当前头衔：佩戴 / 卸下 / 换字统一在「我的装扮」里操作 -->
             <div class="current-title-row">
               <span class="current-title-label">当前头衔：</span>
-              <span :class="['current-title', { empty: !form.title }]">{{ form.title || '未设置' }}</span>
+              <!-- 佩戴了装扮头衔时用 TitleBadge 还原后台配色（文字色 / 背景 / 边框 / 发光 / 图标 / 动效） -->
+              <TitleBadge
+                v-if="form.title && currentTitlePayload"
+                :payload="currentTitlePayload"
+                :text="form.title"
+              />
+              <span v-else :class="['current-title', { empty: !form.title }]">
+                {{ form.title || '未设置' }}
+              </span>
               <RouterLink to="/user/decorations" class="deco-link">去我的装扮更换</RouterLink>
             </div>
             <p class="hint">头衔与头像框统一在「我的装扮」中佩戴、卸下。</p>
@@ -213,9 +222,15 @@ import { useUserStore } from '@/stores/user'
 import { updateUser, uploadAvatar } from '@/api/users'
 import { toast } from '@/utils/toast'
 import AvatarFrame from '@/components/AvatarFrame.vue'
+import TitleBadge from '@/components/TitleBadge.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
+import { pickUserTitlePayload, pickUserFrameAnimated } from '@/utils/helper'
 
 const userStore = useUserStore()
+
+// 头衔样式 / 头像框动效（都由装扮系统写入 users.json，佩戴时服务端回写）
+const currentTitlePayload = computed(() => pickUserTitlePayload(userStore.user))
+const frameAnimated = computed(() => pickUserFrameAnimated(userStore.user))
 
 const DEFAULT_AVATARS = [
   'https://img.zhuxu.asia/tx/1.png',

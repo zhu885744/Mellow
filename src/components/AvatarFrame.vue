@@ -14,6 +14,7 @@
       v-if="frame && !frameFailed"
       :src="frame"
       class="avatar-frame-overlay"
+      :class="{ 'is-animated': animated }"
       :style="{ transform: `translate(-50%, -50%) scale(${frameScale})` }"
       alt=""
       loading="lazy"
@@ -38,7 +39,12 @@ const props = defineProps({
    */
   frameScale: { type: Number, default: 1.2 },
   // 头像加载失败时的回退图
-  fallback: { type: String, default: '' }
+  fallback: { type: String, default: '' },
+  /**
+   * 是否播动效（后台装扮的「开启动效」）
+   * 数据来自 users.json.frame_animated（佩戴头像框时由服务端回写）
+   */
+  animated: { type: Boolean, default: false }
 })
 
 const failed = ref(false)
@@ -86,5 +92,20 @@ function onError() {
   z-index: 2;
   object-fit: contain;
   transform-origin: center center;
+}
+
+/* 开启动效：亮度呼吸 + 泛光（与头衔的呼吸动效风格保持一致） */
+.avatar-frame-overlay.is-animated {
+  animation: avatar-frame-breath 2.4s ease-in-out infinite;
+}
+
+@keyframes avatar-frame-breath {
+  0%,
+  100% {
+    filter: brightness(1) drop-shadow(0 0 0 rgba(255, 255, 255, 0));
+  }
+  50% {
+    filter: brightness(1.22) drop-shadow(0 0 6px rgba(255, 255, 255, 0.55));
+  }
 }
 </style>

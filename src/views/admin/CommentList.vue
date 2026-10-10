@@ -96,6 +96,12 @@
             </button>
           </template>
           <template v-else>
+            <button class="btn btn-sm" :disabled="busy" @click="batchPass()">
+              <i class="bi bi-check2-circle" /> 批量通过
+            </button>
+            <button class="btn btn-sm" :disabled="busy" @click="askBatchReject()">
+              <i class="bi bi-x-circle" /> 批量驳回
+            </button>
             <button class="btn btn-sm btn-danger" :disabled="busy" @click="askBatchRemove()">
               <i class="bi bi-trash" /> 删除
             </button>
@@ -166,6 +172,15 @@
                 <span v-if="isReply(item)" class="flag is-reply">
                   <i class="bi bi-reply" /> 回复 #{{ item.pid }}
                 </span>
+                <!-- 审核状态：已通过不显示标签，减少噪音（开关见「系统设置 → 评论配置 → 内容审核」） -->
+                <span
+                  v-if="auditFlag(item)"
+                  class="flag"
+                  :class="auditFlag(item).cls"
+                  :title="auditFlag(item).tip"
+                >
+                  <i :class="auditFlag(item).icon" /> {{ auditFlag(item).text }}
+                </span>
                 <span class="c-time">{{ timeText(item) }}</span>
               </div>
 
@@ -221,6 +236,27 @@
               </template>
 
               <template v-else>
+                <!-- 审核：待审核 / 未通过时才显示对应操作（已通过的只留「驳回」） -->
+                <button
+                  v-if="Number(item.audit) !== 1"
+                  class="btn btn-ghost btn-sm ok"
+                  title="审核通过（前台可见）"
+                  aria-label="审核通过"
+                  :disabled="busy"
+                  @click="passItem(item)"
+                >
+                  <i class="bi bi-check2-circle" />
+                </button>
+                <button
+                  v-if="Number(item.audit) !== 2"
+                  class="btn btn-ghost btn-sm danger"
+                  title="驳回（需填写原因）"
+                  aria-label="驳回"
+                  :disabled="busy"
+                  @click="askReject(item)"
+                >
+                  <i class="bi bi-x-circle" />
+                </button>
                 <router-link
                   v-if="bindLink(item)"
                   :to="bindLink(item)"
@@ -285,6 +321,21 @@
       :loading="confirm.loading"
       @confirm="runConfirm"
     />
+
+    <!-- 驳回评论（须填原因；单条与批量共用，目标记在 auditDialog.target） -->
+    <AuditDialog
+      :visible="auditDialog.visible"
+      :audit="auditDialog.audit"
+      :default-reason="auditDialog.reason"
+      :owner-uid="auditDialog.ownerUid"
+      owner-label="评论者"
+      :loading="auditDialog.loading"
+      title="驳回评论"
+      message="驳回后该评论在前台不可见，评论者会收到通知（含你填写的原因）。"
+      confirm-text="驳回"
+      @update:visible="closeAuditDialog"
+      @confirm="runAudit"
+    />
   </div>
 </template>
 
@@ -308,6 +359,7 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import EmojiText from '@/components/EmojiText.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
+import AuditDialog from '@/components/admin/AuditDialog.vue'
 import {
   listComments,
   updateComment,
@@ -420,6 +472,114 @@ function bindTitleText(item) {
 
 function bindLink(item) {
   return commentBindLink(item)
+}
+
+// ---------- 审核 ----------
+// 是否开启审核由「系统设置 → 评论配置 → 内容审核」控制（COMMENT 的 json.audit）：
+// 关闭时前台提交的评论 audit 直接为 1（已通过），开启时为 0（待审核）；
+// 非管理员在接口层只能看到 audit=1 的评论，管理端可以筛「待审核」并做通过 / 驳回。
+const auditDialog = reactive({ visible: false, loading: false, audit: 2, reason: '', ownerUid: 0, target: null })
+
+// 审核状态标签：已通过不显示（减少噪音），未通过带上驳回原因
+function auditFlag(item) {
+  const audit = Number(item?.audit || 0)
+  if (audit === 1) return null
+  if (audit === 2) {
+    return {
+      text: '未通过',
+      cls: 'is-reject',
+      icon: 'bi bi-x-circle',
+      tip: item?.reason ? `驳回原因：${item.reason}` : '审核未通过，前台不可见'
+    }
+  }
+  return { text: '待审核', cls: 'is-pending', icon: 'bi bi-hourglass-split', tip: '等待审核，前台暂不可见' }
+}
+
+// 只改 audit / reason，不动评论内容
+async function applyAudit(item, audit, reason = '') {
+  busy.value = true
+  try {
+    await updateComment({ id: item.id, audit, reason })
+    toast.success(audit === 1 ? '已通过' : '已驳回')
+    await afterMutation(0)
+  } catch {
+    // 失败提示由请求拦截器统一给出
+  } finally {
+    busy.value = false
+  }
+}
+
+function passItem(item) {
+  return applyAudit(item, 1, '')
+}
+
+function askReject(item) {
+  openAuditDialog([item], item?.reason || '', Number(item?.uid) || 0)
+}
+
+function askBatchReject() {
+  openAuditDialog(selectedItems(), '', 0)
+}
+
+function openAuditDialog(target, reason = '', ownerUid = 0) {
+  auditDialog.audit = 2
+  auditDialog.target = target
+  auditDialog.reason = reason
+  auditDialog.ownerUid = ownerUid
+  auditDialog.visible = true
+}
+
+function closeAuditDialog(value) {
+  auditDialog.visible = value !== false
+  if (!auditDialog.visible) auditDialog.target = null
+}
+
+// 批量通过：逐条调用（后端没有批量审核接口），全部成功后再刷新
+async function batchPass() {
+  const items = selectedItems()
+  if (!items.length) return
+
+  busy.value = true
+  try {
+    for (const item of items) {
+      await updateComment({ id: item.id, audit: 1, reason: '' })
+    }
+    toast.success(`已通过 ${items.length} 条`)
+    clearSelection()
+    await afterMutation(0)
+  } catch {
+    // 失败提示由请求拦截器统一给出
+  } finally {
+    busy.value = false
+  }
+}
+
+async function runAudit(reason) {
+  const items = Array.isArray(auditDialog.target) ? auditDialog.target : [auditDialog.target]
+  const targets = items.filter(Boolean)
+  if (!targets.length) return
+
+  auditDialog.loading = true
+  try {
+    for (const item of targets) {
+      await updateComment({ id: item.id, audit: 2, reason })
+    }
+    toast.success(`已驳回 ${targets.length} 条`)
+    auditDialog.visible = false
+    auditDialog.target = null
+    clearSelection()
+    await afterMutation(0)
+  } catch {
+    // 失败提示由请求拦截器统一给出
+  } finally {
+    auditDialog.loading = false
+  }
+}
+
+// 当前页选中的评论对象（批量操作要用 id + uid）
+function selectedItems() {
+  const ids = new Set(selectedIds.value)
+  return list.value.filter((item) => ids.has(item.id))
 }
 
 const bindIcons = {
@@ -1004,6 +1164,19 @@ onUnmounted(() => {
 .flag.is-reply {
   color: var(--text-muted);
   background: var(--bg-muted);
+}
+/* 审核状态标签：待审核（橙）/ 未通过（红） */
+.flag.is-pending {
+  color: var(--warning);
+  background: var(--gold-wash);
+}
+.flag.is-reject {
+  color: var(--danger);
+  background: rgba(217, 84, 77, 0.12);
+}
+/* 「审核通过」按钮用成功色，和「驳回」的红色区分开 */
+.c-actions .ok {
+  color: var(--success);
 }
 
 .bind-chip {

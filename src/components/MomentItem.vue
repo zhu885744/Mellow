@@ -15,7 +15,14 @@
           <span v-if="authorLink" class="name-link" @click="goAuthor">{{ author?.nickname || '匿名' }}</span>
           <span v-else>{{ author?.nickname || '匿名' }}</span>
           <span v-if="authorLevel" class="c-level">Lv.{{ authorLevel }}</span>
-          <span v-if="authorTitle" :class="['c-title', authorTitleClass]">{{ authorTitle }}</span>
+          <!-- 有装扮样式用 TitleBadge 还原后台配色；没有则回退旧色板 -->
+          <TitleBadge
+            v-if="authorTitle && authorTitlePayload"
+            :payload="authorTitlePayload"
+            :text="authorTitle"
+            size="sm"
+          />
+          <span v-else-if="authorTitle" :class="['c-title', authorTitleClass]">{{ authorTitle }}</span>
           <span v-if="moment.top" class="top-tag">置顶</span>
         </div>
         <div class="time">{{ fromNow(moment.create_time) }}</div>
@@ -91,7 +98,14 @@
 <script setup>
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { fromNow } from '@/utils/time'
-import { isAdmin as helperIsAdmin, pickUserLevel, pickUserTitle, getTitleColorClass } from '@/utils/helper'
+import {
+  isAdmin as helperIsAdmin,
+  pickUserLevel,
+  pickUserTitle,
+  pickUserTitlePayload,
+  getTitleColorClass
+} from '@/utils/helper'
+import TitleBadge from './TitleBadge.vue'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
@@ -231,6 +245,8 @@ const authorLink = computed(() => {
 const authorLevel = computed(() => pickUserLevel(author.value))
 const authorTitle = computed(() => pickUserTitle(author.value))
 const authorTitleClass = computed(() => getTitleColorClass(authorTitle.value))
+// 头衔样式（装扮系统写入 users.json.title_decoration.payload）
+const authorTitlePayload = computed(() => pickUserTitlePayload(author.value))
 function goAuthor() {
   if (authorLink.value) router.push(authorLink.value)
 }

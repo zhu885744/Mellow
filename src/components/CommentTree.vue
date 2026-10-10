@@ -7,7 +7,14 @@
         <div v-if="userStore.isLogged" class="root-meta">
           <span class="root-name" @click="goMe">{{ userStore.user.nickname || '我' }}</span>
           <span v-if="myLevel" class="c-level">Lv.{{ myLevel }}</span>
-          <span v-if="myTitle" :class="['c-title', myTitleClass]">{{ myTitle }}</span>
+          <!-- 有装扮样式用 TitleBadge 还原后台配色；没有则回退旧色板 -->
+          <TitleBadge
+            v-if="myTitle && myTitlePayload"
+            :payload="myTitlePayload"
+            :text="myTitle"
+            size="sm"
+          />
+          <span v-else-if="myTitle" :class="['c-title', myTitleClass]">{{ myTitle }}</span>
         </div>
         <template v-if="userStore.isLogged">
           <EmojiEditor
@@ -87,6 +94,20 @@
       @select="onLibrarySelect"
     />
 
+    <!-- 待审核占位：审核开启时刚提交的评论不会立刻出现在列表里（后端返回 audit=0） -->
+    <div v-if="pendingComments.length" class="pending-list">
+      <div v-for="item in pendingComments" :key="item.key" class="pending-item">
+        <span class="pending-badge"><i class="bi bi-hourglass-split" /> 待审核</span>
+        <span class="pending-content">
+          {{ item.content || '（图片评论）' }}<em v-if="item.hasImages"> · 含图片</em>
+        </span>
+        <span class="pending-tip">审核通过后其他访客可见</span>
+        <button class="pending-del" type="button" title="不再提示这条" @click="removePending(item.key)">
+          <i class="bi bi-x-lg" />
+        </button>
+      </div>
+    </div>
+
     <div v-if="loading" class="comment-loading">
       <span class="spinner" /> 加载中...
     </div>
@@ -134,7 +155,14 @@ import {
 import { likesCount, isLiked, like, unlike } from '@/api/tags'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
-import { pickCommentAuthor, pickUserLevel, pickUserTitle, getTitleColorClass } from '@/utils/helper'
+import {
+  pickCommentAuthor,
+  pickUserLevel,
+  pickUserTitle,
+  pickUserTitlePayload,
+  getTitleColorClass
+} from '@/utils/helper'
+import TitleBadge from './TitleBadge.vue'
 
 const props = defineProps({
   bindId: { type: [String, Number], required: true },
@@ -156,6 +184,8 @@ const route = useRoute()
 const myLevel = computed(() => pickUserLevel(userStore.user))
 const myTitle = computed(() => pickUserTitle(userStore.user))
 const myTitleClass = computed(() => getTitleColorClass(myTitle.value))
+// 我自己的头衔样式（装扮系统写入 users.json.title_decoration.payload）
+const myTitlePayload = computed(() => pickUserTitlePayload(userStore.user))
 function goMe() {
   const id = userStore.user?.id
   if (userStore.isLogged && id) router.push(`/author/${id}`)
@@ -366,24 +396,57 @@ async function submitRoot() {
   newImages.value = []
 }
 
+// 待审核占位（只存本地，不写库）：审核开启时，刚提交的评论不会立刻出现在列表里
+// （非管理员的评论列表只返回 audit=1），用一条占位提示用户「已提交、等待审核」
+// 审核状态取值与后端 app/api/controller/audit.go 一致：0 待审核 / 1 已通过 / 2 未通过
+const AUDIT_PENDING = 0
+const pendingComments = ref([])
+const MAX_PENDING = 3
+
+function pushPending({ content, images }) {
+  pendingComments.value.unshift({
+    key: `pending-${Date.now()}-${Math.random().toString(16).slice(2, 6)}`,
+    content: String(content || ''),
+    hasImages: (images || []).length > 0
+  })
+  if (pendingComments.value.length > MAX_PENDING) {
+    pendingComments.value = pendingComments.value.slice(0, MAX_PENDING)
+  }
+}
+
+function removePending(key) {
+  pendingComments.value = pendingComments.value.filter((item) => item.key !== key)
+}
+
 async function onSubmit({ content, images, pid }) {
   if (!userStore.isLogged) {
     toast.warning('请先登录')
     return
   }
   try {
-    await createComment({
+    // 不传 audit：是否进入待审核由后端按站点「评论审核」开关决定
+    // （后台「系统设置 → 评论配置 → 内容审核」）。
+    // 过去这里强制传 audit=1 / status=1，虽然会被后端 allow 白名单丢掉，
+    // 但一旦哪天放开就会让审核开关形同虚设，所以直接不传
+    const res = await createComment({
       bind_id: props.bindId,
       bind_type: props.bindType,
       pid: pid || 0,
       content,
       // 后端 processFieldValue 会把数组转为逗号分隔字符串
-      images: images || [],
-      status: 1,
-      audit: 1
+      images: images || []
     })
-    toast.success('评论成功')
     replyTo.value = null
+
+    // 后端返回本次写入的审核状态（0 待审核 / 1 已通过）
+    const audit = Number(res?.data?.audit ?? 1)
+    if (audit === AUDIT_PENDING) {
+      pushPending({ content, images })
+      toast.success('评论已提交，审核通过后显示')
+      return
+    }
+
+    toast.success('评论成功')
     page.value = 1
     load()
   } catch {
@@ -414,6 +477,63 @@ defineExpose({ load })
 <style scoped>
 .comment-tree {
   margin-top: 8px;
+}
+/* 待审核占位条：刚提交、等待管理员审核的评论 */
+.pending-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.pending-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--bg-muted);
+}
+.pending-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 1px 8px;
+  font-size: 11px;
+  border-radius: 3px;
+  color: var(--warning, #b8860b);
+  background: var(--gold-wash, rgba(184, 134, 11, 0.12));
+}
+.pending-content {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+}
+.pending-content em {
+  font-style: normal;
+  color: var(--text-muted);
+}
+.pending-tip {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.pending-del {
+  flex-shrink: 0;
+  padding: 2px 4px;
+  font-size: 11px;
+  border: none;
+  background: transparent;
+  color: var(--text-light, var(--text-muted));
+  cursor: pointer;
+}
+.pending-del:hover {
+  color: var(--danger);
 }
 /* 来自侧边栏等入口的评论定位高亮 */
 :deep(.comment-item.comment-highlight) {

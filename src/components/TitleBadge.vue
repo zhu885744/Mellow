@@ -54,24 +54,32 @@ const badgeStyle = computed(() => {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border-radius: 6px;
+  border-radius: 4px;
   font-weight: 600;
-  line-height: 1.4;
   white-space: nowrap;
   vertical-align: middle;
-  /* 无 payload 时的兜底样式（等价于原来的纯文本头衔） */
+  /*
+   * 注意：这里**不要**写 line-height。
+   * 旧的 .c-title / .author-title 都不设行高（继承所在行的行高），
+   * 写死成 1.4 会让标签比默认头衔矮一截，看起来就是「内边距特别小」。
+   * 同理不加默认边框：旧标签只有背景色，多 1px 边框也会让视觉高度不同。
+   */
+  /* 无 payload 时的兜底配色 */
   color: #b45309;
   background: #fef3c7;
-  border: 1px solid #fcd34d;
 }
 
+/* 尺寸与旧标签逐项对齐，避免同一位置「装扮头衔」和「默认头衔」看起来不一样大：
+   sm → 列表（.c-title：11px / 1px 6px）
+   md → 作者主页（.author-title：12px / 2px 8px）
+   lg → 装扮商城 / 我的装扮 的大号预览 */
 .title-badge--sm {
-  padding: 0 6px;
+  padding: 1px 6px;
   font-size: 11px;
 }
 
 .title-badge--md {
-  padding: 1px 8px;
+  padding: 2px 8px;
   font-size: 12px;
 }
 

@@ -5,7 +5,10 @@
  * 共用同一份筛选定义，避免统计与列表口径不一致（与 utils/moment.js、utils/user.js 一致）。
  *
  * 后端约束（app/api/controller/comment.go）：
- * - 评论表没有审核 / 状态字段，可筛选维度为 bind_type（绑定类型）、pid（层级）、回收站；
+ * - 评论表有 audit 字段（0 待审核 1 通过 2 未通过）；是否开启审核由 COMMENT 配置的 json.audit
+ *   决定（「系统设置 → 评论配置 → 内容审核」）：关闭审核时提交即通过，开启时进待审核；
+ *   非管理员在接口层只能看到 audit=1 的评论，管理端可筛选「待审核」并做通过 / 驳回；
+ * - 可筛选维度为 bind_type（绑定类型）、audit（待审核）、pid（层级）、回收站；
  * - comment/count 已支持 onlyTrashed，回收站数量可直接用 count 统计；
  * - IP / UA 仅管理员可见原文，普通用户返回脱敏值；
  * - result 内已附带 author / article / page / moments，无需额外请求即可展示来源。
@@ -15,7 +18,7 @@
 // 注：前台评论树走 comment/flat 且不传 field（返回全字段），所以能拿到 agent 用来
 // 展示「来自什么设备」（见 components/CommentItem.vue + utils/ua.js）；
 export const COMMENT_LIST_FIELD =
-  'id,pid,uid,content,images,ip,bind_id,bind_type,editor,create_time,update_time,delete_time,result'
+  'id,pid,uid,content,images,ip,bind_id,bind_type,editor,audit,reason,create_time,update_time,delete_time,result'
 
 // 回收站 key：不属于状态标签，需要单独的查询参数（onlyTrashed）
 export const COMMENT_TRASH_KEY = 'trash'
@@ -71,6 +74,15 @@ export const COMMENT_FILTERS = [
     icon: 'bi bi-lightning-charge',
     color: '#f59e0b',
     where: { bind_type: BIND_TYPE_MOMENTS }
+  },
+  {
+    // 待审核：开关在「系统设置 → 评论配置 → 内容审核」，开启后前台新评论落在这里
+    key: 'pending',
+    label: '待审核评论',
+    tabLabel: '待审核',
+    icon: 'bi bi-hourglass-split',
+    color: '#f59e0b',
+    where: { audit: 0 }
   },
   {
     key: COMMENT_TRASH_KEY,

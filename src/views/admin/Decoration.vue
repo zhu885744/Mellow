@@ -467,11 +467,6 @@
                   <p class="form-hint">-1 表示不限量，0 表示已售罄</p>
                 </div>
                 <div class="form-item">
-                  <label class="form-label">每人限购</label>
-                  <input v-model="form.limit_per_user" class="input" type="number" min="0" />
-                  <p class="form-hint">0 表示不限购</p>
-                </div>
-                <div class="form-item">
                   <label class="form-label">分类名</label>
                   <input v-model="form.category" class="input" placeholder="留空自动按类型命名" />
                 </div>
@@ -530,9 +525,10 @@
  *  2. 发放 / 回收 —— 批量用户 × 批量装扮，发放幂等（重复发放只续期）。
  *
  * 后端约束（app/api/controller/decoration.go、app/model/decoration.go）：
- * - 装扮商城是独立分区，与积分商城（goods）完全解耦：价格 / 库存 / 限购 / 经验门槛
+ * - 装扮商城是独立分区，与积分商城（goods）完全解耦：价格 / 库存 / 经验门槛
  *   都存在装扮自身，前台兑换走 decoration/buy（只扣积分，不生成商品与订单）；
- * - 库存取值：-1 不限量（默认）、0 已售罄、>0 剩余数量；
+ * - 库存取值：-1 不限量（默认）、0 已售罄、>0 剩余数量（稀缺性只用库存控制，
+ *   每人限购已移除：装扮是一件拥有、重复兑换即续期，限购会连续期一起挡掉）；
  * - payload 必须提交 JSON 字符串，后端按 utils.Json.Decode 解析后原样下发；
  * - duration 单位为秒，0 表示永久；表单里按「天」录入后换算；
  * - 彻底删除会连带清理用户已拥有的记录（不可恢复）。
@@ -786,7 +782,6 @@ const form = reactive({
   is_default: 0,
   // -1 = 不限量（后端约定：0 表示已售罄）
   stock: -1,
-  limit_per_user: 0,
   durationDays: 0,
   p_image: '',
   p_text: '',
@@ -850,7 +845,6 @@ function resetForm(type) {
   form.sort = 100
   form.is_default = 0
   form.stock = -1
-  form.limit_per_user = 0
   form.durationDays = 0
   form.p_image = ''
   form.p_text = ''
@@ -955,8 +949,7 @@ async function save() {
     is_default: Number(form.is_default) === 1 ? 1 : 0,
     // 秒；0 = 永久
     duration: Math.max(0, Number(form.durationDays) || 0) * 86400,
-    stock,
-    limit_per_user: Math.max(0, Number(form.limit_per_user) || 0)
+    stock
   }
   if (form.id) payload.id = form.id
 

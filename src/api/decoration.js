@@ -49,7 +49,8 @@ export const wearDecoration = (decorationId, text = '') =>
   call('decoration', 'wear', { method: 'POST', data: { decoration_id: decorationId, text } })
 
 // 兑换装扮（登录用户）：直接扣积分并发放
-// 与积分商城解耦 —— 不经过商品 / 订单，价格、库存、限购都取自装扮自身
+// 与积分商城解耦 —— 不经过商品 / 订单，价格、库存、经验门槛都取自装扮自身
+// （稀缺性只用库存控制，每人限购已移除）
 export const buyDecoration = (decorationId) =>
   call('decoration', 'buy', { method: 'POST', data: { decoration_id: decorationId } })
 
@@ -81,7 +82,7 @@ export const countDecorations = () => call('decoration', 'count', { method: 'GET
 
 // 保存装扮：无 id 为新增，有 id 为更新（后端 save 自动分流）
 // payload 必须是 JSON 字符串（后端按 utils.Json.Decode 解析）
-// 同时可传 stock / limit_per_user / min_exp，用于同步关联商品
+// 同时可传 stock / min_exp（装扮自带售卖字段；每人限购已废弃、不再生效）
 export const saveDecoration = (data) =>
   call('decoration', 'save', { method: 'POST', data })
 

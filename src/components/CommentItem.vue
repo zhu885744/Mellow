@@ -8,7 +8,14 @@
         <span v-if="authorLink" class="c-name c-name-link" @click="goAuthor">{{ author.nickname }}</span>
         <span v-else class="c-name">{{ author.nickname }}</span>
         <span v-if="author.level" class="c-level">Lv.{{ author.level }}</span>
-        <span v-if="author.title" :class="['c-title', titleClass]">{{ author.title }}</span>
+        <!-- 有装扮样式用 TitleBadge 还原后台配色；没有则回退旧色板 -->
+        <TitleBadge
+          v-if="author.title && titlePayload"
+          :payload="titlePayload"
+          :text="author.title"
+          size="sm"
+        />
+        <span v-else-if="author.title" :class="['c-title', titleClass]">{{ author.title }}</span>
         <span v-if="author.id === authorId" class="c-badge">作者</span>
         <!-- 时间 + 设备：设备取自后端返回的 comment.agent（普通用户为脱敏值），
              解析成「系统 · 浏览器」展示，原始 UA 放在 title 里悬停可见 -->
@@ -139,7 +146,8 @@ import { ref, computed, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/time'
 import { useUserStore } from '@/stores/user'
-import { isAdmin, pickCommentAuthor, getTitleColorClass } from '@/utils/helper'
+import { isAdmin, pickCommentAuthor, getTitleColorClass, pickUserTitlePayload } from '@/utils/helper'
+import TitleBadge from './TitleBadge.vue'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
 import { parseUserAgent } from '@/utils/ua'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
@@ -167,7 +175,10 @@ const router = useRouter()
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
 const replyText = ref('')
 
-// 后端把评论作者放在 result.author
+// 后端把评论作者放在 result.author（原始对象里带 users.json，头衔样式要从这里取）
+const rawAuthor = computed(
+  () => props.comment?.result?.author || props.comment?.author || props.comment?.user || null
+)
 const author = computed(() => pickCommentAuthor(props.comment))
 const renderedContent = computed(() => renderEmojiWithBreaks(props.comment.content))
 
@@ -198,8 +209,10 @@ function goAuthor() {
   if (authorLink.value) router.push(authorLink.value)
 }
 
-// 头衔配色（复用作者主页映射）
+// 头衔配色（复用作者主页映射）：仅在没有装扮样式时兜底
 const titleClass = computed(() => getTitleColorClass(author.value.title))
+// 头衔样式（装扮系统写入的 payload：文字颜色 / 背景 / 边框 / 发光 / 图标 / 动效）
+const titlePayload = computed(() => pickUserTitlePayload(rawAuthor.value))
 
 const parentName = computed(() => props.comment.parentName || '')
 
