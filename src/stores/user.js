@@ -238,10 +238,13 @@ export const useUserStore = defineStore('user', () => {
       clearToken()
       toast.success('已退出登录')
 
-      // 停掉消息轮询：侧栏（MainLayout）才会在登出时停它，
-      // 从用户中心退出时没有侧栏，定时器会残留并持续发请求
+      // 停掉消息轮询并清掉未读数：侧栏（MainLayout）才会在登出时停它，
+      // 从用户中心退出时没有侧栏，定时器会残留并持续发请求；
+      // 不清零的话，登出后底栏 / 侧栏的未读角标会一直挂着上次的数字
       try {
-        useNotificationStore().stopPolling()
+        const notif = useNotificationStore()
+        notif.stopPolling()
+        notif.clearCount()
       } catch {}
 
       await gotoHome()

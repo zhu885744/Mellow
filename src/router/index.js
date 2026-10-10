@@ -170,6 +170,10 @@ const routes = [
       { path: 'links/group', name: 'admin-links-group', component: () => import('@/views/admin/LinkGroup.vue'), meta: { title: '友链分组' } },
       { path: 'attachment', name: 'admin-attachment', component: () => import('@/views/admin/Attachment.vue'), meta: { title: '附件管理' } },
       { path: 'system', name: 'admin-system', component: () => import('@/views/admin/SystemConfig.vue'), meta: { title: '系统设置' } },
+      // 日志解析：只读查看 runtime/ 下的系统日志与通知日志（后端 app/api/controller/log.go）
+      { path: 'logs', name: 'admin-logs', component: () => import('@/views/admin/Logs.vue'), meta: { title: '日志' } },
+      // 数据统计：消费服务端 socket 每秒推送的实时状态（app/socket/controller/status.go）
+      { path: 'stats', name: 'admin-stats', component: () => import('@/views/admin/Stats.vue'), meta: { title: '数据统计' } },
       // 安全
       { path: 'auth/rules', name: 'admin-auth-rules', component: () => import('@/views/admin/AuthRules.vue'), meta: { title: '权限规则' } },
       { path: 'auth/group', name: 'admin-auth-group', component: () => import('@/views/admin/AuthGroup.vue'), meta: { title: '权限组' } },

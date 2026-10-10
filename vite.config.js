@@ -8,6 +8,21 @@ export default defineConfig(({ mode }) => {
   const API_URI = env.VITE_API_URI || 'https://zhuxu.asia'
   const SOCKET_URI = env.VITE_SOCKET || 'wss://zhuxu.asia/socket'
 
+  // 代理 target 只能给「源」（scheme + host[:port]），不能带路径：
+  // VITE_SOCKET 通常写成 wss://host/socket，若把带路径的值直接当 target，
+  // http-proxy 会把 target 的路径拼在请求路径前（/socket → /socket/socket），
+  // 后端匹配不到该路由、回落到 SPA 首页，浏览器侧表现为
+  // 「WebSocket handshake: Unexpected response code: 200」。
+  const socketTarget = (() => {
+    try {
+      const url = new URL(SOCKET_URI, 'https://placeholder.local')
+      const secure = url.protocol === 'wss:' || url.protocol === 'https:'
+      return `${secure ? 'wss:' : 'ws:'}//${url.host}`
+    } catch {
+      return 'wss://zhuxu.asia'
+    }
+  })()
+
   return {
     plugins: [vue()],
     resolve: {
@@ -35,8 +50,9 @@ export default defineConfig(({ mode }) => {
           cookieDomainRewrite: '',
           cookiePathRewrite: '/'
         },
+        // WebSocket 实时通道（见 src/utils/socket.js）：ws: true 才会转发 Upgrade 握手
         '/socket': {
-          target: SOCKET_URI,
+          target: socketTarget,
           ws: true,
           changeOrigin: true
         },

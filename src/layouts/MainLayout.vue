@@ -7,12 +7,22 @@
         {{ site.title }}
       </span>
       <div class="mobile-actions">
+        <!-- 搜索入口：手机端左栏（含搜索按钮）整块被隐藏，这里是唯一的入口 -->
         <button
-          class="btn btn-sm"
+          type="button"
+          class="mobile-search"
+          aria-label="搜索"
+          title="搜索"
+          @click="openSearch"
+        >
+          <i class="bi bi-search" aria-hidden="true" />
+        </button>
+        <button
+          class="mobile-search"
           :class="userStore.isLogged ? 'btn-primary' : 'btn-ghost'"
           @click="onCheckinClick"
         >
-          <i class="bi bi-calendar-check" /> 签到
+          <i class="bi bi-calendar-check" />
         </button>
         <router-link
           v-if="!userStore.isLogged"
@@ -262,8 +272,10 @@ import Lightbox from '@/components/Lightbox.vue'
 import FloatButtons from '@/components/FloatButtons.vue'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import { call } from '@/api/request'
+import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
+import { useNotificationStore } from '@/stores/notification'
 import { canEnterAdmin } from '@/utils/helper'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -271,6 +283,10 @@ const userStore = useUserStore()
 const siteStore = useSiteStore()
 const router = useRouter()
 const route = useRoute()
+
+// 底栏「消息」的未读角标：数量由消息 store 提供（count 是响应式的）
+const notif = useNotificationStore()
+const { count: notifCount } = storeToRefs(notif)
 
 // 签到（独立页面 /checkin）：未登录时不跳登录页，由页面自身给出登录引导
 function onCheckinClick() {
@@ -344,16 +360,25 @@ function navTarget(p) {
   return `/${p.key || p.id}`
 }
 
+// 消息未读角标：未登录不显示；超过 99 显示 99+（避免把 tab 撑变形）
+const unreadBadge = computed(() => {
+  if (!userStore.isLogged) return ''
+  const total = Number(notifCount.value) || 0
+  if (total <= 0) return ''
+  return total > 99 ? '99+' : String(total)
+})
+
 // 移动端底部 Tab 配置
 const tabs = computed(() => {
   const uid = userStore.user?.id
   return [
     { key: 'home', to: '/', icon: 'bi-house-door-fill', label: '首页', exact: true },
-    { key: 'goods', to: '/goods', icon: 'bi-shop', label: '商城', badge: '新' },
+    { key: 'goods', to: '/goods', icon: 'bi-shop', label: '商城' },
     // 发布：不直接跳转，点击展开「发文章 / 发动态」面板（见 PUBLISH_ACTIONS）
     // to 仅用于高亮判定（在写文章页时保持选中态）
     { key: 'publish', to: '/manage/posts/write', icon: 'bi-plus-circle-fill', label: '发布', needLogin: true, highlight: true, action: 'publish' },
-    { key: 'notif', to: '/user/notifications', icon: 'bi-bell-fill', label: '消息', needLogin: true },
+    // badge 是响应式的：取消息 store 的未读数（60 秒轮询 + 页面回到前台时立即刷新）
+    { key: 'notif', to: '/user/notifications', icon: 'bi-bell-fill', label: '消息', needLogin: true, badge: unreadBadge.value },
     { key: 'mine', to: uid ? `/author/${uid}` : '/user', icon: 'bi-person-fill', label: '我的', needLogin: true }
   ]
 })
@@ -442,7 +467,35 @@ onMounted(() => {
   loadPages()
   // 先同步登录态（含封禁状态）再检测，避免读到未就绪的 user
   userStore.ensureLogin().then(checkBan)
+
+  // 未读角标依赖消息轮询。轮询原本由右栏 SidebarRight 启动，而窄屏下右栏只是被
+  // CSS 隐藏（组件仍在挂载）—— 这里再兜一次底，避免以后把右栏改成条件渲染后角标静默失效。
+  // startPolling 内部会先清掉旧定时器，重复调用不会产生两个轮询。
+  if (userStore.isLogged) notif.startPolling()
 })
+
+// 登录 / 登出时启停消息轮询（与 SidebarRight 同一套逻辑，重复调用是安全的）
+watch(
+  () => userStore.isLogged,
+  (v) => {
+    if (v) notif.startPolling()
+    else notif.stopPolling()
+  }
+)
+
+// 切换页面时补一次刷新：轮询间隔是 60 秒，光靠定时器新消息最久要等一分钟才出角标。
+// 节流 30 秒，避免用户连续点导航时每次切页都发一轮请求（refresh 会请求 unread-count + 最新一条）。
+let lastNotifRefresh = 0
+watch(
+  () => route.path,
+  () => {
+    if (!userStore.isLogged) return
+    const now = Date.now()
+    if (now - lastNotifRefresh < 30 * 1000) return
+    lastNotifRefresh = now
+    notif.refresh()
+  }
+)
 </script>
 
 <style scoped>
@@ -459,6 +512,29 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+/* 移动端顶栏的搜索按钮：与右侧头像等尺寸（30×30），保持一行三个控件不挤 */
+.mobile-search {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex-shrink: 0;
+  font-size: 15px;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  background: var(--bg-soft);
+  color: var(--text-soft);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.mobile-search:hover,
+.mobile-search:active {
+  color: var(--primary);
+  border-color: var(--primary);
 }
 .mobile-user {
   display: inline-flex;

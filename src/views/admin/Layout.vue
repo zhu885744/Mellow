@@ -175,10 +175,10 @@ const groupDefs = [
     name: 'manage',
     label: '管理',
     items: [
-      '/admin/users', '/admin/comment', '/admin/placard', '/admin/banner',
+      '/admin/stats', '/admin/users', '/admin/comment', '/admin/placard', '/admin/banner',
       '/admin/tags', '/admin/level', '/admin/exp', '/admin/goods', '/admin/integral',
       '/admin/decoration', '/admin/checkin', '/admin/message',
-      '/admin/links', '/admin/links/group', '/admin/attachment', '/admin/system'
+      '/admin/links', '/admin/links/group', '/admin/attachment', '/admin/logs', '/admin/system'
     ]
   },
   {
