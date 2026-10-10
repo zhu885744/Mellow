@@ -75,7 +75,9 @@
         <span v-if="showComments">收起</span>
         <span v-else>评论</span>
       </button>
-      <span class="action-item"><i class="bi bi-eye" /> {{ moment.views || 0 }}</span>
+      <span class="action-item">
+        <i class="bi bi-eye" /> {{ moment.views || 0 }} 阅读
+      </span>
       <button class="action-item" @click="copyLink">
         <i class="bi bi-share"></i> 分享
       </button>

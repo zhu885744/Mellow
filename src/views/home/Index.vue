@@ -39,24 +39,68 @@
       </div>
     </div>
 
-    <!-- 最新文章 -->
-    <SectionTitle title="最新文章">
+    <!-- 发现：文章与动态按时间混排 -->
+    <SectionTitle title="发现">
       <template #extra>
-        <router-link to="/articles" class="more-link">查看全部 <i class="bi bi-arrow-right" /></router-link>
+        <div class="feed-filter" role="tablist" aria-label="内容类型">
+          <button
+            v-for="item in FILTERS"
+            :key="item.key"
+            type="button"
+            role="tab"
+            class="feed-filter__item"
+            :class="{ active: filter === item.key }"
+            :aria-selected="filter === item.key"
+            @click="switchFilter(item.key)"
+          >
+            {{ item.label }}
+          </button>
+        </div>
       </template>
     </SectionTitle>
 
-    <div class="article-list">
-      <template v-if="loading">
-        <ArticleSkeleton v-for="i in 4" :key="'sk-' + i" :cover="i % 2 === 1" />
+    <p class="feed-summary">{{ summaryText }}</p>
+
+    <div class="feed">
+      <!-- 首屏骨架 -->
+      <template v-if="loading && !items.length">
+        <ArticleSkeleton v-for="i in 3" :key="'sk-' + i" :cover="i % 2 === 1" />
       </template>
-      <ArticleCard
-        v-for="a in articles"
-        :key="a.id"
-        :article="a"
-        :abstract-limit="50"
+
+      <!-- 混排列表：文章用 ArticleCard，动态用 MomentItem（两者外观已统一为卡片） -->
+      <template v-for="item in items" :key="item.key">
+        <ArticleCard
+          v-if="item.type === 'article'"
+          :article="item.data"
+          :abstract-limit="50"
+        />
+        <MomentItem
+          v-else
+          :moment="item.data"
+          @delete="onMomentDelete"
+          @refresh="reload"
+        />
+      </template>
+
+      <EmptyState
+        v-if="!loading && !items.length"
+        icon="🔍"
+        :text="emptyText"
       />
-      <EmptyState v-if="!loading && !articles.length" text="还没有文章" />
+
+      <!-- 触底自动加载的哨兵（列表为空时不渲染） -->
+      <div v-if="items.length" ref="sentinel" class="feed-foot">
+        <button
+          v-if="hasMore"
+          type="button"
+          class="btn btn-sm"
+          :disabled="loading"
+          @click="loadMore"
+        >
+          {{ loading ? '加载中…' : '加载更多' }}
+        </button>
+        <span v-else class="feed-foot__end">— 到底啦 —</span>
+      </div>
     </div>
 
     <!-- 公告详情弹窗 -->
@@ -94,22 +138,42 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
 import ArticleCard from '@/components/ArticleCard.vue'
 import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
+import MomentItem from '@/components/MomentItem.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listArticles } from '@/api/article'
+import { listMoments, removeMoment } from '@/api/moments'
 import { call } from '@/api/request'
 import { placardTypeLabel, placardTypeColor, placardTypeStyle } from '@/utils/placard'
 import { formatDate } from '@/utils/time'
+import { toast } from '@/utils/toast'
 
 const loading = ref(false)
-const articles = ref([])
 const placards = ref([])
 const index = ref(0)
 let timer = null
+
+// ============ 发现页：文章与动态混排 ============
+const FILTERS = [
+  { key: 'all', label: '全部' },
+  { key: 'article', label: '文章' },
+  { key: 'moment', label: '动态' }
+]
+// 每次向每个来源各取一页，合并后按时间重排（博客这个量级足够，也不用后端改接口）
+const PAGE_SIZE = 6
+
+const filter = ref('all')
+// 扁平化的混排列表：{ key, type, data, time, top }
+const items = ref([])
+const hasMore = ref(false)
+const totals = reactive({ article: 0, moment: 0 })
+// 两个来源各自的下一页页码
+const cursors = reactive({ article: 1, moment: 1 })
+const sentinel = ref(null)
 
 const current = computed(() => placards.value[index.value] || {})
 
@@ -185,29 +249,170 @@ async function loadPlacards() {
   }
 }
 
-async function loadArticles() {
-  loading.value = true
-  try {
+// ============ 发现页数据 ============
+const summaryText = computed(() => {
+  if (filter.value === 'article') return `共 ${totals.article} 篇文章`
+  if (filter.value === 'moment') return `共 ${totals.moment} 条动态`
+  return `文章 ${totals.article} 篇 · 动态 ${totals.moment} 条，按时间混排`
+})
+
+const emptyText = computed(() => {
+  if (filter.value === 'article') return '还没有文章'
+  if (filter.value === 'moment') return '还没有动态'
+  return '还没有内容'
+})
+
+// 当前筛选下要拉取的来源
+function activeSources() {
+  if (filter.value === 'article') return ['article']
+  if (filter.value === 'moment') return ['moment']
+  return ['article', 'moment']
+}
+
+// 拉取某一类的一页（两类接口的返回结构一致：data.data 列表 + data.count 总数）
+async function fetchSource(type, page) {
+  if (type === 'article') {
     const res = await listArticles({
-      page: 1,
-      limit: 8,
+      page,
+      limit: PAGE_SIZE,
       where: { audit: 1, status: 1 },
       order: 'top desc, publish_time desc'
     })
-    articles.value = res.data?.data || []
-  } catch {
-    articles.value = []
+    return { list: res.data?.data || [], count: Number(res.data?.count) || 0 }
+  }
+
+  const res = await listMoments({ page, limit: PAGE_SIZE })
+  return { list: res.data?.data || [], count: Number(res.data?.count) || 0 }
+}
+
+/**
+ * 加载混排数据
+ * reset=true 用于首屏与切换筛选（重置两个来源的游标与列表）
+ */
+async function load({ reset = false } = {}) {
+  if (loading.value) return
+  loading.value = true
+
+  try {
+    if (reset) {
+      cursors.article = 1
+      cursors.moment = 1
+      totals.article = 0
+      totals.moment = 0
+      items.value = []
+    }
+
+    // 只继续拉「还没拉完」的来源，避免某一类取空后每次都白发一次请求
+    const sources = activeSources().filter((type) => {
+      const loaded = items.value.filter((it) => it.type === type).length
+      return !totals[type] || loaded < totals[type]
+    })
+
+    const results = await Promise.all(
+      sources.map(async (type) => {
+        const page = cursors[type]
+        try {
+          const data = await fetchSource(type, page)
+          cursors[type] = page + 1
+          totals[type] = data.count
+          return { type, list: data.list }
+        } catch {
+          // 单个来源失败不影响另一类展示
+          return { type, list: [] }
+        }
+      })
+    )
+
+    const seen = new Set(items.value.map((it) => it.key))
+    const incoming = []
+
+    results.forEach((res) => {
+      const prefix = res.type === 'article' ? 'a' : 'm'
+      res.list.forEach((row) => {
+        const key = `${prefix}:${row.id}`
+        if (seen.has(key)) return
+        seen.add(key)
+        incoming.push({
+          key,
+          type: res.type,
+          data: row,
+          // 文章按发布时间、动态按创建时间参与排序；置顶统一浮到最前
+          time: Number(row.publish_time || row.create_time) || 0,
+          top: Number(row.top) || 0
+        })
+      })
+    })
+
+    items.value = items.value.concat(incoming).sort((a, b) => b.top - a.top || b.time - a.time)
+
+    // 还有没有更多：任一来源「已加载数量 < 总数」；本批一条新的都没有就直接收尾，
+    // 避免服务端 count 与实际数据不一致时无限触底
+    if (!incoming.length) {
+      hasMore.value = false
+    } else {
+      hasMore.value = activeSources().some((type) => {
+        const loaded = items.value.filter((it) => it.type === type).length
+        return loaded < totals[type]
+      })
+    }
   } finally {
     loading.value = false
   }
 }
 
-onMounted(() => {
-  loadPlacards()
-  loadArticles()
+function loadMore() {
+  if (hasMore.value) load()
+}
+
+function reload() {
+  load({ reset: true })
+}
+
+function switchFilter(key) {
+  if (filter.value === key) return
+  filter.value = key
+  reload()
+}
+
+// 动态的删除（管理员或有权限的作者才会看到按钮，见 MomentItem 的 canManage）
+async function onMomentDelete(m) {
+  if (!confirm('确定要删除这条动态吗？')) return
+  try {
+    await removeMoment(String(m.id))
+    toast.success('删除成功')
+    // 本地移除即可，不整页重排；总数同步减一
+    items.value = items.value.filter((it) => !(it.type === 'moment' && it.data.id === m.id))
+    totals.moment = Math.max(0, totals.moment - 1)
+  } catch {}
+}
+
+// 触底自动加载：哨兵元素会随列表清空而重建，所以跟着 watch 重新 observe
+let observer = null
+watch(sentinel, (el) => {
+  if (!observer) return
+  observer.disconnect()
+  if (el) observer.observe(el)
 })
 
-onBeforeUnmount(stop)
+onMounted(() => {
+  loadPlacards()
+  reload()
+
+  if (typeof IntersectionObserver !== 'undefined') {
+    observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadMore()
+      },
+      { rootMargin: '240px 0px' }
+    )
+  }
+})
+
+onBeforeUnmount(() => {
+  stop()
+  if (observer) observer.disconnect()
+  observer = null
+})
 </script>
 
 <style scoped>
@@ -311,22 +516,78 @@ onBeforeUnmount(stop)
   opacity: 0;
 }
 
-.article-list {
-  padding: 0;
+/* ---------- 发现页 ---------- */
+/* 类型筛选：胶囊分段控件 */
+.feed-filter {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--bg-muted);
 }
-
-.loading {
-  padding: 32px;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-.more-link {
+.feed-filter__item {
+  padding: 3px 12px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
   color: var(--text-muted);
   font-size: 12px;
+  line-height: 1.7;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
 }
-.more-link:hover {
-  color: var(--primary);
+.feed-filter__item:hover {
+  color: var(--text);
+}
+.feed-filter__item.active {
+  color: #fff;
+  background: var(--primary);
+}
+
+.feed-summary {
+  margin: -6px 0 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.feed {
+  display: flex;
+  flex-direction: column;
+}
+
+/* 混排统一为卡片外观：
+   ArticleCard / ArticleSkeleton 本身是「通栏列表行」（行间一条虚线分隔），
+   这里用 :deep 覆盖成卡片。注意选择器写成 `article.article-item`（多带一个元素名），
+   是为了在特异性上压过组件内的 `.article-item:last-child`，否则卡片里会残留一条虚线。
+   卡片用阴影而不是描边，阴影层次与 MomentItem 保持一致。 */
+.feed :deep(article.article-item),
+.feed :deep(div.sk-article) {
+  padding: 20px;
+  margin-bottom: 16px;
+  border-bottom: none;
+  background: var(--bg-card);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s;
+}
+.feed :deep(article.article-item:hover) {
+  box-shadow: var(--shadow);
+}
+/* MomentItem 自带的描边卡片，统一成同一套观感（描边改透明、补同款阴影） */
+.feed :deep(.moment-card) {
+  border-color: transparent;
+  box-shadow: var(--shadow-sm);
+}
+
+.feed-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 0 4px;
+}
+.feed-foot__end {
+  font-size: 12px;
+  color: var(--text-light, var(--text-muted));
 }
 
 /* 公告详情弹窗 */

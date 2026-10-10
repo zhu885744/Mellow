@@ -76,11 +76,11 @@
 
         <nav class="site-nav">
           <router-link to="/" exact-active-class="active" class="nav-item">
-            <span class="nav-zh">首页</span>
+            <span class="nav-zh">发现</span>
           </router-link>
-          <router-link to="/moments" active-class="active" class="nav-item">
+          <!-- <router-link to="/moments" active-class="active" class="nav-item">
             <span class="nav-zh">奇思</span>
-          </router-link>
+          </router-link> -->
           <!-- 动态导航页（来自 /api/pages/all） -->
           <router-link
             v-for="p in pages"
@@ -372,7 +372,7 @@ const unreadBadge = computed(() => {
 const tabs = computed(() => {
   const uid = userStore.user?.id
   return [
-    { key: 'home', to: '/', icon: 'bi-house-door-fill', label: '首页', exact: true },
+    { key: 'home', to: '/', icon: 'bi-house-door-fill', label: '发现', exact: true },
     { key: 'goods', to: '/goods', icon: 'bi-shop', label: '商城' },
     // 发布：不直接跳转，点击展开「发文章 / 发动态」面板（见 PUBLISH_ACTIONS）
     // to 仅用于高亮判定（在写文章页时保持选中态）
