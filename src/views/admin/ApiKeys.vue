@@ -1,5 +1,45 @@
 <template>
   <div class="api-keys-admin">
+    <!-- 密钥校验状态：只读展示，开关本身在「系统设置 → 安全 → API KEY」里，这里给跳转 -->
+    <section class="card card-pad panel">
+      <header class="panel-head">
+        <div>
+          <h2 class="block-title">密钥校验</h2>
+          <p class="block-desc">
+            开启后调用接口需携带有效密钥（请求头 <code>i-api-key</code> 或 query
+            <code>?i-api-key=</code>）；密钥在下方的列表里管理，开关本身在「系统设置 → 安全 → API KEY」里
+          </p>
+        </div>
+        <div class="head-actions">
+          <RouterLink to="/admin/system?tab=security" class="btn btn-primary btn-sm">
+            <i class="bi bi-sliders" /> 去系统设置修改
+          </RouterLink>
+        </div>
+      </header>
+
+      <div class="key-state">
+        <span class="key-state__item">
+          启用校验：
+          <strong :class="keyState.enabled === '1' ? 'is-on' : 'is-off'">
+            {{ keyState.enabled === '1' ? '开启' : '关闭' }}
+          </strong>
+        </span>
+        <span class="key-state__item">
+          放行本站请求：
+          <strong :class="keyState.local === '1' ? 'is-on' : 'is-off'">
+            {{ keyState.local === '1' ? '开启' : '关闭' }}
+          </strong>
+        </span>
+      </div>
+
+      <p class="block-desc">
+        <i class="bi bi-info-circle" />
+        「放行本站请求」开启时，同源页面请求与本机·内网直连免密钥；关闭后，打包进二进制的站内前端与后台会 403
+        （此时必须由反向代理注入 <code>i-api-key</code>）。
+        同源判定（Origin / Referer / Sec-Fetch-Site）可被脚本伪造，它挡的是扫描器与无脑爬虫，不是安全边界。
+      </p>
+    </section>
+
     <!-- 概览 -->
     <section class="card card-pad panel">
       <header class="panel-head">
@@ -177,10 +217,24 @@
                 <div class="key-sub">
                   <span v-if="item.remark" class="meta-text"><i class="bi bi-sticky" /> {{ item.remark }}</span>
                   <span v-else class="meta-text text-light">未填写备注</span>
+                  <!-- 状态与有效期：回收站里的密钥一律已失效，不在这里展示 -->
+                  <template v-if="!trash">
+                    <span class="meta-chip" :class="statusClass(item)">{{ statusText(item) }}</span>
+                    <span class="meta-text" :class="{ 'is-warn': isExpired(item) }">
+                      <i class="bi bi-calendar-check" /> {{ expireText(item) }}
+                    </span>
+                  </template>
                 </div>
               </td>
               <td class="td-time">
                 <span class="meta-text"><i class="bi bi-clock" /> {{ timeText(item) }}</span>
+                <!-- 用量审计：累计调用次数 + 最后一次使用时间（从未使用时只显示 0 次） -->
+                <span v-if="!trash" class="meta-text">
+                  <i class="bi bi-activity" /> 已调用 {{ Number(item.use_count) || 0 }} 次
+                  <template v-if="Number(item.last_used_at) > 0">
+                    · 最近 {{ fromNow(item.last_used_at) }}
+                  </template>
+                </span>
               </td>
               <td class="td-act">
                 <div class="row-actions">
@@ -193,6 +247,15 @@
                     </button>
                   </template>
                   <template v-else>
+                    <button
+                      class="btn btn-ghost btn-sm"
+                      :title="Number(item.status) === 1 ? '停用（拒绝调用）' : '启用'"
+                      :aria-label="Number(item.status) === 1 ? '停用' : '启用'"
+                      :disabled="busy"
+                      @click="toggleStatus(item)"
+                    >
+                      <i :class="Number(item.status) === 1 ? 'bi bi-pause-circle' : 'bi bi-play-circle'" />
+                    </button>
                     <button class="btn btn-ghost btn-sm" title="编辑" aria-label="编辑" :disabled="busy" @click="openEdit(item)">
                       <i class="bi bi-pencil" />
                     </button>
@@ -228,20 +291,42 @@
       <div class="form-item">
         <label class="form-label">密钥值</label>
         <div class="key-input-row">
-          <input v-model="edit.value" class="input" type="text" placeholder="留空由后端自动生成（UUID 大写）" />
-          <button class="btn btn-sm" type="button" @click="edit.value = ''">
-            <i class="bi bi-magic" /> 自动生成
+          <input v-model="edit.value" class="input" type="text" placeholder="点「随机生成」或自行填写（留空则保存时由后端生成）" />
+          <button class="btn btn-sm" type="button" @click="edit.value = generateKey()">
+            <i class="bi bi-shuffle" /> 随机生成
           </button>
         </div>
         <p class="form-hint">
-          <template v-if="edit.id">留空保存后会重新生成密钥（相当于重置），原密钥立即失效</template>
-          <template v-else>留空由后端自动生成 32 位大写密钥；也可自定义（后端会转大写并校验唯一）</template>
+          <template v-if="edit.id">
+            点「随机生成」会填入一个新密钥，保存后原密钥立即失效（相当于重置）；
+            留空保存则交给后端重新生成
+          </template>
+          <template v-else>
+            点「随机生成」直接填入 32 位大写密钥（可连点换一个、也可手工修改）；
+            留空保存则由后端生成；后端统一转大写并校验唯一
+          </template>
         </p>
       </div>
 
       <div class="form-item">
         <label class="form-label">备注</label>
         <input v-model="edit.remark" class="input" type="text" placeholder="可选，便于区分用途" />
+      </div>
+
+      <div class="form-grid">
+        <div class="form-item">
+          <label class="form-label">状态</label>
+          <select v-model.number="edit.status" class="input">
+            <option :value="1">启用（可正常调用）</option>
+            <option :value="0">停用（拒绝调用，但保留记录）</option>
+          </select>
+          <p class="form-hint">停用后调用返回 403「该密钥已停用！」，可随时改回启用</p>
+        </div>
+        <div class="form-item">
+          <label class="form-label">有效期</label>
+          <input v-model="edit.expireAt" class="input" type="datetime-local" />
+          <p class="form-hint">留空 = 永久有效；到期后调用返回 403「该密钥已过期！」</p>
+        </div>
       </div>
     </AdminFormDialog>
 
@@ -262,10 +347,14 @@
 /**
  * 接口密钥（/admin/api/keys）
  *
- * 后端约束（app/api/controller/api-keys.go）：
- * - 允许字段只有 value / remark，value 会被统一转大写；
- * - create：value 为空时自动生成（UUID 去横线转大写），重复则返回「已经存在！」；
+ * 后端约束（app/api/controller/api-keys.go、app/api/middleware/api-key.go）：
+ * - 允许字段：value / remark / status / expire_time，value 会被统一转大写；
+ * - create：value 为空时自动生成（UUID 去横线转大写），重复则返回「已经存在！」；status 缺省为「启用」；
  * - update：value 为空时**重新生成**密钥，因此编辑弹窗留空即等于重置密钥；
+ *   只想改状态 / 有效期 / 备注时必须带上当前 value（见下方的 toggleStatus）；
+ * - 校验：开启「系统设置 → 安全 → API KEY」后所有 /api/* 都要带 i-api-key；
+ *   密钥「停用」或「已过期」会被拒绝（403 该密钥已停用！/ 该密钥已过期！）；
+ * - 用量：校验通过时异步累加 use_count 并刷新 last_used_at（用于审计谁在用、还用不用）；
  * - 删除为软删除，彻底删除不可恢复。
  */
 import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
@@ -282,7 +371,9 @@ import {
   restoreApiKeys,
   clearApiKeyRecycle
 } from '@/api/api-keys'
-import { fromNow } from '@/utils/time'
+// 顶部只读展示「启用校验 / 放行本站请求」的状态（开关在「系统设置 → 安全 → API KEY」里改）
+import { getConfig } from '@/api/config'
+import { fromNow, formatTime, toLocalInput, fromLocalInput } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
@@ -301,6 +392,12 @@ const selectedIds = ref([])
 // 全局打码开关；单条可通过 revealed 单独显示
 const maskAll = ref(false)
 
+// ===== 顶部的密钥校验状态（只读）=====
+// enabled: SYSTEM_API_KEY（是否开启密钥校验）
+// local:   SYSTEM_API_KEY_LOCAL（开启校验时是否放行本站来源请求）
+// 这两项在本页只展示，修改入口在「系统设置 → 安全 → API KEY」
+const keyState = reactive({ enabled: '0', local: '1' })
+
 // ===== 统计 =====
 const loadingStats = ref(false)
 const stats = reactive({ total: 0, trash: 0 })
@@ -311,7 +408,11 @@ const edit = reactive({
   loading: false,
   id: 0,
   value: '',
-  remark: ''
+  remark: '',
+  // 状态：1 启用 / 0 停用（后端缺省即启用）
+  status: 1,
+  // 有效期：datetime-local 字符串，空 = 永久有效（提交时转 unix 秒，0 = 永久）
+  expireAt: ''
 })
 
 const confirm = reactive({
@@ -355,6 +456,50 @@ function maskedValue(item) {
 
 function toggleReveal(item) {
   item.revealed = !item.revealed
+}
+
+// 生成 32 位大写密钥：格式与后端 generateAPIKey() 一致（UUID 去横线后转大写）
+//
+// 为什么放在前端生成而不是"清空让后端生成"：后者要保存之后才看得到值，
+// 既不能当场核对/复制，也没法连点几次挑一个再保存。这里只是"帮你填一个字符串"，
+// 唯一性仍由后端保存时校验（重复会返回「已经存在！」）。
+// 随机源优先 crypto.randomUUID（安全随机），降级到 getRandomValues / Math.random。
+function generateKey() {
+  let raw = ''
+
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    raw = crypto.randomUUID()
+  } else if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
+    raw = [...crypto.getRandomValues(new Uint8Array(16))]
+      .map((byte) => byte.toString(16).padStart(2, '0'))
+      .join('')
+  } else {
+    for (let i = 0; i < 32; i += 1) raw += Math.floor(Math.random() * 16).toString(16)
+  }
+
+  return raw.replace(/-/g, '').toUpperCase()
+}
+
+// 是否已过期（expire_time = 0 表示永久有效）
+function isExpired(item) {
+  const end = Number(item?.expire_time) || 0
+  return end > 0 && Math.floor(Date.now() / 1000) > end
+}
+
+// 状态文案 / 样式：已过期优先展示（比「启用中」更贴近实际可用性）
+function statusText(item) {
+  if (isExpired(item)) return '已过期'
+  return Number(item?.status) === 1 ? '启用中' : '已停用'
+}
+
+function statusClass(item) {
+  if (isExpired(item)) return 'is-expired'
+  return Number(item?.status) === 1 ? 'is-on' : 'is-off'
+}
+
+function expireText(item) {
+  const end = Number(item?.expire_time) || 0
+  return end > 0 ? `有效期至 ${formatTime(end)}` : '永久有效'
 }
 
 async function copyValue(item) {
@@ -472,6 +617,8 @@ function resetEdit() {
   edit.id = 0
   edit.value = ''
   edit.remark = ''
+  edit.status = 1
+  edit.expireAt = ''
 }
 
 function openCreate() {
@@ -483,11 +630,25 @@ function openEdit(item) {
   edit.id = Number(item.id)
   edit.value = item.value || ''
   edit.remark = item.remark || ''
+  edit.status = Number(item.status) === 0 ? 0 : 1
+  edit.expireAt = toLocalInput(item.expire_time)
   edit.visible = true
 }
 
 async function save() {
-  const payload = { value: edit.value.trim(), remark: edit.remark.trim() }
+  const expireTime = fromLocalInput(edit.expireAt)
+  // 留空 = 永久有效；填了已过去的时间等于立刻失效，明显是误操作 → 拦下来
+  if (expireTime > 0 && expireTime <= Math.floor(Date.now() / 1000)) {
+    toast.warning('有效期必须晚于当前时间（留空表示永久有效）')
+    return
+  }
+
+  const payload = {
+    value: edit.value.trim(),
+    remark: edit.remark.trim(),
+    status: Number(edit.status) === 1 ? 1 : 0,
+    expire_time: expireTime
+  }
   if (edit.id) payload.id = edit.id
 
   edit.loading = true
@@ -534,6 +695,31 @@ async function runConfirm() {
     // 请求失败时保持弹窗打开，错误提示已由请求拦截器统一给出
   } finally {
     confirm.loading = false
+  }
+}
+
+// 快捷停用 / 启用
+//
+// ⚠️ 必须带上当前 value：后端 update 的语义是「value 为空就重新生成密钥」，
+// 只传 { id, status } 会把密钥换掉，导致所有调用方一起失效。
+async function toggleStatus(item) {
+  const next = Number(item.status) === 1 ? 0 : 1
+
+  busy.value = true
+  try {
+    await saveApiKey({
+      id: item.id,
+      value: item.value,
+      remark: item.remark || '',
+      status: next,
+      expire_time: Number(item.expire_time) || 0
+    })
+    toast.success(next === 1 ? '已启用' : '已停用（该密钥的调用会被立即拒绝）')
+    await afterMutation(0)
+  } catch {
+    // 失败提示由请求拦截器统一给出
+  } finally {
+    busy.value = false
   }
 }
 
@@ -644,9 +830,32 @@ function askClearRecycle() {
   })
 }
 
+// ---------- 校验开关 ----------
+
+// 读配置项（未初始化 / 无权限时静默返回 null，避免弹全局提示）
+async function readConfigValue(key) {
+  const res = await getConfig(key, { silent: true })
+  return res?.data && typeof res.data === 'object' ? res.data : null
+}
+
+async function loadKeyState() {
+  try {
+    const [enabled, local] = await Promise.all([
+      readConfigValue('SYSTEM_API_KEY'),
+      readConfigValue('SYSTEM_API_KEY_LOCAL')
+    ])
+    keyState.enabled = enabled && String(enabled.value) === '1' ? '1' : '0'
+    // 取不到时按「放行」处理：与系统设置页口径一致，避免老库升级瞬间把站内前端挡住
+    keyState.local = local ? (String(local.value) === '1' ? '1' : '0') : '1'
+  } catch {
+    // 读不到就保持默认值
+  }
+}
+
 onMounted(() => {
   load()
   loadStats()
+  loadKeyState()
 })
 </script>
 
@@ -885,10 +1094,18 @@ onMounted(() => {
   width: 36px;
 }
 .td-time {
-  width: 150px;
+  width: 170px;
+}
+/* 时间列里「创建时间」与「用量」分两行（两个 inline-flex 会挤在同一行） */
+.td-time .meta-text {
+  display: flex;
+  margin-top: 2px;
+}
+.td-time .meta-text:first-child {
+  margin-top: 0;
 }
 .td-act {
-  width: 96px;
+  width: 132px;
   text-align: right;
 }
 
@@ -920,12 +1137,55 @@ onMounted(() => {
 }
 .key-sub {
   margin-top: 4px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px 10px;
 }
 .meta-text {
   display: inline-flex;
   align-items: center;
   gap: 3px;
   font-size: 12px;
+  color: var(--text-muted);
+}
+.meta-text.is-warn {
+  color: var(--danger);
+}
+/* 状态标签：启用中 / 已停用 / 已过期 */
+.meta-chip {
+  padding: 1px 8px;
+  font-size: 11px;
+  border-radius: 3px;
+}
+.meta-chip.is-on {
+  color: var(--success);
+  background: rgba(108, 154, 77, 0.12);
+}
+.meta-chip.is-off {
+  color: var(--text-muted);
+  background: var(--bg-muted);
+}
+.meta-chip.is-expired {
+  color: var(--danger);
+  background: rgba(220, 38, 38, 0.12);
+}
+/* 顶部校验状态（只读；修改入口在「系统设置 → 安全 → API KEY」） */
+.key-state {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.key-state__item strong {
+  font-weight: 600;
+}
+.key-state__item strong.is-on {
+  color: var(--success);
+}
+.key-state__item strong.is-off {
   color: var(--text-muted);
 }
 .text-light {

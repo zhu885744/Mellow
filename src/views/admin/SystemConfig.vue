@@ -54,7 +54,23 @@
               <div class="form-item">
                 <label class="form-label">启用校验</label>
                 <SelectMenu v-model="cfg.apiKey.value" variant="field" :options="ON_OFF" />
-                <p class="form-hint">开启时若没有任何可用密钥，系统会自动创建一个</p>
+                <p class="form-hint">
+                  开启时若没有任何可用密钥，系统会自动创建一个；
+                  「已停用 / 已过期」的密钥会被拒绝（在「安全 → 接口密钥」里管理状态与有效期）
+                </p>
+              </div>
+              <div class="form-item">
+                <label class="form-label">放行本站请求</label>
+                <SelectMenu v-model="cfg.apiKey.local" variant="field" :options="ON_OFF" />
+                <p class="form-hint">
+                  开启校验时，是否放行「本站来源」的请求（同源页面请求 / 本机·内网直连）——
+                  关闭后，打包进二进制的站内前端与后台都会 403（必须在反代里注入 i-api-key）
+                </p>
+                <p class="form-hint">
+                  <i class="bi bi-exclamation-triangle" />
+                  同源判定（Origin / Referer / Sec-Fetch-Site）可被脚本伪造，它挡的是扫描器与无脑爬虫，
+                  不是安全边界；需要强边界时请让后端只监听内网端口，由反代注入 i-api-key
+                </p>
               </div>
               <div class="cfg-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('apiKey')" @click="saveApiKey">
@@ -1529,7 +1545,7 @@ function mailScenesOf(group) {
 }
 
 const cfg = reactive({
-  apiKey: { value: '0' },
+  apiKey: { value: '0', local: '1' },
   qps: { value: '1', json: { point: 15, global: 50 } },
   qpsBlock: { value: '0', json: { count: 3, second: '60 * 60' } },
   qpsNotify: { value: '0', json: { email: '', webhook: '' } },
@@ -1935,8 +1951,9 @@ function readOauthConfig(raw) {
 }
 
 async function loadConfigs() {
-  const [apiKey, qps, block, notify, pageLimit, captcha, register, article, moments, pages, comment, mailNotify, decoration, oauth] = await Promise.all([
+  const [apiKey, apiKeyLocal, qps, block, notify, pageLimit, captcha, register, article, moments, pages, comment, mailNotify, decoration, oauth] = await Promise.all([
     readConfig('SYSTEM_API_KEY'),
+    readConfig('SYSTEM_API_KEY_LOCAL'),
     readConfig('SYSTEM_QPS'),
     readConfig('SYSTEM_QPS_BLOCK'),
     readConfig('SYSTEM_QPS_NOTIFY'),
@@ -1953,6 +1970,9 @@ async function loadConfigs() {
   ])
 
   if (apiKey) cfg.apiKey.value = toText(apiKey.value, '0')
+  // 取不到时按「放行」处理：老库升级后这项由 InitConfig 补种为 "1"，
+  // 即使还没播种，也不该让站内前端被自己的密钥校验挡住
+  cfg.apiKey.local = apiKeyLocal ? toText(apiKeyLocal.value, '1') : '1'
   if (qps) {
     cfg.qps.value = toText(qps.value, '1')
     cfg.qps.json = { point: 15, global: 50, ...parseJson(qps.json, {}) }
@@ -2135,8 +2155,14 @@ async function saveConfigItem(key, payload, okText) {
   })
 }
 
+// 密钥校验卡片的两个开关一起保存（共用同一个「保存」按钮）
+// SYSTEM_API_KEY_LOCAL：开启校验时是否放行「本站来源」请求（同源页面 / 本机·内网直连）
 function saveApiKey() {
-  return saveConfigItem('apiKey', { key: 'SYSTEM_API_KEY', data: { value: cfg.apiKey.value } }, '已保存')
+  return withSaving('apiKey', async () => {
+    await saveSystemConfig({ key: 'SYSTEM_API_KEY', value: cfg.apiKey.value })
+    await saveSystemConfig({ key: 'SYSTEM_API_KEY_LOCAL', value: cfg.apiKey.local })
+    toast.success('已保存')
+  })
 }
 
 /**

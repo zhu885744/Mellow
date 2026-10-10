@@ -13,7 +13,9 @@ const toIdsArray = (ids) =>
     .map((i) => Number(i))
     .filter((i) => i > 0)
 
-export const API_KEY_FIELD = 'id,value,remark,create_time,update_time,delete_time'
+// 含审计字段：status（0停用 1启用）/ expire_time（unix 秒，0=永久）/ last_used_at / use_count
+export const API_KEY_FIELD =
+  'id,value,remark,status,expire_time,last_used_at,use_count,create_time,update_time,delete_time'
 
 // 密钥列表（传 onlyTrashed=true 看回收站）
 export const listApiKeys = (params = {}) =>
@@ -28,7 +30,10 @@ export const countApiKeys = (params = {}) =>
 
 /**
  * 保存密钥：无 id 为新增，有 id 为更新（后端 save 自动分流）
- * 允许字段只有 value / remark；value 会被后端统一转大写
+ *
+ * 允许字段：value / remark / status / expire_time；value 会被后端统一转大写。
+ * ⚠️ 更新时若 **不传 value 或传空**，后端会**重新生成密钥**（等于重置，原密钥立即失效）——
+ * 所以只想改状态 / 有效期 / 备注时，必须把当前 value 一起提交（见 toggleStatus）。
  */
 export const saveApiKey = (data) =>
   call('api-keys', 'save', { method: 'POST', data })
