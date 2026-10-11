@@ -167,6 +167,7 @@ const filter = ref({
 const typeOptions = [
   { value: '', label: '全部' },
   { value: 'comment', label: '评论' },
+  { value: 'mention', label: '@我的' },
   { value: 'like', label: '点赞' },
   { value: 'follow', label: '关注' },
   { value: 'collect', label: '收藏' },
@@ -194,6 +195,8 @@ const canReadAll = computed(() => unreadCount.value > 0 || unreadInView.value)
 
 const typeMap = {
   comment: '评论',
+  // @ 提及：文章 / 动态 / 独立页 / 评论里被 @ 到（见 app/model/mention.go）
+  mention: '@我的',
   like: '点赞',
   follow: '关注',
   collect: '收藏',
@@ -249,6 +252,7 @@ function typeLabel(t) {
 function iconOf(t) {
   return ({
     comment: 'bi bi-chat-dots',
+    mention: 'bi bi-at',
     like: 'bi bi-hand-thumbs-up',
     follow: 'bi bi-people',
     collect: 'bi bi-star',

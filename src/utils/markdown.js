@@ -32,6 +32,11 @@ md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
       token.attrSet('target', '_blank')
       token.attrSet('rel', 'noopener noreferrer')
     }
+    // @ 提及：后端保存时把 @昵称 规范化为 @[昵称](/author/12)（见 app/model/mention.go），
+    // 这里补一个 class，供主题样式与 main.js 的 SPA 点击拦截识别
+    if (href.startsWith('/author/')) {
+      token.attrSet('class', 'mention')
+    }
   }
   return defaultLinkOpen(tokens, idx, options, env, self)
 }

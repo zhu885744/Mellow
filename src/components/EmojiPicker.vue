@@ -203,6 +203,14 @@ onUnmounted(() => {
   margin-top: 8px;
   box-shadow: none;
   border-color: var(--border-soft);
+  /* 解除高度限制：面板与网格都不自己滚动，高度完全交给外层容器（弹窗 / 页面）撑开，
+     这样表情能一次看全，而不是在面板内部出现滚动条 */
+  max-height: none;
+  overflow: visible;
+}
+.emoji-picker-panel.is-inline .emoji-grid {
+  max-height: none;
+  overflow-y: visible;
 }
 .emoji-cats {
   display: flex;

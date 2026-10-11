@@ -10,6 +10,20 @@
         <EmojiPicker v-if="showEmoji" v-model="showEmoji" @select="insertEmoji" />
       </div>
 
+      <!-- @ 提及：候选只含「我关注的人」，插入纯文本 @昵称；保存时后端解析成链接并发通知 -->
+      <div class="md-mention-wrap" style="position: relative">
+        <button type="button" class="md-tool" title="@ 提及" @mousedown.prevent @click="toggleMention">
+          <i class="bi bi-at" />
+        </button>
+        <MentionPicker
+          v-if="mentionOpen"
+          ref="mentionRef"
+          :keyword="mentionKeyword"
+          :position="mentionPosition"
+          @select="applyMention"
+        />
+      </div>
+
       <!-- 上传图片 -->
       <button
         type="button"
@@ -132,6 +146,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import EmojiPicker from './EmojiPicker.vue'
+import MentionPicker from './MentionPicker.vue'
 import AttachmentLibrary from './AttachmentLibrary.vue'
 import { renderMarkdown } from '@/utils/markdown'
 import { getFullUrl } from '@/utils/runtimeConfig'
@@ -172,6 +187,138 @@ const fullscreen = ref(false)
 
 const html = computed(() => renderMarkdown(props.modelValue))
 const count = computed(() => (props.modelValue || '').replace(/\s/g, '').length)
+
+// ===== @ 提及 =====
+// 候选只含「我关注的人」（见 api/mention.js），插入纯文本 @昵称；
+// 保存时后端会规范化为 @[昵称](/author/uid) 并给被 @ 的人发站内通知（app/model/mention.go）。
+//
+// 两条触发路径：
+//   ① 正文里直接输入 @ —— 弹面板并随输入过滤（与评论框 / 动态编辑器一致）；
+//   ② 工具栏的 @ 按钮 —— 列出全部候选，插到光标处。
+// 面板坐标一律用**视口坐标**（MentionPicker 是 position: fixed），
+// 不要传「相对容器」的坐标 —— 那样容器层级一变就会整体错位。
+const mentionRef = ref(null)
+const mentionOpen = ref(false)
+const mentionKeyword = ref('')
+// 本次面板是「输入 @ 触发」还是「工具栏按钮触发」：
+// 前者正文里已有一个 @关键词 需要被替换掉，后者不能回删字符
+const mentionReplace = ref(false)
+const mentionPosition = ref({ left: 0, top: 0, flipTo: null })
+
+const MENTION_GAP = 6
+// 面板最大高度 236 + 间距（与 MentionPicker 的样式保持一致）
+const MENTION_PANEL_HEIGHT = 246
+
+/** 由光标 / 按钮的矩形算出面板坐标（视口坐标），下方空间不足时向上翻 */
+function mentionStyleByRect(rect) {
+  const below = rect.bottom + MENTION_GAP
+  return {
+    left: rect.left,
+    top: below,
+    flipTo: below + MENTION_PANEL_HEIGHT > window.innerHeight ? rect.top - MENTION_GAP : null
+  }
+}
+
+/** 光标前正处于「@关键词」时打开面板并按关键词过滤 */
+function syncMentionState() {
+  const root = editorRef.value
+  const selection = window.getSelection()
+
+  if (!root || !selection || !selection.rangeCount) {
+    mentionOpen.value = false
+    return
+  }
+
+  const range = selection.getRangeAt(0)
+  const node = range.startContainer
+
+  if (!range.collapsed || !root.contains(node) || node.nodeType !== Node.TEXT_NODE) {
+    mentionOpen.value = false
+    return
+  }
+
+  // @ 前必须是行首或空白，避免把邮箱 a@b.com 当成 @ 提及
+  const before = node.textContent.slice(0, range.startOffset)
+  const matched = before.match(/(?:^|\s)@([^\s@]{0,32})$/)
+  if (!matched) {
+    mentionOpen.value = false
+    return
+  }
+
+  const rects = range.getClientRects()
+  const caret = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect()
+
+  mentionKeyword.value = matched[1]
+  mentionReplace.value = true
+  mentionPosition.value = mentionStyleByRect(caret)
+  mentionOpen.value = true
+}
+
+/** 工具栏 @ 按钮：不做关键词过滤，面板贴在按钮下方 */
+function toggleMention(event) {
+  const rect = event?.currentTarget?.getBoundingClientRect?.()
+  mentionKeyword.value = ''
+  mentionReplace.value = false
+  if (rect) mentionPosition.value = mentionStyleByRect(rect)
+  mentionOpen.value = !mentionOpen.value
+}
+
+/** 面板打开时接管方向键 / 回车 / Esc；返回 true 表示该按键已被面板处理 */
+function onMentionKeydown(event) {
+  if (!mentionOpen.value) return false
+
+  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+    mentionRef.value?.move(event.key === 'ArrowDown' ? 1 : -1)
+    return true
+  }
+
+  if (event.key === 'Enter') {
+    // 候选为空时返回 false，让回车继续走编辑器的换行
+    return mentionRef.value?.selectActive() === true
+  }
+
+  if (event.key === 'Escape') {
+    mentionOpen.value = false
+    return true
+  }
+
+  return false
+}
+
+function applyMention(user) {
+  const keyword = mentionKeyword.value
+  // 输入触发时正文里已经有一个「@关键词」，长度是 keyword.length + 1（那个 @）；
+  // 工具栏触发时正文里没有 @，这里必须是 0 —— 否则会把它前面一个字符误删
+  const consume = mentionReplace.value ? keyword.length + 1 : 0
+
+  mentionReplace.value = false
+  mentionOpen.value = false
+  if (!user?.nickname) return
+
+  const root = editorRef.value
+  if (!root) return
+
+  // 工具栏按钮都带 @mousedown.prevent，点按钮不会丢选区，光标仍在正文里
+  root.focus()
+  const selection = window.getSelection()
+  if (!selection || !selection.rangeCount) return
+
+  const range = selection.getRangeAt(0)
+  const node = range.startContainer
+
+  // 先把已输入的「@关键词」整段选中，下面的 execCommand 会用 @昵称 覆盖它
+  if (consume > 0 && node.nodeType === Node.TEXT_NODE) {
+    const start = Math.max(0, range.startOffset - consume)
+    const replaceRange = document.createRange()
+    replaceRange.setStart(node, start)
+    replaceRange.setEnd(node, range.startOffset)
+    selection.removeAllRanges()
+    selection.addRange(replaceRange)
+  }
+
+  // 用 execCommand 插入纯文本：会触发 input 事件，交给 onInput → serializeEditor 同步源码
+  document.execCommand('insertText', false, `@${user.nickname} `)
+}
 
 const tools = [
   { key: 'bold', title: '加粗 (Ctrl+B)', icon: 'bi bi-type-bold', apply: (v, s, e) => wrapText(v, s, e, '**', '**', '加粗文字') },
@@ -247,6 +394,8 @@ function onInput(e) {
   if (!root) return
   const { text } = serializeEditor(root)
   emitModel(text)
+  // 输入 @ / 继续输入关键词时，同步 @ 候选面板
+  syncMentionState()
 
   // 手动敲出完整标记（] 或 ) 收尾）时，即时渲染成图片，边写边看
   const data = e?.data || ''
@@ -308,6 +457,12 @@ function onPaste(e) {
 }
 
 function onKeydown(e) {
+  // @ 候选面板打开时优先接管方向键 / 回车 / Esc，避免回车被当成换行写进正文
+  if (onMentionKeydown(e)) {
+    e.preventDefault()
+    return
+  }
+
   const mod = e.ctrlKey || e.metaKey
   const key = e.key.toLowerCase()
   if (mod && key === 's') {

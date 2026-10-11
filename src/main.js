@@ -22,4 +22,18 @@ userStore.restore()
 userStore.ensureLogin()
 userStore.fetchSiteInfo()
 
+// v-html 渲染出来的正文（评论 / 动态 / 文章里的 @提及）用的是普通 <a>，
+// 直接点击会整页刷新；这里统一拦成 SPA 跳转。
+// 只拦自己渲染的 .mention，避免影响 router-link（它自带跳转，重复处理会跳两次）。
+document.addEventListener('click', (event) => {
+  if (event.defaultPrevented || event.button !== 0) return
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+
+  const link = event.target?.closest?.('a.mention[href^="/author/"]')
+  if (!link) return
+
+  event.preventDefault()
+  router.push(link.getAttribute('href'))
+})
+
 app.mount('#app')

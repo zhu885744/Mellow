@@ -39,6 +39,26 @@
       </div>
     </div>
 
+    <!-- 发布动态：入口条，点击以弹窗形式编辑发布（未登录时整条即登录入口） -->
+    <button v-if="userStore.isLogged" type="button" class="compose" @click="composeOpen = true">
+      <img class="compose__avatar" :src="composeAvatar" :alt="composeName" />
+      <span class="compose__placeholder">分享此刻的想法…</span>
+      <span class="btn btn-primary btn-sm">发布动态</span>
+    </button>
+
+    <RouterLink
+      v-else
+      :to="{ name: 'login', query: { redirect: $route.fullPath } }"
+      class="compose compose--guest"
+    >
+      <i class="bi bi-person-circle compose__guest-icon" aria-hidden="true" />
+      <span class="compose__guest-text">登录后即可发布动态、参与讨论</span>
+      <span class="btn btn-primary btn-sm">去登录</span>
+    </RouterLink>
+
+    <!-- 发布弹窗：正文 / 图片 / 提交都在弹窗里（见 components/MomentComposeDialog.vue） -->
+    <MomentComposeDialog v-model:visible="composeOpen" @published="reload" />
+
     <!-- 发现：文章与动态按时间混排 -->
     <SectionTitle title="发现">
       <template #extra>
@@ -145,8 +165,11 @@ import ArticleCard from '@/components/ArticleCard.vue'
 import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
 import MomentItem from '@/components/MomentItem.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import MomentComposeDialog from '@/components/MomentComposeDialog.vue'
+import { useUserStore } from '@/stores/user'
 import { listArticles } from '@/api/article'
 import { listMoments, removeMoment } from '@/api/moments'
+import { getFullUrl } from '@/utils/runtimeConfig'
 import { call } from '@/api/request'
 import { placardTypeLabel, placardTypeColor, placardTypeStyle } from '@/utils/placard'
 import { formatDate } from '@/utils/time'
@@ -156,6 +179,15 @@ const loading = ref(false)
 const placards = ref([])
 const index = ref(0)
 let timer = null
+
+/* ---------------- 首页发布动态（入口条 + 弹窗） ---------------- */
+
+// 发布逻辑全在弹窗组件里（components/MomentComposeDialog.vue），
+// 首页只负责：入口条上显示头像/昵称、控制弹窗显隐、发布成功后刷新「发现」列表。
+const userStore = useUserStore()
+const composeOpen = ref(false)
+const composeAvatar = computed(() => getFullUrl(userStore.user?.avatar || ''))
+const composeName = computed(() => userStore.user?.nickname || '我')
 
 // ============ 发现页：文章与动态混排 ============
 const FILTERS = [
@@ -690,5 +722,62 @@ onBeforeUnmount(() => {
 .placard-modal-enter-from .placard-dialog,
 .placard-modal-leave-to .placard-dialog {
   transform: translateY(12px) scale(0.98);
+}
+
+/* ---------- 首页发布动态：入口条（点击弹窗），间距与公告一致 24px ---------- */
+.compose {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+.compose:hover {
+  border-color: var(--primary);
+}
+.compose__avatar {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-muted);
+}
+.compose__placeholder {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 未登录：整条即登录入口 */
+.compose--guest {
+  color: var(--text-muted);
+  text-decoration: none;
+}
+.compose__guest-icon {
+  font-size: 24px;
+  color: var(--text-light, var(--text-muted));
+}
+.compose__guest-text {
+  flex: 1;
+  min-width: 0;
+}
+@media (max-width: 640px) {
+  .compose {
+    padding: 10px 12px;
+    margin-bottom: 18px;
+    gap: 10px;
+  }
 }
 </style>

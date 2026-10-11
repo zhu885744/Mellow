@@ -6,81 +6,9 @@
       </template>
     </SectionTitle>
 
-    <!-- 发布 -->
-    <div v-if="userStore.isLogged" class="card card-pad publisher">
-      <div class="pub-head">
-        <img :src="user?.avatar || defaultAvatar" class="avatar" />
-        <span class="name">{{ user?.nickname }}</span>
-      </div>
-      <EmojiEditor
-        v-model="newContent"
-        placeholder="此刻的想法..."
-      >
-        <template #extra>
-          <button
-            type="button"
-            class="btn btn-secondary btn-sm"
-            :class="{ 'is-loading': uploading }"
-            :disabled="uploading"
-            @click="triggerPick"
-          >
-            <i class="bi bi-image" /> {{ uploading ? '上传中...' : '图片' }}
-          </button>
-          <button
-            type="button"
-            class="btn btn-secondary btn-sm"
-            :disabled="uploading"
-            title="从附件库选择已有图片"
-            @click="showLibrary = true"
-          >
-            <i class="bi bi-folder2-open" /> 附件库
-          </button>
-        </template>
-      </EmojiEditor>
-      <input
-        ref="fileInput"
-        type="file"
-        accept="image/*"
-        multiple
-        class="file-input"
-        @change="onPick"
-      />
-
-      <!-- 附件库（选择已上传图片加入待发布动态） -->
-      <AttachmentLibrary
-        v-model:visible="showLibrary"
-        title="选择动态图片"
-        accept="image"
-        multiple
-        :max="9"
-        @select="onLibrarySelect"
-      />
-      <div v-if="newImages.length" class="pub-images">
-        <div v-for="(img, i) in newImages" :key="img" class="pub-img-item">
-          <img :src="img" class="pub-img" alt="预览" />
-          <button type="button" class="img-remove" title="移除" @click="removeImage(i)">
-            <i class="bi bi-x-lg" />
-          </button>
-        </div>
-      </div>
-      <div class="pub-loc">
-        <i class="bi bi-geo-alt" />
-        <input
-          v-model="newLocation"
-          class="pub-loc-input"
-          type="text"
-          maxlength="64"
-          placeholder="所在位置（可选）"
-          @keyup.enter="publish"
-        />
-      </div>
-      <div class="pub-actions">
-        <button class="btn btn-primary btn-sm btn-block" :disabled="publishing || uploading" @click="publish">
-          {{ publishing ? '发布中...' : '发布' }}
-        </button>
-        <span class="pub-tip">「发布后请耐心等待管理员审核，待审核通过后即可显示动态内容」</span>
-      </div>
-    </div>
+    <!-- 发布：表单本体抽在 components/MomentComposer.vue，首页「发布动态」弹窗用的是同一个组件；
+         卡片外观（card card-pad）由这里通过 class 提供 -->
+    <MomentComposer v-if="userStore.isLogged" class="card card-pad publisher" @published="onPublished" />
 
     <!-- 列表 -->
     <div v-if="loading" class="loading">
@@ -112,97 +40,20 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import MomentItem from '@/components/MomentItem.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import EmojiEditor from '@/components/EmojiEditor.vue'
-import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
-import { listMoments, createMoment, removeMoment, uploadMomentImages } from '@/api/moments'
+import MomentComposer from '@/components/MomentComposer.vue'
+import { listMoments, removeMoment } from '@/api/moments'
 import { useUserStore } from '@/stores/user'
-import { storeToRefs } from 'pinia'
 import { toast } from '@/utils/toast'
 
 const userStore = useUserStore()
-const { user } = storeToRefs(userStore)
-
-const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
 
 const moments = ref([])
 const total = ref(0)
 const loading = ref(false)
 const page = ref(1)
 const pageSize = 15
-const newContent = ref('')
-const publishing = ref(false)
-const fileInput = ref(null)
-const newImages = ref([])
-const uploading = ref(false)
-const newLocation = ref('')
-
-function triggerPick() {
-  fileInput.value?.click()
-}
-
-// 选择图片后立即上传（attachment/batch），成功后记录 URL 用于预览
-async function onPick(e) {
-  const files = Array.from(e.target.files || [])
-  e.target.value = ''
-  if (!files.length || uploading.value) return
-  if (newImages.value.length + files.length > 9) {
-    toast.warning('最多上传 9 张图片')
-    return
-  }
-  const valid = files.filter((file) => {
-    if (file.size > 50 * 1024 * 1024) {
-      toast.warning(`图片「${file.name}」超过 50MB 限制`)
-      return false
-    }
-    if (!file.type.startsWith('image/')) {
-      toast.warning(`文件「${file.name}」不是图片`)
-      return false
-    }
-    return true
-  })
-  if (!valid.length) return
-  uploading.value = true
-  try {
-    const fd = new FormData()
-    valid.forEach((file) => fd.append('files', file))
-    const res = await uploadMomentImages(fd)
-    const results = res.data?.results || []
-    const urls = results
-      .filter((r) => r.status !== 'fail' && r.full_url)
-      .map((r) => r.full_url)
-    newImages.value.push(...urls)
-    if (results.some((r) => r.status === 'fail')) {
-      toast.warning('部分图片上传失败')
-    }
-  } catch {
-    /* 拦截器已提示 */
-  } finally {
-    uploading.value = false
-  }
-}
-
-function removeImage(i) {
-  newImages.value.splice(i, 1)
-}
-
-// 附件库：把选中的已上传图片加入待发布列表（去重 + 数量上限）
-const showLibrary = ref(false)
-function onLibrarySelect(urls = []) {
-  const rest = 9 - newImages.value.length
-  if (rest <= 0) {
-    toast.warning('最多上传 9 张图片')
-    return
-  }
-  const add = urls.filter((url) => url && !newImages.value.includes(url)).slice(0, rest)
-  newImages.value.push(...add)
-  if (!add.length) {
-    toast.info('所选图片已在列表中')
-  } else if (add.length < urls.length) {
-    toast.warning('受数量限制，部分附件未添加')
-  } else {
-    toast.success(`已添加 ${add.length} 张图片`)
-  }
-}
+// 发布表单（正文 / 图片 / 附件库 / 位置 / 提交）已抽到 components/MomentComposer.vue，
+// 与首页「发布动态」弹窗共用同一份实现，这里不再各写一套。
 
 async function load() {
   loading.value = true
@@ -221,31 +72,10 @@ async function load() {
   }
 }
 
-async function publish() {
-  if (publishing.value || uploading.value) return
-  if (!newContent.value.trim()) {
-    toast.warning('内容不能为空')
-    return
-  }
-  publishing.value = true
-  try {
-    // 不传 audit：是否进入待审核由后端按站点「动态审核」开关决定，
-    // 强制传 audit=1 会让审核开关形同虚设（后台「待审核」永远为空）
-    await createMoment({
-      content: newContent.value,
-      images: newImages.value.join(','),
-      location: newLocation.value.trim(),
-      status: 1
-    })
-    newContent.value = ''
-    newImages.value = []
-    newLocation.value = ''
-    toast.success('发布成功，请耐心等待审核！审核通过后即可显示动态内容。')
-    page.value = 1
-    load()
-  } catch {} finally {
-    publishing.value = false
-  }
+// 发布成功后回到第一页并重新加载（表单清空由 MomentComposer 内部完成）
+function onPublished() {
+  page.value = 1
+  load()
 }
 
 async function onDelete(m) {
@@ -264,107 +94,8 @@ onMounted(load)
 .publisher {
   margin-bottom: 16px;
 }
-.pub-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 8px;
-}
-.avatar {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-}
-.name {
-  font-size: 13px;
-  font-weight: 500;
-}
-.file-input {
-  display: none;
-}
-.pub-images {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-}
-.pub-img-item {
-  position: relative;
-  width: 72px;
-  height: 72px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  border: 1px solid var(--border-soft);
-}
-.pub-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.img-remove {
-  position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 18px;
-  height: 18px;
-  border: none;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.55);
-  color: #fff;
-  font-size: 12px;
-  line-height: 1;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.2s;
-}
-.img-remove:hover {
-  background: var(--danger);
-}
-.pub-loc {
-  position: relative;
-  margin-top: 10px;
-}
-.pub-loc .bi {
-  position: absolute;
-  left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  font-size: 13px;
-  color: var(--text-light);
-  pointer-events: none;
-}
-.pub-loc-input {
-  width: 100%;
-  /* 与发布器工具栏按钮（.btn-sm）等高 */
-  height: var(--control-h-sm);
-  padding: 0 12px 0 30px;
-  font-size: 13px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg);
-  color: var(--text);
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
-}
-.pub-loc-input:focus {
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--accent-ring);
-}
-.pub-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-}
-.pub-tip {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--text-muted);
-  text-align: center;
-}
+/* 发布器自身的样式都在 components/MomentComposer.vue 里（scoped 不会外泄），
+   这里只保留调用方给它的卡片间距 */
 .loading {
   padding: 32px;
   text-align: center;

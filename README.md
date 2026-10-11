@@ -35,30 +35,3 @@ npm run build
 ```
 
 生成静态文件至 `dist/`，可作为静态资源部署至任何 CDN / Nginx。
-
-## 后端约定
-
-- 基础路径：`/api/{controller}/{method}`
-- 鉴权方式：Cookie + JWT（`token`），由 `comm/login` 颁发
-- 响应：`{ code, msg, data }`
-- 状态码：200 成功 / 401 未登录 / 403 无权 / 412 Token 缺失
-
-## 目录结构
-
-```
-src/
-├── api/            # axios 封装与各控制器请求模块
-├── assets/         # 全局样式
-├── components/     # 通用组件
-├── layouts/        # 三栏布局
-├── router/         # 路由
-├── stores/         # pinia 状态（用户、通知）
-├── utils/          # 工具（时间、markdown 渲染等）
-└── views/          # 页面
-    ├── home/
-    ├── article/
-    ├── moments/
-    ├── links/
-    ├── auth/       # 登录、注册、找回密码
-    └── user/       # 用户中心
-```
