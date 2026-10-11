@@ -206,53 +206,8 @@
       </div>
     </footer>
 
-    <!-- 发布面板遮罩：点空白收起（z-index 低于 Tab Bar，方便直接切其它 tab） -->
-    <Transition name="publish-fade">
-      <div v-if="publishOpen" class="publish-mask" @click="publishOpen = false" />
-    </Transition>
-
-    <!-- 发布面板：中间「发布」按钮展开，发文章 / 发动态 -->
-    <Transition name="publish-pop">
-      <div v-if="publishOpen" class="publish-panel" role="menu" aria-label="发布">
-        <button
-          v-for="item in PUBLISH_ACTIONS"
-          :key="item.key"
-          type="button"
-          class="publish-item"
-          role="menuitem"
-          @click="goPublish(item)"
-        >
-          <span class="publish-item__icon"><i :class="item.icon" aria-hidden="true" /></span>
-          <span class="publish-item__text">
-            <strong>{{ item.label }}</strong>
-            <small>{{ item.desc }}</small>
-          </span>
-        </button>
-      </div>
-    </Transition>
-
-    <!-- 移动端底部 Tab Bar（仅手机端显示） -->
-    <nav class="mobile-tabbar" aria-label="主导航">
-      <button
-        v-for="tab in tabs"
-        :key="tab.key"
-        type="button"
-        class="tab-item"
-        :class="{
-          active: isActive(tab),
-          highlight: tab.highlight,
-          'is-open': tab.action === 'publish' && publishOpen
-        }"
-        :aria-label="tab.label"
-        :aria-current="isActive(tab) ? 'page' : undefined"
-        :aria-expanded="tab.action === 'publish' ? publishOpen : undefined"
-        @click="onTabClick(tab)"
-      >
-        <span v-if="tab.badge" class="tab-badge">{{ tab.badge }}</span>
-        <i class="bi tab-icon" :class="tab.icon" />
-        <span class="tab-label">{{ tab.label }}</span>
-      </button>
-    </nav>
+    <!-- 移动端底部 Tab Bar + 发布面板（含未读角标与消息轮询，见组件内注释） -->
+    <MobileTabBar />
 
     <!-- 全局封禁申诉弹窗（当前用户被封禁时自动弹出） -->
     <BanAppealDialog ref="banDialogRef" />
@@ -271,11 +226,10 @@ import SidebarRight from '@/components/SidebarRight.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import FloatButtons from '@/components/FloatButtons.vue'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
+import MobileTabBar from '@/components/MobileTabBar.vue'
 import { call } from '@/api/request'
-import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
-import { useNotificationStore } from '@/stores/notification'
 import { canEnterAdmin } from '@/utils/helper'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -283,10 +237,6 @@ const userStore = useUserStore()
 const siteStore = useSiteStore()
 const router = useRouter()
 const route = useRoute()
-
-// 底栏「消息」的未读角标：数量由消息 store 提供（count 是响应式的）
-const notif = useNotificationStore()
-const { count: notifCount } = storeToRefs(notif)
 
 // 签到（独立页面 /checkin）：未登录时不跳登录页，由页面自身给出登录引导
 function onCheckinClick() {
@@ -302,8 +252,6 @@ function onGlobalKey(e) {
     e.preventDefault()
     openSearch()
   }
-  // Esc 收起发布面板（窄窗口调试时顺手）
-  if (e.key === 'Escape') publishOpen.value = false
 }
 onMounted(() => window.addEventListener('keydown', onGlobalKey))
 onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
@@ -360,78 +308,6 @@ function navTarget(p) {
   return `/${p.key || p.id}`
 }
 
-// 消息未读角标：未登录不显示；超过 99 显示 99+（避免把 tab 撑变形）
-const unreadBadge = computed(() => {
-  if (!userStore.isLogged) return ''
-  const total = Number(notifCount.value) || 0
-  if (total <= 0) return ''
-  return total > 99 ? '99+' : String(total)
-})
-
-// 移动端底部 Tab 配置
-const tabs = computed(() => {
-  const uid = userStore.user?.id
-  return [
-    { key: 'home', to: '/', icon: 'bi-house-door-fill', label: '发现', exact: true },
-    { key: 'goods', to: '/goods', icon: 'bi-shop', label: '商城' },
-    // 发布：不直接跳转，点击展开「发文章 / 发动态」面板（见 PUBLISH_ACTIONS）
-    // to 仅用于高亮判定（在写文章页时保持选中态）
-    { key: 'publish', to: '/manage/posts/write', icon: 'bi-plus-circle-fill', label: '发布', needLogin: true, highlight: true, action: 'publish' },
-    // badge 是响应式的：取消息 store 的未读数（60 秒轮询 + 页面回到前台时立即刷新）
-    { key: 'notif', to: '/user/notifications', icon: 'bi-bell-fill', label: '消息', needLogin: true, badge: unreadBadge.value },
-    { key: 'mine', to: uid ? `/author/${uid}` : '/user', icon: 'bi-person-fill', label: '我的', needLogin: true }
-  ]
-})
-
-function isActive(tab) {
-  const p = route.path
-  if (tab.exact) return p === tab.to
-  return p === tab.to || p.startsWith(tab.to + '/')
-}
-
-function goTab(tab) {
-  if (tab.needLogin && !userStore.isLogged) {
-    router.push('/auth/login')
-    return
-  }
-  router.push(tab.to)
-}
-
-// 中间「发布」按钮：展开面板；其余 tab 正常跳转
-function onTabClick(tab) {
-  if (tab.action === 'publish') {
-    togglePublish()
-    return
-  }
-  goTab(tab)
-}
-
-// 发布面板：发文章 / 发动态（两个入口都需要登录）
-const publishOpen = ref(false)
-const PUBLISH_ACTIONS = [
-  { key: 'post', label: '发文章', desc: '写一篇图文文章', icon: 'bi-pencil-square', to: '/manage/posts/write' },
-  { key: 'moment', label: '发动态', desc: '分享此刻的想法', icon: 'bi-chat-square-dots', to: '/moments' }
-]
-
-function togglePublish() {
-  // 与其它 tab 的 needLogin 口径一致：未登录直接去登录页
-  if (!userStore.isLogged) {
-    router.push('/auth/login')
-    return
-  }
-  publishOpen.value = !publishOpen.value
-}
-
-function goPublish(item) {
-  publishOpen.value = false
-  router.push(item.to)
-}
-
-// 跳走（含点面板里的选项、切其它 tab）后自动收起
-watch(() => route.path, () => {
-  publishOpen.value = false
-})
-
 // 解析自定义导航链接：格式 "跳转文字 || 跳转链接"，一行一个
 const customNavLinks = computed(() => {
   const raw = siteStore.config?.custom_nav_links || ''
@@ -467,35 +343,7 @@ onMounted(() => {
   loadPages()
   // 先同步登录态（含封禁状态）再检测，避免读到未就绪的 user
   userStore.ensureLogin().then(checkBan)
-
-  // 未读角标依赖消息轮询。轮询原本由右栏 SidebarRight 启动，而窄屏下右栏只是被
-  // CSS 隐藏（组件仍在挂载）—— 这里再兜一次底，避免以后把右栏改成条件渲染后角标静默失效。
-  // startPolling 内部会先清掉旧定时器，重复调用不会产生两个轮询。
-  if (userStore.isLogged) notif.startPolling()
 })
-
-// 登录 / 登出时启停消息轮询（与 SidebarRight 同一套逻辑，重复调用是安全的）
-watch(
-  () => userStore.isLogged,
-  (v) => {
-    if (v) notif.startPolling()
-    else notif.stopPolling()
-  }
-)
-
-// 切换页面时补一次刷新：轮询间隔是 60 秒，光靠定时器新消息最久要等一分钟才出角标。
-// 节流 30 秒，避免用户连续点导航时每次切页都发一轮请求（refresh 会请求 unread-count + 最新一条）。
-let lastNotifRefresh = 0
-watch(
-  () => route.path,
-  () => {
-    if (!userStore.isLogged) return
-    const now = Date.now()
-    if (now - lastNotifRefresh < 30 * 1000) return
-    lastNotifRefresh = now
-    notif.refresh()
-  }
-)
 </script>
 
 <style scoped>
@@ -555,174 +403,6 @@ watch(
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-/* 移动端底部 Tab Bar（默认隐藏） */
-.mobile-tabbar {
-  display: none;
-}
-.tab-item {
-  position: relative;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 2px 8px;
-  color: var(--text-muted);
-  cursor: pointer;
-  transition: color 0.2s;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-}
-.tab-icon {
-  font-size: 21px;
-  line-height: 1;
-  margin-bottom: 3px;
-  /* 发布面板展开时「+」会转成「×」，这里给个过渡 */
-  transition: transform 0.18s ease;
-}
-.tab-label {
-  font-size: 11px;
-  line-height: 1;
-  letter-spacing: 1px;
-}
-.tab-badge {
-  position: absolute;
-  top: 2px;
-  left: calc(50% + 6px);
-  min-width: 16px;
-  height: 16px;
-  padding: 0 4px;
-  border-radius: 8px;
-  background: var(--danger);
-  color: #fff;
-  font-size: 10px;
-  line-height: 16px;
-  text-align: center;
-  font-weight: 600;
-  border: 1.5px solid var(--bg-card);
-  box-sizing: border-box;
-}
-.tab-item.active {
-  color: var(--danger);
-}
-/* 中间「发布」按钮：凸起的圆形大按钮 */
-.tab-item.highlight {
-  justify-content: flex-start;
-}
-.tab-item.highlight .tab-icon {
-  width: 46px;
-  height: 46px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: -22px 0 4px;
-  font-size: 26px;
-  color: #fff;
-  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
-  border-radius: 50%;
-  border: 3px solid var(--bg-card);
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
-}
-.tab-item.highlight .tab-label {
-  color: var(--text-soft);
-}
-/* 发布面板展开时：中间按钮的「+」转 45° 变「×」 */
-.tab-item.is-open .tab-icon {
-  transform: rotate(45deg);
-}
-
-/* ---------- 发布面板（发文章 / 发动态） ---------- */
-.publish-mask {
-  position: fixed;
-  inset: 0;
-  z-index: 150;
-  background: rgba(0, 0, 0, 0.28);
-}
-.publish-panel {
-  position: fixed;
-  left: 12px;
-  right: 12px;
-  bottom: calc(56px + env(safe-area-inset-bottom) + 10px);
-  z-index: 202;
-  display: flex;
-  flex-direction: column;
-  padding: 6px;
-  border: 1px solid var(--border-soft);
-  border-radius: 4px;
-  background: var(--bg-card);
-  box-shadow: var(--shadow-md);
-}
-.publish-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  padding: 10px;
-  border: none;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--text);
-  font-family: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: background-color 0.16s;
-}
-.publish-item:hover,
-.publish-item:active {
-  background: var(--bg-muted);
-}
-.publish-item__icon {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 4px;
-  background: var(--accent-soft);
-  color: var(--primary-deep);
-  font-size: 16px;
-}
-.publish-item__text {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-.publish-item__text strong {
-  font-size: 14px;
-  font-weight: 600;
-}
-.publish-item__text small {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-/* 入场 / 收起动效 */
-.publish-pop-enter-active,
-.publish-pop-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
-}
-.publish-pop-enter-from,
-.publish-pop-leave-to {
-  opacity: 0;
-  transform: translateY(8px);
-}
-.publish-fade-enter-active,
-.publish-fade-leave-active {
-  transition: opacity 0.18s ease;
-}
-.publish-fade-enter-from,
-.publish-fade-leave-to {
-  opacity: 0;
-}
-/* 宽屏（Tab Bar 不显示）时面板与遮罩一并隐藏：避免从手机端拉宽后残留 */
-@media (min-width: 641px) {
-  .publish-mask,
-  .publish-panel {
-    display: none;
-  }
 }
 
 .layout-body {
@@ -1065,36 +745,7 @@ watch(
        这里只留一点间距，避免内容与备案号之间出现大段空白 */
     padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
   }
-  /* 底部 Tab Bar */
-  .mobile-tabbar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 200;
-    display: flex;
-    align-items: stretch;
-    justify-content: space-around;
-    height: calc(56px + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
-    background: var(--bg-card);
-    border-top: 1px solid var(--border-soft);
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
-  }
-  .tab-item {
-    padding-top: 8px;
-  }
-  .tab-item.active::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 22px;
-    height: 3px;
-    border-radius: 0 0 3px 3px;
-    background: var(--danger);
-  }
+  /* 底部 Tab Bar 的定位样式已随组件移到 components/MobileTabBar.vue */
   .nav-item.active::before {
     display: none;
   }

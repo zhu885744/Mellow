@@ -60,7 +60,8 @@ const routes = [
     component: () => import('@/views/user/Layout.vue'),
     meta: { auth: true },
     children: [
-      { path: '', redirect: '/user/profile' },
+      // 「我的」聚合页：手机端底栏「我的」的落地页（导航入口 + 信息展示，不承载具体的设置表单）
+    { path: '', name: 'user-home', component: () => import('@/views/user/Index.vue'), meta: { title: '我的' } },
       { path: 'profile', name: 'user-profile', component: () => import('@/views/user/Profile.vue') },
       { path: 'settings', name: 'user-settings', component: () => import('@/views/user/Settings.vue') },
       { path: 'contact', name: 'user-contact', component: () => import('@/views/user/Contact.vue') },

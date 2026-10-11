@@ -133,6 +133,9 @@
 
     <!-- 封禁申诉弹窗（侧边栏按钮触发） -->
     <BanAppealDialog ref="banAppealRef" />
+
+    <!-- 移动端底部 Tab Bar：与前台同一份组件，保证手机端在用户中心里也能直接切 tab -->
+    <MobileTabBar />
   </div>
 </template>
 
@@ -144,6 +147,7 @@ import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
 import { isAdmin as helperIsAdmin } from '@/utils/helper'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
+import MobileTabBar from '@/components/MobileTabBar.vue'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 
@@ -723,6 +727,13 @@ onUnmounted(() => {
   }
   .user-content {
     padding: 14px;
+  }
+}
+
+/* 手机端：给固定底栏让位（底栏只在 ≤640px 显示，见 components/MobileTabBar.vue） */
+@media (max-width: 640px) {
+  .user-content {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom) + 16px);
   }
 }
 </style>
