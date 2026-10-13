@@ -606,6 +606,8 @@ async function submit(status) {
   try {
     const payload = buildPayload(effectiveStatus)
     let id = contentId.value
+    // 新建时后端回传实际审核状态：站点关闭「内容审核」时 audit=1（已通过），据此给正确提示
+    let createdAudit = null
 
     if (isPage.value) {
       if (isEdit.value) {
@@ -613,12 +615,14 @@ async function submit(status) {
       } else {
         const res = await createPage(payload)
         id = res.data?.id || 0
+        createdAudit = Number(res.data?.audit)
       }
     } else if (isEdit.value) {
       await updateArticle({ id, ...payload })
     } else {
       const res = await createArticle(payload)
       id = res.data?.id || 0
+      createdAudit = Number(res.data?.audit)
     }
 
     // 回填实际生效的发布时间，避免界面显示与存储不一致
@@ -631,10 +635,20 @@ async function submit(status) {
 
     if (isPage.value) {
       savedTip.value = '已保存'
-      toast.success(isEdit.value ? '修改已保存' : '页面已创建')
+      toast.success(
+        isEdit.value ? '修改已保存' : createdAudit === 0 ? '页面已创建，等待审核通过后对外可见' : '页面已创建'
+      )
     } else {
       savedTip.value = status === 1 ? '已保存' : '草稿已保存'
-      toast.success(status === 1 ? (isEdit.value ? '修改已保存' : '发布成功') : '草稿已保存')
+      toast.success(
+        status === 1
+          ? isEdit.value
+            ? '修改已保存'
+            : createdAudit === 0
+              ? '发布成功，等待审核通过后对外可见'
+              : '发布成功'
+          : '草稿已保存'
+      )
     }
 
     if (!isEdit.value && id) {

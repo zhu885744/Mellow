@@ -92,7 +92,7 @@
       <button class="btn btn-primary btn-sm btn-block" :disabled="publishing || uploading" @click="submit">
         {{ publishing ? '发布中...' : '发布' }}
       </button>
-      <span class="composer__tip">「发布后请耐心等待管理员审核，待审核通过后即可显示动态内容」</span>
+      <span class="composer__tip">「若站点开启了内容审核，发布后需管理员审核通过才对外显示」</span>
     </div>
   </div>
 </template>
@@ -233,7 +233,7 @@ async function submit() {
 
   publishing.value = true
   try {
-    await createMoment({
+    const res = await createMoment({
       content: content.value,
       images: images.value.join(','),
       location: location.value.trim(),
@@ -243,7 +243,9 @@ async function submit() {
     content.value = ''
     images.value = []
     location.value = ''
-    toast.success('发布成功，请耐心等待审核！审核通过后即可显示动态内容。')
+    // 按后端回传的 audit 提示：站点关闭「内容审核」时 audit=1（已通过），
+    // 不能再无条件提示「等待审核」——否则用户会以为内容进了待审核
+    toast.success(Number(res?.data?.audit) === 0 ? '发布成功，等待审核通过后对外可见' : '发布成功')
     emit('published')
   } catch {
     /* 拦截器已提示 */
