@@ -78,6 +78,10 @@
           <router-link to="/" exact-active-class="active" class="nav-item">
             <span class="nav-zh">发现</span>
           </router-link>
+          <!-- 聚合流（关注 / 推荐 / 热门）：按关注关系聚合，未登录由路由守卫引导登录 -->
+          <router-link to="/feed" active-class="active" class="nav-item">
+            <span class="nav-zh">关注</span>
+          </router-link>
           <!-- <router-link to="/moments" active-class="active" class="nav-item">
             <span class="nav-zh">奇思</span>
           </router-link> -->

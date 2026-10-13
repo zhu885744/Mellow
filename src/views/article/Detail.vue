@@ -59,7 +59,21 @@
       <button class="btn btn-sm like-btn" @click="shareArticle">
         <i class="bi bi-share" /> 分享
       </button>
+      <!-- 举报：自己的文章不显示；提交后只通知管理员，作者不会收到提示 -->
+      <button v-if="canReport" class="btn btn-sm like-btn" title="举报这篇文章" @click="reportVisible = true">
+        <i class="bi bi-flag" /> 举报
+      </button>
     </div>
+
+    <ReportDialog
+      :visible="reportVisible"
+      target-type="article"
+      :target-id="route.params.id"
+      :target-label="`文章「${(article?.title || '').slice(0, 20)}」`"
+      :loading="reporting"
+      @update:visible="(v) => (reportVisible = v)"
+      @confirm="submitReport"
+    />
 
     <!-- 作者（点击进入作者主页） -->
     <component
@@ -147,6 +161,8 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
 import CommentTree from '@/components/CommentTree.vue'
+import ReportDialog from '@/components/ReportDialog.vue'
+import { createReport } from '@/api/report'
 import EmptyState from '@/components/EmptyState.vue'
 import EmojiText from '@/components/EmojiText.vue'
 import { getArticle } from '@/api/article'
@@ -385,6 +401,29 @@ async function shareArticle() {
     toast.success('已复制链接和标题，去分享吧')
   } else {
     toast.error('复制失败，请手动复制')
+  }
+}
+
+// ---------- 举报 ----------
+// 未登录不显示入口；自己的文章也不显示（后端同样会拒「举报自己」）
+const reportVisible = ref(false)
+const reporting = ref(false)
+const canReport = computed(() => {
+  const me = userStore.user?.id
+  if (!me) return false
+  return String(article.value?.uid || '') !== String(me)
+})
+
+async function submitReport({ reason, detail, images }) {
+  reporting.value = true
+  try {
+    await createReport({ target_type: 'article', target_id: route.params.id, reason, detail, images })
+    reportVisible.value = false
+    toast.success('举报已提交，我们会尽快处理')
+  } catch {
+    /* 拦截器已提示（重复举报 / 超过每日上限等） */
+  } finally {
+    reporting.value = false
   }
 }
 

@@ -2,6 +2,10 @@
   <div>
     <SectionTitle title="奇思">
       <template #extra>
+        <!-- 这里看的是全站动态；只想看「我关注的人」去聚合流（/feed） -->
+        <RouterLink to="/feed" class="btn btn-ghost btn-sm">
+          <i class="bi bi-people" aria-hidden="true" /> 关注流
+        </RouterLink>
         <span class="text-muted">{{ total }} 条动态</span>
       </template>
     </SectionTitle>

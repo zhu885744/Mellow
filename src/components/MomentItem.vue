@@ -81,7 +81,26 @@
       <button class="action-item" @click="copyLink">
         <i class="bi bi-share"></i> 分享
       </button>
+      <!-- 举报：自己的内容不显示举报入口；未登录也不显示（后端同样要求登录） -->
+      <button
+        v-if="canReport"
+        class="action-item"
+        title="举报这条动态"
+        @click="reportVisible = true"
+      >
+        <i class="bi bi-flag" /> 举报
+      </button>
     </div>
+
+    <ReportDialog
+      :visible="reportVisible"
+      target-type="moment"
+      :target-id="moment.id"
+      :target-label="reportLabel"
+      :loading="reporting"
+      @update:visible="(v) => (reportVisible = v)"
+      @confirm="submitReport"
+    />
 
     <!-- 动态评论：allow 为 2 时只关掉发表入口，show 为 2 时整个评论入口都不显示 -->
     <div v-if="showComments && commentShow" class="moment-comments">
@@ -112,6 +131,8 @@ import { renderEmojiWithBreaks } from '@/utils/emoji'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
 import CommentTree from './CommentTree.vue'
+import ReportDialog from './ReportDialog.vue'
+import { createReport } from '@/api/report'
 import { call } from '@/api/request'
 import { like, unlike, isLiked, likesCount } from '@/api/tags'
 import { openLightbox } from '@/utils/lightbox'
@@ -251,6 +272,41 @@ const authorTitleClass = computed(() => getTitleColorClass(authorTitle.value))
 const authorTitlePayload = computed(() => pickUserTitlePayload(author.value))
 function goAuthor() {
   if (authorLink.value) router.push(authorLink.value)
+}
+
+// ---------- 举报 ----------
+// 提交后不改动卡片本身的状态（举报是「给管理员看」，不改变内容的可见性）
+const reportVisible = ref(false)
+const reporting = ref(false)
+const canReport = computed(
+  () => userStore.isLogged && Number(props.moment.uid) !== Number(userStore.user?.id)
+)
+// 弹窗里显示「动态「今天的风景」」，方便用户确认没点错条目
+const reportLabel = computed(() => {
+  const text = String(props.moment.content || '')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text ? `动态「${text.slice(0, 20)}」` : '动态'
+})
+async function submitReport({ reason, detail, images }) {
+  reporting.value = true
+  try {
+    await createReport({
+      // 注意：举报接口的对象类型是单数 moment（与动态的 bind_type=moments 不同）
+      target_type: 'moment',
+      target_id: props.moment.id,
+      reason,
+      detail,
+      images
+    })
+    reportVisible.value = false
+    toast.success('举报已提交，我们会尽快处理')
+  } catch {
+    /* 拦截器已提示（重复举报 / 超过每日上限等） */
+  } finally {
+    reporting.value = false
+  }
 }
 // 图片字段可能是数组、逗号分隔字符串或空
 function parseImages(field) {

@@ -8,15 +8,29 @@
         <span class="admin-brand-text">Mellow 管理后台</span>
       </div>
 
-      <nav class="admin-nav" v-if="menus.length">
-        <RouterLink
-          to="/admin/dashboard"
-          class="admin-nav-item overview-item"
-          active-class="active"
-        >
-          <i class="bi bi-speedometer2" />
-          <span class="admin-nav-text">概览</span>
-        </RouterLink>
+      <nav class="admin-nav" v-if="menus.length || authReady">
+        <!-- 概览 + 置顶入口（/admin/stats 等）：不进创作 / 管理 / 安全分组 -->
+        <div class="admin-nav-pinned">
+          <RouterLink
+            to="/admin/dashboard"
+            class="admin-nav-item"
+            active-class="active"
+          >
+            <i class="bi bi-speedometer2" />
+            <span class="admin-nav-text">概览</span>
+          </RouterLink>
+          <RouterLink
+            v-for="item in pinnedItems"
+            :key="item.path"
+            :to="item.path"
+            class="admin-nav-item"
+            active-class="active"
+          >
+            <span class="admin-nav-icon" v-if="item.isSvg" v-html="item.svg" />
+            <i v-else :class="item.icon" />
+            <span class="admin-nav-text">{{ item.name }}</span>
+          </RouterLink>
+        </div>
         <template v-for="group in menus" :key="group.name">
           <div class="admin-nav-group">{{ group.label }}</div>
           <RouterLink
@@ -114,6 +128,7 @@ import { useUserStore } from '@/stores/user'
 import { useAuthPagesStore } from '@/stores/auth-pages'
 import { useThemeStore } from '@/stores/theme'
 import { adminAllowedPaths, canEnterAdmin } from '@/utils/helper'
+import { buildAdminMenus, buildAdminPinnedItems, pageOfPath, rememberAdminPath } from '@/utils/admin-menu'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 
@@ -161,99 +176,11 @@ async function onLogout() {
   }
 }
 
-// 分组定义：与参考主题一致（创作 / 管理 / 安全）
-const groupDefs = [
-  {
-    name: 'create',
-    label: '创作',
-    items: [
-      '/admin/article/write', '/admin/article', '/admin/article/group',
-      '/admin/pages', '/admin/pages/write', '/admin/moments'
-    ]
-  },
-  {
-    name: 'manage',
-    label: '管理',
-    items: [
-      '/admin/stats', '/admin/users', '/admin/comment', '/admin/placard', '/admin/banner',
-      '/admin/tags', '/admin/level', '/admin/exp', '/admin/goods', '/admin/integral',
-      '/admin/decoration', '/admin/checkin', '/admin/message',
-      '/admin/links', '/admin/links/group', '/admin/attachment', '/admin/logs', '/admin/system'
-    ]
-  },
-  {
-    name: 'security',
-    label: '安全',
-    items: [
-      '/admin/auth/rules', '/admin/auth/group', '/admin/api/keys', '/admin/auth/pages',
-      '/admin/ip/black', '/admin/ip/white', '/admin/qps/warn'
-    ]
-  }
-]
+// 菜单：分组顺序 / 权限过滤 / 图标解析统一在 utils/admin-menu.js（概览页快捷跳转共用同一份）
+const menus = computed(() => buildAdminMenus(user.value, authPagesStore.getFlat || []))
 
-// icon 名称 → Bootstrap Icons（仅用于展示；auth-pages 自带 svg 优先）
-const fallbackIcons = {
-  article: 'bi bi-file-earmark-text',
-  group: 'bi bi-collection',
-  user: 'bi bi-people',
-  comment: 'bi bi-chat-square-text',
-  bell: 'bi bi-bell',
-  banner: 'bi bi-images',
-  tag: 'bi bi-tag',
-  level: 'bi bi-bar-chart',
-  link: 'bi bi-link-45deg',
-  system: 'bi bi-gear',
-  open: 'bi bi-box-arrow-up-right',
-  rule: 'bi bi-shield-check',
-  key: 'bi bi-key',
-  qps: 'bi bi-speedometer2',
-  black: 'bi bi-shield-x',
-  white: 'bi bi-shield-plus',
-  file: 'bi bi-paperclip'
-}
-
-/**
- * 解析菜单图标：
- * 1. 后端已是 Bootstrap Icons 类名（"bi bi-bag" 或 "bi-bag"）→ 直接使用；
- * 2. 旧版短名（article / group …）→ 查 fallbackIcons 映射；
- * 3. 其余 → 兜底圆圈。
- * 这样新老数据库（auth-pages.icon 两种形态）都能正确展示。
- */
-function resolveIcon(name) {
-  if (typeof name !== 'string' || !name.trim()) return 'bi bi-circle'
-  const value = name.trim()
-  if (value.includes('bi-')) return value.startsWith('bi ') ? value : `bi ${value}`
-  return fallbackIcons[value] || 'bi bi-circle'
-}
-
-const menus = computed(() => {
-  const flat = authPagesStore.getFlat || []
-  if (!flat.length) return []
-
-  // 允许访问的页面 path 集合（null = 拥有全部页面）
-  const allowedPaths = adminAllowedPaths(user.value, flat)
-  const byPath = Object.fromEntries(flat.map((p) => [p.path, p]))
-
-  return groupDefs
-    .map((g) => {
-      const children = g.items
-        .filter((path) => byPath[path]) // 仅保留系统实际存在的页面
-        .filter((path) => !allowedPaths || allowedPaths.has(path)) // 按权限过滤
-        .map((path) => {
-          const p = byPath[path]
-          const svg = p.svg || (typeof p.icon === 'string' && p.icon.includes('<svg') ? p.icon : '')
-          return {
-            path,
-            name: p.name || path,
-            icon: svg ? '' : resolveIcon(p.icon),
-            isSvg: !!svg,
-            svg
-          }
-        })
-      return { ...g, children }
-    })
-    .filter((g) => g.children.length)
-})
+// 置顶入口：固定在「概览」下方，不参与分组（同样按权限过滤）
+const pinnedItems = computed(() => buildAdminPinnedItems(user.value, authPagesStore.getFlat || []))
 
 const currentTitle = computed(() => route.meta?.title || '后台管理')
 
@@ -264,15 +191,11 @@ if (!canEnterAdmin(user.value)) {
   router.replace('/')
 }
 
-// 取当前路径对应的后台页面（最长前缀匹配，如 /admin/article/edit/3 → /admin/article）
-function pageOfPath(flat, path) {
-  let matched = null
-  flat.forEach((p) => {
-    if ((path === p.path || path.startsWith(`${p.path}/`)) && (!matched || p.path.length > matched.path.length)) {
-      matched = p
-    }
-  })
-  return matched
+// 记录「最近访问」：把 /admin/article/edit/3 这类子路由归一到菜单页（/admin/article），
+// 供概览页快捷跳转的「最近访问」使用
+function rememberVisited(path = route.path) {
+  const page = pageOfPath(authPagesStore.getFlat || [], path)
+  if (page) rememberAdminPath(page.path)
 }
 
 /**
@@ -291,8 +214,9 @@ function guardRoute(path = route.path) {
   const page = pageOfPath(flat, path)
   if (!page || allowedPaths.has(page.path)) return
 
-  const first = menus.value[0]?.children?.[0]?.path
-  router.replace(first || '/')
+  // 兜底落地页：第一个可见分组 → 置顶入口 → 概览
+  const first = menus.value[0]?.children?.[0]?.path || pinnedItems.value[0]?.path || '/admin/dashboard'
+  router.replace(first)
 }
 
 onMounted(async () => {
@@ -301,6 +225,7 @@ onMounted(async () => {
   await authPagesStore.ensureLoaded()
   authReady.value = true
   guardRoute()
+  rememberVisited()
 })
 
 onUnmounted(() => {
@@ -308,9 +233,10 @@ onUnmounted(() => {
   document.removeEventListener('keydown', onDocKeydown)
 })
 
-// 路由变化：校验页面权限；关闭用户下拉；移动端顺带自动收起抽屉（桌面端保持用户选择的折叠状态）
+// 路由变化：校验页面权限；记录最近访问；关闭用户下拉；移动端顺带自动收起抽屉（桌面端保持用户选择的折叠状态）
 watch(() => route.path, (path) => {
   guardRoute(path)
+  rememberVisited(path)
   userMenuOpen.value = false
   if (window.innerWidth <= 768) collapsed.value = false
 })
@@ -381,8 +307,14 @@ watch(() => route.path, (path) => {
   color: var(--primary);
   font-weight: 600;
 }
-.admin-nav-item.overview-item {
+/* 概览 + 置顶入口：紧贴在一起（方角），与下方分组拉开间距 */
+.admin-nav-pinned {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   margin-bottom: 6px;
+}
+.admin-nav-pinned .admin-nav-item {
   border-radius: 0;
 }
 .admin-nav-icon {

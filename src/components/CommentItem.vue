@@ -53,6 +53,15 @@
           <span class="c-icon"><i class="bi bi-chat-dots" /></span> 回复
         </button>
         <button v-if="canDelete" class="c-action c-del" @click="$emit('remove', comment)">删除</button>
+        <!-- 举报：自己的评论不显示（举报弹窗由父级 CommentTree 统一承载，避免每条评论各挂一个弹窗） -->
+        <button
+          v-if="canReport"
+          class="c-action"
+          title="举报这条评论"
+          @click="$emit('report', comment)"
+        >
+          <span class="c-icon"><i class="bi bi-flag" /></span> 举报
+        </button>
       </div>
 
       <!-- 回复框（禁止评论时不展示） -->
@@ -135,6 +144,7 @@
           @reply="$emit('reply', $event)"
           @submit="$emit('submit', $event)"
           @remove="$emit('remove', $event)"
+          @report="$emit('report', $event)"
         />
       </div>
     </div>
@@ -168,7 +178,7 @@ const props = defineProps({
   allowComment: { type: Boolean, default: true }
 })
 
-const emit = defineEmits(['like', 'reply', 'submit', 'remove'])
+const emit = defineEmits(['like', 'reply', 'submit', 'remove', 'report'])
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -220,6 +230,14 @@ const canDelete = computed(() => {
   const uid = userStore.user?.id
   const cid = author.value.id
   return !!(uid && (String(uid) === String(cid) || isAdmin(userStore.user) || props.authorId === uid))
+})
+
+// 举报入口：未登录不显示；自己的评论不显示（能删的评论没必要举报）
+const canReport = computed(() => {
+  const me = userStore.user?.id
+  if (!me || canDelete.value) return false
+  const cid = author.value?.id
+  return String(cid || '') !== String(me)
 })
 
 function onImgError(e) {

@@ -1639,6 +1639,8 @@ const MAIL_SCENES = [
   { key: 'moments.rejected', label: '动态审核未通过', group: '内容审核', target: 'user', default: 1 },
   { key: 'comment.notify', label: '评论通知（内容作者）', group: '评论互动', target: 'user', default: 1 },
   { key: 'comment.reply', label: '回复通知（被回复人）', group: '评论互动', target: 'user', default: 1 },
+  // 举报治理：站内信不受开关影响，这里只控制邮件
+  { key: 'report.new', label: '收到新举报', group: '举报治理', target: 'admin', default: 1 },
   { key: 'user.pending', label: '新用户待审核', group: '用户管理', target: 'admin', default: 1 },
   { key: 'user.passed', label: '用户审核通过', group: '用户管理', target: 'user', default: 1 },
   { key: 'user.frozen', label: '账号被冻结', group: '用户管理', target: 'user', default: 1 },
@@ -1651,7 +1653,7 @@ const MAIL_SCENES = [
 ]
 
 // 场景分组（展示顺序）
-const MAIL_GROUPS = ['内容审核', '评论互动', '用户管理', '积分商城']
+const MAIL_GROUPS = ['内容审核', '评论互动', '举报治理', '用户管理', '积分商城']
 
 // 默认场景开关（"1"/"0" 字符串，与 SelectMenu 的 ON_OFF 对齐）
 function defaultMailScenes() {

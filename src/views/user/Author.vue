@@ -45,10 +45,17 @@
           >
             <i class="bi bi-link-45deg" /> {{ website.name || website.url }}
           </a>
+          <!-- 社交数据卡片：文章 / 动态 / 关注 / 粉丝 / 获赞
+               数字来自后端 user-follows/stats（只统计对外公开的内容：audit=1 且 status=1），
+               关注 / 粉丝随关注按钮实时增减，其余为只读展示（不做跳转） -->
           <div class="author-stats">
             <div class="stat" @click="switchTab('article')">
               <strong>{{ stats.article }}</strong>
               <span>文章</span>
+            </div>
+            <div class="stat is-static">
+              <strong>{{ stats.moment }}</strong>
+              <span>动态</span>
             </div>
             <div class="stat" @click="switchTab('follow')">
               <strong>{{ stats.follow }}</strong>
@@ -58,14 +65,41 @@
               <strong>{{ stats.fans }}</strong>
               <span>粉丝</span>
             </div>
+            <div class="stat is-static">
+              <strong>{{ stats.likes }}</strong>
+              <span>获赞</span>
+            </div>
           </div>
           <div class="author-actions">
+            <!-- 四种按钮状态各用一套配色（后端 user-follows/relation）：
+                 关注=主色 / 回关=警示色（提醒你回应）/ 互相关注=成功色 / 已关注=幽灵弱化 -->
             <button
               v-if="!isSelf"
               class="btn btn-sm"
-              :class="following ? 'btn-ghost' : 'btn-primary'"
+              :class="followButtonClass"
+              :title="followButtonTitle"
+              :disabled="followBusy"
               @click="toggleFollow"
-            >{{ following ? '已关注' : '关注' }}</button>
+            >{{ followButtonText }}</button>
+            <!-- 拉黑：双向屏蔽（彼此内容不进对方动态流 + 不能互相私信），拉黑时会自动解除关注关系 -->
+            <button
+              v-if="!isSelf"
+              class="btn btn-sm"
+              :class="blocked ? 'btn-ghost' : 'btn-outline-danger'"
+              :title="
+                blocked
+                  ? '解除拉黑后，对方的内容会重新出现在你的动态流里'
+                  : '拉黑后彼此的内容都不再出现在对方的动态流里，且不能互相私信'
+              "
+              :disabled="followBusy"
+              @click="toggleBlock"
+            >{{ blocked ? '已拉黑' : '拉黑' }}</button>
+            <button
+              v-if="!isSelf"
+              class="btn btn-sm btn-ghost"
+              title="举报该用户（仅管理员可见，对方不会收到通知）"
+              @click="reportVisible = true"
+            ><i class="bi bi-flag" aria-hidden="true" /> 举报</button>
             <template v-else>
               <router-link to="/user/profile" class="btn btn-sm btn-ghost">编辑资料</router-link>
               <button class="btn btn-sm btn-outline-danger" @click="userStore.logout">
@@ -92,6 +126,36 @@
           查看详情<template v-if="isSelf"> / 申诉</template>
         </button>
       </div>
+    </div>
+
+    <!-- 可能认识的人：仅在自己的主页展示（基于「共同关注」的二度推荐，见后端 user-follows/suggest）。
+         只展示聚合出来的「N 个共同关注」，不暴露任何具体的关注关系明细。 -->
+    <div v-if="isSelf && suggestions.length" class="card card-pad suggest-card">
+      <div class="suggest-head">
+        <h3 class="suggest-title"><i class="bi bi-person-plus" aria-hidden="true" /> 可能认识的人</h3>
+        <span class="suggest-tip">根据你们共同关注的人推荐</span>
+      </div>
+      <ul class="suggest-list">
+        <li v-for="u in suggestions" :key="u.id" class="suggest-item">
+          <router-link :to="`/author/${u.id}`" class="suggest-link">
+            <img :src="u.avatar || defaultAvatar" class="suggest-avatar" alt="" @error="onImgError" />
+            <div class="suggest-info">
+              <span class="suggest-name">{{ u.nickname || '匿名用户' }}</span>
+              <span class="suggest-sub">
+                <template v-if="u.mutual_count">{{ u.mutual_count }} 个共同关注</template>
+                <template v-else>{{ u.description || '这个人很懒，什么都没留下' }}</template>
+              </span>
+            </div>
+          </router-link>
+          <button
+            type="button"
+            class="btn btn-sm"
+            :class="u.following ? 'btn-ghost' : 'btn-primary'"
+            :disabled="followBusy"
+            @click="followSuggestion(u)"
+          >{{ u.following ? '已关注' : '关注' }}</button>
+        </li>
+      </ul>
     </div>
 
     <!-- 内容区 -->
@@ -138,6 +202,9 @@
                 <span class="user-name">{{ item.nickname || item.name || '匿名用户' }}</span>
                 <span class="user-sub">{{ item.description || '' }}</span>
               </div>
+              <!-- 互关标识：后端 attachRelation 批量算好（未登录时不显示） -->
+              <span v-if="item.mutual" class="user-mutual" title="你们互相关注">已互关</span>
+              <span v-else-if="item.is_following" class="user-mutual is-following" title="你已关注 TA">已关注</span>
               <span class="user-time">{{ fromNow(item.create_time) }}</span>
             </router-link>
           </li>
@@ -171,6 +238,17 @@
 
     <!-- 封禁信息弹窗：本人可提交申诉，查看他人主页时只展示信息 -->
     <BanAppealDialog ref="banDialogRef" :ban="banInfo" :appealable="isSelf" />
+
+    <!-- 举报用户：提交后只通知管理员，被举报人不会收到任何提示 -->
+    <ReportDialog
+      :visible="reportVisible"
+      target-type="user"
+      :target-id="uid"
+      :target-label="`用户「${profile.nickname || '匿名'}」`"
+      :loading="reporting"
+      @update:visible="(v) => (reportVisible = v)"
+      @confirm="submitReport"
+    />
   </div>
 </template>
 
@@ -181,8 +259,11 @@ import ArticleCard from '@/components/ArticleCard.vue'
 import AvatarFrame from '@/components/AvatarFrame.vue'
 import TitleBadge from '@/components/TitleBadge.vue'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
+import ReportDialog from '@/components/ReportDialog.vue'
+import { blockUser, unblockUser, blockStatus } from '@/api/user-blocks'
+import { createReport } from '@/api/report'
 import { getUser } from '@/api/users'
-import { getAuthorArticles, countArticlesByAuthor } from '@/api/article'
+import { getAuthorArticles } from '@/api/article'
 import { myLikes, myCollects } from '@/api/tags'
 import { call } from '@/api/request'
 import { useUserStore } from '@/stores/user'
@@ -258,9 +339,51 @@ function getTitleColorClass(title) {
 const titleClass = computed(() => getTitleColorClass(profile.value.title))
 // 头衔样式：装扮系统写入的 payload；无装扮时返回 null，走上面的色板兜底
 const titlePayload = computed(() => pickUserTitlePayload(profile.value))
-const stats = ref({ article: 0, follow: 0, fans: 0 })
-const following = ref(false)
+// 社交数据卡片：文章 / 动态 / 关注 / 粉丝 / 获赞（后端 user-follows/stats 一次拿全）
+const stats = ref({ article: 0, moment: 0, follow: 0, fans: 0, likes: 0 })
+// 我与目标用户的关系：is_following（我关注了 TA）/ is_follower（TA 关注了我）/ mutual（互关）
+const relation = ref({ is_following: false, is_follower: false, mutual: false })
+// 关注 / 取关进行中：防连点（后端有幂等处理，但前端不该重复发请求）
+const followBusy = ref(false)
+// 我是否已拉黑 TA（拉黑是双向屏蔽：彼此内容互不进流 + 不能互相私信）
+const blocked = ref(false)
+// 举报弹窗
+const reportVisible = ref(false)
+const reporting = ref(false)
+// 可能认识的人：仅本人的主页展示
+const suggestions = ref([])
 const isSelf = computed(() => userStore.isLogged && Number(userStore.user?.id) === uid.value)
+
+// 关注按钮文案：互相关注 > 已关注 > 回关（对方关注了我，我还没回）> 关注
+const followButtonText = computed(() => {
+  if (relation.value.mutual) return '互相关注'
+  if (relation.value.is_following) return '已关注'
+  if (relation.value.is_follower) return '回关'
+  return '关注'
+})
+
+/**
+ * 关注按钮配色：让「需要你回应」和「已互相关注」一眼能区分出来 ——
+ *   回关      → 警示色（金色，提示有待处理的互动）
+ *   互相关注  → 成功色（绿色，表示双向关系已建立）
+ *   已关注    → 幽灵按钮（弱化，避免和主要操作抢视线）
+ *   关注      → 主色（行动号召）
+ * 颜色都取自全局变量（assets/styles.css 的 .btn-success / .btn-warning），不新造配色。
+ */
+const followButtonClass = computed(() => {
+  if (relation.value.mutual) return 'btn-success'
+  if (relation.value.is_following) return 'btn-ghost'
+  if (relation.value.is_follower) return 'btn-warning'
+  return 'btn-primary'
+})
+
+// 按钮悬浮说明写全，避免「已关注」这种短文案让人不知道该点会发生什么
+const followButtonTitle = computed(() => {
+  if (relation.value.mutual) return '你们互相关注，点击取消关注（互相关注关系会解除）'
+  if (relation.value.is_following) return '你已关注 TA，点击取消关注'
+  if (relation.value.is_follower) return 'TA 关注了你，点击回关（回关后你们互相关注）'
+  return '关注 TA，TA 的动态会出现在你的关注流里'
+})
 
 // ---------- 封禁信息（后端 users/one 的 result.ban，见 model.Users.banInfo） ----------
 const banInfo = ref(null)
@@ -491,71 +614,193 @@ async function loadProfile() {
       await nextTick()
       banDialogRef.value?.show()
     }
-    stats.value = {
-      article: u.article_total || 0,
-      follow: 0,
-      fans: 0
-    }
-    // 文章数单独统计（用户对象未直接提供或不可靠）
-    try {
-      const c = await countArticlesByAuthor(uid.value)
-      stats.value.article = c.data || 0
-    } catch {}
-    // 关注 / 粉丝数走 user-follows/counts 接口（参考 Cardify-inis）
-    loadFollowCounts()
+    // 社交数据卡片（文章 / 动态 / 关注 / 粉丝 / 获赞）统一由后端 user-follows/stats 提供：
+    // 口径只统计公开内容，且不会像原来那样「文章数用 countArticlesByAuthor、关注/粉丝用 counts」各算一份
+    loadSocialStats()
   } catch {
     profile.value = { nickname: '用户不存在', avatar: '', description: '' }
   }
 }
 
-async function loadFollowCounts() {
+/**
+ * 社交数据卡片（文章 / 动态 / 关注 / 粉丝 / 获赞）
+ *
+ * 后端 user-follows/stats 一次拿全，只统计**对外公开**的内容（audit=1 且 status=1）；
+ * 获赞数需要跨表统计，后端缓存 5 分钟，关注 / 取关时会主动清掉缓存。
+ */
+async function loadSocialStats() {
   try {
-    const [followingRes, followersRes] = await Promise.all([
-      call('user-follows', 'counts', {
-        method: 'GET',
-        params: { target_type: 'following', target_ids: [uid.value] }
-      }),
-      call('user-follows', 'counts', {
-        method: 'GET',
-        params: { target_type: 'followers', target_ids: [uid.value] }
-      })
-    ])
-    if (followingRes.data?.counts) {
-      stats.value.follow = followingRes.data.counts[uid.value] || 0
-    }
-    if (followersRes.data?.counts) {
-      stats.value.fans = followersRes.data.counts[uid.value] || 0
+    const res = await call('user-follows', 'stats', {
+      method: 'GET',
+      params: { uid: uid.value }
+    })
+    const d = res.data || {}
+    stats.value = {
+      article: Number(d.article) || 0,
+      moment: Number(d.moment) || 0,
+      follow: Number(d.follow) || 0,
+      fans: Number(d.fans) || 0,
+      likes: Number(d.likes) || 0
     }
   } catch {}
 }
 
-async function loadFollowState() {
-  if (isSelf.value) return
+/**
+ * 我与 TA 的关注关系（看自己主页 / 未登录时不需要）
+ * 后端 user-follows/relation → 按钮显示「关注 / 已关注 / 互关 / 回关」
+ */
+async function loadRelation() {
+  if (isSelf.value || !userStore.isLogged) {
+    relation.value = { is_following: false, is_follower: false, mutual: false }
+    return
+  }
   try {
-    const res = await call('user-follows', 'is-following', {
+    const res = await call('user-follows', 'relation', {
       method: 'GET',
       params: { follow_uid: uid.value }
     })
-    following.value = !!(res.data && res.data.is_following)
+    relation.value = {
+      is_following: !!res.data?.is_following,
+      is_follower: !!res.data?.is_follower,
+      mutual: !!res.data?.mutual
+    }
   } catch {}
 }
 
+/**
+ * 关注 / 取关
+ * 关注后：对方粉丝数 +1；若对方本来就关注我 → 直接变成「互关」
+ */
 async function toggleFollow() {
   if (!userStore.isLogged) {
     toast.info('请先登录')
     return
   }
+  if (followBusy.value) return
+  followBusy.value = true
   try {
-    if (following.value) {
+    if (relation.value.is_following) {
+      // 取消前先记下是不是互关：互相关注被取消要给出完整提示（不只是「已关注」四个字）
+      const wasMutual = relation.value.mutual
       await call('user-follows', 'unfollow', { method: 'PUT', data: { follow_uid: uid.value } })
-      following.value = false
+      relation.value.is_following = false
+      relation.value.mutual = false
       stats.value.fans = Math.max(0, stats.value.fans - 1)
+      toast.success(wasMutual ? '已取消关注，你们的互相关注关系已解除' : '已取消关注')
     } else {
+      // 对方本来就关注我 → 这次是「回关」，提示要说清已经是互相关注
+      const wasFollower = relation.value.is_follower
       await call('user-follows', 'follow', { method: 'POST', data: { follow_uid: uid.value } })
-      following.value = true
+      relation.value.is_following = true
+      relation.value.mutual = wasFollower
       stats.value.fans += 1
+      toast.success(wasFollower ? '回关成功，你们现在是互相关注' : '关注成功，TA 的动态会出现在你的关注流里')
     }
-  } catch {}
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    followBusy.value = false
+  }
+}
+
+/**
+ * 可能认识的人（仅本人主页展示）
+ *
+ * 后端 user-follows/suggest：基于「我关注的人也在关注谁」做二度推荐，
+ * 已经关注过的不会出现在列表里；这里只维护「点击关注后」的按钮态与关注数。
+ */
+async function loadSuggestions() {
+  if (!isSelf.value) {
+    suggestions.value = []
+    return
+  }
+  try {
+    const res = await call('user-follows', 'suggest', { method: 'GET' })
+    suggestions.value = (res.data?.list || []).map((u) => ({ ...u, following: false }))
+  } catch {
+    suggestions.value = []
+  }
+}
+
+async function followSuggestion(user) {
+  if (followBusy.value || user.following) return
+  followBusy.value = true
+  try {
+    await call('user-follows', 'follow', { method: 'POST', data: { follow_uid: user.id } })
+    user.following = true
+    stats.value.follow += 1
+    toast.success('已关注')
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    followBusy.value = false
+  }
+}
+
+/** 是否已拉黑 TA（看自己主页 / 未登录时不需要） */
+async function loadBlockState() {
+  if (isSelf.value || !userStore.isLogged) {
+    blocked.value = false
+    return
+  }
+  try {
+    const res = await blockStatus(uid.value)
+    blocked.value = !!res.data?.blocked
+  } catch {
+    blocked.value = false
+  }
+}
+
+/**
+ * 拉黑 / 解除拉黑
+ *
+ * 拉黑是**双向**屏蔽：彼此的内容都不再出现在对方的动态流里，且不能互相私信；
+ * 后端同时会解除双方的关注关系，所以这里要刷新关系与数据卡片，避免界面显示「已关注」。
+ */
+async function toggleBlock() {
+  if (!userStore.isLogged) {
+    toast.info('请先登录')
+    return
+  }
+  if (followBusy.value) return
+  followBusy.value = true
+  try {
+    if (blocked.value) {
+      await unblockUser(uid.value)
+      blocked.value = false
+      toast.success('已解除拉黑，对方的内容会重新出现在你的动态流里')
+    } else {
+      await blockUser(uid.value)
+      blocked.value = true
+      // 拉黑会解除双方的关注关系：本地先同步，避免按钮仍显示「已关注 / 互相关注」
+      relation.value = {
+        is_following: false,
+        is_follower: relation.value.is_follower,
+        mutual: false
+      }
+      toast.success('已拉黑，彼此的内容都不会再出现在对方的动态流里')
+    }
+    loadSocialStats()
+    loadRelation()
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    followBusy.value = false
+  }
+}
+
+/** 举报该用户（只通知管理员，被举报人不会收到任何提示） */
+async function submitReport({ reason, detail, images }) {
+  reporting.value = true
+  try {
+    await createReport({ target_type: 'user', target_id: uid.value, reason, detail, images })
+    reportVisible.value = false
+    toast.success('举报已提交，我们会尽快处理')
+  } catch {
+    /* 拦截器已提示（重复举报 / 超过每日上限等） */
+  } finally {
+    reporting.value = false
+  }
 }
 
 // 获取目标用户的隐私设置（默认全部公开）
@@ -609,7 +854,11 @@ async function loadFollowList(kind) {
       nickname: o?.nickname,
       avatar: o?.avatar,
       description: o?.description || o?.remarks,
-      create_time: it.create_time
+      create_time: it.create_time,
+      // 互关标识：后端 attachRelation 针对当前这一页批量算好（未登录时全为 false）
+      is_following: !!it.is_following,
+      is_follower: !!it.is_follower,
+      mutual: !!it.mutual
     }
   })
   list.value = page.value === 1 ? items : [...list.value, ...items]
@@ -722,7 +971,9 @@ function loadMore() {
 
 onMounted(() => {
   loadProfile()
-  loadFollowState()
+  loadRelation()
+  loadBlockState()
+  loadSuggestions()
   load()
 })
 
@@ -730,8 +981,12 @@ watch(() => route.params.id, () => {
   // 切换用户主页：重置封禁状态，新主页若被封禁会重新自动弹窗
   banInfo.value = null
   banShown.value = false
+  suggestions.value = []
+  blocked.value = false
   loadProfile()
-  loadFollowState()
+  loadRelation()
+  loadBlockState()
+  loadSuggestions()
   page.value = 1
   finished.value = false
   denied.value = false
@@ -929,13 +1184,19 @@ watch(() => route.params.id, () => {
 }
 .author-stats {
   display: flex;
-  gap: 28px;
+  gap: 18px;
+  /* 五项（文章/动态/关注/粉丝/获赞）在窄屏要能换行，不能挤成一行 */
+  flex-wrap: wrap;
   margin-bottom: 14px;
 }
 .author-stats .stat {
   display: flex;
   flex-direction: column;
   cursor: pointer;
+}
+/* 动态 / 获赞只是展示数字，不做跳转 → 不给手型光标，避免误导点击 */
+.author-stats .stat.is-static {
+  cursor: default;
 }
 .author-stats .stat strong {
   font-size: 18px;
@@ -1128,6 +1389,94 @@ watch(() => route.params.id, () => {
 .user-time {
   font-size: 11px;
   color: var(--text-muted);
+}
+/* 互关标识（后端 attachRelation 批量返回）：互关用主色，单向关注用弱化样式 */
+.user-mutual {
+  flex-shrink: 0;
+  margin-right: 8px;
+  padding: 1px 6px;
+  font-size: 11px;
+  border-radius: 999px;
+  color: var(--primary-deep);
+  background: var(--accent-soft);
+  border: 1px solid var(--primary-soft);
+}
+.user-mutual.is-following {
+  color: var(--text-muted);
+  background: var(--bg-muted);
+  border-color: var(--border-soft);
+}
+
+/* ========== 可能认识的人（仅本人主页） ========== */
+.suggest-card {
+  margin-bottom: 16px;
+}
+.suggest-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.suggest-title {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+.suggest-tip {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.suggest-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 2px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.suggest-item:last-child {
+  border-bottom: none;
+}
+.suggest-link {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+.suggest-link:hover .suggest-name {
+  color: var(--primary);
+}
+.suggest-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.suggest-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.suggest-name {
+  font-size: 14px;
+  font-weight: 600;
+}
+.suggest-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ========== 移动端适配 ========== */

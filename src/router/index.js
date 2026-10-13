@@ -25,6 +25,9 @@ const routes = [
       { path: 'category/:key', name: 'category', component: () => import('@/views/article/CategoryDetail.vue'), props: true },
       { path: 'moments', name: 'moments', component: () => import('@/views/moments/Index.vue') },
       { path: 'moments/:id', name: 'moment-detail', component: () => import('@/views/moments/Detail.vue'), props: true },
+      // 聚合流（关注 / 推荐 / 热门）：按关注关系算的个性化数据，必须登录
+      // （后端 feed 接口同样是 path=all&type=login，见 app/model/auth-rules.go）
+      { path: 'feed', name: 'feed', component: () => import('@/views/feed/Index.vue'), meta: { auth: true } },
       { path: 'links', name: 'links', component: () => import('@/views/links/Index.vue') },
       // 搜索 / 签到：原先是弹窗，现改为独立页面（支持 /search?q=xxx&scope=article 直达）
       { path: 'search', name: 'search', component: () => import('@/views/Search.vue') },
@@ -72,6 +75,8 @@ const routes = [
       // 我的装扮：查看/佩戴已拥有的头像框与头衔（商城只负责兑换，管理集中在这里）
       { path: 'decorations', name: 'user-decorations', component: () => import('@/views/user/Decorations.vue') },
       { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
+      // 拉黑与举报：我的拉黑列表（可解除）+ 我提交的举报与处理进展（可撤回）
+      { path: 'blocks', name: 'user-blocks', component: () => import('@/views/user/Blocks.vue') },
       // 站点配置（管理员）：已迁至后台 /admin/system 的「网站设置」模块，旧地址保留为重定向
       {
         path: 'site',
@@ -158,6 +163,8 @@ const routes = [
       { path: 'decoration', name: 'admin-decoration', component: () => import('@/views/admin/Decoration.vue'), meta: { title: '装扮管理' } },
       // 签到配置（独立模块：奖励项 / 周期 / 里程碑 / 月全勤 / 随机奖励 / 补签）
       { path: 'checkin', name: 'admin-checkin', component: () => import('@/views/admin/Checkin.vue'), meta: { title: '签到管理' } },
+      // 举报管理：处理用户提交的举报（属实可同时移除内容，封禁仍走用户管理）
+      { path: 'reports', name: 'admin-reports', component: () => import('@/views/admin/Reports.vue'), meta: { title: '举报管理' } },
       { path: 'message', name: 'admin-message', component: () => import('@/views/admin/Message.vue'), meta: { title: '消息管理' } },
       // 友链管理：Links.vue 承载统计概览，LinkList.vue 为列表子路由（子页通过 inject 联动筛选）
       {

@@ -219,6 +219,7 @@ const CATALOGUE = [
   { key: 'decorations', name: '我的装扮', icon: 'bi bi-gem', to: '/user/decorations' },
   { key: 'goods', name: '积分商城', icon: 'bi bi-shop', to: '/goods' },
   { key: 'notifications', name: '消息通知', icon: 'bi bi-bell', to: '/user/notifications' },
+  { key: 'blocks', name: '拉黑与举报', icon: 'bi bi-shield-slash', to: '/user/blocks' },
   { key: 'checkin', name: '每日签到', icon: 'bi bi-calendar-check', to: '/checkin' },
   { key: 'write', name: '写新文章', icon: 'bi bi-file-earmark-plus', to: '/manage/posts/write' },
   { key: 'decoration-shop', name: '装扮商城', icon: 'bi bi-palette', to: '/goods?tab=decoration' },

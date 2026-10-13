@@ -59,6 +59,54 @@
       </RouterLink>
     </section>
 
+    <!-- 快捷跳转：与左侧菜单同一份分组 / 权限口径（见 utils/admin-menu.js） -->
+    <section class="shortcut">
+      <header class="shortcut-head">
+        <div class="shortcut-title">
+          <i class="bi bi-lightning-charge-fill" />
+          <span>快捷跳转</span>
+          <span class="shortcut-hint">共 {{ shortcutTotal }} 个功能入口</span>
+        </div>
+        <div class="shortcut-search">
+          <i class="bi bi-search" />
+          <input v-model="keyword" type="search" placeholder="搜索功能，如：评论 / 友链 / 系统" />
+          <button v-if="keyword" type="button" title="清空" @click="keyword = ''">
+            <i class="bi bi-x-lg" />
+          </button>
+        </div>
+      </header>
+
+      <!-- 最近访问：由 Layout 的路由监听记录（子路由已归一到菜单页） -->
+      <div v-if="!keyword.trim() && recentItems.length" class="recent-row">
+        <span class="recent-label"><i class="bi bi-clock-history" /> 最近访问</span>
+        <RouterLink v-for="item in recentItems" :key="item.path" :to="item.path" class="recent-chip">
+          <span v-if="item.isSvg" class="shortcut-icon" v-html="item.svg" />
+          <i v-else :class="item.icon" />
+          {{ item.name }}
+        </RouterLink>
+      </div>
+
+      <div v-if="shortcutGroups.length" class="shortcut-groups">
+        <div v-for="group in shortcutGroups" :key="group.name" class="shortcut-group">
+          <div class="shortcut-group-label">{{ group.label }}</div>
+          <div class="shortcut-grid">
+            <RouterLink v-for="child in group.children" :key="child.path" :to="child.path" class="shortcut-item">
+              <span class="shortcut-icon">
+                <span v-if="child.isSvg" v-html="child.svg" />
+                <i v-else :class="child.icon" />
+              </span>
+              <span class="shortcut-name" :title="child.name">{{ child.name }}</span>
+            </RouterLink>
+          </div>
+        </div>
+      </div>
+      <div v-else class="shortcut-empty">
+        <span v-if="!shortcutReady">菜单加载中…</span>
+        <span v-else-if="shortcutTotal">没有匹配的功能，换个关键词试试</span>
+        <span v-else>当前账号没有可访问的后台页面</span>
+      </div>
+    </section>
+
     <!-- 分组统计 -->
     <section v-for="group in groups" :key="group.title" class="stat-group">
       <header class="group-head">
@@ -111,10 +159,13 @@ import { storeToRefs } from 'pinia'
 import { call, devService } from '@/api/request'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
+import { useAuthPagesStore } from '@/stores/auth-pages'
+import { ADMIN_PINNED, buildAdminMenus, buildAdminPinnedItems, getRecentAdminPaths } from '@/utils/admin-menu'
 import pkg from '../../../package.json'
 
 const userStore = useUserStore()
 const siteStore = useSiteStore()
+const authPagesStore = useAuthPagesStore()
 const { user } = storeToRefs(userStore)
 
 const appVersion = pkg.version || '—'
@@ -171,6 +222,53 @@ function formatTime(ms) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
+// ---------- 快捷跳转 ----------
+// 菜单口径与侧边栏完全一致（utils/admin-menu.js）：分组顺序、权限过滤、图标解析都复用，
+// 所以这里不需要再维护一份页面清单；新增后台页面时侧边栏与快捷入口会同时出现
+const keyword = ref('')
+const recentPaths = ref([])
+
+const allMenus = computed(() => buildAdminMenus(user.value, authPagesStore.getFlat || []))
+
+// 置顶入口（/admin/stats 等）：侧边栏里贴在「概览」下方，快捷跳转里作为第一个分组
+const pinnedItems = computed(() => buildAdminPinnedItems(user.value, authPagesStore.getFlat || []))
+
+// 页面清单是否已就绪：未就绪时不显示「没有可访问页面」，避免首屏闪一下空状态
+const shortcutReady = computed(() => authPagesStore.loaded)
+
+// 快捷跳转分组 = 置顶（概览下方那几个）+ 创作 / 管理 / 安全
+const baseGroups = computed(() => {
+  const pinned = pinnedItems.value.length
+    ? [{ name: ADMIN_PINNED.name, label: ADMIN_PINNED.label, children: pinnedItems.value }]
+    : []
+  return [...pinned, ...allMenus.value]
+})
+
+const shortcutTotal = computed(() => baseGroups.value.reduce((sum, g) => sum + g.children.length, 0))
+
+// 菜单 path → 菜单项：用于把「最近访问」里存的 path 还原成名称 + 图标
+const menuIndex = computed(() => {
+  const map = {}
+  baseGroups.value.forEach((g) => g.children.forEach((c) => { map[c.path] = c }))
+  return map
+})
+
+const recentItems = computed(() => recentPaths.value.map((path) => menuIndex.value[path]).filter(Boolean))
+
+// 关键词过滤：匹配页面名 / 页面路径 / 分组名
+const shortcutGroups = computed(() => {
+  const kw = keyword.value.trim().toLowerCase()
+  if (!kw) return baseGroups.value
+  return baseGroups.value
+    .map((g) => ({
+      ...g,
+      children: g.children.filter((c) =>
+        c.name.toLowerCase().includes(kw) || c.path.toLowerCase().includes(kw) || g.label.includes(kw)
+      )
+    }))
+    .filter((g) => g.children.length)
+})
+
 // ---------- 统计定义 ----------
 function startOfToday() {
   const d = new Date()
@@ -189,7 +287,7 @@ const C = {
   teal: '#14b8a6'
 }
 
-const groupDefs = [
+const statGroupDefs = [
   {
     title: '内容',
     icon: 'bi bi-journal-text',
@@ -309,7 +407,7 @@ const todoDefs = [
 ]
 
 const groups = ref(
-  groupDefs.map((g) => ({
+  statGroupDefs.map((g) => ({
     ...g,
     items: g.items.map((item) => ({ ...item, value: 0, error: '', loading: true }))
   }))
@@ -372,11 +470,15 @@ async function loadStats() {
   await Promise.all(tasks)
 }
 
-onMounted(() => {
+onMounted(async () => {
   avatar.value = user.value?.avatar || defaultAvatar
   siteStore.load()
   loadVersion()
   loadStats()
+
+  // 快捷跳转：等页面清单就绪后再取「最近访问」，避免首屏闪一下空列表
+  await authPagesStore.ensureLoaded()
+  recentPaths.value = getRecentAdminPaths()
 })
 </script>
 
@@ -509,6 +611,190 @@ onMounted(() => {
 .todo-arrow {
   font-size: 12px;
   color: var(--text-light);
+}
+
+/* ---------- 快捷跳转 ---------- */
+.shortcut {
+  padding: 18px 22px 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.shortcut-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.shortcut-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+}
+.shortcut-title .bi {
+  color: var(--primary);
+}
+.shortcut-hint {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-light);
+}
+.shortcut-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  min-width: 240px;
+  padding: 0 10px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-light);
+  font-size: 13px;
+  transition: border-color 0.18s;
+}
+.shortcut-search:focus-within {
+  border-color: var(--primary-soft);
+}
+.shortcut-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  outline: none;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+}
+/* 去掉 type=search 的原生清除按钮，统一用自己的按钮 */
+.shortcut-search input::-webkit-search-cancel-button {
+  display: none;
+}
+.shortcut-search button {
+  border: none;
+  background: transparent;
+  color: var(--text-light);
+  font-size: 12px;
+  line-height: 1;
+  padding: 2px;
+  cursor: pointer;
+  transition: color 0.18s;
+}
+.shortcut-search button:hover {
+  color: var(--primary);
+}
+.recent-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.recent-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-light);
+}
+.recent-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 11px;
+  background: var(--bg-muted);
+  border-radius: 999px;
+  color: var(--text-soft);
+  font-size: 12px;
+  text-decoration: none;
+  transition: background 0.18s, color 0.18s;
+}
+.recent-chip:hover {
+  background: var(--accent-soft);
+  color: var(--primary);
+}
+.recent-chip .shortcut-icon {
+  width: 16px;
+  height: 16px;
+  background: transparent;
+  border-radius: 0;
+  font-size: 12px;
+}
+.shortcut-groups {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.shortcut-group-label {
+  margin-bottom: 8px;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.shortcut-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-muted);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+  font-size: 13px;
+  text-decoration: none;
+  transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.18s, box-shadow 0.18s;
+}
+.shortcut-item:hover {
+  background: var(--bg-card);
+  border-color: var(--primary-soft);
+  color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+.shortcut-item:active {
+  transform: translateY(0);
+}
+.shortcut-icon {
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border-radius: 8px;
+  color: var(--primary);
+  font-size: 15px;
+}
+.shortcut-icon :deep(svg) {
+  width: 16px;
+  height: 16px;
+}
+.shortcut-item:hover .shortcut-icon {
+  background: var(--accent-soft);
+}
+.shortcut-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.shortcut-empty {
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 /* ---------- 统计分组 ---------- */

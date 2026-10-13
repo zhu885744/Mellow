@@ -126,6 +126,7 @@
         @reply="onReply"
         @submit="onSubmit"
         @remove="onRemove"
+        @report="onReport"
       />
       <Pagination
         v-if="total > pageSize"
@@ -135,6 +136,17 @@
         @update:current="(p) => { page = p; load() }"
       />
     </template>
+
+    <!-- 举报评论：提交后只通知管理员，被举报人不会收到提示 -->
+    <ReportDialog
+      :visible="reportVisible"
+      target-type="comment"
+      :target-id="reportTarget?.id || 0"
+      :target-label="reportLabel"
+      :loading="reporting"
+      @update:visible="(v) => (reportVisible = v)"
+      @confirm="submitReport"
+    />
   </div>
 </template>
 
@@ -163,6 +175,8 @@ import {
   getTitleColorClass
 } from '@/utils/helper'
 import TitleBadge from './TitleBadge.vue'
+import ReportDialog from './ReportDialog.vue'
+import { createReport } from '@/api/report'
 
 const props = defineProps({
   bindId: { type: [String, Number], required: true },
@@ -189,6 +203,41 @@ const myTitlePayload = computed(() => pickUserTitlePayload(userStore.user))
 function goMe() {
   const id = userStore.user?.id
   if (userStore.isLogged && id) router.push(`/author/${id}`)
+}
+
+// ---------- 举报 ----------
+// 整棵评论树共用一个举报弹窗：每条评论各挂一个会白白渲染几十个弹窗
+const reportTarget = ref(null)
+const reportVisible = ref(false)
+const reporting = ref(false)
+
+function onReport(comment) {
+  reportTarget.value = comment
+  reportVisible.value = true
+}
+
+// 弹窗里显示「评论「…」」，方便确认没点错条目（表情指令等标记先去掉）
+const reportLabel = computed(() => {
+  const text = String(reportTarget.value?.content || '')
+    .replace(/\[emoji:[^\]]*\]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return text ? `评论「${text.slice(0, 20)}」` : '评论'
+})
+
+async function submitReport({ reason, detail, images }) {
+  const target = reportTarget.value
+  if (!target?.id) return
+  reporting.value = true
+  try {
+    await createReport({ target_type: 'comment', target_id: target.id, reason, detail, images })
+    reportVisible.value = false
+    toast.success('举报已提交，我们会尽快处理')
+  } catch {
+    /* 拦截器已提示（重复举报 / 超过每日上限等） */
+  } finally {
+    reporting.value = false
+  }
 }
 
 const rawList = ref([])
