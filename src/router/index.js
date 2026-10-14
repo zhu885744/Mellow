@@ -19,8 +19,14 @@ const routes = [
       { path: 'articles', name: 'articles', component: () => import('@/views/article/List.vue') },
       { path: 'archives/:id', name: 'article-detail', component: () => import('@/views/article/Detail.vue') },
       { path: 'archives', name: 'archives', component: () => import('@/views/article/Archives.vue') },
-      { path: 'tags', name: 'tags', component: () => import('@/views/article/TagList.vue') },
-      { path: 'tag/:key', name: 'tag', component: () => import('@/views/article/TagDetail.vue'), props: true },
+      // 标签云页已由话题广场取代（/topics：热度榜 + 搜索 + 我关注的，侧栏标签云的「话题广场」入口也指向它）
+      // 旧地址保留重定向，避免老书签 / 站内自定义导航链接失效
+      { path: 'tags', name: 'tags', redirect: '/topics' },
+      // 话题（Hashtag）：广场 + 聚合页
+      // 旧的 /tag/:key 统一重定向到话题页（话题页同时含动态与文章，是标签页的超集）
+      { path: 'topics', name: 'topics', component: () => import('@/views/topic/Index.vue') },
+      { path: 'topic/:key', name: 'topic', component: () => import('@/views/topic/Detail.vue'), props: true },
+      { path: 'tag/:key', name: 'tag', redirect: (to) => ({ path: `/topic/${to.params.key}` }) },
       { path: 'categories', name: 'categories', component: () => import('@/views/article/CategoryList.vue') },
       { path: 'category/:key', name: 'category', component: () => import('@/views/article/CategoryDetail.vue'), props: true },
       { path: 'moments', name: 'moments', component: () => import('@/views/moments/Index.vue') },
@@ -154,7 +160,7 @@ const routes = [
       },
       { path: 'placard', name: 'admin-placard', component: () => import('@/views/admin/Placard.vue'), meta: { title: '公告管理' } },
       { path: 'banner', name: 'admin-banner', component: () => import('@/views/admin/Banner.vue'), meta: { title: '轮播管理' } },
-      { path: 'tags', name: 'admin-tags', component: () => import('@/views/admin/TagList.vue'), meta: { title: '标签管理' } },
+      { path: 'tags', name: 'admin-tags', component: () => import('@/views/admin/TagList.vue'), meta: { title: '话题管理' } },
       { path: 'level', name: 'admin-level', component: () => import('@/views/admin/Level.vue'), meta: { title: '等级管理' } },
       { path: 'exp', name: 'admin-exp', component: () => import('@/views/admin/Exp.vue'), meta: { title: '经验管理' } },
       { path: 'goods', name: 'admin-goods', component: () => import('@/views/admin/Goods.vue'), meta: { title: '商品管理' } },

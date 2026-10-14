@@ -48,6 +48,21 @@
       :position="mentionPosition"
       @select="applyMention"
     />
+
+    <!-- # 话题选择面板（候选来自 topics/candidates，需登录） -->
+    <MentionPicker
+      v-if="topicOpen"
+      ref="topicRef"
+      :items="topicItems"
+      name-key="name"
+      title="选择话题"
+      empty-text="还没有话题，先写一个 #话题# 试试"
+      keyword-empty-text="没有匹配的话题"
+      :keyword="topicKeyword"
+      :position="topicPosition"
+      :loading="topicLoading"
+      @select="applyTopic"
+    />
   </div>
 </template>
 
@@ -55,6 +70,7 @@
 import { ref, watch, onMounted, nextTick } from 'vue'
 import EmojiPicker from './EmojiPicker.vue'
 import MentionPicker from './MentionPicker.vue'
+import { getTopicCandidates } from '@/api/topics'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -101,24 +117,82 @@ function getEditorContent(el) {
 function onInput() {
   const text = getEditorContent(editorRef.value)
   emit('update:modelValue', text)
-  syncMentionState()
+  syncPickerState()
 }
 
-/* ---------------- @ 提及 ---------------- */
+/* ---------------- @ 提及 / # 话题 候选面板 ---------------- */
 
 const mentionRef = ref(null)
 const mentionOpen = ref(false)
 const mentionKeyword = ref('')
 const mentionPosition = ref({ left: 0, top: 0, flipTo: null })
 
-// 光标前是「@关键词」时打开候选面板（@ 前必须是行首或空白，避免把邮箱 a@b.com 当提及）。
-// 插入的是纯文本 @昵称，后端保存时会规范化为 @[昵称](/author/uid)（见 app/model/mention.go）。
-function syncMentionState() {
+const topicRef = ref(null)
+const topicOpen = ref(false)
+const topicKeyword = ref('')
+const topicPosition = ref({ left: 0, top: 0, flipTo: null })
+const topicItems = ref([])
+const topicLoading = ref(false)
+
+// @ 提及：@ 前必须是行首或空白，避免把邮箱 a@b.com 当提及
+const MENTION_RE = /(?:^|\s)@([^\s@]{0,32})$/
+// # 话题：不加左边界（中文里「文字#话题」很常见），关键词里不允许再出现 # 与空白
+const TOPIC_RE = /#([^#\s@]{0,32})$/
+
+/**
+ * 光标位置 → 面板坐标（视口坐标）
+ *
+ * MentionPicker 是 position: fixed，直接取光标矩形即可，不做「相对容器」的换算 ——
+ * 那种算法要扣除编辑器内边距与祖先偏移，容器层级一变就会整体错位。
+ * 下方空间不足（面板最高 236 + 间距）时改为向上展开。
+ */
+function caretPanelPosition(range) {
+  const rects = range.getClientRects()
+  const caret = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect()
+
+  const gap = 6
+  const below = caret.bottom + gap
+
+  return {
+    left: caret.left,
+    top: below,
+    flipTo: below + 246 > window.innerHeight ? caret.top - gap : null
+  }
+}
+
+/** 取回话题候选（懒加载：第一次输入 # 时才请求；接口需要登录，失败就退化为空列表） */
+async function ensureTopicItems() {
+  if (topicItems.value.length || topicLoading.value) return
+  topicLoading.value = true
+  try {
+    const res = await getTopicCandidates({ limit: 200 })
+    topicItems.value = res?.data || []
+  } catch {
+    topicItems.value = []
+  } finally {
+    topicLoading.value = false
+  }
+}
+
+/**
+ * 按光标前的文本决定开哪个候选面板
+ *
+ * - 「@关键词」→ @提及（只匹配已关注的人，见 app/model/mention.go）
+ * - 「#关键词」→ 话题（保存时规范化成 #[话题名](/topic/12)，不存在的话题自动创建）
+ *
+ * 两者同时命中时（如 "@a#b"）取离光标更近的触发符，避免两个面板打架。
+ */
+function syncPickerState() {
   const editor = editorRef.value
   const selection = window.getSelection()
 
-  if (!editor || !selection || selection.rangeCount === 0) {
+  const close = () => {
     mentionOpen.value = false
+    topicOpen.value = false
+  }
+
+  if (!editor || !selection || selection.rangeCount === 0) {
+    close()
     return
   }
 
@@ -126,56 +200,58 @@ function syncMentionState() {
   const node = range.startContainer
 
   if (!range.collapsed || !editor.contains(node) || node.nodeType !== Node.TEXT_NODE) {
-    mentionOpen.value = false
+    close()
     return
   }
 
   const before = node.textContent.slice(0, range.startOffset)
-  const matched = before.match(/(?:^|\s)@([^\s@]{0,32})$/)
+  const mention = before.match(MENTION_RE)
+  const topic = before.match(TOPIC_RE)
 
-  if (!matched) {
+  if (topic && (!mention || before.lastIndexOf('#') > before.lastIndexOf('@'))) {
+    mentionOpen.value = false
+    topicKeyword.value = topic[1]
+    topicOpen.value = true
+    topicPosition.value = caretPanelPosition(range)
+    ensureTopicItems()
+    return
+  }
+
+  topicOpen.value = false
+
+  if (!mention) {
     mentionOpen.value = false
     return
   }
 
-  mentionKeyword.value = matched[1]
+  mentionKeyword.value = mention[1]
   mentionOpen.value = true
-
-  // 面板用**视口坐标**（MentionPicker 是 position: fixed）：直接取光标矩形，
-  // 不再做「相对容器」的换算 —— 那种算法要扣除编辑器内边距与祖先偏移，
-  // 容器层级一变（例如外面多包一层）就会整体错位。
-  // 下方空间不足（面板最高 236 + 间距）时改为向上展开。
-  const rects = range.getClientRects()
-  const caret = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect()
-
-  const gap = 6
-  const below = caret.bottom + gap
-
-  mentionPosition.value = {
-    left: caret.left,
-    top: below,
-    flipTo: below + 246 > window.innerHeight ? caret.top - gap : null
-  }
+  mentionPosition.value = caretPanelPosition(range)
 }
 
 // 上/下键移动、回车选中、Esc 关闭（焦点在 contenteditable 里，事件不会落到面板上，所以在这里转发）
+// 同一时刻只会有一个候选面板（见 syncPickerState）
 function onKeydown(event) {
-  if (!mentionOpen.value) return
+  if (!mentionOpen.value && !topicOpen.value) return
+
+  const picker = topicOpen.value ? topicRef.value : mentionRef.value
+  if (!picker) return
 
   if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
     event.preventDefault()
-    mentionRef.value?.move(event.key === 'ArrowDown' ? 1 : -1)
+    picker.move(event.key === 'ArrowDown' ? 1 : -1)
     return
   }
 
   if (event.key === 'Enter') {
-    if (mentionRef.value?.selectActive()) event.preventDefault()
+    if (picker.selectActive()) event.preventDefault()
     return
   }
 
   if (event.key === 'Escape') {
     event.preventDefault()
     mentionOpen.value = false
+    topicOpen.value = false
   }
 }
 
@@ -206,7 +282,36 @@ function applyMention(user) {
 
   // execCommand 插入纯文本：会正常触发 input 事件与撤销栈，比手动拼 DOM 可靠
   document.execCommand('insertText', false, `@${user.nickname} `)
-  syncMentionState()
+  syncPickerState()
+  onInput()
+}
+
+// 选中话题候选：把已输入的「#关键词」替换成 #话题名#（后端保存时会规范化成链接）
+function applyTopic(topic) {
+  const keyword = topicKeyword.value
+  topicOpen.value = false
+
+  const editor = editorRef.value
+  if (!editor || !topic?.name) return
+
+  editor.focus()
+  const selection = window.getSelection()
+  if (!selection || selection.rangeCount === 0) return
+
+  const range = selection.getRangeAt(0)
+  const node = range.startContainer
+
+  // 先把「#关键词」整段选中，下面的 execCommand 会用 #话题名# 覆盖它
+  if (node.nodeType === Node.TEXT_NODE) {
+    const start = Math.max(0, range.startOffset - keyword.length - 1)
+    const replaceRange = document.createRange()
+    replaceRange.setStart(node, start)
+    replaceRange.setEnd(node, range.startOffset)
+    selection.removeAllRanges()
+    selection.addRange(replaceRange)
+  }
+
+  document.execCommand('insertText', false, `#${topic.name}# `)
   onInput()
 }
 
@@ -284,7 +389,24 @@ function clear() {
 }
 
 // openEmoji：供外部工具栏（如发布动态的图标工具栏）调用 —— 开关表情面板
-defineExpose({ clear, focus: () => editorRef.value?.focus(), openEmoji: togglePicker })
+/**
+ * 在光标处插入一个「#」并弹出话题候选面板
+ *
+ * 选中候选后会补全成 #话题名#，后端保存时规范化成 #[话题名](/topic/12)（见 app/model/topics.go）；
+ * 也可以不用面板，直接手写 #话题#。
+ */
+function insertTopic() {
+  const editor = editorRef.value
+  if (!editor) return
+
+  editor.focus()
+  // execCommand 插入纯文本：会正常触发 input 事件与撤销栈，和 @提及 的做法一致
+  document.execCommand('insertText', false, '#')
+  // onInput 里会走 syncPickerState，光标前是「#」时自动弹出候选面板
+  onInput()
+}
+
+defineExpose({ clear, focus: () => editorRef.value?.focus(), openEmoji: togglePicker, insertTopic })
 </script>
 
 <style scoped>

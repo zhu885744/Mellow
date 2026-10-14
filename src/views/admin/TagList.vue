@@ -156,7 +156,7 @@
 
             <template v-else>
               <router-link
-                :to="`/tag/${item.id}`"
+                :to="`/topic/${item.id}`"
                 class="btn btn-ghost btn-sm"
                 title="前台查看"
                 aria-label="前台查看"
@@ -206,6 +206,28 @@
           rows="3"
           placeholder="可选，用于前台标签页展示"
         />
+      </div>
+
+      <div class="form-item">
+        <label class="form-label">话题主持人（用户 ID）</label>
+        <input
+          v-model.number="dialog.moderator_uid"
+          class="input"
+          type="number"
+          min="0"
+          placeholder="0 表示暂无主持人"
+        />
+        <p class="form-hint">
+          主持人可在前台话题页编辑该话题的简介与封面；留 0 表示不设置
+        </p>
+      </div>
+
+      <div class="form-item">
+        <label class="form-label">精选话题</label>
+        <select v-model.number="dialog.recommend" class="input">
+          <option :value="0">普通</option>
+          <option :value="1">精选（话题广场可筛选展示）</option>
+        </select>
       </div>
 
       <div class="form-item">
@@ -304,7 +326,10 @@ const dialog = reactive({
   id: 0,
   name: '',
   description: '',
-  avatar: ''
+  avatar: '',
+  // 话题（Hashtag）扩展字段：标签即话题，见 Mellow/src/views/topic/*
+  moderator_uid: 0,
+  recommend: 0
 })
 
 const confirm = reactive({
@@ -422,6 +447,8 @@ function resetDialog() {
   dialog.name = ''
   dialog.description = ''
   dialog.avatar = ''
+  dialog.moderator_uid = 0
+  dialog.recommend = 0
 }
 
 function openAdd() {
@@ -434,6 +461,8 @@ function openEdit(item) {
   dialog.name = item.name || ''
   dialog.description = item.description || ''
   dialog.avatar = item.avatar || ''
+  dialog.moderator_uid = Number(item.moderator_uid) || 0
+  dialog.recommend = Number(item.recommend) || 0
   dialog.visible = true
 }
 
@@ -447,7 +476,9 @@ async function save() {
   const payload = {
     name,
     description: dialog.description.trim(),
-    avatar: dialog.avatar.trim()
+    avatar: dialog.avatar.trim(),
+    moderator_uid: Number(dialog.moderator_uid) || 0,
+    recommend: Number(dialog.recommend) ? 1 : 0
   }
   if (dialog.id) payload.id = dialog.id
 

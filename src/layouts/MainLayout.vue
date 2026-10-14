@@ -82,6 +82,10 @@
           <router-link to="/feed" active-class="active" class="nav-item">
             <span class="nav-zh">关注</span>
           </router-link>
+          <!-- 话题广场：热度榜 + 我关注的（聚合页见 /topic/:key） -->
+          <router-link to="/topics" active-class="active" class="nav-item">
+            <span class="nav-zh">话题</span>
+          </router-link>
           <!-- <router-link to="/moments" active-class="active" class="nav-item">
             <span class="nav-zh">奇思</span>
           </router-link> -->

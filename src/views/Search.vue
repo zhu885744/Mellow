@@ -567,7 +567,7 @@ function goResult(item) {
       if (item.key) router.push(`/${item.key}`)
       break
     case 'tag':
-      if (item.id) router.push(`/tag/${item.id}`)
+      if (item.id) router.push(`/topic/${item.id}`)
       break
     case 'links':
       if (item.url) window.open(item.url, '_blank')

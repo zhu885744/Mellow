@@ -133,13 +133,13 @@
     <div class="card card-pad-sm">
       <div class="card-title">
         <span>标签云</span>
-        <router-link to="/tags" class="more-link">查看全部 <i class="bi bi-arrow-right" /></router-link>
+        <router-link to="/topics" class="more-link">话题广场 <i class="bi bi-arrow-right" /></router-link>
       </div>
       <div class="tag-cloud">
         <router-link
           v-for="t in tags"
           :key="t.id"
-          :to="`/tag/${t.id}`"
+          :to="`/topic/${t.id}`"
           class="tag tag-primary"
         >{{ t.name }}</router-link>
         <span v-if="!tags.length" class="empty" style="padding: 12px 0;">暂无标签</span>

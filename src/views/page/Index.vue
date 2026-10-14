@@ -30,7 +30,7 @@
       <router-link
         v-for="t in tagList"
         :key="t.id"
-        :to="`/tag/${t.id}`"
+        :to="`/topic/${t.id}`"
         class="tag tag-primary"
       >#{{ t.name }}</router-link>
     </div>

@@ -34,6 +34,16 @@
         <i class="bi bi-folder2-open" />
       </button>
 
+      <button
+        type="button"
+        class="composer__tool"
+        title="插入话题（#话题#，发布后自动创建并聚合）"
+        @mousedown.prevent
+        @click="insertTopicMark"
+      >
+        <i class="bi bi-hash" />
+      </button>
+
       <span class="composer__toolbar-split" />
       <span class="composer__count">{{ images.length }}/{{ MAX_IMAGES }}</span>
       <span v-if="uploading" class="composer__count">上传中…</span>
@@ -92,7 +102,9 @@
       <button class="btn btn-primary btn-sm btn-block" :disabled="publishing || uploading" @click="submit">
         {{ publishing ? '发布中...' : '发布' }}
       </button>
-      <span class="composer__tip">「若站点开启了内容审核，发布后需管理员审核通过才对外显示」</span>
+      <span class="composer__tip">
+        「用 <code>#话题#</code> 参与话题（发布后自动创建话题，点击可看该话题下的内容）；若站点开启了内容审核，发布后需管理员审核通过才对外显示」
+      </span>
     </div>
   </div>
 </template>
@@ -146,6 +158,11 @@ const editorRef = ref(null)
 // 自画工具栏用：开关编辑器的表情面板
 function openEmoji() {
   editorRef.value?.openEmoji()
+}
+
+// 自画工具栏用：插入话题标记「##」（光标落在两个 # 之间，接着输入话题名即可）
+function insertTopicMark() {
+  editorRef.value?.insertTopic()
 }
 
 const avatar = computed(() => user.value?.avatar || '')

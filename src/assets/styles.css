@@ -756,6 +756,20 @@ h1, h2, h3 {
   margin: 0 2px;
 }
 
+/* ========== 话题 #话题#（v-html / markdown 注入，需全局） ========== */
+/* 后端把 #话题# 规范化为 #[话题名](/topic/12)（见 app/model/topics.go），
+   动态 / 评论走 utils/emoji.js，文章 / 独立页走 markdown-it，两处 class 都是 hashtag */
+a.hashtag {
+  color: var(--primary);
+  font-weight: 500;
+  text-decoration: none;
+  transition: color 0.18s;
+}
+a.hashtag:hover {
+  color: var(--primary-hover, var(--primary));
+  text-decoration: underline;
+}
+
 /* ========== 点赞反馈动画（全局，点赞图标需相对定位容器） ========== */
 @keyframes like-pop {
   0% { transform: scale(1); }

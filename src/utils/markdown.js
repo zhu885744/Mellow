@@ -37,6 +37,11 @@ md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
     if (href.startsWith('/author/')) {
       token.attrSet('class', 'mention')
     }
+    // 话题：后端保存时把 #话题# 规范化为 #[话题名](/topic/12)（见 app/model/topics.go），
+    // 同样补 class，供主题样式与 SPA 点击拦截识别
+    if (href.startsWith('/topic/')) {
+      token.attrSet('class', 'hashtag')
+    }
   }
   return defaultLinkOpen(tokens, idx, options, env, self)
 }

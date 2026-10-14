@@ -27,6 +27,21 @@ export const renderMention = (content) => {
   })
 }
 
+/**
+ * 渲染 #话题#
+ *
+ * 后端保存内容时会把 #话题# 规范化为 markdown 链接 #[话题名](/topic/12)
+ * （见 app/model/topics.go，不存在的话题会自动创建），这里转成可点击的 <a>，
+ * 与 @提及 同一套做法：文章 / 独立页由 markdown-it 渲染，评论 / 动态走这里，表现一致。
+ */
+export const renderHashtag = (content) => {
+  if (!content || !String(content).includes('#[')) return content || ''
+  return String(content).replace(/#\[([^\[\]]*)\]\(\/topic\/(\d+)\)/g, (match, name, id) => {
+    const safe = escapeHtml(name)
+    return `<a class="hashtag" data-topic-id="${id}" href="/topic/${id}">#${safe}#</a>`
+  })
+}
+
 /** HTML 转义（v-html 前的兜底，避免昵称里的特殊字符被当标签解析） */
 export const escapeHtml = (text) => {
   return String(text ?? '')
@@ -46,8 +61,8 @@ export const escapeHtml = (text) => {
 export const renderEmoji = (content, options = {}) => {
   if (!content) return ''
   const size = options.size || 24
-  // @ 提及先转链接：链接文本里不会出现 [emoji:]，与表情互不干扰
-  let html = renderMention(String(content))
+  // @ 提及、#话题# 先转链接：链接文本里不会出现 [emoji:]，与表情互不干扰
+  let html = renderHashtag(renderMention(String(content)))
   // 替换 [emoji:url] 为图片
   html = html.replace(
     /\[emoji:\s*(https?:\/\/[^\]]+|\/[^\]]+|[^\]]+)\]/g,

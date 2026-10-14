@@ -21,7 +21,7 @@
             :key="t.id"
             class="meta-tag"
           >
-            <router-link :to="`/tag/${t.id}`">#{{ t.name }}</router-link>
+            <router-link :to="`/topic/${t.id}`">#{{ t.name }}</router-link>
           </span>
         </div>
         <p class="article-abstract">

@@ -13,12 +13,6 @@ const toIdsArray = (ids) =>
     .map((i) => Number(i))
     .filter((i) => i > 0)
 
-export const listTags = (params = {}) =>
-  call('tags', 'all', { method: 'GET', params })
-
-export const getTag = (id) =>
-  call('tags', 'one', { method: 'GET', params: { id } })
-
 // 全量标签（供文章编辑选择标签时使用）
 export const listAllTags = (params = {}) =>
   call('tags', 'all', {
@@ -44,14 +38,12 @@ export const listTagsAdmin = (params = {}) =>
       page: 1,
       limit: 15,
       order: 'create_time desc',
-      field: 'id,name,description,avatar,article_count,create_time,update_time,delete_time',
+      // moderator_uid / recommend 是话题扩展字段（主持人 / 精选），字段过滤时必须带上
+      field:
+        'id,name,description,avatar,moderator_uid,recommend,article_count,create_time,update_time,delete_time',
       ...params
     }
   })
-
-// 标签数量统计（注意：后端 tags/count 不支持 onlyTrashed，回收站数量请用列表的 count）
-export const countTags = (params = {}) =>
-  call('tags', 'count', { method: 'GET', params })
 
 // 保存标签：无 id 为新增，有 id 为更新（后端 save 自动分流）
 export const saveTag = (data) =>
@@ -118,15 +110,8 @@ export const myCollects = (params = {}) =>
 export const myLikes = (params = {}) =>
   call('user-likes', 'likes', { method: 'GET', params })
 
-// 关注
-export const follow = (follow_uid) =>
-  call('user-follows', 'follow', { method: 'POST', data: { follow_uid } })
-
-export const unfollow = (follow_uid) =>
-  call('user-follows', 'unfollow', { method: 'POST', data: { follow_uid } })
-
-export const isFollowing = (follow_uid) =>
-  call('user-follows', 'is-following', { method: 'GET', params: { follow_uid } })
+// 关注相关接口（follow / unfollow / is-following / relation / suggest / stats）由
+// views/user/Author.vue 直接调 call('user-follows', ...)，这里不再另做一层封装。
 
 // 通知
 export const listNotifications = (params = {}) =>

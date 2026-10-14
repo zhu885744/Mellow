@@ -1,8 +1,8 @@
 <template>
-  <div class="mention-picker" :style="panelStyle" role="listbox" aria-label="选择要 @ 的用户">
-    <p v-if="loading" class="mention-picker__tip">加载中…</p>
+  <div class="mention-picker" :style="panelStyle" role="listbox" :aria-label="title">
+    <p v-if="isLoading" class="mention-picker__tip">加载中…</p>
     <p v-else-if="!list.length" class="mention-picker__tip">
-      {{ keyword ? '没有匹配的已关注用户' : '你还没有关注任何人' }}
+      {{ keyword ? keywordEmptyText : emptyText }}
     </p>
     <template v-else>
       <button
@@ -16,9 +16,9 @@
         @mousedown.prevent="select(item)"
         @mouseenter="active = index"
       >
-        <img v-if="item.avatar" class="mention-item__avatar" :src="fullUrl(item.avatar)" :alt="item.nickname" loading="lazy" />
-        <span v-else class="mention-item__avatar mention-item__avatar--text">{{ item.nickname.slice(0, 1) }}</span>
-        <span class="mention-item__name">{{ item.nickname }}</span>
+        <img v-if="item.avatar" class="mention-item__avatar" :src="fullUrl(item.avatar)" :alt="nameOf(item)" loading="lazy" />
+        <span v-else class="mention-item__avatar mention-item__avatar--text">{{ nameOf(item).slice(0, 1) }}</span>
+        <span class="mention-item__name">{{ nameOf(item) }}</span>
       </button>
     </template>
   </div>
@@ -26,12 +26,13 @@
 
 <script setup>
 /**
- * @ 用户选择器（浮层）
+ * 候选选择浮层（@ 用户 / # 话题共用）
  *
- * 只列出**当前用户已关注的人** —— 与后端 app/model/mention.go 的口径完全一致：
- * 未关注的人后端也不会解析成提及，所以这里不给候选。
+ * 默认数据源是**当前用户已关注的人**（与后端 app/model/mention.go 的口径一致：
+ * 未关注的人后端也不会解析成提及）；`#` 话题联想时由父级传 items 进来复用本组件
+ * （见 EmojiEditor.vue），两者的交互与外观完全一致。
  *
- * 用法：父级（编辑器）自己监听光标前的「@关键词」，把关键词与浮层坐标传进来；
+ * 用法：父级（编辑器）自己监听光标前的「@关键词 / #关键词」，把关键词与浮层坐标传进来；
  * 键盘上下键 / 回车由父级转发给自己的 move() / selectActive()（见 EmojiEditor.vue），
  * 因为焦点始终在 contenteditable 里，事件不会落到本组件上。
  */
@@ -40,8 +41,18 @@ import { getMentionCandidates } from '@/api/mention'
 import { getFullUrl } from '@/utils/runtimeConfig'
 
 const props = defineProps({
-  // 光标前已输入的关键词（@ 之后的部分）
+  // 光标前已输入的关键词（@ / # 之后的部分）
   keyword: { type: String, default: '' },
+  // 候选项：传了就直接用（话题联想），不传则拉取「我关注的人」
+  items: { type: Array, default: null },
+  // 名称字段：用户是 nickname，话题是 name
+  nameKey: { type: String, default: 'nickname' },
+  // 无障碍标题与两种空态文案
+  title: { type: String, default: '选择要 @ 的用户' },
+  emptyText: { type: String, default: '你还没有关注任何人' },
+  keywordEmptyText: { type: String, default: '没有匹配的已关注用户' },
+  // 外部数据源是否仍在加载（话题候选由父级懒加载，见 EmojiEditor.vue）
+  loading: { type: Boolean, default: false },
   // 浮层坐标（**视口坐标**，配合 position: fixed）：
   //   left   面板左边缘
   //   top    向下展开时的上边缘
@@ -79,9 +90,17 @@ const active = ref(0)
 
 const fullUrl = getFullUrl
 
+function nameOf(item) {
+  return String(item?.[props.nameKey] ?? '')
+}
+
+const isLoading = computed(() => props.loading || loading.value)
+
 const list = computed(() => {
   const keyword = props.keyword.trim().toLowerCase()
-  const matched = keyword ? all.value.filter((item) => item.nickname.toLowerCase().includes(keyword)) : all.value
+  const matched = keyword
+    ? all.value.filter((item) => nameOf(item).toLowerCase().includes(keyword))
+    : all.value
   return matched.slice(0, MAX_SHOW)
 })
 
@@ -97,7 +116,22 @@ watch(list, () => {
   if (active.value >= list.value.length) active.value = 0
 })
 
+// 话题候选是懒加载：面板可能先挂载、数据后到，这里跟着更新（否则第一次打开是空面板）
+watch(
+  () => props.items,
+  (value) => {
+    if (Array.isArray(value)) all.value = value
+  }
+)
+
 onMounted(async () => {
+  // 话题联想：父级已经取回候选（比组件自己去请求更可控），这里直接用
+  if (Array.isArray(props.items)) {
+    all.value = props.items
+    loading.value = false
+    return
+  }
+
   all.value = await getMentionCandidates()
   loading.value = false
 })

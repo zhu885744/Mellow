@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SectionTitle title="关注流">
+    <SectionTitle :title="type === 'topics' ? '话题榜' : '关注流'">
       <template #extra>
         <span class="text-muted">{{ currentTab.hint }}</span>
       </template>
@@ -12,6 +12,9 @@
         recommend 近 30 天「我没关注过」的内容，按热度排序
         hot       近 30 天全站公开动态，按热度排序
       均为公开内容（audit=1 且 status=1），草稿 / 待审核不会出现。
+
+      另有一个「话题」tab：数据来自 topics/board（话题热度榜），不是动态流，
+      所以走 TopicBoard 渲染，与话题广场共用同一套卡片。
     -->
     <div class="feed-tabs" role="tablist">
       <button
@@ -34,30 +37,39 @@
       <span class="spinner" /> 加载中...
     </div>
 
-    <MomentItem
-      v-for="item in list"
-      :key="item.id"
-      :moment="item"
-      @delete="reload"
-      @refresh="reload"
+    <!-- 话题榜：卡片组件与话题广场共用（含关注按钮） -->
+    <TopicBoard
+      v-else-if="type === 'topics'"
+      :items="topicList"
+      empty-text="还没有话题，去动态或文章里写 #话题# 试试"
     />
 
-    <template v-if="!loading && !list.length">
-      <EmptyState :icon="emptyState.icon" :text="emptyState.text" />
-      <p v-if="emptyState.action" class="feed-empty-action">
-        <RouterLink :to="emptyState.action.to" class="btn btn-primary btn-sm">
-          {{ emptyState.action.text }}
-        </RouterLink>
-      </p>
+    <template v-else>
+      <MomentItem
+        v-for="item in list"
+        :key="item.id"
+        :moment="item"
+        @delete="reload"
+        @refresh="reload"
+      />
+
+      <template v-if="!list.length">
+        <EmptyState :icon="emptyState.icon" :text="emptyState.text" />
+        <p v-if="emptyState.action" class="feed-empty-action">
+          <RouterLink :to="emptyState.action.to" class="btn btn-primary btn-sm">
+            {{ emptyState.action.text }}
+          </RouterLink>
+        </p>
+      </template>
+
+      <Pagination
+        v-if="total > pageSize"
+        :current="page"
+        :total="total"
+        :page-size="pageSize"
+        @update:current="onPage"
+      />
     </template>
-
-    <Pagination
-      v-if="!loading && total > pageSize"
-      :current="page"
-      :total="total"
-      :page-size="pageSize"
-      @update:current="onPage"
-    />
   </div>
 </template>
 
@@ -75,14 +87,18 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
 import MomentItem from '@/components/MomentItem.vue'
+import TopicBoard from '@/components/TopicBoard.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { getFeed } from '@/api/feed'
+import { listTopics } from '@/api/topics'
 
 const TABS = [
   { key: 'follow', name: '关注', icon: 'bi bi-people', hint: '只看我关注的人发布的动态' },
   { key: 'recommend', name: '推荐', icon: 'bi bi-stars', hint: '近 30 天我还没关注过的好内容' },
-  { key: 'hot', name: '热门', icon: 'bi bi-fire', hint: '近 30 天热门：点赞 ×1 + 评论 ×2 + 收藏 ×3' }
+  { key: 'hot', name: '热门', icon: 'bi bi-fire', hint: '近 30 天热门：点赞 ×1 + 评论 ×2 + 收藏 ×3' },
+  // 话题榜：数据来自 topics/board，不是动态流（渲染 TopicBoard）
+  { key: 'topics', name: '话题', icon: 'bi bi-hash', hint: '话题热度榜：文章 ×3 + 动态 ×2 + 关注 ×2' }
 ]
 
 const route = useRoute()
@@ -96,6 +112,7 @@ function pickType(value) {
 
 const type = ref(pickType(route.query.type))
 const list = ref([])
+const topicList = ref([])
 const total = ref(0)
 const loading = ref(false)
 const page = ref(1)
@@ -120,6 +137,20 @@ const emptyState = computed(() => {
 
 async function load() {
   loading.value = true
+
+  // 话题榜走 topics/board（榜单数据，不是动态流，也没有分页）
+  if (type.value === 'topics') {
+    try {
+      const res = await listTopics({ limit: 50 })
+      topicList.value = res?.data || []
+    } catch {
+      topicList.value = []
+    } finally {
+      loading.value = false
+    }
+    return
+  }
+
   try {
     const res = await getFeed(type.value, { page: page.value, limit: pageSize })
     list.value = res.data?.data || []
