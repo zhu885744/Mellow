@@ -130,6 +130,7 @@ import { listLinks, listLinkGroups, createLink } from '@/api/links'
 import { call } from '@/api/request'
 import { cache } from '@/utils/cache'
 import { renderMarkdown } from '@/utils/markdown'
+import { sanitizeHtml } from '@/utils/html'
 import { toast } from '@/utils/toast'
 
 // 优化后的默认头像（渐变背景+白色文字）
@@ -146,7 +147,9 @@ const explain = ref(null)
 const explainHtml = computed(() => {
   const c = explain.value?.content || ''
   if (!c) return ''
-  return /<\/?[a-z][\s\S]*>/i.test(c) ? c : renderMarkdown(c)
+  // 含标签时按富文本渲染，但**必须走与文章详情同一套清洗** —— 这里是 v-html 出口，
+  // 直接输出原始 HTML 会引入 XSS（说明内容来自「页面管理」里的 links 页面）
+  return /<\/?[a-z][\s\S]*>/i.test(c) ? sanitizeHtml(c) : renderMarkdown(c)
 })
 
 async function openExplain() {

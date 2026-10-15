@@ -60,7 +60,9 @@ export const useNotificationStore = defineStore('notification', () => {
   }
 
   function startPolling() {
-    stopPolling()
+    // 侧栏与移动端底栏都会在挂载时调用：已经在轮询就不要重启，
+    // 否则同一轮挂载会立刻多发一次 unread-count + 列表请求（移动端侧栏只是被 CSS 隐藏，组件仍然挂载）
+    if (timer) return
     refresh()
     timer = setInterval(() => {
       // 后台标签页不轮询，避免无效请求

@@ -116,6 +116,9 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
+  /* 开关滑块：浅色下是纯白（用 var 的兜底值），深色下改成暖白，避免白色滑块与暖色轨道脱节 */
+  --switch-knob: #ece6da;
+
   --paper-0: #221f1b;        /* 卡片：比页面亮一档 */
   --paper-1: #1a1815;        /* 页面底 */
   --paper-2: #2b2723;        /* 输入框 / 悬浮层 */
@@ -154,6 +157,23 @@
 /* ========== Reset ========== */
 *, *::before, *::after {
   box-sizing: border-box;
+}
+
+/* 键盘可见焦点基线
+ *
+ * 项目里大量自造控件写了 `outline: none`，键盘用户因此看不到焦点在哪。
+ * 这里给所有可聚焦元素一个统一兜底；`:focus-visible` 只在键盘操作时命中，
+ * 鼠标点击不会出现描边，不影响原有观感（写了自己 focus 样式的组件优先级更高，不受影响）。
+ */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+summary:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--accent-ring, var(--primary-soft));
+  outline-offset: 2px;
 }
 
 html, body {

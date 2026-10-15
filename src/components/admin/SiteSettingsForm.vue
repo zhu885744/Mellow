@@ -559,7 +559,7 @@ onMounted(getGlobalConfig)
   height: 16px;
   left: 3px;
   top: 3px;
-  background: #fff;
+  background: var(--switch-knob, #fff);
   border-radius: 50%;
   transition: 0.2s;
 }

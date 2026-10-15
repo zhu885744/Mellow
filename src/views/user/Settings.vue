@@ -213,7 +213,8 @@ watch(
   width: 20px;
   height: 20px;
   border-radius: 50%;
-  background: #fff;
+  /* 深色模式下用暖白滑块（见 styles.css 的 --switch-knob），浅色回落纯白 */
+  background: var(--switch-knob, #fff);
   transition: transform 0.2s;
 }
 .switch.on .knob {

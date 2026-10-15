@@ -128,17 +128,17 @@
               <div class="result-main">
                 <div class="result-line">
                   <span class="result-badge" :class="`is-${item._type}`">{{ typeName(item._type) }}</span>
-                  <span class="result-title" v-html="titleText(item)" />
+                  <span class="result-title" v-html="safeHtml(titleText(item))" />
                 </div>
 
-                <!-- 摘要 / 正文片段 / 简介（后端已做 <mark> 高亮） -->
-                <p v-if="summaryOf(item)" class="result-summary" v-html="summaryOf(item)" />
+                <!-- 摘要 / 正文片段 / 简介（后端已做 <mark> 高亮，其余用户内容在此转义） -->
+                <p v-if="summaryOf(item)" class="result-summary" v-html="safeHtml(summaryOf(item))" />
 
                 <!-- 元信息：标签、地址、位置、阅读量、时间等 -->
                 <div v-if="metaOf(item).length" class="result-meta">
                   <span v-for="(meta, i) in metaOf(item)" :key="i" class="result-meta__item">
                     <i :class="meta.icon" aria-hidden="true" />
-                    <span v-html="meta.text" />
+                    <span v-html="safeHtml(meta.text)" />
                   </span>
                 </div>
               </div>
@@ -165,6 +165,7 @@
  */
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { escapeHtml } from '@/utils/emoji'
 import EmptyState from '@/components/EmptyState.vue'
 import { call } from '@/api/request'
 import { fromNow } from '@/utils/time'
@@ -530,6 +531,17 @@ function metaOf(item) {
   return meta
 }
 
+/**
+ * 搜索结果安全化：整体转义，只放行后端注入的 `<mark>` 高亮
+ *
+ * 后端 search.go 的 highlightResult 只在命中处加 <mark>/</mark>，其余全是用户内容
+ * （标题 / 摘要 / 动态正文 / 简介），且后端不做 XSS 清洗，所以必须在渲染前转义，
+ * 否则一条 `<img src=x onerror=...>` 的动态被别人搜到就会执行。
+ */
+function safeHtml(text) {
+  return escapeHtml(text).replace(/&lt;(\/?mark)&gt;/g, '<$1>')
+}
+
 // 截断带 <mark> 高亮的文本（保留标签闭合，避免截断破坏高亮）
 function truncateHtml(text, max = 100) {
   if (!text) return ''
@@ -570,7 +582,8 @@ function goResult(item) {
       if (item.id) router.push(`/topic/${item.id}`)
       break
     case 'links':
-      if (item.url) window.open(item.url, '_blank')
+      // noopener：外链页面拿不到 window.opener，避免被反向跳转（tabnabbing）
+      if (item.url) window.open(item.url, '_blank', 'noopener,noreferrer')
       break
     case 'users':
       if (item.id) router.push(`/author/${item.id}`)

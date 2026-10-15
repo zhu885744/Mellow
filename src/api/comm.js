@@ -1,5 +1,4 @@
 import { call, devService } from './request'
-import cryptoUtil from '@/utils/crypto'
 
 /**
  * 获取服务器 unix 时间戳（用于加密盐派生）
@@ -23,6 +22,10 @@ async function getUnix() {
  * 返回 { AES, headers }
  */
 async function buildEncryptedRequest(account, password) {
+  // crypto-js 只有登录 / 注册的加密链路需要：改成按需加载，
+  // 避免它（全量 AES/MD5/SHA 等，gzip 后几十 KB）被打进首屏入口 chunk
+  const { default: cryptoUtil } = await import('@/utils/crypto')
+
   const unix = await getUnix()
 
   // 基于时间派生 key / iv（各 16 位）

@@ -64,9 +64,9 @@ const badgeStyle = computed(() => {
    * 写死成 1.4 会让标签比默认头衔矮一截，看起来就是「内边距特别小」。
    * 同理不加默认边框：旧标签只有背景色，多 1px 边框也会让视觉高度不同。
    */
-  /* 无 payload 时的兜底配色 */
-  color: #b45309;
-  background: #fef3c7;
+  /* 无 payload 时的兜底配色：用语义变量，深色模式下自动跟随主题 */
+  color: var(--warning);
+  background: var(--gold-wash);
 }
 
 /* 尺寸与旧标签逐项对齐，避免同一位置「装扮头衔」和「默认头衔」看起来不一样大：

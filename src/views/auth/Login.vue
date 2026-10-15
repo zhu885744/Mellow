@@ -258,9 +258,10 @@ onUnmounted(() => clearInterval(timer))
   transition: color 0.2s, background 0.2s;
 }
 .login-tab.active {
+  /* 用卡片色而不是 #fff：深色模式下白底 + 浅色文字会几乎不可读 */
   color: var(--text-strong, var(--text));
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
 }
 .auth-form {
   margin-bottom: 16px;

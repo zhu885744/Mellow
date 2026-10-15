@@ -74,7 +74,19 @@ export default defineConfig(({ mode }) => {
       // 注意：后端 config/app.toml 的 app.theme_ignore_prefix 已包含 /static（见 config/app.go）
       assetsDir: 'static',
       sourcemap: false,
-      chunkSizeWarningLimit: 1500
+      // 阈值回到默认量级：1500 会把所有真实的分包告警一起吞掉
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          // 大依赖单独成 chunk：语法高亮只在正文页用到，不必拖累首屏
+          // （用函数形式匹配，避免写死模块 id 后在依赖升级时失效）
+          manualChunks(id) {
+            if (id.includes('highlight.js')) return 'highlight'
+            if (id.includes('markdown-it')) return 'markdown'
+            return undefined
+          }
+        }
+      }
     }
   }
 })

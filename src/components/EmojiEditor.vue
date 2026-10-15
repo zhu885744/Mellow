@@ -71,6 +71,7 @@ import { ref, watch, onMounted, nextTick } from 'vue'
 import EmojiPicker from './EmojiPicker.vue'
 import MentionPicker from './MentionPicker.vue'
 import { getTopicCandidates } from '@/api/topics'
+import { escapeHtml, safeEmojiUrl } from '@/utils/emoji'
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
@@ -90,13 +91,19 @@ const editorRef = ref(null)
 const showPicker = ref(false)
 
 // 将存储格式内容转为 HTML（[emoji:url] -> img）
+//
+// ⚠ 安全：结果会被赋给编辑器的 innerHTML，而正文是用户输入（动态正文后端没有 XSS 过滤）。
+// 必须**先整体转义**再替换表情 —— 否则打开（或在后台编辑）一条含
+// `<img src=x onerror=...>` 的动态就会执行脚本，管理员编辑别人的动态等于被提权。
 function contentToHtml(content) {
   if (!content) return ''
-  let html = content
-  html = html.replace(
-    /\[emoji:(https?:\/\/[^\]]+|\/[^\]]+)\]/g,
-    '<img src="$1" data-emoji="$1" class="editor-emoji" style="width:24px;height:24px;vertical-align:middle;display:inline-block;object-fit:contain;margin:0 2px;">'
-  )
+  let html = escapeHtml(String(content))
+  html = html.replace(/\[emoji:\s*([^\]]+)\]/g, (match, url) => {
+    // 与 renderEmoji 共用同一个地址白名单（http(s) / 站内相对路径 + 已转义）
+    const safe = safeEmojiUrl(url)
+    if (!safe) return match
+    return `<img src="${safe}" data-emoji="${safe}" class="editor-emoji" style="width:24px;height:24px;vertical-align:middle;display:inline-block;object-fit:contain;margin:0 2px;">`
+  })
   html = html.replace(/\n/g, '<br>')
   return html
 }

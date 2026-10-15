@@ -1,7 +1,64 @@
 import MarkdownIt from 'markdown-it'
-import hljs from 'highlight.js'
+// 按需引入 highlight.js：默认入口会把 190+ 种语言全部注册进 bundle（min 后 500KB+），
+// 而正文页（文章 / 独立页）每次打开都要下载它。这里只注册博客实际会出现的语言，
+// 未注册的语言会退化成不高亮的纯文本（不影响阅读），需要时在下面补一行即可。
+import hljs from 'highlight.js/lib/core'
+import bash from 'highlight.js/lib/languages/bash'
+import c from 'highlight.js/lib/languages/c'
+import cpp from 'highlight.js/lib/languages/cpp'
+import csharp from 'highlight.js/lib/languages/csharp'
+import css from 'highlight.js/lib/languages/css'
+import diff from 'highlight.js/lib/languages/diff'
+import dockerfile from 'highlight.js/lib/languages/dockerfile'
+import go from 'highlight.js/lib/languages/go'
+import ini from 'highlight.js/lib/languages/ini'
+import java from 'highlight.js/lib/languages/java'
+import javascript from 'highlight.js/lib/languages/javascript'
+import json from 'highlight.js/lib/languages/json'
+import less from 'highlight.js/lib/languages/less'
+import markdown from 'highlight.js/lib/languages/markdown'
+import nginx from 'highlight.js/lib/languages/nginx'
+import php from 'highlight.js/lib/languages/php'
+import plaintext from 'highlight.js/lib/languages/plaintext'
+import python from 'highlight.js/lib/languages/python'
+import rust from 'highlight.js/lib/languages/rust'
+import scss from 'highlight.js/lib/languages/scss'
+import shell from 'highlight.js/lib/languages/shell'
+import sql from 'highlight.js/lib/languages/sql'
+import typescript from 'highlight.js/lib/languages/typescript'
+import xml from 'highlight.js/lib/languages/xml'
+import yaml from 'highlight.js/lib/languages/yaml'
 // 表情图片地址统一走运行时解析（与 @/utils/emoji 的 renderEmoji 保持一致）
 import { getFullUrl } from '@/utils/runtimeConfig'
+
+// 语言名 + 常见别名（同一份语法注册多次，兼容 ```js / ```javascript 等写法）
+const HIGHLIGHT_LANGUAGES = {
+  javascript, js: javascript, jsx: javascript, mjs: javascript, cjs: javascript, node: javascript,
+  typescript, ts: typescript, tsx: typescript,
+  json, jsonc: json,
+  bash, sh: bash, zsh: bash,
+  shell, console: shell,
+  go, golang: go,
+  python, py: python,
+  java, kotlin: java,
+  php,
+  rust, rs: rust,
+  c, cpp, 'c++': cpp, cc: cpp, h: c, hpp: cpp, csharp, cs: csharp,
+  sql, mysql: sql,
+  xml, html: xml, vue: xml, svg: xml,
+  css, scss, less,
+  yaml, yml: yaml,
+  ini, toml: ini, conf: ini,
+  markdown, md: markdown,
+  diff, patch: diff,
+  dockerfile, docker: dockerfile,
+  nginx, conf_nginx: nginx,
+  plaintext, text: plaintext, txt: plaintext
+}
+
+Object.entries(HIGHLIGHT_LANGUAGES).forEach(([name, language]) => {
+  hljs.registerLanguage(name, language)
+})
 
 const md = new MarkdownIt({
   html: false,

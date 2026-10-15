@@ -82,7 +82,9 @@
       })()
     </script>
     <!-- ========== 运行时配置 ========== -->
-    <script src="/runtime-config.js"></script>
+    <!-- defer：与入口 module 脚本同属「延迟队列」并按文档顺序执行，
+       既保证运行时机早于 main.js，又不再阻塞 HTML 解析 -->
+  <script defer src="/runtime-config.js"></script>
   </head>
   <body>
     <!-- 加载动画：Vue mount 时会自动替换掉 #app 里的内容 -->
