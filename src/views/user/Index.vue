@@ -225,7 +225,6 @@ const CATALOGUE = [
   { key: 'decoration-shop', name: '装扮商城', icon: 'bi bi-palette', to: '/goods?tab=decoration' },
   { key: 'profile', name: '个人资料', icon: 'bi bi-person', to: '/user/profile' },
   { key: 'settings', name: '隐私设置', icon: 'bi bi-gear', to: '/user/settings' },
-  { key: 'contact', name: '联系方式', icon: 'bi bi-person-vcard', to: '/user/contact' },
   { key: 'reward', name: '打赏设置', icon: 'bi bi-cash-coin', to: '/user/reward' },
   { key: 'security', name: '账号安全', icon: 'bi bi-shield-lock', to: '/user/security' }
 ]

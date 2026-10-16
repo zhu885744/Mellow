@@ -624,6 +624,60 @@
             </section>
           </template>
 
+          <!-- ============ 账号修改 ============ -->
+          <template v-else-if="tab === 'accountRule'">
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">账号修改规则</h3>
+                  <p class="cfg-desc">
+                    账号既是登录凭证又是对外身份标识，改完不可逆、还会占掉他人的登录名，是否开放交给站点决定（默认关闭）
+                  </p>
+                </div>
+              </header>
+              <div class="form-item">
+                <label class="form-label">允许修改账号</label>
+                <SelectMenu v-model="cfg.account.value" variant="field" :options="ON_OFF" />
+                <p class="form-hint">关闭后前台「修改账号」入口不可用，接口会直接拒绝提交</p>
+              </div>
+              <div class="form-item">
+                <label class="form-label">冷却天数</label>
+                <input v-model.number="cfg.account.cooldownDays" class="input" type="number" min="0" max="365" step="1" />
+                <p class="form-hint">一次修改成功后多少天内不可再次修改；填 0 表示不限制（-&gt; 最长 365 天）</p>
+              </div>
+            </section>
+
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">修改前置条件</h3>
+                  <p class="cfg-desc">不满足条件的用户无法修改账号，用于降低账号被盗改的风险</p>
+                </div>
+              </header>
+              <div class="form-grid">
+                <div class="form-item">
+                  <label class="form-label">要求已绑定手机号 / 邮箱</label>
+                  <SelectMenu v-model="cfg.account.requireContact" variant="field" :options="ON_OFF" />
+                  <p class="form-hint">开启后，未绑定手机号或邮箱的账号不能修改</p>
+                </div>
+                <div class="form-item">
+                  <label class="form-label">要求身份验证</label>
+                  <SelectMenu v-model="cfg.account.requireVerify" variant="field" :options="ON_OFF" />
+                  <p class="form-hint">开启后提交修改需先通过当前密码或邮箱 / 手机验证码校验</p>
+                </div>
+              </div>
+            </section>
+
+            <section class="card card-pad">
+              <div class="cfg-foot is-plain">
+                <span class="form-hint is-inline">人机校验（滑块）场景在「安全与限流 → 安全验证（滑块）」里勾选「修改账号」</span>
+                <button class="btn btn-primary btn-sm" :disabled="isSaving('accountRule')" @click="saveAccount">
+                  <i class="bi bi-check2" /> 保存账号修改设置
+                </button>
+              </div>
+            </section>
+          </template>
+
           <!-- ============ 缓存 ============ -->
           <template v-else-if="tab === 'cache'">
             <section class="card card-pad">
@@ -1494,6 +1548,7 @@ const modules = [
       { key: 'security', label: '安全与限流', icon: 'bi bi-shield-lock' },
       { key: 'jwt', label: 'JWT 认证', icon: 'bi bi-key' },
       { key: 'register', label: '注册', icon: 'bi bi-person-plus' },
+      { key: 'accountRule', label: '账号修改', icon: 'bi bi-person-vcard' },
       { key: 'oauth', label: '第三方登录', icon: 'bi bi-share' }
     ]
   },
@@ -1683,6 +1738,7 @@ const cfg = reactive({
     register: 0,
     reset_password: 0,
     change_contact: 0,
+    change_account: 0,
     destroy: 0
   },
   // 注册设置（同属 ALLOW_REGISTER 一条记录）
@@ -1698,6 +1754,17 @@ const cfg = reactive({
     blacklistText: '',
     welcomeMessage: '0',
     welcomeEmail: '0'
+  },
+  // 账号（用户名）修改规则（SYSTEM_ACCOUNT_CHANGE 一条记录，见 app/model/account-change.go）
+  // - value          → value 字段：总开关（"0" 关闭 / "1" 开启）
+  // - cooldownDays   → json.cooldown_days：冷却天数（0 = 不限制）
+  // - requireContact → json.require_contact：是否要求已绑定手机号或邮箱
+  // - requireVerify  → json.require_verify：是否要求身份验证（当前密码 / 验证码）
+  account: {
+    value: '0',
+    cooldownDays: 30,
+    requireContact: '1',
+    requireVerify: '1'
   },
   // 内容配置：ARTICLE / MOMENTS / PAGE 三份结构相同（editor / audit / comment）
   content: {
@@ -1955,6 +2022,7 @@ const CAPTCHA_SCENE_OPTIONS = [
   { key: 'register', label: '注册', hint: '提交注册时校验，可挡批量注册脚本' },
   { key: 'reset_password', label: '重置 / 找回密码', hint: '提交新密码时校验' },
   { key: 'change_contact', label: '修改邮箱 / 手机号', hint: '提交验证码改绑时校验' },
+  { key: 'change_account', label: '修改账号', hint: '提交修改账号时校验（该接口没有发码阶段，命中即校验）' },
   { key: 'destroy', label: '注销账户', hint: '提交注销验证时校验' }
 ]
 
@@ -1991,6 +2059,19 @@ function readRegisterConfig(raw) {
   // 欢迎消息 / 欢迎邮件
   cfg.register.welcomeMessage = Number(json.welcome_message) ? '1' : '0'
   cfg.register.welcomeEmail = Number(json.welcome_email) ? '1' : '0'
+}
+
+// 账号修改规则（SYSTEM_ACCOUNT_CHANGE）：总开关 + 冷却天数 + 验证要求
+// 缺字段按后端默认值兜底（默认关闭 / 冷却 30 天 / 要求绑定联系方式与身份验证）
+function readAccountConfig(raw) {
+  const json = parseJson(raw?.json, {})
+
+  // 总开关：json.enabled 优先（与后端 AccountChangeConfig 口径一致，保存时两处同步写）
+  const enabled = json.enabled === undefined || json.enabled === null ? raw?.value : json.enabled
+  cfg.account.value = toText(enabled, '0')
+  cfg.account.cooldownDays = Math.max(0, Math.min(365, Number(json.cooldown_days ?? 30) || 0))
+  cfg.account.requireContact = toText(json.require_contact, '1')
+  cfg.account.requireVerify = toText(json.require_verify, '1')
 }
 
 // 评论配置（COMMENT）：结构独立，敏感词转成「一行一个」的文本便于编辑
@@ -2083,7 +2164,7 @@ function readOauthConfig(raw) {
 }
 
 async function loadConfigs() {
-  const [apiKey, apiKeyLocal, qps, block, notify, pageLimit, captcha, register, article, moments, pages, comment, links, mailNotify, decoration, oauth] = await Promise.all([
+  const [apiKey, apiKeyLocal, qps, block, notify, pageLimit, captcha, register, account, article, moments, pages, comment, links, mailNotify, decoration, oauth] = await Promise.all([
     readConfig('SYSTEM_API_KEY'),
     readConfig('SYSTEM_API_KEY_LOCAL'),
     readConfig('SYSTEM_QPS'),
@@ -2092,6 +2173,7 @@ async function loadConfigs() {
     readConfig('SYSTEM_PAGE_LIMIT'),
     readConfig('SYSTEM_CAPTCHA'),
     readConfig('ALLOW_REGISTER'),
+    readConfig('SYSTEM_ACCOUNT_CHANGE'),
     readConfig('ARTICLE'),
     readConfig('MOMENTS'),
     readConfig('PAGE'),
@@ -2128,6 +2210,10 @@ async function loadConfigs() {
   }
   if (register) {
     readRegisterConfig(register)
+  }
+  // 账号修改规则：配置不存在时保持默认值（关闭 / 冷却 30 天）
+  if (account) {
+    readAccountConfig(account)
   }
 
   if (article) cfg.content.ARTICLE = readContentConfig(article)
@@ -2495,6 +2581,33 @@ async function saveRegister() {
 
   const fresh = await readConfig('ALLOW_REGISTER')
   if (fresh) readRegisterConfig(fresh)
+}
+
+/**
+ * 保存账号修改规则（SYSTEM_ACCOUNT_CHANGE）
+ * - value / json.enabled：总开关（两处同步写，与后端 AccountChangeConfig 读取口径一致）
+ * - json.cooldown_days  ：冷却天数（0 = 不限制，后端限制 0-365）
+ * - json.require_contact：是否要求已绑定手机号或邮箱
+ * - json.require_verify ：是否要求身份验证（当前密码 / 验证码）
+ * 只提交本页字段，保存后回读统一口径。
+ */
+async function saveAccount() {
+  const enabled = Number(cfg.account.value) === 1 ? 1 : 0
+  const json = {
+    enabled,
+    cooldown_days: Math.max(0, Math.min(365, Number(cfg.account.cooldownDays) || 0)),
+    require_contact: Number(cfg.account.requireContact) === 1 ? 1 : 0,
+    require_verify: Number(cfg.account.requireVerify) === 1 ? 1 : 0
+  }
+
+  await saveConfigItem(
+    'accountRule',
+    { key: 'SYSTEM_ACCOUNT_CHANGE', data: { value: String(enabled), json } },
+    '已保存'
+  )
+
+  const fresh = await readConfig('SYSTEM_ACCOUNT_CHANGE')
+  if (fresh) readAccountConfig(fresh)
 }
 
 /**

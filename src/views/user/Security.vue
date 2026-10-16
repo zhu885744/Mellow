@@ -1,48 +1,274 @@
 <template>
   <div class="security-wrap">
-    <!-- 账号设置 -->
+    <!-- 账号设置（是否可改用后台「系统设置 → 账号与登录 → 账号修改」控制） -->
     <div class="card card-pad">
-      <h2 class="block-title">账号设置「当前禁止修改」</h2>
+      <h2 class="block-title">
+        账号设置
+        <span v-if="accountRule && !accountRule.enabled" class="title-tip">当前禁止修改</span>
+      </h2>
       <div class="form-item">
         <label class="form-label">当前账号</label>
         <div class="input-row">
           <input class="input" :value="currentAccount" disabled />
-          <!-- 账号修改功能暂时关闭，仅保留账号显示
-          <button class="btn" :disabled="accountLoading" @click="toggleAccountEdit">
+          <button
+            v-if="canEditAccount"
+            class="btn"
+            :disabled="accountLoading"
+            @click="toggleAccountEdit"
+          >
             {{ showAccountEdit ? '取消' : '修改' }}
           </button>
-          -->
         </div>
+        <p v-if="accountRule && !canEditAccount" class="field-tip">{{ accountRuleMessage }}</p>
+        <p v-else-if="canEditAccount" class="field-tip">{{ accountEditHint }}</p>
       </div>
 
-      <!-- 账号修改表单暂时关闭
       <div v-if="showAccountEdit" class="edit-box">
         <p class="warn-tip"><i class="bi bi-exclamation-triangle" /> 修改账号后将影响登录，请谨慎操作</p>
         <div class="form-item">
           <label class="form-label">新账号</label>
           <input
-            v-model="accountForm.newAccount"
+            v-model.trim="accountForm.newAccount"
             class="input"
-            placeholder="请输入新账号（字母、数字、下划线，4-20位）"
-            maxlength="20"
+            :placeholder="accountPlaceholder"
+            :maxlength="Number(accountRule?.max_length || CONST.ACCOUNT_MAX)"
             @input="validateNewAccount"
           />
           <p v-if="accountErrors.newAccount" class="form-error">{{ accountErrors.newAccount }}</p>
         </div>
+
+        <!-- 身份验证：与后端 verifyIdentity 一致（当前密码 / 已绑定联系方式的验证码） -->
+        <div v-if="accountRule?.require_verify" class="form-item">
+          <div class="label-row">
+            <label class="form-label">身份验证</label>
+            <button
+              v-if="accountHasContact"
+              type="button"
+              class="switch-link"
+              @click="toggleAccountIdentityMode"
+            >
+              {{ accountIdentityMode === 'password' ? `改用${accountIdentityLabel}验证码` : '改用当前密码' }}
+            </button>
+          </div>
+          <input
+            v-if="accountIdentityMode === 'password'"
+            v-model="accountForm.password"
+            type="password"
+            class="input"
+            placeholder="请输入当前密码"
+            autocomplete="current-password"
+          />
+          <div v-else class="input-row">
+            <input v-model="accountForm.identityCode" class="input" placeholder="6位数字验证码" maxlength="6" />
+            <button
+              type="button"
+              class="btn"
+              :disabled="accountIdentitySending || accountIdentityCountdown > 0"
+              @click="sendAccountIdentityCode"
+            >
+              {{ accountIdentitySending ? '发送中...' : accountIdentityCountdown > 0 ? `${accountIdentityCountdown}秒后重试` : '发送验证码' }}
+            </button>
+          </div>
+          <p v-if="accountErrors.identity" class="form-error">{{ accountErrors.identity }}</p>
+          <p v-else class="field-tip">
+            {{ accountHasContact ? `验证码会发送到你已绑定的${accountIdentityLabel}` : '未设置密码、也未绑定邮箱/手机号的账号可留空' }}
+          </p>
+        </div>
+
         <div class="btn-row">
-          <button class="btn btn-danger" :disabled="accountLoading" @click="handleAccountSubmit">
+          <button class="btn btn-primary" :disabled="accountLoading" @click="handleAccountSubmit">
             {{ accountLoading ? '修改中...' : '确认修改账号' }}
           </button>
           <button class="btn" :disabled="accountLoading" @click="cancelAccountEdit">取消</button>
         </div>
       </div>
-      -->
-      
     </div>
 
-    <!-- 重置密码 -->
+    <!-- 联系方式：邮箱 / 手机号改绑（原「联系方式」页的功能，已合并到账号安全） -->
     <div class="card card-pad">
-      <h2 class="block-title">重置密码</h2>
+      <h2 class="block-title">手机号|邮箱设置<span class="title-tip">用于登录、找回密码与安全验证</span></h2>
+      <div class="contact-grid">
+        <!-- 邮箱设置 -->
+        <div class="contact-block">
+          <h3 class="sub-title">邮箱设置</h3>
+          <form @submit.prevent="updateEmailFn">
+            <div class="form-item">
+              <label class="form-label">新邮箱</label>
+              <input v-model="emailForm.email" class="input" placeholder="请输入新邮箱" maxlength="50" />
+            </div>
+            <div class="form-item">
+              <label class="form-label">新邮箱验证码</label>
+              <div class="input-row">
+                <input v-model="emailForm.code" class="input" placeholder="6位数字验证码" maxlength="6" />
+                <button type="button" class="btn" :disabled="emailSending || emailCountdown > 0" @click="sendEmailCode">
+                  {{ emailSending ? '发送中...' : emailCountdown > 0 ? `${emailCountdown}秒后重试` : '发送验证码' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 身份验证：改绑邮箱会改变登录凭证，后端要求再验证一次操作者身份 -->
+            <div class="form-item">
+              <div class="label-row">
+                <label class="form-label">身份验证</label>
+                <button v-if="emailHasContact" type="button" class="switch-link" @click="toggleEmailIdentityMode">
+                  {{ emailIdentityMode === 'password' ? `改用${emailIdentityLabel}验证码` : '改用当前密码' }}
+                </button>
+              </div>
+              <input
+                v-if="emailIdentityMode === 'password'"
+                v-model="emailForm.password"
+                type="password"
+                class="input"
+                placeholder="请输入当前密码"
+                autocomplete="current-password"
+              />
+              <div v-else class="input-row">
+                <input v-model="emailForm.identityCode" class="input" placeholder="6位数字验证码" maxlength="6" />
+                <button
+                  type="button"
+                  class="btn"
+                  :disabled="emailIdentitySending || emailIdentityCountdown > 0"
+                  @click="sendEmailIdentityCode"
+                >
+                  {{ emailIdentitySending ? '发送中...' : emailIdentityCountdown > 0 ? `${emailIdentityCountdown}秒后重试` : '发送验证码' }}
+                </button>
+              </div>
+              <p class="field-tip">
+                {{ emailHasContact ? `验证码会发送到你已绑定的${emailIdentityLabel}` : '未设置密码、也未绑定邮箱/手机号的账号可留空' }}
+              </p>
+            </div>
+
+            <button class="btn btn-primary" :disabled="emailLoading" type="submit">
+              {{ emailLoading ? '保存中...' : '修改邮箱' }}
+            </button>
+          </form>
+        </div>
+
+        <!-- 手机号设置 -->
+        <div class="contact-block">
+          <h3 class="sub-title">手机号设置</h3>
+          <form @submit.prevent="updatePhoneFn">
+            <div class="form-item">
+              <label class="form-label">新手机号</label>
+              <input v-model="phoneForm.phone" class="input" placeholder="请输入新手机号" maxlength="11" />
+            </div>
+            <div class="form-item">
+              <label class="form-label">新手机号验证码</label>
+              <div class="input-row">
+                <input v-model="phoneForm.code" class="input" placeholder="6位数字验证码" maxlength="6" />
+                <button type="button" class="btn" :disabled="phoneSending || phoneCountdown > 0" @click="sendPhoneCode">
+                  {{ phoneSending ? '发送中...' : phoneCountdown > 0 ? `${phoneCountdown}秒后重试` : '发送验证码' }}
+                </button>
+              </div>
+            </div>
+
+            <!-- 身份验证：改绑手机号会改变登录凭证，后端要求再验证一次操作者身份 -->
+            <div class="form-item">
+              <div class="label-row">
+                <label class="form-label">身份验证</label>
+                <button v-if="phoneHasContact" type="button" class="switch-link" @click="togglePhoneIdentityMode">
+                  {{ phoneIdentityMode === 'password' ? `改用${phoneIdentityLabel}验证码` : '改用当前密码' }}
+                </button>
+              </div>
+              <input
+                v-if="phoneIdentityMode === 'password'"
+                v-model="phoneForm.password"
+                type="password"
+                class="input"
+                placeholder="请输入当前密码"
+                autocomplete="current-password"
+              />
+              <div v-else class="input-row">
+                <input v-model="phoneForm.identityCode" class="input" placeholder="6位数字验证码" maxlength="6" />
+                <button
+                  type="button"
+                  class="btn"
+                  :disabled="phoneIdentitySending || phoneIdentityCountdown > 0"
+                  @click="sendPhoneIdentityCode"
+                >
+                  {{ phoneIdentitySending ? '发送中...' : phoneIdentityCountdown > 0 ? `${phoneIdentityCountdown}秒后重试` : '发送验证码' }}
+                </button>
+              </div>
+              <p class="field-tip">
+                {{ phoneHasContact ? `验证码会发送到你已绑定的${phoneIdentityLabel}` : '未设置密码、也未绑定邮箱/手机号的账号可留空' }}
+              </p>
+            </div>
+
+            <button class="btn btn-primary" :disabled="phoneLoading" type="submit">
+              {{ phoneLoading ? '保存中...' : '修改手机号' }}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- 修改密码（需要当前密码；与下方「重置密码」的分工见 script 里的注释） -->
+    <div class="card card-pad">
+      <h2 class="block-title">修改密码</h2>
+      <form @submit.prevent="handleChangePasswordSubmit">
+        <div class="form-item">
+          <label class="form-label">当前密码</label>
+          <input
+            type="password"
+            v-model="pwdForm.oldPassword"
+            class="input"
+            placeholder="请输入当前密码"
+            autocomplete="current-password"
+            @input="validateOldPassword"
+          />
+          <p v-if="pwdErrors.oldPassword" class="form-error">{{ pwdErrors.oldPassword }}</p>
+          <p v-else class="field-tip">从未设置过密码（第三方登录注册）？请用下方「重置密码」</p>
+        </div>
+
+        <div class="form-item">
+          <label class="form-label">新密码</label>
+          <input
+            type="password"
+            v-model="pwdForm.password"
+            class="input"
+            placeholder="请输入新密码"
+            minlength="6"
+            maxlength="20"
+            autocomplete="new-password"
+            @input="validateNewPassword"
+          />
+          <p v-if="pwdErrors.password" class="form-error">{{ pwdErrors.password }}</p>
+        </div>
+
+        <div class="form-item">
+          <label class="form-label">确认新密码</label>
+          <input
+            type="password"
+            v-model="pwdForm.verifyPwd"
+            class="input"
+            placeholder="请再次输入新密码"
+            autocomplete="new-password"
+            @input="validateNewVerifyPwd"
+          />
+          <p v-if="pwdErrors.verifyPwd" class="form-error">{{ pwdErrors.verifyPwd }}</p>
+        </div>
+
+        <div v-if="pwdForm.password" class="form-item">
+          <div class="pwd-strength">
+            <div class="strength-head">
+              <span class="text-muted">密码强度</span>
+              <span :class="['strength-text', pwdStrengthClass]">{{ pwdStrengthText }}</span>
+            </div>
+            <div class="strength-bar">
+              <div class="strength-fill" :class="pwdStrengthClass" :style="{ width: pwdStrengthWidth }"></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" :disabled="pwdLoading" type="submit">
+          {{ pwdLoading ? '修改中...' : '修改密码' }}
+        </button>
+      </form>
+    </div>
+
+    <!-- 重置密码（忘记当前密码 / 从未设过密码时使用） -->
+    <div class="card card-pad">
+      <h2 class="block-title">重置密码<span class="title-tip">忘记当前密码时使用</span></h2>
       <form @submit.prevent="handleResetPasswordSubmit">
         <div class="form-item">
           <div class="label-row">
@@ -129,6 +355,8 @@
         <li><i class="bi bi-clock" /> 定期更换密码，建议每 3 个月更换一次</li>
         <li><i class="bi bi-exclamation-triangle" /> 不要在多个网站使用相同的密码</li>
         <li><i class="bi bi-lock" /> 不要将密码告诉他人，包括网站客服</li>
+        <li><i class="bi bi-envelope-check" /> 邮箱和手机号用于登录、找回密码与安全验证，请保持可用</li>
+        <li><i class="bi bi-stopwatch" /> 验证码有效期为 5 分钟，请勿透露给他人</li>
       </ul>
     </div>
 
@@ -265,11 +493,11 @@
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-// updateUser 仅供「账号修改」使用，功能暂时关闭
-import { destroy, destroySendCode } from '@/api/users'
+import { changeAccount, changePassword, destroy, destroySendCode, getAccountRule, updateEmail, updatePhone } from '@/api/users'
 import { resetPasswordSendCode, resetPassword } from '@/api/comm'
 import { getMyOauth, oauthUnbind } from '@/api/oauth'
 import { enabledPlatforms, platformIcon, startOauth } from '@/utils/oauth'
+import { useIdentityVerify } from '@/utils/identity-verify'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { toast } from '@/utils/toast'
 
@@ -344,20 +572,75 @@ async function doUnbind() {
   }
 }
 
-/* 账号修改功能暂时关闭，恢复时取消注释即可
+// ===== 账号修改 =====
+// 是否开放、冷却天数（默认改完 30 天内不可再改）、是否要求绑定手机号/邮箱与身份验证
+// 全部由后台「系统设置 → 账号与登录 → 账号修改」控制（config 表 SYSTEM_ACCOUNT_CHANGE）。
+// 这里先读规则（getAccountRule）：不可改时连「修改」按钮都不显示，直接把原因写出来。
+const accountRule = ref(null)
 const accountLoading = ref(false)
 const showAccountEdit = ref(false)
-const accountForm = reactive({ newAccount: '' })
-const accountErrors = reactive({ newAccount: '' })
+const accountForm = reactive({ newAccount: '', password: '', identityCode: '' })
+const accountErrors = reactive({ newAccount: '', identity: '' })
+
+// 身份验证：与联系方式页共用同一份实现（@/utils/identity-verify）
+const {
+  mode: accountIdentityMode,
+  sending: accountIdentitySending,
+  countdown: accountIdentityCountdown,
+  hasBoundContact: accountHasContact,
+  targetLabel: accountIdentityLabel,
+  toggle: toggleAccountIdentityMode,
+  send: sendAccountIdentityCode,
+  payload: accountIdentityPayload,
+  stop: stopAccountIdentityVerify
+} = useIdentityVerify()
+
+const canEditAccount = computed(() => Boolean(accountRule.value?.can_change))
+const accountRuleMessage = computed(() => accountRule.value?.message || '管理员未开放账号修改功能')
+const accountEditHint = computed(() => {
+  const days = Number(accountRule.value?.cooldown_days || 0)
+  return days > 0 ? `修改成功后 ${days} 天内不可再次修改` : '修改账号将影响登录，请谨慎操作'
+})
+const accountPlaceholder = computed(() => {
+  const min = Number(accountRule.value?.min_length || CONST.ACCOUNT_MIN)
+  const max = Number(accountRule.value?.max_length || CONST.ACCOUNT_MAX)
+  return `请输入新账号（${min}-${max}位字母、数字或下划线）`
+})
+
+async function loadAccountRule() {
+  try {
+    const res = await getAccountRule()
+    accountRule.value = res?.data && typeof res.data === 'object' ? res.data : null
+  } catch {
+    // 接口不可用（未登录等）时按「不可修改」处理，不打扰用户
+    accountRule.value = null
+  }
+}
 
 function validateNewAccount() {
   const val = accountForm.newAccount.trim()
+  const min = Number(accountRule.value?.min_length || CONST.ACCOUNT_MIN)
+  const max = Number(accountRule.value?.max_length || CONST.ACCOUNT_MAX)
+
   if (!val) { accountErrors.newAccount = '请输入新账号'; return false }
-  if (val.length < CONST.ACCOUNT_MIN) { accountErrors.newAccount = `账号长度不能少于${CONST.ACCOUNT_MIN}位`; return false }
-  if (val.length > CONST.ACCOUNT_MAX) { accountErrors.newAccount = `账号长度不能超过${CONST.ACCOUNT_MAX}位`; return false }
+  if (val.length < min) { accountErrors.newAccount = `账号长度不能少于${min}位`; return false }
+  if (val.length > max) { accountErrors.newAccount = `账号长度不能超过${max}位`; return false }
   if (!/^[a-zA-Z0-9_]+$/.test(val)) { accountErrors.newAccount = '账号只能包含字母、数字和下划线'; return false }
   if (val === currentAccount.value) { accountErrors.newAccount = '新账号不能与当前账号相同'; return false }
+
   accountErrors.newAccount = ''
+  return true
+}
+
+// 身份验证只做前端能判断的部分：验证码模式必须填满 6 位；
+// 密码模式留空也放行（从未设置密码的账号可留空，由后端 verifyIdentity 判定）
+function validateAccountIdentity() {
+  if (!accountRule.value?.require_verify) { accountErrors.identity = ''; return true }
+  if (accountIdentityMode.value === 'code' && !/^\d{6}$/.test(accountForm.identityCode)) {
+    accountErrors.identity = '请输入身份验证码'
+    return false
+  }
+  accountErrors.identity = ''
   return true
 }
 
@@ -371,28 +654,174 @@ function cancelAccountEdit() {
 }
 function resetAccountForm() {
   accountForm.newAccount = ''
+  accountForm.password = ''
+  accountForm.identityCode = ''
   accountErrors.newAccount = ''
+  accountErrors.identity = ''
 }
 
 async function handleAccountSubmit() {
-  if (!validateNewAccount()) return
+  if (accountLoading.value) return
+  if (!validateNewAccount() || !validateAccountIdentity()) return
+
   accountLoading.value = true
   try {
-    const uid = userStore.user?.id
-    if (!uid) { toast.error('用户信息获取失败，请刷新页面重试'); return }
-    await updateUser({ id: uid, account: accountForm.newAccount.trim() })
+    await changeAccount({
+      account: accountForm.newAccount.trim(),
+      ...accountIdentityPayload(accountForm)
+    })
     toast.success('账号修改成功')
-    await userStore.checkLoginState()
     showAccountEdit.value = false
     resetAccountForm()
+    // 账号变了：刷新登录态里的用户信息，并重新拉规则（冷却期立即生效）
+    await userStore.checkLoginState()
     currentAccount.value = userStore.user?.account || ''
+    await loadAccountRule()
   } catch {
-    // 拦截器已提示
+    // 错误已由拦截器提示（如「该账号已被占用」「还需 X 天」）
   } finally {
     accountLoading.value = false
   }
 }
-*/
+
+// ===== 联系方式（邮箱 / 手机号改绑）=====
+// 原「联系方式」页（/user/contact）的邮箱、手机号设置，已合并到本页。
+// 两者都是登录凭证，改绑要双重校验：新联系方式的验证码（证明归你所有）
+// + 身份验证（证明操作者是本人），见后端 users.email / users.phone。
+const emailForm = reactive({ email: '', code: '', password: '', identityCode: '' })
+const phoneForm = reactive({ phone: '', code: '', password: '', identityCode: '' })
+
+const emailLoading = ref(false)
+const phoneLoading = ref(false)
+const emailSending = ref(false)
+const phoneSending = ref(false)
+const emailCountdown = ref(0)
+const phoneCountdown = ref(0)
+
+let emailTimer = null
+let phoneTimer = null
+
+// 身份验证（改绑联系方式是敏感操作，后端要求再验证一次「操作者是本人」）：
+// 模式切换 / 发码倒计时 / 参数组装统一在 @/utils/identity-verify
+// 两张表单各用一个实例：邮箱优先发邮箱、手机号优先发手机号，
+// 避免在「手机号设置」里出现「改用邮箱验证码」（对应通道未绑定时才回退另一种）
+const {
+  mode: emailIdentityMode,
+  sending: emailIdentitySending,
+  countdown: emailIdentityCountdown,
+  hasBoundContact: emailHasContact,
+  targetLabel: emailIdentityLabel,
+  toggle: toggleEmailIdentityMode,
+  send: sendEmailIdentityCode,
+  payload: emailIdentityPayload,
+  stop: stopEmailIdentityVerify
+} = useIdentityVerify({ prefer: 'email' })
+
+const {
+  mode: phoneIdentityMode,
+  sending: phoneIdentitySending,
+  countdown: phoneIdentityCountdown,
+  hasBoundContact: phoneHasContact,
+  targetLabel: phoneIdentityLabel,
+  toggle: togglePhoneIdentityMode,
+  send: sendPhoneIdentityCode,
+  payload: phoneIdentityPayload,
+  stop: stopPhoneIdentityVerify
+} = useIdentityVerify({ prefer: 'sms' })
+
+function startContactCountdown(kind) {
+  if (kind === 'email') {
+    emailCountdown.value = 60
+    if (emailTimer) clearInterval(emailTimer)
+    emailTimer = setInterval(() => {
+      if (emailCountdown.value > 0) emailCountdown.value--
+      else { clearInterval(emailTimer); emailTimer = null }
+    }, 1000)
+  } else {
+    phoneCountdown.value = 60
+    if (phoneTimer) clearInterval(phoneTimer)
+    phoneTimer = setInterval(() => {
+      if (phoneCountdown.value > 0) phoneCountdown.value--
+      else { clearInterval(phoneTimer); phoneTimer = null }
+    }, 1000)
+  }
+}
+
+async function sendEmailCode() {
+  if (emailSending.value || emailCountdown.value > 0) return
+  if (!emailForm.email) { toast.error('请输入邮箱'); return }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForm.email)) { toast.error('请输入有效的邮箱地址'); return }
+  emailSending.value = true
+  try {
+    await updateEmail({ email: emailForm.email })
+    toast.success('验证码已发送，请查收')
+    startContactCountdown('email')
+  } catch {
+    // 拦截器已提示
+  } finally {
+    emailSending.value = false
+  }
+}
+
+async function sendPhoneCode() {
+  if (phoneSending.value || phoneCountdown.value > 0) return
+  if (!phoneForm.phone) { toast.error('请输入手机号'); return }
+  if (!/^1[3-9]\d{9}$/.test(phoneForm.phone)) { toast.error('请输入有效的手机号'); return }
+  phoneSending.value = true
+  try {
+    await updatePhone({ phone: phoneForm.phone })
+    toast.success('验证码已发送，请查收')
+    startContactCountdown('phone')
+  } catch {
+    // 拦截器已提示
+  } finally {
+    phoneSending.value = false
+  }
+}
+
+async function updateEmailFn() {
+  if (emailLoading.value) return
+  if (!emailForm.email) { toast.error('请输入邮箱'); return }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailForm.email)) { toast.error('请输入有效的邮箱地址'); return }
+  if (!/^\d{6}$/.test(emailForm.code)) { toast.error('请输入新邮箱收到的6位数字验证码'); return }
+  if (emailIdentityMode.value === 'code' && !/^\d{6}$/.test(emailForm.identityCode)) { toast.error('请输入身份验证码'); return }
+  emailLoading.value = true
+  try {
+    await updateEmail({ email: emailForm.email, code: emailForm.code, ...emailIdentityPayload(emailForm) })
+    toast.success('邮箱修改成功')
+    await userStore.checkLoginState()
+    emailForm.email = ''
+    emailForm.code = ''
+    emailForm.password = ''
+    emailForm.identityCode = ''
+  } catch {
+    // 拦截器已提示
+  } finally {
+    emailLoading.value = false
+  }
+}
+
+async function updatePhoneFn() {
+  if (phoneLoading.value) return
+  if (!phoneForm.phone) { toast.error('请输入手机号'); return }
+  if (!/^1[3-9]\d{9}$/.test(phoneForm.phone)) { toast.error('请输入有效的手机号'); return }
+  if (!/^\d{6}$/.test(phoneForm.code)) { toast.error('请输入新手机号收到的6位数字验证码'); return }
+  if (phoneIdentityMode.value === 'code' && !/^\d{6}$/.test(phoneForm.identityCode)) { toast.error('请输入身份验证码'); return }
+  phoneLoading.value = true
+  try {
+    await updatePhone({ phone: phoneForm.phone, code: phoneForm.code, ...phoneIdentityPayload(phoneForm) })
+    toast.success('手机号修改成功')
+    await userStore.checkLoginState()
+    phoneForm.phone = ''
+    phoneForm.code = ''
+    phoneForm.password = ''
+    phoneForm.identityCode = ''
+  } catch {
+    // 拦截器已提示
+  } finally {
+    phoneLoading.value = false
+  }
+}
 
 // ===== 重置密码 =====
 const resetLoading = ref(false)
@@ -457,12 +886,10 @@ function validateCode() {
   valid.code = true
 }
 function validatePassword() {
-  const val = resetForm.password
-  if (!val) { errors.password = '请输入新密码'; valid.password = false; return }
-  if (val.length < CONST.PWD_MIN) { errors.password = `密码长度不能少于${CONST.PWD_MIN}位`; valid.password = false; return }
-  errors.password = ''
-  valid.password = true
-  validateVerifyPwd()
+  const message = checkNewPassword(resetForm.password)
+  errors.password = message
+  valid.password = !message
+  if (!message) validateVerifyPwd()
 }
 function validateVerifyPwd() {
   const val = resetForm.verifyPwd
@@ -483,22 +910,104 @@ function calculatePasswordStrength(pwd) {
   if (/[A-Z]/.test(pwd) || /[^a-zA-Z0-9]/.test(pwd)) s += 25
   return Math.min(s, 100)
 }
+// 强度文案 / 颜色：修改密码与重置密码两个表单共用（原来两处各写了一份）
+function strengthText(value) {
+  if (value < 25) return '弱'
+  if (value < 50) return '一般'
+  if (value < 75) return '良好'
+  return '强'
+}
+function strengthClass(value) {
+  if (value < 25) return 'danger'
+  if (value < 50) return 'warning'
+  if (value < 75) return 'info'
+  return 'success'
+}
+/**
+ * 新密码校验，返回空字符串表示通过
+ *
+ * 规则与后端 passwordWeakMessage（app/api/controller/users-identity.go）保持一致：
+ * 前端先拦一道省一次往返，但真正的把关在后端（接口可以被直接调用）。
+ */
+function checkNewPassword(value, oldPassword = '') {
+  if (!value) return '请输入新密码'
+  if (value.length < CONST.PWD_MIN) return `密码长度不能少于${CONST.PWD_MIN}位`
+  if (value.length > 20) return '密码长度不能超过20位'
+  if (/\s/.test(value)) return '密码不能包含空格'
+  if (/^\d+$/.test(value)) return '密码不能是纯数字，请混合字母或符号'
+  if (oldPassword && value === oldPassword) return '新密码不能与当前密码相同'
+  return ''
+}
+
 const passwordStrengthValue = computed(() => calculatePasswordStrength(resetForm.password))
 const passwordStrengthWidth = computed(() => `${passwordStrengthValue.value}%`)
-const passwordStrengthText = computed(() => {
-  const s = passwordStrengthValue.value
-  if (s < 25) return '弱'
-  if (s < 50) return '一般'
-  if (s < 75) return '良好'
-  return '强'
-})
-const passwordStrengthClass = computed(() => {
-  const s = passwordStrengthValue.value
-  if (s < 25) return 'danger'
-  if (s < 50) return 'warning'
-  if (s < 75) return 'info'
-  return 'success'
-})
+const passwordStrengthText = computed(() => strengthText(passwordStrengthValue.value))
+const passwordStrengthClass = computed(() => strengthClass(passwordStrengthValue.value))
+
+// ===== 修改密码 =====
+// 与「重置密码」的分工：
+// - 修改密码：记得当前密码时主动更换 —— 要校验当前密码（本页上方卡片）
+// - 重置密码：忘记当前密码 / 第三方登录注册（从未设过密码）—— 用邮箱或手机验证码
+const pwdLoading = ref(false)
+const pwdForm = reactive({ oldPassword: '', password: '', verifyPwd: '' })
+const pwdErrors = reactive({ oldPassword: '', password: '', verifyPwd: '' })
+const pwdValid = reactive({ oldPassword: false, password: false, verifyPwd: false })
+
+function validateOldPassword() {
+  const val = pwdForm.oldPassword
+  if (!val) { pwdErrors.oldPassword = '请输入当前密码'; pwdValid.oldPassword = false; return }
+  pwdErrors.oldPassword = ''
+  pwdValid.oldPassword = true
+}
+
+function validateNewPassword() {
+  const message = checkNewPassword(pwdForm.password, pwdForm.oldPassword)
+  pwdErrors.password = message
+  pwdValid.password = !message
+  if (!message) validateNewVerifyPwd()
+}
+
+function validateNewVerifyPwd() {
+  const val = pwdForm.verifyPwd
+  if (!val) { pwdErrors.verifyPwd = '请确认新密码'; pwdValid.verifyPwd = false; return }
+  if (val !== pwdForm.password) { pwdErrors.verifyPwd = '两次输入的密码不一致'; pwdValid.verifyPwd = false; return }
+  pwdErrors.verifyPwd = ''
+  pwdValid.verifyPwd = true
+}
+
+const pwdStrengthValue = computed(() => calculatePasswordStrength(pwdForm.password))
+const pwdStrengthWidth = computed(() => `${pwdStrengthValue.value}%`)
+const pwdStrengthText = computed(() => strengthText(pwdStrengthValue.value))
+const pwdStrengthClass = computed(() => strengthClass(pwdStrengthValue.value))
+
+function handleChangePasswordSubmit() {
+  validateOldPassword()
+  validateNewPassword()
+  validateNewVerifyPwd()
+  if (!pwdValid.oldPassword || !pwdValid.password || !pwdValid.verifyPwd) {
+    toast.warning('请检查表单填写是否正确')
+    return
+  }
+  doChangePassword()
+}
+
+async function doChangePassword() {
+  pwdLoading.value = true
+  try {
+    await changePassword({ old_password: pwdForm.oldPassword, password: pwdForm.password })
+    toast.success('密码修改成功')
+    pwdForm.oldPassword = ''
+    pwdForm.password = ''
+    pwdForm.verifyPwd = ''
+    pwdErrors.oldPassword = ''
+    pwdErrors.password = ''
+    pwdErrors.verifyPwd = ''
+  } catch {
+    // 错误已由拦截器提示（如「密码错误！」「新密码不能与当前密码相同！」）
+  } finally {
+    pwdLoading.value = false
+  }
+}
 
 function startCountdown() {
   countdown.value = CONST.CODE_COOLDOWN
@@ -627,7 +1136,12 @@ async function submitDestroy() {
 
 function fetchUserInfo() {
   const u = userStore.user
-  if (u) currentAccount.value = u.account || ''
+  if (u) {
+    currentAccount.value = u.account || ''
+    // 联系方式：预填当前已绑定的邮箱 / 手机号，便于直接改绑
+    emailForm.email = u.email || ''
+    phoneForm.phone = u.phone || ''
+  }
   // 重置密码：自动填入当前绑定的邮箱或手机号
   fillContact()
 }
@@ -635,12 +1149,18 @@ function fetchUserInfo() {
 onMounted(() => {
   fetchUserInfo()
   loadOauthMine()
+  loadAccountRule()
 })
 // 刷新页面时 user 可能晚于组件挂载，登录态就绪后补填一次
 watch(() => userStore.user?.id, () => fetchUserInfo())
 onUnmounted(() => {
   if (countdownTimer) clearInterval(countdownTimer)
   if (codeTimer) clearInterval(codeTimer)
+  if (emailTimer) clearInterval(emailTimer)
+  if (phoneTimer) clearInterval(phoneTimer)
+  stopAccountIdentityVerify()
+  stopEmailIdentityVerify()
+  stopPhoneIdentityVerify()
 })
 </script>
 
@@ -653,6 +1173,13 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--border-soft);
 }
 .danger-title { color: var(--danger); }
+/* 卡片标题后的补充说明（如「重置密码」的适用场景） */
+.title-tip {
+  margin-left: 8px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+}
 .security-wrap {
   display: flex;
   flex-direction: column;
@@ -664,6 +1191,25 @@ onUnmounted(() => {
 }
 .input-row .input {
   flex: 1;
+}
+/* ===== 联系方式（邮箱 / 手机号改绑）===== */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.sub-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-soft);
+}
+@media (max-width: 768px) {
+  .contact-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .edit-box {
   margin-top: 12px;

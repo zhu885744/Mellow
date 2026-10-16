@@ -186,13 +186,11 @@ const menuGroups = computed(() => [
     items: [
       { path: '/user/profile', name: '个人资料', icon: 'bi bi-person' },
       { path: '/user/settings', name: '隐私设置', icon: 'bi bi-gear' },
-      { path: '/user/contact', name: '联系方式', icon: 'bi bi-person-vcard' },
       { path: '/user/reward', name: '打赏设置', icon: 'bi bi-cash-coin' },
       { path: '/user/security', name: '账号安全', icon: 'bi bi-shield-lock' },
       { path: '/user/exp', name: '等级经验', icon: 'bi bi-stars' },
       { path: '/user/integral', name: '我的积分', icon: 'bi bi-coin' },
-      { path: '/user/decorations', name: '我的装扮', icon: 'bi bi-gem' },
-      { path: '/goods?tab=decoration', name: '装扮商城', icon: 'bi bi-palette' }
+      { path: '/user/decorations', name: '我的装扮', icon: 'bi bi-gem' }
     ]
   },
   {

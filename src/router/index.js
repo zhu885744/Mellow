@@ -73,7 +73,9 @@ const routes = [
     { path: '', name: 'user-home', component: () => import('@/views/user/Index.vue'), meta: { title: '我的' } },
       { path: 'profile', name: 'user-profile', component: () => import('@/views/user/Profile.vue') },
       { path: 'settings', name: 'user-settings', component: () => import('@/views/user/Settings.vue') },
-      { path: 'contact', name: 'user-contact', component: () => import('@/views/user/Contact.vue') },
+      // 「联系方式」页已下线：邮箱 / 手机号改绑并入「账号安全」，个人网站设置并入「个人资料」；
+      // 旧地址保留为重定向，避免书签 / 外部链接 404
+      { path: 'contact', name: 'user-contact', redirect: '/user/profile' },
       { path: 'reward', name: 'user-reward', component: () => import('@/views/user/Reward.vue') },
       { path: 'security', name: 'user-security', component: () => import('@/views/user/Security.vue') },
       { path: 'exp', name: 'user-exp', component: () => import('@/views/user/Exp.vue') },

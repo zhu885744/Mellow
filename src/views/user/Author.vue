@@ -284,7 +284,7 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
 const profile = ref({})
 const level = ref(0)
 
-// 个人网站（来自 json.website，用户在 Contact 页设置）
+// 个人网站（来自 json.website，用户在「个人资料」页设置）
 const website = computed(() => (profile.value?.json && profile.value.json.website) || null)
 
 // 头像框（来自 json.frame，佩戴头像框时由服务端回写；frame_animated 为动效开关）

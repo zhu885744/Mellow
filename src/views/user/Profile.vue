@@ -201,7 +201,22 @@
               <div class="input disabled"><i class="bi bi-phone" /> {{ userStore.user?.phone || '未设置' }}</div>
               <div class="input disabled"><i class="bi bi-envelope" /> {{ userStore.user?.email || '未设置' }}</div>
             </div>
-            <p class="hint">手机号和邮箱可在「联系方式」标签页中修改</p>
+            <p class="hint">
+              邮箱和手机号是登录凭证，修改入口在
+              <RouterLink to="/user/security" class="hint-link">账号安全</RouterLink>
+            </p>
+          </div>
+
+          <div class="form-item">
+            <label class="form-label">个人网站</label>
+            <input v-model="form.websiteName" class="input" placeholder="网站名称" maxlength="50" />
+            <input
+              v-model="form.websiteUrl"
+              class="input website-url"
+              placeholder="https://blog.example.com"
+              maxlength="100"
+            />
+            <p class="hint">展示在你的个人主页上，两项都留空表示不展示</p>
           </div>
 
           <div class="btn-row">
@@ -310,7 +325,10 @@ const form = reactive({
   // 主页封面（存 users.json.cover）：用户主页顶部横幅，图片 / 颜色二选一
   cover: '',
   // 颜色封面的色值（json.cover = { type: 'color', value }）
-  coverColor: ''
+  coverColor: '',
+  // 个人网站（存 users.json.website）：展示在个人主页，原「联系方式」页的功能
+  websiteName: '',
+  websiteUrl: ''
 })
 const originalData = reactive({})
 
@@ -462,6 +480,10 @@ function fetchUserInfo() {
       form.coverColor = ''
       coverMode.value = 'image'
     }
+    // 个人网站（json.website）：缺省按未设置处理
+    const website = u.json?.website && typeof u.json.website === 'object' ? u.json.website : {}
+    form.websiteName = website.name || ''
+    form.websiteUrl = website.url || ''
     Object.assign(originalData, { ...form })
   }
 }
@@ -488,6 +510,19 @@ async function save() {
       currentJson.cover = { type: 'image', value: form.cover }
     } else {
       delete currentJson.cover
+    }
+
+    // 个人网站写入 json.website（名称 + 网址）；两项都为空时删掉该键，个人主页不再展示
+    const websiteName = String(form.websiteName || '').trim()
+    const websiteUrl = String(form.websiteUrl || '').trim()
+    if (websiteUrl && !/^https?:\/\//.test(websiteUrl)) {
+      toast.error('请输入有效的网站网址（以 http:// 或 https:// 开头）')
+      return
+    }
+    if (websiteName || websiteUrl) {
+      currentJson.website = { name: websiteName, url: websiteUrl }
+    } else {
+      delete currentJson.website
     }
 
     const payload = {
@@ -817,6 +852,17 @@ watch(() => userStore.user, (nu) => {
 .input.disabled i {
   flex-shrink: 0;
   color: var(--text-light);
+}
+/* 个人网站：名称 + 网址上下两行，第二个输入框留一点间距 */
+.website-url {
+  margin-top: 8px;
+}
+.hint-link {
+  color: var(--primary);
+  text-decoration: none;
+}
+.hint-link:hover {
+  text-decoration: underline;
 }
 .btn-row {
   display: flex;

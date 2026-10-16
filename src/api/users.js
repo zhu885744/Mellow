@@ -17,6 +17,43 @@ export const updateEmail = (data) =>
 export const updatePhone = (data) =>
   call('users', 'phone', { method: 'PUT', data })
 
+/**
+ * 修改密码（登录态 + 身份验证）
+ *
+ * - data.old_password：当前密码（与 email_code / phone_code 三选一）
+ * - data.email_code / data.phone_code：发到已绑定邮箱 / 手机号的验证码
+ *   从未设过密码的账号（第三方登录注册）没有旧密码可用，走验证码这条路
+ * - data.password：新密码（后端会做长度 / 弱密码 / 非纯数字校验）
+ */
+export const changePassword = (data) =>
+  call('users', 'change-password', { method: 'PUT', data })
+
+// 发送身份验证码：发给当前账号已绑定的邮箱 / 手机号（mode 传 'email' 或 'sms'，不传则优先邮箱）
+export const sendIdentityCode = (mode = '') =>
+  call('users', 'verify-code', { method: 'PUT', data: mode ? { mode } : {} })
+
+/**
+ * 账号修改规则（登录用户）
+ *
+ * 返回后台配置（是否开放改账号 / 冷却天数 / 是否要求绑定联系方式与身份验证）
+ * 以及当前用户自身的冷却状态：
+ *   { enabled, cooldown_days, require_contact, require_verify, has_contact,
+ *     can_change, next_time, remaining_days, min_length, max_length, message }
+ * 前台据此决定是否显示「修改」入口，并直接用 message 展示原因。
+ */
+export const getAccountRule = () =>
+  call('users', 'account-rule', { method: 'GET' })
+
+/**
+ * 修改账号（用户名）
+ *
+ * - data.account：新账号（4-20 位字母、数字、下划线）
+ * - data.password / data.email_code / data.phone_code：身份验证三选一（后台可关）
+ * 冷却期（默认改完 30 天内不可再改）与「必须绑定手机号或邮箱」由后端按配置强制校验。
+ */
+export const changeAccount = (data) =>
+  call('users', 'change-account', { method: 'PUT', data })
+
 // 注销账户（发验证码）
 export const destroySendCode = () =>
   call('users', 'destroy', { method: 'DELETE' })
