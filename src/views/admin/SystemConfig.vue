@@ -433,7 +433,10 @@
               <div class="form-item">
                 <label class="form-label">允许用户自填文字</label>
                 <SelectMenu v-model="cfg.decoration.titleAllowCustom" variant="field" :options="ON_OFF" />
-                <p class="form-hint">开启后，未内置文字的「纯样式」头衔可由用户佩戴时自行输入</p>
+                <p class="form-hint">
+                  开启后，未内置文字且没有图片的「纯样式」头衔，可由用户佩戴时自行输入
+                  （图片头衔不需要填字，在「装扮管理」里给头衔配上图片即可）
+                </p>
               </div>
               <div class="form-item">
                 <label class="form-label">头衔最大字数</label>

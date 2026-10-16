@@ -1,7 +1,22 @@
 <template>
-  <span v-if="label" class="title-badge" :class="[`title-badge--${size}`, { 'is-animated': animated }]" :style="badgeStyle">
-    <i v-if="payload?.icon" :class="payload.icon" class="title-badge-icon" />
-    <span class="title-badge-text">{{ label }}</span>
+  <span
+    v-if="hasContent"
+    class="title-badge"
+    :class="[`title-badge--${size}`, { 'is-animated': animated, 'is-image': hasImage }]"
+    :style="badgeStyle"
+  >
+    <!-- 图片头衔：纯图展示 —— 有图片时只渲染图片，不叠加任何文字 -->
+    <img
+      v-if="hasImage"
+      class="title-badge-img"
+      :src="payload.image"
+      :style="imageStyle"
+      :alt="label || '头衔'"
+    />
+    <template v-else>
+      <i v-if="payload.icon" :class="payload.icon" class="title-badge-icon" />
+      <span v-if="label" class="title-badge-text">{{ label }}</span>
+    </template>
   </span>
 </template>
 
@@ -15,13 +30,11 @@ import { computed } from 'vue'
  * 兼容旧数据：没有 payload 时退化为纯文本展示，颜色沿用旧的文本映射。
  *
  * payload 约定（由后台装扮管理器可视化编辑）：
- *   text     头衔文字（为空时使用用户自填文字）
- *   color    文字颜色
- *   bg       背景（支持纯色与 linear-gradient(...)）
- *   border   边框（CSS 值）
- *   glow     发光（CSS box-shadow 值）
- *   icon     Bootstrap Icons 类名
- *   animated 是否开启动效
+ *   文字头衔：text + color / bg / border / glow / icon / animated
+ *   图片头衔：image + scale（scale 控制图片高度倍数，1 = 该尺寸下的默认高度）
+ *
+ * 两种形态互斥：有 image 就只显示图片（payload 里若还残留 text 也不渲染），
+ * 没有 image 时才按文字头衔处理（text 为空则用调用方传入的 text）。
  */
 const props = defineProps({
   payload: { type: Object, default: () => ({}) },
@@ -29,15 +42,32 @@ const props = defineProps({
   size: { type: String, default: 'md' } // sm | md | lg
 })
 
+// 图片头衔在各尺寸下的基准高度（px），再乘 payload.scale
+const IMAGE_HEIGHT = { sm: 16, md: 18, lg: 22 }
+
 const label = computed(() => props.text || props.payload?.text || '')
 const animated = computed(() => props.payload?.animated === true || props.payload?.animated === 1)
+
+const image = computed(() => {
+  const value = props.payload?.image
+  return typeof value === 'string' ? value.trim() : ''
+})
+const hasImage = computed(() => image.value !== '')
+
+// 只要「有图片 / 有文字 / 有图标」就渲染：纯图片头衔没有文字也必须显示
+const hasContent = computed(() => Boolean(hasImage.value || label.value || props.payload?.icon))
 
 const badgeStyle = computed(() => {
   const p = props.payload || {}
   const style = {}
 
   if (p.color) style.color = p.color
+  // 图片头衔：默认继承所在行文字色、无色底（图片自己是主角），后台显式配了才用
+  else if (hasImage.value) style.color = 'inherit'
+
   if (p.bg) style.background = p.bg
+  else if (hasImage.value) style.background = 'transparent'
+
   if (p.glow) style.boxShadow = String(p.glow).includes('px') ? p.glow : `0 0 10px ${p.glow}`
 
   // border 支持两种写法：完整 CSS 值，或仅颜色（自动补成 1px solid）
@@ -46,6 +76,14 @@ const badgeStyle = computed(() => {
   }
 
   return style
+})
+
+// 图片高度：按 size 取基准并乘 scale（限制在 0.5 ~ 3，避免后台填出错值把页面撑坏）
+const imageStyle = computed(() => {
+  const base = IMAGE_HEIGHT[props.size] || IMAGE_HEIGHT.md
+  const raw = Number(props.payload?.scale)
+  const scale = Number.isFinite(raw) && raw > 0 ? Math.min(3, Math.max(0.5, raw)) : 1
+  return { height: `${(base * scale).toFixed(2)}px` }
 })
 </script>
 
@@ -86,6 +124,19 @@ const badgeStyle = computed(() => {
 .title-badge--lg {
   padding: 3px 12px;
   font-size: 14px;
+}
+
+/* 图片头衔：去掉默认的金色底与内边距，图片多大就占多大 */
+.title-badge.is-image {
+  padding: 0;
+  background: transparent;
+}
+
+.title-badge-img {
+  display: block;
+  width: auto;
+  max-width: 100%;
+  object-fit: contain;
 }
 
 .title-badge-icon {

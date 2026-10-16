@@ -9,8 +9,8 @@
           <span v-if="myLevel" class="c-level">Lv.{{ myLevel }}</span>
           <!-- 有装扮样式用 TitleBadge 还原后台配色；没有则回退旧色板 -->
           <TitleBadge
-            v-if="myTitle && myTitlePayload"
-            :payload="myTitlePayload"
+            v-if="myTitle || myTitlePayload"
+            :payload="myTitlePayload || {}"
             :text="myTitle"
             size="sm"
           />

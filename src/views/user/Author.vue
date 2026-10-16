@@ -18,8 +18,8 @@
             <span v-if="level" class="author-level">Lv.{{ level }}</span>
             <!-- 有装扮样式用 TitleBadge 还原后台配色（文字色 / 背景 / 边框 / 发光 / 图标 / 动效） -->
             <TitleBadge
-              v-if="profile.title && titlePayload"
-              :payload="titlePayload"
+              v-if="profile.title || titlePayload"
+              :payload="titlePayload || {}"
               :text="profile.title"
               size="md"
             />

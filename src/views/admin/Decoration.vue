@@ -177,7 +177,13 @@
                   class="deco-frame"
                   :alt="item.name"
                 />
-                <TitleBadge v-else :payload="item.payload" :text="item.payload?.text || item.name" :size="'lg'" />
+                <!-- 图片头衔只显示图片；「纯样式模板」（无文字无图片）才用装扮名占位预览 -->
+                <TitleBadge
+                  v-else
+                  :payload="item.payload"
+                  :text="item.payload?.text || (item.payload?.image ? '' : item.name)"
+                  :size="'lg'"
+                />
               </div>
 
               <div class="deco-info">
@@ -373,27 +379,50 @@
                     :src="form.p_image || form.preview"
                     alt="预览"
                   />
-                  <TitleBadge v-else :payload="formPayloadPreview" :text="form.p_text || '头衔预览'" :size="'lg'" />
+                  <!-- 图片头衔由 TitleBadge 自己识别：有图片就只显示图片，这里传的文字会被忽略 -->
+                  <TitleBadge
+                    v-else
+                    :payload="formPayloadPreview"
+                    :text="form.p_text || '头衔预览'"
+                    :size="'lg'"
+                  />
                 </span>
               </div>
 
-              <div v-if="form.type === 'avatar_frame'" class="form-grid">
+              <!-- 素材地址 / 缩放比例：头像框必填；头衔可选（填了就是「图片头衔」） -->
+              <div class="form-grid">
                 <div class="form-item">
-                  <label class="form-label">素材地址 <span class="required">*</span></label>
-                  <input v-model="form.p_image" class="input" placeholder="https://.../frame.png（支持 gif）" />
+                  <label class="form-label">
+                    {{ form.type === 'avatar_frame' ? '素材地址' : '头衔图片（可选）' }}
+                    <span v-if="form.type === 'avatar_frame'" class="required">*</span>
+                  </label>
+                  <input
+                    v-model="form.p_image"
+                    class="input"
+                    :placeholder="
+                      form.type === 'avatar_frame'
+                        ? 'https://.../frame.png（支持 gif）'
+                        : 'https://.../badge.png，留空则为纯文字头衔'
+                    "
+                  />
+                  <p v-if="form.type === 'title'" class="form-hint">
+                    填了图片即为「纯图片头衔」：只显示图片、不再显示文字（与文字头衔二选一）
+                  </p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">缩放比例</label>
                   <input v-model="form.p_scale" class="input" type="number" step="0.05" min="0.5" max="3" />
-                  <p class="form-hint">1 为贴合头像，建议 1.1 ~ 1.3</p>
+                  <p class="form-hint">
+                    {{ form.type === 'avatar_frame' ? '1 为贴合头像，建议 1.1 ~ 1.3' : '控制图片头衔的高度，1 为默认尺寸' }}
+                  </p>
                 </div>
               </div>
 
-              <div v-else class="form-grid">
+              <div v-if="form.type === 'title'" class="form-grid">
                 <div class="form-item">
                   <label class="form-label">头衔文字</label>
                   <input v-model="form.p_text" class="input" maxlength="20" placeholder="留空则由用户佩戴时自填" />
-                  <p class="form-hint">留空表示「纯样式模板」，佩戴时需用户输入文字</p>
+                  <p class="form-hint">留空则是纯样式模板（佩戴时需用户输入文字）；与上面的图片二选一</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">图标（Bootstrap Icons）</label>
@@ -803,11 +832,13 @@ const formPayloadPreview = computed(() => buildPayload())
 
 function buildPayload() {
   const payload = {}
-  if (form.type === 'avatar_frame') {
-    if (form.p_image) payload.image = form.p_image
+  // 素材地址与缩放：头像框必填、头衔选填（头衔填了即「图片头衔」），两者共用一套字段
+  if (form.p_image) {
+    payload.image = form.p_image
     const scale = Number(form.p_scale)
     if (scale > 0) payload.scale = scale
-  } else {
+  }
+  if (form.type !== 'avatar_frame') {
     if (form.p_text) payload.text = form.p_text
     if (form.p_color) payload.color = form.p_color
     if (form.p_bg) payload.bg = form.p_bg
@@ -853,7 +884,8 @@ function resetForm(type) {
   form.p_border = ''
   form.p_glow = ''
   form.p_icon = ''
-  form.p_scale = 1.15
+  // 头像框的 1 基准是「贴合头像」（略放大更好看），头衔图片的 1 就是默认高度
+  form.p_scale = form.type === 'avatar_frame' ? 1.15 : 1
   form.p_animated = false
   form.extraJson = ''
 }
@@ -887,7 +919,7 @@ function openEdit(item) {
   form.p_border = payload.border || ''
   form.p_glow = payload.glow || ''
   form.p_icon = payload.icon || ''
-  form.p_scale = payload.scale ?? 1.15
+  form.p_scale = payload.scale ?? (item.type === 'avatar_frame' ? 1.15 : 1)
   form.p_animated = payload.animated === true || payload.animated === 1
 
   const extra = {}
@@ -916,6 +948,20 @@ async function save() {
   if (form.type === 'avatar_frame' && !form.p_image.trim()) {
     toast.warning('请填写头像框素材地址')
     return
+  }
+  // 头衔只有两种形态且互斥：纯文字 / 纯图片。
+  // 都为空 -> 没有任何内容可展示；同时填 -> 图片会盖掉文字（用户以为配了文字却没生效）
+  if (form.type === 'title') {
+    const hasText = form.p_text.trim()
+    const hasImage = form.p_image.trim()
+    if (!hasText && !hasImage) {
+      toast.warning('头衔需要填写文字或图片')
+      return
+    }
+    if (hasText && hasImage) {
+      toast.warning('头衔只能二选一：纯文字 或 纯图片')
+      return
+    }
   }
 
   const text = form.extraJson.trim()

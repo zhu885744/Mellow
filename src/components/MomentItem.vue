@@ -17,8 +17,8 @@
           <span v-if="authorLevel" class="c-level">Lv.{{ authorLevel }}</span>
           <!-- 有装扮样式用 TitleBadge 还原后台配色；没有则回退旧色板 -->
           <TitleBadge
-            v-if="authorTitle && authorTitlePayload"
-            :payload="authorTitlePayload"
+            v-if="authorTitle || authorTitlePayload"
+            :payload="authorTitlePayload || {}"
             :text="authorTitle"
             size="sm"
           />

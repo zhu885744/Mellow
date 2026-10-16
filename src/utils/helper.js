@@ -205,7 +205,8 @@ export const pickUserTitlePayload = (user) => {
   if (typeof payload !== 'object') return null
 
   // 一个样式字段都没有时视为「无样式」，交给色板兜底（避免套上 TitleBadge 的默认皮肤）
-  const styleKeys = ['color', 'bg', 'border', 'glow', 'icon', 'animated']
+  // image 也算样式字段：图片头衔（没有文字、只有徽章图）同样必须走 TitleBadge 渲染
+  const styleKeys = ['image', 'color', 'bg', 'border', 'glow', 'icon', 'animated']
   return styleKeys.some((key) => payload[key]) ? payload : null
 }
 

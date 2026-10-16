@@ -177,8 +177,8 @@
               <span class="current-title-label">当前头衔：</span>
               <!-- 佩戴了装扮头衔时用 TitleBadge 还原后台配色（文字色 / 背景 / 边框 / 发光 / 图标 / 动效） -->
               <TitleBadge
-                v-if="form.title && currentTitlePayload"
-                :payload="currentTitlePayload"
+                v-if="form.title || currentTitlePayload"
+                :payload="currentTitlePayload || {}"
                 :text="form.title"
               />
               <span v-else :class="['current-title', { empty: !form.title }]">

@@ -261,8 +261,9 @@ function wear(item) {
     toast.info(item.off_shelf ? '该装扮已被后台下架，暂时无法佩戴' : '该装扮已过期')
     return
   }
-  // 纯样式类头衔（payload 不含文字）：先让用户填写文字
-  if (item.type === 'title' && !item.payload?.text) {
+  // 纯样式类头衔（payload 既没有文字也没有图片）：先让用户填写文字；
+  // 图片头衔（payload.image）直接佩戴，不需要用户提供文字
+  if (item.type === 'title' && !item.payload?.text && !item.payload?.image) {
     pendingTitle.value = item
     customTitleText.value = item.custom_text || ''
     return
