@@ -160,9 +160,9 @@ const pageLocked = computed(() => {
   return state === 'login' || state === 'pay'
 })
 
-// 可直接查看时（公开 / 作者 / 管理员），把当前可见范围也展示出来
+// 当前可见范围：**只给未登录访客看**（登录用户已有内容或兑换引导，不再重复提示）
 const scopeNotice = computed(() => {
-  if (pageLocked.value) return ''
+  if (userStore.isLogged) return ''
   const scope = Number(page.value?.scope)
   if (scope === 2) return '当前可见范围：登录可见'
   if (scope === 3) {

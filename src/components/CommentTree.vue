@@ -57,9 +57,8 @@
             class="hidden-file"
             @change="onPickImages"
           />
-          <!-- 评论可见范围：公开 / 登录可见（评论不提供付费可见），用单选框平铺 -->
+          <!-- 评论可见范围：公开 / 登录可见 / 仅作者可见（评论不提供付费可见），用单选框平铺 -->
           <div class="root-scope">
-            <i class="bi bi-eye" aria-hidden="true" />
             <ScopeRadio v-model="scope" :options="scopeOptions" />
           </div>
           <div class="root-actions">
@@ -201,12 +200,14 @@ const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
 
-// 评论的可见范围（后端 scope）：1 公开 / 2 登录可见
+// 评论的可见范围（后端 scope）：1 公开 / 2 登录可见 / 4 仅作者可见
 // 评论不提供「付费可见」——后端会把 3 降级为 2，且不接受评论的积分兑换
+// 「仅作者可见」= 只有被评论内容的作者（以及评论者本人、管理员）能看到
 const scope = ref(1)
 const scopeOptions = [
   { value: 1, label: '公开可见' },
-  { value: 2, label: '登录可见' }
+  { value: 2, label: '登录可见' },
+  { value: 4, label: '仅作者可见' }
 ]
 
 // 当前登录用户信息（根评论框展示 + 跳转作者主页）
@@ -498,8 +499,8 @@ async function onSubmit({ content, images, pid, scope: rawScope = 1 }) {
     // （后台「系统设置 → 评论配置 → 内容审核」）。
     // 过去这里强制传 audit=1 / status=1，虽然会被后端 allow 白名单丢掉，
     // 但一旦哪天放开就会让审核开关形同虚设，所以直接不传
-    // 可见范围：1 公开 / 2 登录可见（评论不支持付费可见）
-    const commentScope = [1, 2].includes(Number(rawScope)) ? Number(rawScope) : 1
+    // 可见范围：1 公开 / 2 登录可见 / 4 仅作者可见（评论不支持付费可见）
+    const commentScope = [1, 2, 4].includes(Number(rawScope)) ? Number(rawScope) : 1
     const res = await createComment({
       bind_id: props.bindId,
       bind_type: props.bindType,

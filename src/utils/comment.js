@@ -18,7 +18,7 @@
 // 注：前台评论树走 comment/flat 且不传 field（返回全字段），所以能拿到 agent 用来
 // 展示「来自什么设备」（见 components/CommentItem.vue + utils/ua.js）；
 export const COMMENT_LIST_FIELD =
-  'id,pid,uid,content,images,ip,bind_id,bind_type,editor,audit,reason,create_time,update_time,delete_time,result'
+  'id,pid,uid,content,images,ip,bind_id,bind_type,editor,audit,reason,scope,create_time,update_time,delete_time,result'
 
 // 回收站 key：不属于状态标签，需要单独的查询参数（onlyTrashed）
 export const COMMENT_TRASH_KEY = 'trash'

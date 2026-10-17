@@ -76,6 +76,7 @@
             </span>
             <span v-if="!item.audit" class="post-status is-pending">待审核</span>
             <span v-if="Number(item.audit) === 2" class="post-status is-reject">未通过</span>
+            <ScopeBadge :scope="item.scope" :integral="item.scope_integral" />
             <span v-if="item.location" class="meta-text">
               <i class="bi bi-geo-alt" /> {{ item.location }}
             </span>
@@ -191,6 +192,21 @@
                 />
               </div>
 
+              <!-- 可见范围：1 公开 / 2 登录可见 / 3 付费可见（积分兑换） -->
+              <div class="scope-box">
+                <span class="scope-label">可见范围</span>
+                <ScopeRadio v-model="editForm.scope" :options="scopeOptions" />
+                <input
+                  v-if="Number(editForm.scope) === 3"
+                  v-model.number="editForm.scopeIntegral"
+                  class="scope-input"
+                  type="number"
+                  min="1"
+                  max="999999"
+                  placeholder="兑换所需积分"
+                />
+              </div>
+
               <label class="switch-row">
                 <input v-model="editForm.status" type="checkbox" :true-value="1" :false-value="0" />
                 <span>{{ editForm.status === 1 ? '已发布' : '存为草稿' }}</span>
@@ -221,6 +237,8 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmojiEditor from '@/components/EmojiEditor.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
+import ScopeRadio from '@/components/ScopeRadio.vue'
+import ScopeBadge from '@/components/ScopeBadge.vue'
 import { listMoments, updateMoment, removeMoment, uploadMomentImages } from '@/api/moments'
 import { likesCount } from '@/api/tags'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
@@ -380,8 +398,18 @@ const editForm = reactive({
   content: '',
   images: [],
   location: '',
+  // 可见范围（后端字段 scope）：1 公开 2 登录可见 3 付费可见
+  scope: 1,
+  scopeIntegral: 0,
   status: 1
 })
+
+// 与发布器 / 后台编辑弹窗保持同一套文案
+const scopeOptions = [
+  { value: 1, label: '公开可见' },
+  { value: 2, label: '登录可见' },
+  { value: 3, label: '付费可见' }
+]
 
 const canSave = computed(() => editForm.content.trim() || editForm.images.length)
 
@@ -390,6 +418,9 @@ function openEdit(item) {
   editForm.content = item.content || ''
   editForm.images = [...imagesOf(item)]
   editForm.location = item.location || ''
+  const scope = Number(item.scope)
+  editForm.scope = [1, 2, 3].includes(scope) ? scope : 1
+  editForm.scopeIntegral = Number(item.scope_integral) || 0
   editForm.status = item.status === undefined ? 1 : item.status
   editVisible.value = true
 }
@@ -467,11 +498,15 @@ async function submitEdit() {
   if (!editingId.value || !canSave.value || saving.value) return
   saving.value = true
   try {
+    const scopeValue = [1, 2, 3].includes(Number(editForm.scope)) ? Number(editForm.scope) : 1
     await updateMoment({
       id: editingId.value,
       content: editForm.content,
       images: editForm.images,
       location: editForm.location,
+      scope: scopeValue,
+      // 非付费可见时清零，避免残留旧的兑换积分
+      scope_integral: scopeValue === 3 ? Math.max(1, Number(editForm.scopeIntegral) || 0) : 0,
       status: editForm.status
     })
     toast.success('保存成功')
@@ -763,6 +798,35 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-light);
   pointer-events: none;
+}
+/* 可见范围：标签 + 单选框组 +（付费时的）积分输入 */
+.scope-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 12px;
+}
+.scope-label {
+  flex: none;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.scope-input {
+  width: 140px;
+  height: var(--control-h-sm);
+  padding: 0 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.scope-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .switch-row {
   display: flex;

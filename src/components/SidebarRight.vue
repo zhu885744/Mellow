@@ -396,6 +396,8 @@ const typeMap = {
   like: { icon: 'bi bi-hand-thumbs-up', label: '点赞' },
   follow: { icon: 'bi bi-people', label: '关注' },
   collect: { icon: 'bi bi-star', label: '收藏' },
+  // 内容被兑换（付费可见）
+  unlock: { icon: 'bi bi-coin', label: '兑换' },
   system: { icon: 'bi bi-megaphone', label: '系统' }
 }
 function typeLabel(t) {

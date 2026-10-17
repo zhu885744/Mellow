@@ -294,10 +294,11 @@ const articleLocked = computed(() => {
   return state === 'login' || state === 'pay'
 })
 
-// 可直接查看时（公开 / 作者 / 管理员），把当前可见范围也展示出来：
-// 作者与管理员不受限制，如果不显示这行提示，很容易误以为「付费可见没生效」
+// 当前可见范围：**只给未登录访客看**。
+// 登录用户要么直接能看（公开 / 作者 / 管理员 / 已兑换），要么 ContentLock 已经给出兑换引导，
+// 再挂一条范围提示只会重复。
 const scopeNotice = computed(() => {
-  if (articleLocked.value) return ''
+  if (userStore.isLogged) return ''
   const scope = Number(article.value?.scope)
   if (scope === 2) return '当前可见范围：登录可见'
   if (scope === 3) {

@@ -444,7 +444,9 @@ const typeOptions = [
   { value: 'article', label: '文章' },
   { value: 'page', label: '页面' },
   { value: 'links', label: '友链' },
-  { value: 'moments', label: '动态' }
+  { value: 'moments', label: '动态' },
+  // 内容被兑换（付费可见）：兑换者消耗积分后发给内容作者
+  { value: 'unlock', label: '兑换' }
 ]
 
 const targetOptions = [
@@ -591,6 +593,7 @@ const TYPE_LABEL = {
   page: '页面',
   links: '友链',
   moments: '动态',
+  unlock: '兑换',
   system: '短消息'
 }
 

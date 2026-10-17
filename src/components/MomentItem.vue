@@ -25,7 +25,15 @@
           <span v-else-if="authorTitle" :class="['c-title', authorTitleClass]">{{ authorTitle }}</span>
           <span v-if="moment.top" class="top-tag">置顶</span>
         </div>
-        <div class="time">{{ fromNow(moment.create_time) }}</div>
+        <div class="time">
+          <span>{{ fromNow(moment.create_time) }}</span>
+          <!-- 当前可见范围：仅未登录访客显示，跟时间同排，避免正文区多出一条突兀的标签 -->
+          <ScopeBadge
+            v-if="showScopeNotice"
+            :scope="moment.scope"
+            :integral="moment.scope_integral"
+          />
+        </div>
       </div>
       <div v-if="canManage" class="head-actions">
         <button
@@ -69,10 +77,6 @@
     </div>
     <div v-if="moment.location" class="moment-loc">
       <i class="bi bi-geo-alt" /> {{ moment.location }}
-    </div>
-    <!-- 当前可见范围：作者 / 管理员可直接查看时也显示设置值，避免误以为设置没生效 -->
-    <div v-if="showScopeNotice" class="moment-scope">
-      <ScopeBadge :scope="moment.scope" :integral="moment.scope_integral" />
     </div>
     <div class="moment-actions">
       <button
@@ -373,13 +377,9 @@ const canDelete = computed(() => {
 // 仅管理员可置顶/删除（置顶按钮在删除按钮之前）
 const canManage = computed(() => helperIsAdmin(userStore.user))
 
-// 作者 / 管理员可直接查看受限动态时，在卡片上显示当前可见范围
-// （普通读者看到的是正文或遮罩，不需要额外标记）
+// 当前可见范围：**只给未登录访客看**（登录用户要么能看，要么已有兑换引导）
 const showScopeNotice = computed(
-  () =>
-    !momentLocked.value &&
-    Number(props.moment.scope) > 1 &&
-    (Number(props.moment.uid) === Number(userStore.user?.id) || canManage.value)
+  () => !userStore.isLogged && Number(props.moment.scope) > 1
 )
 
 async function toggleTop() {
@@ -512,6 +512,10 @@ function previewImage(i) {
   border-radius: 3px;
 }
 .time {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -606,11 +610,7 @@ function previewImage(i) {
   color: var(--text-muted);
   margin-bottom: 12px;
 }
-/* 当前可见范围徽标（仅作者 / 管理员可直接查看时出现） */
-.moment-scope {
-  display: flex;
-  margin-top: 8px;
-}
+
 .moment-actions {
   display: flex;
   gap: 16px;

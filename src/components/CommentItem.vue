@@ -17,6 +17,14 @@
         />
         <span v-else-if="author.title" :class="['c-title', titleClass]">{{ author.title }}</span>
         <span v-if="author.id === authorId" class="c-badge">作者</span>
+        <!-- 仅作者可见：评论者 / 内容作者自己看得到正文，用徽标标明这条是私密评论 -->
+        <span
+          v-if="Number(comment.scope) === 4 && !isAuthorOnly"
+          class="c-scope"
+          title="仅作者可见：只有内容作者与评论者本人能看到"
+        >
+          <i class="bi bi-eye-slash" aria-hidden="true" /> 仅作者
+        </span>
         <!-- 时间 + 设备：设备取自后端返回的 comment.agent（普通用户为脱敏值），
              解析成「系统 · 浏览器」展示，原始 UA 放在 title 里悬停可见 -->
         <span class="c-meta">
@@ -28,9 +36,13 @@
         </span>
       </div>
 
+      <!-- 可见范围：仅作者可见（评论）——非内容作者/评论者只看到占位提示 -->
+      <div v-if="isAuthorOnly" class="c-author-only">
+        <i class="bi bi-eye-slash" aria-hidden="true" /> 该评论仅作者可见
+      </div>
       <!-- 可见范围：登录可见的评论（评论不支持付费可见），后端已清空正文 -->
       <ContentLock
-        v-if="commentLocked"
+        v-else-if="commentLocked"
         class="c-lock"
         :state="comment.scope_state"
         :integral="0"
@@ -62,17 +74,18 @@
       </div>
 
       <div class="c-actions">
-        <button ref="likeBtn" class="c-action like-btn" :class="{ active: comment.liked }" @click="$emit('like', comment)">
+        <button v-if="!isAuthorOnly" ref="likeBtn" class="c-action like-btn" :class="{ active: comment.liked }" @click="$emit('like', comment)">
           <span class="c-icon"><i ref="likeIcon" class="bi" :class="comment.liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
           <span>{{ comment.likeCount || 0 }}</span>
         </button>
-        <button v-if="allowComment" class="c-action" @click="$emit('reply', comment)">
+        <button v-if="allowComment && !isAuthorOnly" class="c-action" @click="$emit('reply', comment)">
           <span class="c-icon"><i class="bi bi-chat-dots" /></span> 回复
         </button>
         <button v-if="canDelete" class="c-action c-del" @click="$emit('remove', comment)">删除</button>
-        <!-- 举报：自己的评论不显示（举报弹窗由父级 CommentTree 统一承载，避免每条评论各挂一个弹窗） -->
+        <!-- 举报：自己的评论不显示（举报弹窗由父级 CommentTree 统一承载，避免每条评论各挂一个弹窗）；
+             看不到正文的「仅作者可见」评论同样不提供举报入口 -->
         <button
-          v-if="canReport"
+          v-if="canReport && !isAuthorOnly"
           class="c-action"
           title="举报这条评论"
           @click="$emit('report', comment)"
@@ -133,7 +146,7 @@
           @select="onLibrarySelect"
         />
         <div class="c-reply-actions">
-          <!-- 回复可见范围：公开 / 登录可见（评论不支持付费可见），用单选框平铺 -->
+          <!-- 回复可见范围：公开 / 登录可见 / 仅作者可见（评论不支持付费可见），用单选框平铺 -->
           <ScopeRadio v-model="replyScope" :options="scopeOptions" class="reply-scope" />
           <span v-if="replyImages.length" class="img-tip">已选 {{ replyImages.length }} 张</span>
           <button class="btn btn-sm" @click="cancelReply">取消</button>
@@ -207,12 +220,13 @@ const router = useRouter()
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
 const replyText = ref('')
 
-// 回复的可见范围（后端 scope）：1 公开 / 2 登录可见
+// 回复的可见范围（后端 scope）：1 公开 / 2 登录可见 / 4 仅作者可见
 // 评论不提供「付费可见」（后端会把 3 降级为 2）
 const replyScope = ref(1)
 const scopeOptions = [
   { value: 1, label: '公开可见' },
-  { value: 2, label: '登录可见' }
+  { value: 2, label: '登录可见' },
+  { value: 4, label: '仅作者可见' }
 ]
 
 // 后端把评论作者放在 result.author（原始对象里带 users.json，头衔样式要从这里取）
@@ -222,10 +236,13 @@ const rawAuthor = computed(
 const author = computed(() => pickCommentAuthor(props.comment))
 const renderedContent = computed(() => renderEmojiWithBreaks(props.comment.content))
 
-// 可见范围：scope_state 为 login / pay 时说明后端已按可见范围清空正文
+// 仅作者可见：后端把正文清空，只回传 scope_state = 'author'
+const isAuthorOnly = computed(() => props.comment?.scope_state === 'author')
+
+// 可见范围：scope_state 为 login / pay / author 时说明后端已按可见范围清空正文
 const commentLocked = computed(() => {
   const state = props.comment?.scope_state
-  return state === 'login' || state === 'pay'
+  return state === 'login' || state === 'pay' || state === 'author'
 })
 
 // 评论者 UA（后端 comment.agent；普通用户看到的是脱敏后的截断值，管理员是完整值）
@@ -462,6 +479,18 @@ function submitReply() {
   background: var(--accent-soft);
   color: var(--accent);
 }
+/* 可见范围徽标（仅作者可见的私密评论） */
+.c-scope {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  padding: 0 5px;
+  border-radius: 3px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  border: 1px dashed var(--border);
+}
 /* 时间 + 设备：独占一行，显示在昵称下面 */
 .c-meta {
   display: flex;
@@ -509,6 +538,20 @@ function submitReply() {
   color: var(--text-soft);
   margin: 8px 0;
   word-break: break-word;
+}
+/* 仅作者可见：非内容作者的占位提示（正文已由后端清空） */
+.c-author-only {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin: 8px 0;
+  padding: 4px 10px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: var(--bg-muted);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
 }
 .c-content-link {
   cursor: pointer;

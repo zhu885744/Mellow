@@ -1695,6 +1695,9 @@ const MAIL_SCENES = [
   { key: 'moments.pending', label: '动态待审核', group: '内容审核', target: 'admin', default: 1 },
   { key: 'moments.passed', label: '动态审核通过', group: '内容审核', target: 'user', default: 1 },
   { key: 'moments.rejected', label: '动态审核未通过', group: '内容审核', target: 'user', default: 1 },
+  { key: 'comment.pending', label: '评论待审核', group: '内容审核', target: 'admin', default: 1 },
+  { key: 'comment.passed', label: '评论审核通过', group: '内容审核', target: 'user', default: 1 },
+  { key: 'comment.rejected', label: '评论审核未通过', group: '内容审核', target: 'user', default: 1 },
   { key: 'comment.notify', label: '评论通知（内容作者）', group: '评论互动', target: 'user', default: 1 },
   { key: 'comment.reply', label: '回复通知（被回复人）', group: '评论互动', target: 'user', default: 1 },
   // 举报治理：站内信不受开关影响，这里只控制邮件

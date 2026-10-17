@@ -75,6 +75,8 @@
           </p>
 
           <div class="post-meta">
+            <!-- 当前内容的可见范围：公开 / 登录可见 / 付费 · N 积分 -->
+            <ScopeBadge :scope="item.scope" :integral="item.scope_integral" />
             <span v-if="groupNameOf(item)" class="meta-chip">
               <i class="bi bi-folder2" /> {{ groupNameOf(item) }}
             </span>
@@ -121,6 +123,7 @@ import { useRouter } from 'vue-router'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmojiText from '@/components/EmojiText.vue'
+import ScopeBadge from '@/components/ScopeBadge.vue'
 import { getMyArticles, countMyArticles, removeArticle, getArticleGroups } from '@/api/article'
 import { listAllTags } from '@/api/tags'
 import { useUserStore } from '@/stores/user'

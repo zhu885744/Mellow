@@ -87,12 +87,11 @@
         <ArticleSkeleton v-for="i in 3" :key="'sk-' + i" :cover="i % 2 === 1" />
       </template>
 
-      <!-- 混排列表：文章用 ArticleCard，动态用 MomentItem（两者外观已统一为卡片） -->
+      <!-- 混排列表：文章与动态都用动态卡片风格（文章显示正文片段 + 查看更多） -->
       <template v-for="item in items" :key="item.key">
-        <ArticleCard
+        <ArticleFeedItem
           v-if="item.type === 'article'"
           :article="item.data"
-          :abstract-limit="50"
         />
         <MomentItem
           v-else
@@ -161,7 +160,7 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
-import ArticleCard from '@/components/ArticleCard.vue'
+import ArticleFeedItem from '@/components/ArticleFeedItem.vue'
 import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
 import MomentItem from '@/components/MomentItem.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -587,12 +586,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
 }
 
-/* 混排统一为卡片外观：
-   ArticleCard / ArticleSkeleton 本身是「通栏列表行」（行间一条虚线分隔），
-   这里用 :deep 覆盖成卡片。注意选择器写成 `article.article-item`（多带一个元素名），
-   是为了在特异性上压过组件内的 `.article-item:last-child`，否则卡片里会残留一条虚线。
-   卡片用阴影而不是描边，阴影层次与 MomentItem 保持一致。 */
-.feed :deep(article.article-item),
+/* 骨架屏仍是「通栏列表行」，这里覆盖成卡片，与文章 / 动态卡片对齐 */
 .feed :deep(div.sk-article) {
   padding: 20px;
   margin-bottom: 16px;
@@ -600,10 +594,6 @@ onBeforeUnmount(() => {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.2s;
-}
-.feed :deep(article.article-item:hover) {
-  box-shadow: var(--shadow);
 }
 /* MomentItem 自带的描边卡片，统一成同一套观感（描边改透明、补同款阴影） */
 .feed :deep(.moment-card) {

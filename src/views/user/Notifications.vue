@@ -176,6 +176,8 @@ const typeOptions = [
   { value: 'links', label: '友链' },
   { value: 'moments', label: '动态' },
   { value: 'decoration', label: '装扮' },
+  // 内容被兑换：别人消耗积分兑换了你设置的付费内容
+  { value: 'unlock', label: '兑换' },
   { value: 'system', label: '系统' }
 ]
 
@@ -206,6 +208,8 @@ const typeMap = {
   moments: '动态',
   // 装扮：获得 / 续期 / 被回收 / 即将过期 / 已过期
   decoration: '装扮',
+  // 兑换：别人消耗积分兑换了你的付费内容（见 model.SendUnlockNotify）
+  unlock: '兑换',
   system: '系统'
 }
 
@@ -261,6 +265,8 @@ function iconOf(t) {
     links: 'bi bi-link-45deg',
     moments: 'bi bi-chat-square-text',
     decoration: 'bi bi-gem',
+    // 兑换：积分消费类，用金币图标
+    unlock: 'bi bi-coin',
     system: 'bi bi-megaphone'
   })[t] || 'bi bi-bell'
 }

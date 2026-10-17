@@ -169,7 +169,7 @@
                 <span class="bind-chip" :class="`is-${item.bind_type}`">
                   <i :class="bindIcon(item)" /> {{ bindLabel(item) }}
                 </span>
-                <!-- 当前可见范围：评论只有「公开 / 登录可见」两档（allow-pay=false） -->
+                <!-- 当前可见范围：评论有「公开 / 登录可见 / 仅作者可见」三档（allow-pay=false） -->
                 <ScopeBadge
                   :scope="item.scope"
                   :integral="item.scope_integral"

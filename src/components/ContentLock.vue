@@ -34,6 +34,9 @@
  *   scope_integral         兑换所需积分
  * 本组件负责展示提示并提供「登录」或「积分兑换」入口，兑换成功后 emit('unlocked')，
  * 由父级重新拉取内容（后端已改为可查看，正文会正常返回）。
+ *
+ * 注意：评论的 scope_state = 'author'（仅作者可见）**不**走本组件，
+ * 由 CommentItem 渲染「该评论仅作者可见」占位（登录/兑换都解决不了）。
  */
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'

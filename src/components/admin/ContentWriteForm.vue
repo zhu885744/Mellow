@@ -259,7 +259,8 @@
           <div class="action-right">
             <span class="save-tip">{{ savedTip }}</span>
             <!-- 独立页面没有草稿/发布之分，仅保留一个保存按钮 -->
-            <button v-if="!isPage" class="btn btn-ghost" :disabled="saving" @click="submit(0)">
+            <!-- 与右侧主按钮 / 左侧「更多设置」统一为全圆角（.btn-pill） -->
+            <button v-if="!isPage" class="btn btn-ghost btn-pill" :disabled="saving" @click="submit(0)">
               {{ saving ? '处理中...' : '保存草稿' }}
             </button>
             <button class="btn btn-primary btn-pill" :disabled="saving" @click="submit(1)">
