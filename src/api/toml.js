@@ -48,8 +48,8 @@ export const getTomlSms = () => getToml('sms')
 /** 缓存配置（返回 open / default / redis / file / ram） */
 export const getTomlCache = () => getToml('cache')
 
-/** JWT 配置（返回 { jwt: { key, expire, issuer, subject } }） */
-export const getTomlJwt = () => getToml('crypt', { name: 'jwt' })
+/** 登录会话配置（返回 { session: { expire } }；JWT 已移除，老配置会由后端映射） */
+export const getTomlSession = () => getToml('crypt')
 
 /**
  * 存储配置：必须按分组读取，避免拿到明文密钥

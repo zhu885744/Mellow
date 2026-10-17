@@ -476,35 +476,23 @@
             </div>
           </section>
 
-          <!-- ============ JWT 认证 ============ -->
-          <section v-else-if="tab === 'jwt'" class="card card-pad">
+          <!-- ============ 登录会话 ============ -->
+          <section v-else-if="tab === 'session'" class="card card-pad">
             <header class="cfg-head">
               <div>
-                <h3 class="cfg-title">JWT 认证</h3>
-                <p class="cfg-desc">JSON Web Token 用户认证服务；修改密钥会使已签发的 Token 立即失效</p>
+                <h3 class="cfg-title">登录会话</h3>
+                <p class="cfg-desc">登录态是服务端会话（缓存里的 session:{sid}），项目已移除 JWT；令牌不携带任何声明，可在退出 / 改密 / 封禁时立即撤销</p>
               </div>
             </header>
             <div class="form-grid">
               <div class="form-item">
-                <label class="form-label">密钥（key）</label>
-                <input v-model="toml.jwt.key" class="input" type="text" placeholder="必填" />
-                <p class="form-hint">管理员可查看明文；修改后已签发的 Token 会立即失效</p>
-              </div>
-              <div class="form-item">
-                <label class="form-label">有效期（秒，支持表达式）</label>
-                <input v-model="toml.jwt.expire" class="input" type="text" placeholder="如 15 * 24 * 60 * 60" />
-              </div>
-              <div class="form-item">
-                <label class="form-label">签发者（issuer）</label>
-                <input v-model="toml.jwt.issuer" class="input" type="text" placeholder="必填" />
-              </div>
-              <div class="form-item">
-                <label class="form-label">主题（subject）</label>
-                <input v-model="toml.jwt.subject" class="input" type="text" placeholder="必填" />
+                <label class="form-label">会话有效期（秒，支持表达式）</label>
+                <input v-model="toml.session.expire" class="input" type="text" placeholder="如 15 * 24 * 60 * 60" />
+                <p class="form-hint">滑动续期（最后活跃时间 + 有效期），默认 15 天；修改后只影响新登录 / 续期的会话，已签发的会话保持原时长</p>
               </div>
             </div>
             <div class="cfg-foot">
-              <button class="btn btn-primary btn-sm" :disabled="isSaving('jwt')" @click="saveJwt">
+              <button class="btn btn-primary btn-sm" :disabled="isSaving('session')" @click="saveSession">
                 <i class="bi bi-check2" /> 保存
               </button>
             </div>
@@ -1393,7 +1381,7 @@
  *
  * 配置来源分两类：
  * 1. config 表（key / value / json / text）—— 安全策略、分页限制、注册开关；
- * 2. toml 文件（经 /api/toml 读写）—— JWT、缓存、存储、短信、通知、日志。
+ * 2. toml 文件（经 /api/toml 读写）—— 登录会话、缓存、存储、短信、通知、日志。
  *
  * 后端要点（app/api/controller/toml.go、app/api/middleware/*、app/model/config.go）：
  * - SYSTEM_API_KEY / SYSTEM_QPS / SYSTEM_QPS_BLOCK / SYSTEM_QPS_NOTIFY / SYSTEM_PAGE_LIMIT /
@@ -1440,7 +1428,7 @@ import {
   getTomlNotification,
   getTomlSms,
   getTomlCache,
-  getTomlJwt,
+  getTomlSession,
   getStorageGroup
 } from '@/api/toml'
 import { toast } from '@/utils/toast'
@@ -1549,7 +1537,7 @@ const modules = [
     icon: 'bi bi-person-badge',
     tabs: [
       { key: 'security', label: '安全与限流', icon: 'bi bi-shield-lock' },
-      { key: 'jwt', label: 'JWT 认证', icon: 'bi bi-key' },
+      { key: 'session', label: '登录会话', icon: 'bi bi-shield-check' },
       { key: 'register', label: '注册', icon: 'bi bi-person-plus' },
       { key: 'accountRule', label: '账号修改', icon: 'bi bi-person-vcard' },
       { key: 'oauth', label: '第三方登录', icon: 'bi bi-share' }
@@ -1854,7 +1842,7 @@ function defaultMailQueue() {
 }
 
 const toml = reactive({
-  jwt: { key: '', expire: '', issuer: '', subject: '' },
+  session: { expire: '' },
   cache: {
     openValue: '0',
     default: 'file',
@@ -2249,22 +2237,17 @@ async function loadConfigs() {
 }
 
 async function loadTomlAll() {
-  const [jwt, cache, sms, notification, log] = await Promise.all([
-    getTomlJwt().catch(() => null),
+  const [session, cache, sms, notification, log] = await Promise.all([
+    getTomlSession().catch(() => null),
     getTomlCache().catch(() => null),
     getTomlSms().catch(() => null),
     getTomlNotification().catch(() => null),
     getTomlLog().catch(() => null)
   ])
 
-  // crypt 不带 name 返回 { jwt: {...} }，带 name=jwt 返回内层；两种都兼容
-  const jwtData = jwt?.data?.jwt || jwt?.data || {}
-  toml.jwt = {
-    key: toText(jwtData.key),
-    expire: toText(jwtData.expire),
-    issuer: toText(jwtData.issuer),
-    subject: toText(jwtData.subject)
-  }
+  // crypt 返回 { session: { expire } }；兼容老版本返回的内层结构
+  const sessionData = session?.data?.session || session?.data?.jwt || session?.data || {}
+  toml.session = { expire: toText(sessionData.expire) }
 
   const cacheData = cache?.data || {}
   toml.cache.openValue = cacheData.open ? '1' : '0'
@@ -2701,12 +2684,9 @@ async function saveTomlItem(key, method, data, okText = '已保存') {
   })
 }
 
-function saveJwt() {
-  return saveTomlItem('jwt', 'crypt-jwt', {
-    key: toml.jwt.key,
-    expire: toml.jwt.expire,
-    issuer: toml.jwt.issuer,
-    subject: toml.jwt.subject
+function saveSession() {
+  return saveTomlItem('session', 'crypt-session', {
+    expire: toml.session.expire
   })
 }
 
