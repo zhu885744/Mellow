@@ -169,6 +169,12 @@
                 <span class="bind-chip" :class="`is-${item.bind_type}`">
                   <i :class="bindIcon(item)" /> {{ bindLabel(item) }}
                 </span>
+                <!-- 当前可见范围：评论只有「公开 / 登录可见」两档（allow-pay=false） -->
+                <ScopeBadge
+                  :scope="item.scope"
+                  :integral="item.scope_integral"
+                  :allow-pay="false"
+                />
                 <span v-if="isReply(item)" class="flag is-reply">
                   <i class="bi bi-reply" /> 回复 #{{ item.pid }}
                 </span>
@@ -358,6 +364,7 @@ import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import EmojiText from '@/components/EmojiText.vue'
+import ScopeBadge from '@/components/ScopeBadge.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import AuditDialog from '@/components/admin/AuditDialog.vue'
 import {

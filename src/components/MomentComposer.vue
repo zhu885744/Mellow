@@ -98,6 +98,24 @@
       />
     </div>
 
+    <!-- 可见范围：公开 / 登录可见 / 付费可见（积分兑换），用单选框平铺 -->
+    <div class="composer__scope">
+      <span class="composer__scope-label">
+        <i class="bi bi-eye" aria-hidden="true" />
+        可见范围
+      </span>
+      <ScopeRadio v-model="scope" :options="scopeOptions" />
+      <input
+        v-if="Number(scope) === 3"
+        v-model.number="scopeIntegral"
+        class="composer__scope-input"
+        type="number"
+        min="1"
+        max="999999"
+        placeholder="查看需消耗的积分"
+      />
+    </div>
+
     <div class="composer__actions">
       <button class="btn btn-primary btn-sm btn-block" :disabled="publishing || uploading" @click="submit">
         {{ publishing ? '发布中...' : '发布' }}
@@ -128,6 +146,7 @@ import { computed, ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import EmojiEditor from './EmojiEditor.vue'
 import AttachmentLibrary from './AttachmentLibrary.vue'
+import ScopeRadio from './ScopeRadio.vue'
 import { useUserStore } from '@/stores/user'
 import { createMoment, uploadMomentImages } from '@/api/moments'
 import { toast } from '@/utils/toast'
@@ -149,6 +168,14 @@ const { user } = storeToRefs(userStore)
 const content = ref('')
 const images = ref([])
 const location = ref('')
+// 可见范围（后端字段 scope）：1 公开 2 登录可见 3 付费可见；付费时 scope_integral 为兑换积分
+const scope = ref(1)
+const scopeIntegral = ref(0)
+const scopeOptions = [
+  { value: 1, label: '公开可见' },
+  { value: 2, label: '登录可见' },
+  { value: 3, label: '付费可见' }
+]
 const publishing = ref(false)
 const uploading = ref(false)
 const showLibrary = ref(false)
@@ -250,16 +277,21 @@ async function submit() {
 
   publishing.value = true
   try {
+    const scopeValue = [1, 2, 3].includes(Number(scope.value)) ? Number(scope.value) : 1
     const res = await createMoment({
       content: content.value,
       images: images.value.join(','),
       location: location.value.trim(),
+      scope: scopeValue,
+      scope_integral: scopeValue === 3 ? Math.max(1, Number(scopeIntegral.value) || 0) : 0,
       status: 1
     })
 
     content.value = ''
     images.value = []
     location.value = ''
+    scope.value = 1
+    scopeIntegral.value = 0
     // 按后端回传的 audit 提示：站点关闭「内容审核」时 audit=1（已通过），
     // 不能再无条件提示「等待审核」——否则用户会以为内容进了待审核
     toast.success(Number(res?.data?.audit) === 0 ? '发布成功，等待审核通过后对外可见' : '发布成功')
@@ -279,6 +311,8 @@ function reset() {
   content.value = ''
   images.value = []
   location.value = ''
+  scope.value = 1
+  scopeIntegral.value = 0
 }
 
 defineExpose({ submit, reset, hasDraft })
@@ -421,6 +455,39 @@ defineExpose({ submit, reset, hasDraft })
   transition: border-color 0.2s, box-shadow 0.2s;
 }
 .composer__loc-input:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* 可见范围：标签 + 单选框组 +（付费时的）兑换积分输入 */
+.composer__scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 10px;
+}
+.composer__scope-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.composer__scope-input {
+  width: 160px;
+  height: var(--control-h-sm);
+  padding: 0 12px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.composer__scope-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }

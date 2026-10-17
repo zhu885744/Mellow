@@ -72,6 +72,21 @@
       />
     </div>
 
+    <!-- 可见范围：1 公开 / 2 登录可见 / 3 付费可见（积分兑换），用单选框平铺 -->
+    <div class="scope-box">
+      <span class="scope-label">可见范围</span>
+      <ScopeRadio v-model="form.scope" :options="scopeOptions" />
+      <input
+        v-if="Number(form.scope) === 3"
+        v-model.number="form.scopeIntegral"
+        class="dialog-input scope-input"
+        type="number"
+        min="1"
+        max="999999"
+        placeholder="兑换所需积分"
+      />
+    </div>
+
     <label class="switch-row">
       <input v-model="form.status" type="checkbox" :true-value="1" :false-value="0" />
       <span>{{ form.status === 1 ? '已发布' : '存为草稿' }}</span>
@@ -104,6 +119,7 @@ import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import OwnerInfo from '@/components/admin/OwnerInfo.vue'
 import EmojiEditor from '@/components/EmojiEditor.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
+import ScopeRadio from '@/components/ScopeRadio.vue'
 import { updateMoment, uploadMomentImages } from '@/api/moments'
 import { parseMomentImages } from '@/utils/moment'
 import { toast } from '@/utils/toast'
@@ -128,8 +144,17 @@ const form = reactive({
   content: '',
   images: [],
   location: '',
+  // 可见范围（后端字段 scope）：1 公开 2 登录可见 3 付费可见
+  scope: 1,
+  scopeIntegral: 0,
   status: 1
 })
+
+const scopeOptions = [
+  { value: 1, label: '公开（所有人可见）' },
+  { value: 2, label: '登录可见' },
+  { value: 3, label: '付费可见（积分兑换）' }
+]
 
 const saving = ref(false)
 const uploading = ref(false)
@@ -158,6 +183,9 @@ function resetForm() {
   form.content = item.content || ''
   form.images = parseMomentImages(item.images)
   form.location = item.location || ''
+  const scope = Number(item.scope)
+  form.scope = [1, 2, 3].includes(scope) ? scope : 1
+  form.scopeIntegral = Number(item.scope_integral) || 0
   form.status = Number(item.status) === 0 ? 0 : 1
   saving.value = false
   uploading.value = false
@@ -244,11 +272,14 @@ async function submit() {
   saving.value = true
   try {
     // 回传原 audit，避免保存时被后端的审核规则打回待审核
+    const scopeValue = [1, 2, 3].includes(Number(form.scope)) ? Number(form.scope) : 1
     await updateMoment({
       id: form.id,
       content: form.content,
       images: form.images,
       location: form.location.trim(),
+      scope: scopeValue,
+      scope_integral: scopeValue === 3 ? Math.max(1, Number(form.scopeIntegral) || 0) : 0,
       status: form.status,
       audit: form.audit
     })
@@ -343,6 +374,24 @@ async function submit() {
 .dialog-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+/* 可见范围：标签 + 单选框组 +（付费时的）积分输入 */
+.scope-box {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 12px;
+}
+.scope-label {
+  flex: none;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.scope-input {
+  width: 140px;
+  padding-left: 12px;
 }
 
 .switch-row {

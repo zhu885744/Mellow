@@ -57,6 +57,11 @@
             class="hidden-file"
             @change="onPickImages"
           />
+          <!-- 评论可见范围：公开 / 登录可见（评论不提供付费可见），用单选框平铺 -->
+          <div class="root-scope">
+            <i class="bi bi-eye" aria-hidden="true" />
+            <ScopeRadio v-model="scope" :options="scopeOptions" />
+          </div>
           <div class="root-actions">
             <span v-if="newImages.length" class="img-tip">已选 {{ newImages.length }} 张图片</span>
             <button
@@ -127,6 +132,7 @@
         @submit="onSubmit"
         @remove="onRemove"
         @report="onReport"
+        @unlocked="load"
       />
       <Pagination
         v-if="total > pageSize"
@@ -176,6 +182,7 @@ import {
 } from '@/utils/helper'
 import TitleBadge from './TitleBadge.vue'
 import ReportDialog from './ReportDialog.vue'
+import ScopeRadio from './ScopeRadio.vue'
 import { createReport } from '@/api/report'
 
 const props = defineProps({
@@ -193,6 +200,14 @@ const emit = defineEmits(['loaded'])
 const userStore = useUserStore()
 const router = useRouter()
 const route = useRoute()
+
+// 评论的可见范围（后端 scope）：1 公开 / 2 登录可见
+// 评论不提供「付费可见」——后端会把 3 降级为 2，且不接受评论的积分兑换
+const scope = ref(1)
+const scopeOptions = [
+  { value: 1, label: '公开可见' },
+  { value: 2, label: '登录可见' }
+]
 
 // 当前登录用户信息（根评论框展示 + 跳转作者主页）
 const myLevel = computed(() => pickUserLevel(userStore.user))
@@ -440,9 +455,15 @@ function onLibrarySelect(urls = []) {
 async function submitRoot() {
   const content = newComment.value.trim()
   if (!content && !newImages.value.length) return
-  await onSubmit({ content, images: [...newImages.value], pid: 0 })
+  await onSubmit({
+    content,
+    images: [...newImages.value],
+    pid: 0,
+    scope: Number(scope.value)
+  })
   newComment.value = ''
   newImages.value = []
+  scope.value = 1
 }
 
 // 待审核占位（只存本地，不写库）：审核开启时，刚提交的评论不会立刻出现在列表里
@@ -467,7 +488,7 @@ function removePending(key) {
   pendingComments.value = pendingComments.value.filter((item) => item.key !== key)
 }
 
-async function onSubmit({ content, images, pid }) {
+async function onSubmit({ content, images, pid, scope: rawScope = 1 }) {
   if (!userStore.isLogged) {
     toast.warning('请先登录')
     return
@@ -477,13 +498,16 @@ async function onSubmit({ content, images, pid }) {
     // （后台「系统设置 → 评论配置 → 内容审核」）。
     // 过去这里强制传 audit=1 / status=1，虽然会被后端 allow 白名单丢掉，
     // 但一旦哪天放开就会让审核开关形同虚设，所以直接不传
+    // 可见范围：1 公开 / 2 登录可见（评论不支持付费可见）
+    const commentScope = [1, 2].includes(Number(rawScope)) ? Number(rawScope) : 1
     const res = await createComment({
       bind_id: props.bindId,
       bind_type: props.bindType,
       pid: pid || 0,
       content,
       // 后端 processFieldValue 会把数组转为逗号分隔字符串
-      images: images || []
+      images: images || [],
+      scope: commentScope
     })
     replyTo.value = null
 
@@ -720,6 +744,15 @@ defineExpose({ load })
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.root-scope {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
 .root-actions {
   display: flex;

@@ -1,5 +1,10 @@
 <template>
   <RouterView />
+  <!-- 全局图片灯箱：必须挂在 App 而不是 MainLayout。
+       后台 / 用户中心 / 创作中心也有预览图片的入口（轮播图、举报证据、评论图片…），
+       那些布局里没有灯箱时 openLightbox 只会把状态置为 visible，用户看不到也关不掉，
+       等切回前台布局再挂载灯箱时就会「凭空」弹出来。 -->
+  <Lightbox />
   <!-- 全局滑块验证：发送验证码被判定为频繁时，由 request.js 的拦截器唤起（见 utils/captchaGate） -->
   <SliderCaptcha />
 </template>
@@ -10,6 +15,7 @@ import { RouterView, useRoute } from 'vue-router'
 import { useSiteStore } from '@/stores/site'
 import { applySiteAssets } from '@/utils/siteAssets'
 import SliderCaptcha from '@/components/SliderCaptcha.vue'
+import Lightbox from '@/components/Lightbox.vue'
 
 const siteStore = useSiteStore()
 const route = useRoute()

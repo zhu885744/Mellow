@@ -29,7 +29,24 @@
       <EmojiText :text="article.abstract" :size="18" />
     </div>
 
+    <!-- 当前可见范围：作者 / 管理员可直接查看时也把设置值显示出来，避免误以为设置没生效 -->
+    <div v-if="scopeNotice" class="scope-notice">
+      <i class="bi bi-eye" aria-hidden="true" />
+      <span>{{ scopeNotice }}</span>
+    </div>
+
+    <!-- 可见范围：登录可见 / 付费可见时后端已清空正文，这里展示引导并支持积分兑换 -->
+    <ContentLock
+      v-if="articleLocked"
+      :state="article.scope_state"
+      :integral="Number(article.scope_integral) || 0"
+      bind-type="article"
+      :bind-id="article.id"
+      @unlocked="load"
+    />
+
     <article
+      v-else
       ref="contentRef"
       :class="['content', isRichText ? 'rich-text' : 'markdown-body']"
       v-html="contentHtml"
@@ -165,6 +182,7 @@ import ReportDialog from '@/components/ReportDialog.vue'
 import { createReport } from '@/api/report'
 import EmptyState from '@/components/EmptyState.vue'
 import EmojiText from '@/components/EmojiText.vue'
+import ContentLock from '@/components/ContentLock.vue'
 import { getArticle } from '@/api/article'
 import { getUser } from '@/api/users'
 import {
@@ -269,6 +287,25 @@ function closeReward() {
 }
 
 const isRichText = computed(() => isRichTextEditor(article.value?.editor))
+
+// 可见范围：scope_state 为 login / pay 时说明后端已按可见范围清空正文
+const articleLocked = computed(() => {
+  const state = article.value?.scope_state
+  return state === 'login' || state === 'pay'
+})
+
+// 可直接查看时（公开 / 作者 / 管理员），把当前可见范围也展示出来：
+// 作者与管理员不受限制，如果不显示这行提示，很容易误以为「付费可见没生效」
+const scopeNotice = computed(() => {
+  if (articleLocked.value) return ''
+  const scope = Number(article.value?.scope)
+  if (scope === 2) return '当前可见范围：登录可见'
+  if (scope === 3) {
+    const integral = Number(article.value?.scope_integral) || 0
+    return `当前可见范围：付费可见 · ${integral} 积分`
+  }
+  return ''
+})
 
 // 富文本：content 本身是 HTML，清洗后原样渲染；markdown（vditor 等）：走 markdown 渲染
 const contentHtml = computed(() => {
@@ -466,6 +503,19 @@ onUnmounted(() => {
   color: var(--text-soft);
   border-radius: 0 var(--radius) var(--radius) 0;
   margin-bottom: 24px;
+}
+/* 当前可见范围提示（仅作者 / 管理员可直接查看时出现） */
+.scope-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--primary-deep);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
 }
 /* 审核状态提示条（草稿 / 待审核 / 未通过） */
 .audit-banner {

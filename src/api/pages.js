@@ -21,7 +21,7 @@ export const getPageForEdit = (id) =>
     method: 'GET',
     params: {
       id,
-      field: 'id,uid,key,title,content,remark,tags,editor,audit,reason,json,create_time,update_time,publish_time'
+      field: 'id,uid,key,title,content,remark,tags,editor,audit,reason,json,scope,scope_integral,create_time,update_time,publish_time'
     }
   })
 

@@ -177,6 +177,29 @@
             <p class="form-hint">选「隐藏」后{{ isPage ? '该页面' : '文章详情页' }}整个评论模块都不显示</p>
           </div>
 
+          <!-- 可见范围：1 公开 / 2 登录可见 / 3 付费可见（积分兑换），用单选框平铺 -->
+          <div class="form-item">
+            <label class="form-label">可见范围</label>
+            <ScopeRadio v-model="scope" :options="scopeOptions" />
+            <p class="form-hint">
+              公开：所有用户（含访客）可见；登录可见：访客只看到登录提示；付费可见：登录用户消耗积分兑换后可看全文
+            </p>
+          </div>
+
+          <!-- 付费可见的兑换积分（1 积分起，兑换所得归作者） -->
+          <div v-if="Number(scope) === 3" class="form-item">
+            <label class="form-label">兑换积分</label>
+            <input
+              v-model.number="scopeIntegral"
+              class="input"
+              type="number"
+              min="1"
+              max="999999"
+              placeholder="查看全文需消耗的积分，如 10"
+            />
+            <p class="form-hint">同一用户只需兑换一次，兑换所得积分归内容作者</p>
+          </div>
+
           <div class="form-item">
             <label class="form-label">标签</label>
             <div class="tag-picker">
@@ -267,6 +290,7 @@ import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
+import ScopeRadio from '@/components/ScopeRadio.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import OwnerInfo from '@/components/admin/OwnerInfo.vue'
 import {
@@ -354,6 +378,16 @@ const commentShowOptions = [
   { value: 2, label: '隐藏' }
 ]
 
+// 可见范围（后端字段 scope）：1 公开 2 登录可见 3 付费可见；
+// 付费可见时 scope_integral 为兑换所需积分
+const scope = ref(1)
+const scopeIntegral = ref(0)
+const scopeOptions = [
+  { value: 1, label: '公开（所有人可见）' },
+  { value: 2, label: '登录可见' },
+  { value: 3, label: '付费可见（积分兑换）' }
+]
+
 // 审核状态（仅管理员可见/可改）：0 待审核 1 通过 2 不通过
 const isAdminUser = computed(() => isAdmin(user.value))
 const articleAudit = ref(1)
@@ -428,6 +462,8 @@ watch(
     publishAt.value,
     commentAllow.value,
     commentShow.value,
+    scope.value,
+    scopeIntegral.value,
     articleAudit.value
   ],
   () => {
@@ -524,6 +560,10 @@ function buildPayload(status) {
     }
   }
 
+  // 可见范围：scope 1 公开 / 2 登录可见 / 3 付费可见，非付费内容不需要积分
+  const scopeValue = [1, 2, 3].includes(Number(scope.value)) ? Number(scope.value) : 1
+  const scopeIntegralValue = scopeValue === 3 ? Math.max(1, Number(scopeIntegral.value) || 0) : 0
+
   // 独立页面：无摘要 / 封面 / 分类 / 草稿，字段为 key + title + content + remark + tags
   if (isPage.value) {
     const pagePayload = {
@@ -533,6 +573,8 @@ function buildPayload(status) {
       remark: form.remark.trim(),
       tags: toIdField(form.tagIds),
       editor: 'markdown',
+      scope: scopeValue,
+      scope_integral: scopeIntegralValue,
       json
     }
     const publishTime = resolvePublishTime(1)
@@ -555,6 +597,8 @@ function buildPayload(status) {
     tags: toIdField(form.tagIds),
     editor: 'markdown',
     status,
+    scope: scopeValue,
+    scope_integral: scopeIntegralValue,
     json
   }
   const publishTime = resolvePublishTime(status)
@@ -722,6 +766,11 @@ async function loadContent() {
     commentAllow.value = [0, 1, 2].includes(allow) ? allow : 0
     const show = Number(articleJson.value?.comment?.show)
     commentShow.value = [0, 1, 2].includes(show) ? show : 0
+
+    // 可见范围：1 公开 / 2 登录可见 / 3 付费可见（历史数据无该字段时按公开处理）
+    const itemScope = Number(item.scope)
+    scope.value = [1, 2, 3].includes(itemScope) ? itemScope : 1
+    scopeIntegral.value = Number(item.scope_integral) || 0
 
     // 审核状态（仅管理员会用到，0 待审核 1 通过 2 不通过）
     const audit = Number(item.audit)

@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { progressStart, progressDone } from '@/utils/progress'
 import { applyRouteTitle } from '@/utils/pageTitle'
+import { closeLightbox } from '@/utils/lightbox'
 
 const routes = [
   // 安装向导：未安装时后端 Install 中间件会把首页 302 到这里（见 app/middleware/install.go）。
@@ -244,6 +245,10 @@ router.afterEach((to) => {
   // 浏览器标签标题：meta.title（后台各页已用它作为页面名）- 站点名
   // 每次切换路由都会重算，因此不会出现「停在上一页标题」的情况，见 utils/pageTitle.js
   applyRouteTitle(to)
+  // 灯箱是全局单例状态（utils/lightbox），跨布局切换时可能残留：
+  // 例如在后台点了轮播图 / 举报证据图，当时没有灯箱组件接管，状态一直停在 visible，
+  // 切回前台布局后就会「凭空」弹出来。这里每次路由切换都强制关闭。
+  closeLightbox()
 })
 
 export default router

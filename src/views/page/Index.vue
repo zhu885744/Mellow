@@ -19,7 +19,24 @@
       <span>{{ auditTip.text }}</span>
     </div>
 
+    <!-- 当前可见范围：作者 / 管理员可直接查看时也把设置值显示出来，避免误以为设置没生效 -->
+    <div v-if="scopeNotice" class="scope-notice">
+      <i class="bi bi-eye" aria-hidden="true" />
+      <span>{{ scopeNotice }}</span>
+    </div>
+
+    <!-- 可见范围：登录可见 / 付费可见时后端已清空正文，这里展示引导并支持积分兑换 -->
+    <ContentLock
+      v-if="pageLocked"
+      :state="page.scope_state"
+      :integral="Number(page.scope_integral) || 0"
+      bind-type="page"
+      :bind-id="page.id"
+      @unlocked="load"
+    />
+
     <article
+      v-else
       ref="contentRef"
       class="content markdown-body"
       v-html="contentHtml"
@@ -96,6 +113,7 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import CommentTree from '@/components/CommentTree.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import EmojiText from '@/components/EmojiText.vue'
+import ContentLock from '@/components/ContentLock.vue'
 import { call } from '@/api/request'
 import { getUser } from '@/api/users'
 import {
@@ -135,6 +153,24 @@ const likeBtn = ref(null)
 const likeIcon = ref(null)
 
 const contentHtml = computed(() => renderMarkdown(page.value?.content || ''))
+
+// 可见范围：scope_state 为 login / pay 时说明后端已按可见范围清空正文
+const pageLocked = computed(() => {
+  const state = page.value?.scope_state
+  return state === 'login' || state === 'pay'
+})
+
+// 可直接查看时（公开 / 作者 / 管理员），把当前可见范围也展示出来
+const scopeNotice = computed(() => {
+  if (pageLocked.value) return ''
+  const scope = Number(page.value?.scope)
+  if (scope === 2) return '当前可见范围：登录可见'
+  if (scope === 3) {
+    const integral = Number(page.value?.scope_integral) || 0
+    return `当前可见范围：付费可见 · ${integral} 积分`
+  }
+  return ''
+})
 
 // 评论开关：取自页面 result.comment（后端已按全局 PAGE 配置做覆盖与继承）
 // show：1 显示 / 2 隐藏（整块隐藏）    allow：1 允许 / 2 禁止（仅隐藏输入发布模块，列表照常展示）
@@ -316,6 +352,19 @@ onMounted(load)
 <style scoped>
 .page-detail {
   padding: 8px 0;
+}
+/* 当前可见范围提示（仅作者 / 管理员可直接查看时出现） */
+.scope-notice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 6px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--primary-deep);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
 }
 .title {
   font-family: var(--font-serif);

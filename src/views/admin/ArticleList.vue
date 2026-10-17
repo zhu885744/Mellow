@@ -155,6 +155,8 @@
               <i v-if="Number(item.top) === 1" class="bi bi-pin-angle-fill top-flag" title="已置顶" />
               <a href="javascript:;" :class="{ 'is-trash': trash }" @click="onTitleClick(item)">{{ item.title || '无标题' }}</a>
               <span class="post-status" :class="statusClass(item)">{{ statusLabel(item) }}</span>
+              <!-- 当前可见范围：公开 / 登录可见 / 付费可见（N 积分） -->
+              <ScopeBadge :scope="item.scope" :integral="item.scope_integral" />
             </h3>
 
             <p class="post-abstract">
@@ -287,6 +289,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmojiText from '@/components/EmojiText.vue'
+import ScopeBadge from '@/components/ScopeBadge.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import AuditDialog from '@/components/admin/AuditDialog.vue'
 import {
@@ -319,9 +322,9 @@ const busy = ref(false)
 // 回收站模式
 const trash = ref(false)
 
-// 列表字段（避免拉取 content 等大字段）
+// 列表字段（避免拉取 content 等大字段）；scope / scope_integral 用于展示「当前可见范围」
 const ARTICLE_FIELDS =
-  'id,uid,title,abstract,covers,group,tags,top,status,audit,reason,views,create_time,update_time,publish_time,delete_time'
+  'id,uid,title,abstract,covers,group,tags,top,status,audit,reason,scope,scope_integral,views,create_time,update_time,publish_time,delete_time'
 
 // 状态筛选：与父级统计卡片共用同一份定义（utils/article.js），口径不会各写一份
 const tabs = ARTICLE_TABS

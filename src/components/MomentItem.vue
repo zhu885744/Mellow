@@ -41,7 +41,17 @@
         ><i class="bi bi-x-lg" /></button>
       </div>
     </div>
-    <div class="moment-content" v-html="renderedContent"></div>
+    <!-- 可见范围：登录可见 / 付费可见时后端已清空正文，这里展示引导并支持积分兑换 -->
+    <ContentLock
+      v-if="momentLocked"
+      :state="moment.scope_state"
+      :integral="Number(moment.scope_integral) || 0"
+      bind-type="moments"
+      :bind-id="moment.id"
+      compact
+      @unlocked="onUnlocked"
+    />
+    <div v-else class="moment-content" v-html="renderedContent"></div>
     <div
       v-if="imageList.length"
       class="moment-images"
@@ -59,6 +69,10 @@
     </div>
     <div v-if="moment.location" class="moment-loc">
       <i class="bi bi-geo-alt" /> {{ moment.location }}
+    </div>
+    <!-- 当前可见范围：作者 / 管理员可直接查看时也显示设置值，避免误以为设置没生效 -->
+    <div v-if="showScopeNotice" class="moment-scope">
+      <ScopeBadge :scope="moment.scope" :integral="moment.scope_integral" />
     </div>
     <div class="moment-actions">
       <button
@@ -128,6 +142,9 @@ import {
 } from '@/utils/helper'
 import TitleBadge from './TitleBadge.vue'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
+import ContentLock from './ContentLock.vue'
+import ScopeBadge from './ScopeBadge.vue'
+import { getMoment } from '@/api/moments'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
 import CommentTree from './CommentTree.vue'
@@ -161,6 +178,27 @@ function onAvatarError(e) {
 }
 
 const showComments = ref(false)
+
+// 可见范围：scope_state 为 login / pay 时说明后端已按可见范围清空正文
+const momentLocked = computed(() => {
+  const state = props.moment?.scope_state
+  return state === 'login' || state === 'pay'
+})
+
+// 兑换成功后重新拉取该动态（后端已放行，正文会正常返回）。
+// 列表里拿到的是同一个对象引用，直接合并即可让卡片与父级列表同步刷新
+async function onUnlocked() {
+  try {
+    const res = await getMoment(props.moment.id)
+    if (res?.data) {
+      // 放行后的返回体不再带 scope_state，必须先删掉旧值，否则遮罩不会消失
+      delete props.moment.scope_state
+      Object.assign(props.moment, res.data)
+    }
+  } catch {
+    emit('refresh', props.moment)
+  }
+}
 
 // 评论开关：取自动态 result.comment（后端已按 MOMENTS 总开关做覆盖与继承）
 // allow：1 允许 / 2 禁止（禁止仍展示已有评论，只关掉发表与回复入口）
@@ -334,6 +372,15 @@ const canDelete = computed(() => {
 
 // 仅管理员可置顶/删除（置顶按钮在删除按钮之前）
 const canManage = computed(() => helperIsAdmin(userStore.user))
+
+// 作者 / 管理员可直接查看受限动态时，在卡片上显示当前可见范围
+// （普通读者看到的是正文或遮罩，不需要额外标记）
+const showScopeNotice = computed(
+  () =>
+    !momentLocked.value &&
+    Number(props.moment.scope) > 1 &&
+    (Number(props.moment.uid) === Number(userStore.user?.id) || canManage.value)
+)
 
 async function toggleTop() {
   const next = props.moment.top ? 0 : 1
@@ -558,6 +605,11 @@ function previewImage(i) {
   font-size: 12px;
   color: var(--text-muted);
   margin-bottom: 12px;
+}
+/* 当前可见范围徽标（仅作者 / 管理员可直接查看时出现） */
+.moment-scope {
+  display: flex;
+  margin-top: 8px;
 }
 .moment-actions {
   display: flex;

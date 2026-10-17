@@ -166,6 +166,9 @@
               <div class="row-meta">
                 <span class="post-status" :class="statusClass(item)">{{ statusLabel(item) }}</span>
 
+                <!-- 当前可见范围：公开 / 登录可见 / 付费可见（N 积分） -->
+                <ScopeBadge :scope="item.scope" :integral="item.scope_integral" />
+
                 <!-- 驳回原因：审核驳回时填写，作者也会在通知与「我的动态」里看到
                      只判 reason 是否存在（审核通过时后端会清空它），避免状态字段口径不一致时标签不显示 -->
                 <span v-if="item.reason" class="meta-chip is-reason" :title="item.reason">
@@ -303,6 +306,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmojiText from '@/components/EmojiText.vue'
+import ScopeBadge from '@/components/ScopeBadge.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import MomentEditDialog from '@/components/admin/MomentEditDialog.vue'
 import AuditDialog from '@/components/admin/AuditDialog.vue'

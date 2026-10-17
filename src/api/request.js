@@ -82,6 +82,12 @@ const AUTH_ENDPOINTS = [
 
 const isAuthEndpoint = (url = '') => AUTH_ENDPOINTS.some((item) => String(url).includes(item))
 
+// 后台管理界面标记：后端（controller/scope.go）只有在收到该标记时才对管理员豁免「可见范围」，
+// 管理员在前台浏览时同样会看到「登录可见 / 付费可见」的真实效果，便于验证付费墙。
+// 复用 CORS 白名单里已有的 X-Requested-With，避免新增自定义头导致跨域预检被拒。
+const ADMIN_PANEL_FLAG = 'inis-admin'
+const isAdminPanelPage = () => /(^|\/)admin(\/|$)/.test(window.location.pathname)
+
 service.interceptors.request.use((config) => {
   // 已确认「未安装」：/api 请求一律不再发出（后端也全会拦成 412，发出去只是噪音）
   if (installGate) {
@@ -91,6 +97,10 @@ service.interceptors.request.use((config) => {
   const token = readToken()
   if (token && !isAuthEndpoint(config.url)) {
     config.headers.Authorization = token
+  }
+  // 后台管理页发出的请求：带标记，后端据此对管理员豁免可见范围
+  if (isAdminPanelPage()) {
+    config.headers['X-Requested-With'] = ADMIN_PANEL_FLAG
   }
   // 上传文件：手动设置的 "multipart/form-data" 不带 boundary，Go 后端无法解析
   // （报错：request Content-Type isn't multipart/form-data）。

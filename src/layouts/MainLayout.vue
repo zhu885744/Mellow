@@ -220,9 +220,6 @@
     <!-- 全局封禁申诉弹窗（当前用户被封禁时自动弹出） -->
     <BanAppealDialog ref="banDialogRef" />
 
-    <!-- 全局图片灯箱 -->
-    <Lightbox />
-
     <!-- 右侧悬浮按钮 -->
     <FloatButtons />
   </div>
@@ -231,7 +228,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import SidebarRight from '@/components/SidebarRight.vue'
-import Lightbox from '@/components/Lightbox.vue'
 import FloatButtons from '@/components/FloatButtons.vue'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import MobileTabBar from '@/components/MobileTabBar.vue'

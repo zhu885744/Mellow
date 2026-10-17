@@ -28,10 +28,27 @@
         </span>
       </div>
 
-      <div class="c-content" :class="{ 'c-content-link': authorLink }" v-html="renderedContent" @click="goAuthor"></div>
+      <!-- 可见范围：登录可见的评论（评论不支持付费可见），后端已清空正文 -->
+      <ContentLock
+        v-if="commentLocked"
+        class="c-lock"
+        :state="comment.scope_state"
+        :integral="0"
+        bind-type="comment"
+        :bind-id="comment.id"
+        compact
+        @unlocked="$emit('unlocked', comment)"
+      />
+      <div
+        v-else
+        class="c-content"
+        :class="{ 'c-content-link': authorLink }"
+        v-html="renderedContent"
+        @click="goAuthor"
+      ></div>
 
       <!-- 评论图片 -->
-      <div v-if="images.length" class="c-images">
+      <div v-if="images.length && !commentLocked" class="c-images">
         <img
           v-for="(img, i) in images"
           :key="img"
@@ -116,6 +133,8 @@
           @select="onLibrarySelect"
         />
         <div class="c-reply-actions">
+          <!-- 回复可见范围：公开 / 登录可见（评论不支持付费可见），用单选框平铺 -->
+          <ScopeRadio v-model="replyScope" :options="scopeOptions" class="reply-scope" />
           <span v-if="replyImages.length" class="img-tip">已选 {{ replyImages.length }} 张</span>
           <button class="btn btn-sm" @click="cancelReply">取消</button>
           <button
@@ -145,6 +164,7 @@
           @submit="$emit('submit', $event)"
           @remove="$emit('remove', $event)"
           @report="$emit('report', $event)"
+          @unlocked="$emit('unlocked', $event)"
         />
       </div>
     </div>
@@ -163,6 +183,8 @@ import { parseUserAgent } from '@/utils/ua'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import EmojiEditor from './EmojiEditor.vue'
 import AttachmentLibrary from './AttachmentLibrary.vue'
+import ContentLock from './ContentLock.vue'
+import ScopeRadio from './ScopeRadio.vue'
 import { uploadCommentImages } from '@/api/comment'
 import { openLightbox } from '@/utils/lightbox'
 import { toast } from '@/utils/toast'
@@ -178,12 +200,20 @@ const props = defineProps({
   allowComment: { type: Boolean, default: true }
 })
 
-const emit = defineEmits(['like', 'reply', 'submit', 'remove', 'report'])
+const emit = defineEmits(['like', 'reply', 'submit', 'remove', 'report', 'unlocked'])
 
 const userStore = useUserStore()
 const router = useRouter()
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
 const replyText = ref('')
+
+// 回复的可见范围（后端 scope）：1 公开 / 2 登录可见
+// 评论不提供「付费可见」（后端会把 3 降级为 2）
+const replyScope = ref(1)
+const scopeOptions = [
+  { value: 1, label: '公开可见' },
+  { value: 2, label: '登录可见' }
+]
 
 // 后端把评论作者放在 result.author（原始对象里带 users.json，头衔样式要从这里取）
 const rawAuthor = computed(
@@ -191,6 +221,12 @@ const rawAuthor = computed(
 )
 const author = computed(() => pickCommentAuthor(props.comment))
 const renderedContent = computed(() => renderEmojiWithBreaks(props.comment.content))
+
+// 可见范围：scope_state 为 login / pay 时说明后端已按可见范围清空正文
+const commentLocked = computed(() => {
+  const state = props.comment?.scope_state
+  return state === 'login' || state === 'pay'
+})
 
 // 评论者 UA（后端 comment.agent；普通用户看到的是脱敏后的截断值，管理员是完整值）
 const agentRaw = computed(() => String(props.comment.agent || '').trim())
@@ -331,6 +367,7 @@ function onLibrarySelect(urls = []) {
 function cancelReply() {
   replyText.value = ''
   replyImages.value = []
+  replyScope.value = 1
   emit('reply', { id: null })
 }
 
@@ -339,10 +376,12 @@ function submitReply() {
   emit('submit', {
     content: replyText.value.trim(),
     images: [...replyImages.value],
-    pid: props.comment.id
+    pid: props.comment.id,
+    scope: Number(replyScope.value)
   })
   replyText.value = ''
   replyImages.value = []
+  replyScope.value = 1
 }
 </script>
 
@@ -518,8 +557,13 @@ function submitReply() {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 8px;
   margin-top: 6px;
+}
+/* 回复可见范围：选择器靠左，取消 / 发送靠右 */
+.reply-scope {
+  margin-right: auto;
 }
 
 /* ===== 评论图片 ===== */

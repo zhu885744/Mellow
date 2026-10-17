@@ -83,7 +83,7 @@ export const getArticleForEdit = (id) =>
     method: 'GET',
     params: {
       id,
-      field: 'id,uid,title,abstract,content,covers,group,tags,status,audit,reason,editor,json,create_time,update_time,publish_time'
+      field: 'id,uid,title,abstract,content,covers,group,tags,status,audit,reason,editor,json,scope,scope_integral,create_time,update_time,publish_time'
     }
   })
 

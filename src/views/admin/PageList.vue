@@ -135,6 +135,8 @@
                 {{ item.title || '无标题页面' }}
               </a>
               <span class="page-status" :class="statusClass(item)">{{ statusLabel(item) }}</span>
+              <!-- 当前可见范围：公开 / 登录可见 / 付费可见（N 积分） -->
+              <ScopeBadge :scope="item.scope" :integral="item.scope_integral" />
             </h3>
 
             <div class="page-meta">
@@ -249,6 +251,7 @@ import { ref, reactive, computed, onMounted, watchEffect } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ScopeBadge from '@/components/ScopeBadge.vue'
 import AuditDialog from '@/components/admin/AuditDialog.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import {

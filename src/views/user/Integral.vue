@@ -320,7 +320,8 @@ const typeMap = {
   'buy': '积分兑换',
   'refund': '订单退款',
   'give': '管理员积分调整',
-  'card': '卡密兑换'
+  'card': '卡密兑换',
+  'unlock': '兑换内容可见权限'
 }
 
 function typeName(t) {
