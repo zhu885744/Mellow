@@ -138,42 +138,16 @@
                 <div class="form-item">
                   <label class="form-label">触发次数</label>
                   <input v-model="cfg.qpsBlock.json.count" class="input" type="number" min="1" step="1" />
+                  <p class="form-hint">同一 IP 每 10 秒只记一次超限；低于 30 按 30 处理。手机 App / NAT 出口建议 200 以上</p>
                 </div>
                 <div class="form-item">
-                  <label class="form-label">封禁时长（秒，支持表达式）</label>
+                  <label class="form-label">统计窗口（秒，支持表达式）</label>
                   <input v-model="cfg.qpsBlock.json.second" class="input" type="text" placeholder="如 60 * 60" />
+                  <p class="form-hint">窗口内累计达到「触发次数」才封禁，封禁时长按次数自动升级（1 小时 → 24 小时 → 7 天 → 永久）</p>
                 </div>
               </div>
               <div class="cfg-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('qpsBlock')" @click="saveQpsBlock">
-                  <i class="bi bi-check2" /> 保存
-                </button>
-              </div>
-            </section>
-
-            <section class="card card-pad">
-              <header class="cfg-head">
-                <div>
-                  <h3 class="cfg-title">封禁通知</h3>
-                  <p class="cfg-desc">自动封禁触发时发送通知（邮件 / Webhook），留空表示不使用该渠道</p>
-                </div>
-              </header>
-              <div class="form-grid">
-                <div class="form-item">
-                  <label class="form-label">启用通知</label>
-                  <SelectMenu v-model="cfg.qpsNotify.value" variant="field" :options="ON_OFF" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">接收邮箱</label>
-                  <input v-model="cfg.qpsNotify.json.email" class="input" type="text" placeholder="可选" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">Webhook 地址</label>
-                  <input v-model="cfg.qpsNotify.json.webhook" class="input" type="text" placeholder="可选" />
-                </div>
-              </div>
-              <div class="cfg-foot">
-                <button class="btn btn-primary btn-sm" :disabled="isSaving('qpsNotify')" @click="saveQpsNotify">
                   <i class="bi bi-check2" /> 保存
                 </button>
               </div>
@@ -1384,8 +1358,10 @@
  * 2. toml 文件（经 /api/toml 读写）—— 登录会话、缓存、存储、短信、通知、日志。
  *
  * 后端要点（app/api/controller/toml.go、app/api/middleware/*、app/model/config.go）：
- * - SYSTEM_API_KEY / SYSTEM_QPS / SYSTEM_QPS_BLOCK / SYSTEM_QPS_NOTIFY / SYSTEM_PAGE_LIMIT /
+ * - SYSTEM_API_KEY / SYSTEM_QPS / SYSTEM_QPS_BLOCK / SYSTEM_PAGE_LIMIT /
  *   ALLOW_REGISTER 均为 config 表记录，value 是 "0"/"1" 字符串；
+ * - QPS 自动封禁通知已并入统一邮件通知（SYSTEM_MAIL_NOTIFY 的 security.qps_ban 场景），
+ *   不再有单独的 SYSTEM_QPS_NOTIFY；
  * - SYSTEM_CAPTCHA 只用 json（各场景滑块开关，见 app/model/captcha-config.go）：
  *   send_code 是「发送验证码 5 分钟内重复要滑块」的总开关，其余是登录/注册/改密/改绑/注销每次提交都要滑块的开关；
  * - ALLOW_REGISTER 另用 text 存「新用户默认权限组」的 ID 列表（如 "1,2"，空表示不分组），
@@ -1419,7 +1395,7 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SelectMenu from '@/components/SelectMenu.vue'
 import SiteSettingsForm from '@/components/admin/SiteSettingsForm.vue'
-import { getConfig, saveSystemConfig } from '@/api/config'
+import { getConfig, getAllConfigs, saveSystemConfig } from '@/api/config'
 import { listAuthGroups } from '@/api/auth-group'
 import {
   saveToml,
@@ -1719,9 +1695,8 @@ function mailScenesOf(group) {
 
 const cfg = reactive({
   apiKey: { value: '0', local: '1' },
-  qps: { value: '1', json: { point: 15, global: 50 } },
-  qpsBlock: { value: '0', json: { count: 3, second: '60 * 60' } },
-  qpsNotify: { value: '0', json: { email: '', webhook: '' } },
+  qps: { value: '1', json: { point: 120, global: 600 } },
+  qpsBlock: { value: '0', json: { count: 200, second: '60 * 60' } },
   pageLimit: { value: '1', text: '50' },
   // 安全验证（SYSTEM_CAPTCHA）：
   // send_code 用下拉（"0"/"1"），其余场景用复选框（0/1），保存时统一归一为 0/1
@@ -2158,25 +2133,36 @@ function readOauthConfig(raw) {
 }
 
 async function loadConfigs() {
-  const [apiKey, apiKeyLocal, qps, block, notify, pageLimit, captcha, register, account, article, moments, pages, comment, links, mailNotify, decoration, oauth] = await Promise.all([
-    readConfig('SYSTEM_API_KEY'),
-    readConfig('SYSTEM_API_KEY_LOCAL'),
-    readConfig('SYSTEM_QPS'),
-    readConfig('SYSTEM_QPS_BLOCK'),
-    readConfig('SYSTEM_QPS_NOTIFY'),
-    readConfig('SYSTEM_PAGE_LIMIT'),
-    readConfig('SYSTEM_CAPTCHA'),
-    readConfig('ALLOW_REGISTER'),
-    readConfig('SYSTEM_ACCOUNT_CHANGE'),
-    readConfig('ARTICLE'),
-    readConfig('MOMENTS'),
-    readConfig('PAGE'),
-    readConfig('COMMENT'),
-    readConfig('LINKS'),
-    readConfig('SYSTEM_MAIL_NOTIFY'),
-    readConfig('SYSTEM_DECORATION'),
-    readConfig('SYSTEM_OAUTH')
-  ])
+  // 一次拉取全部配置，再在本地按 key 分发。
+  //
+  // 原来这里是 17 个并发的 config/one：path 与 method 完全相同，
+  // 一秒内对同一接口打十几次，会直接压满单接口 QPS 阈值（触发自动封禁），
+  // 且缓存还没写入时全部穿透到数据库，每个请求都要几百毫秒。
+  const res = await getAllConfigs({ silent: true }).catch(() => null)
+
+  const configMap = new Map()
+  const list = Array.isArray(res?.data?.data) ? res.data.data : []
+  list.forEach((item) => {
+    if (item && item.key) configMap.set(item.key, item)
+  })
+  const read = (key) => configMap.get(key) || null
+
+  const apiKey = read('SYSTEM_API_KEY')
+  const apiKeyLocal = read('SYSTEM_API_KEY_LOCAL')
+  const qps = read('SYSTEM_QPS')
+  const block = read('SYSTEM_QPS_BLOCK')
+  const pageLimit = read('SYSTEM_PAGE_LIMIT')
+  const captcha = read('SYSTEM_CAPTCHA')
+  const register = read('ALLOW_REGISTER')
+  const account = read('SYSTEM_ACCOUNT_CHANGE')
+  const article = read('ARTICLE')
+  const moments = read('MOMENTS')
+  const pages = read('PAGE')
+  const comment = read('COMMENT')
+  const links = read('LINKS')
+  const mailNotify = read('SYSTEM_MAIL_NOTIFY')
+  const decoration = read('SYSTEM_DECORATION')
+  const oauth = read('SYSTEM_OAUTH')
 
   if (apiKey) cfg.apiKey.value = toText(apiKey.value, '0')
   // 取不到时按「放行」处理：老库升级后这项由 InitConfig 补种为 "1"，
@@ -2184,15 +2170,11 @@ async function loadConfigs() {
   cfg.apiKey.local = apiKeyLocal ? toText(apiKeyLocal.value, '1') : '1'
   if (qps) {
     cfg.qps.value = toText(qps.value, '1')
-    cfg.qps.json = { point: 15, global: 50, ...parseJson(qps.json, {}) }
+    cfg.qps.json = { point: 120, global: 600, ...parseJson(qps.json, {}) }
   }
   if (block) {
     cfg.qpsBlock.value = toText(block.value, '0')
-    cfg.qpsBlock.json = { count: 3, second: '60 * 60', ...parseJson(block.json, {}) }
-  }
-  if (notify) {
-    cfg.qpsNotify.value = toText(notify.value, '0')
-    cfg.qpsNotify.json = { email: '', webhook: '', ...parseJson(notify.json, {}) }
+    cfg.qpsBlock.json = { count: 200, second: '60 * 60', ...parseJson(block.json, {}) }
   }
   if (pageLimit) {
     cfg.pageLimit.value = toText(pageLimit.value, '1')
@@ -2422,19 +2404,7 @@ function saveQpsBlock() {
   )
 }
 
-function saveQpsNotify() {
-  return saveConfigItem(
-    'qpsNotify',
-    {
-      key: 'SYSTEM_QPS_NOTIFY',
-      data: {
-        value: cfg.qpsNotify.value,
-        json: { email: cfg.qpsNotify.json.email, webhook: cfg.qpsNotify.json.webhook }
-      }
-    },
-    '已保存'
-  )
-}
+
 
 /**
  * 保存统一邮件通知配置（SYSTEM_MAIL_NOTIFY）
