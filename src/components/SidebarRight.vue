@@ -201,6 +201,7 @@ import { readNotification } from '@/api/tags'
 import { call } from '@/api/request'
 import { useSiteStore } from '@/stores/site'
 import { fromNow } from '@/utils/time'
+import { notificationLink, contentLink } from '@/utils/notification'
 import { pickCommentAuthor } from '@/utils/helper'
 import { renderEmoji } from '@/utils/emoji'
 
@@ -272,10 +273,8 @@ function formatMd(t) {
   return `${m}/${day}`
 }
 function commentLink(c) {
-  if (c.bind_type === 'article' && c.bind_id) return `/archives/${c.bind_id}?comment=${c.id}`
-  if (c.bind_type === 'page' && c.bind_id) return `/page/${c.bind_id}?comment=${c.id}`
-  if (c.bind_type === 'moments' && c.bind_id) return `/moments/${c.bind_id}?comment=${c.id}`
-  return '/archives'
+  // 与消息中心同一套内容地址规则（见 utils/notification.js）
+  return contentLink(c.bind_type, c.bind_id, c.id) || '/archives'
 }
 function onAvatarError(e) {
   e.target.style.display = 'none'
@@ -418,16 +417,9 @@ async function openLatest() {
       await notif.refresh()
     } catch {}
   }
-  // 跳转关联内容
-  if (n.bind_type === 'article' && n.bind_id) {
-    router.push(`/archives/${n.bind_id}`)
-  } else if (n.bind_type === 'moments' && n.bind_id) {
-    router.push('/moments')
-  } else if (n.bind_type === 'user' && n.bind_id) {
-    router.push('/user/notifications')
-  } else {
-    router.push('/user/notifications')
-  }
+  // 跳转关联内容：与消息中心共用同一套规则，没有目标时回落到消息中心
+  const link = await notificationLink(n)
+  router.push(link || '/user/notifications')
 }
 
 onMounted(() => {

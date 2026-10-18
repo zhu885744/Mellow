@@ -81,6 +81,15 @@
         <button v-if="allowComment && !isAuthorOnly" class="c-action" @click="$emit('reply', comment)">
           <span class="c-icon"><i class="bi bi-chat-dots" /></span> 回复
         </button>
+        <!-- 打赏：自己的评论不显示；弹窗由父级 CommentTree 统一承载（同举报） -->
+        <button
+          v-if="canTip && !isAuthorOnly"
+          class="c-action"
+          title="打赏这条评论"
+          @click="$emit('tip', comment)"
+        >
+          <span class="c-icon"><i class="bi bi-coin" /></span> 打赏
+        </button>
         <button v-if="canDelete" class="c-action c-del" @click="$emit('remove', comment)">删除</button>
         <!-- 举报：自己的评论不显示（举报弹窗由父级 CommentTree 统一承载，避免每条评论各挂一个弹窗）；
              看不到正文的「仅作者可见」评论同样不提供举报入口 -->
@@ -213,7 +222,7 @@ const props = defineProps({
   allowComment: { type: Boolean, default: true }
 })
 
-const emit = defineEmits(['like', 'reply', 'submit', 'remove', 'report', 'unlocked'])
+const emit = defineEmits(['like', 'reply', 'submit', 'remove', 'report', 'unlocked', 'tip'])
 
 const userStore = useUserStore()
 const router = useRouter()
@@ -291,6 +300,14 @@ const canReport = computed(() => {
   if (!me || canDelete.value) return false
   const cid = author.value?.id
   return String(cid || '') !== String(me)
+})
+
+// 打赏入口：自己的评论不显示；未登录也显示（点开弹窗会引导登录）
+const canTip = computed(() => {
+  const cid = author.value?.id
+  if (!cid) return false
+  const me = userStore.user?.id
+  return !me || String(cid) !== String(me)
 })
 
 function onImgError(e) {

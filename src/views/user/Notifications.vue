@@ -145,6 +145,7 @@ import { clearAllNotifications } from '@/api/notification'
 import { useNotificationStore } from '@/stores/notification'
 import { useRouter } from 'vue-router'
 import { fromNow } from '@/utils/time'
+import { notificationLink } from '@/utils/notification'
 import { toast } from '@/utils/toast'
 
 const router = useRouter()
@@ -178,6 +179,8 @@ const typeOptions = [
   { value: 'decoration', label: '装扮' },
   // 内容被兑换：别人消耗积分兑换了你设置的付费内容
   { value: 'unlock', label: '兑换' },
+  // 收到积分打赏
+  { value: 'tip', label: '打赏' },
   { value: 'system', label: '系统' }
 ]
 
@@ -210,6 +213,8 @@ const typeMap = {
   decoration: '装扮',
   // 兑换：别人消耗积分兑换了你的付费内容（见 model.SendUnlockNotify）
   unlock: '兑换',
+  // 打赏：别人给你送了积分（见 model.SendTipNotify）
+  tip: '打赏',
   system: '系统'
 }
 
@@ -267,6 +272,8 @@ function iconOf(t) {
     decoration: 'bi bi-gem',
     // 兑换：积分消费类，用金币图标
     unlock: 'bi bi-coin',
+    // 打赏：收到的积分，用礼物图标区分于「兑换」
+    tip: 'bi bi-gift',
     system: 'bi bi-megaphone'
   })[t] || 'bi bi-bell'
 }
@@ -323,23 +330,10 @@ async function onClick(n) {
       notif.count = Math.max(0, notif.count - 1)
     } catch {}
   }
-  // 跳转
-  if (n.bind_type === 'article' && n.bind_id) {
-    router.push(`/archives/${n.bind_id}`)
-  } else if (n.bind_type === 'links' && n.bind_id) {
-    // 友链审核结果：去「我的友链」看状态与驳回原因
-    router.push('/manage/links')
-  } else if (n.bind_type === 'integral-card') {
-    // 管理员绑定的积分卡密：去「我的积分 → 卡密兑换」兑换
-    router.push('/user/integral')
-  } else if (n.bind_type === 'decoration') {
-    // 装扮（获得 / 续期 / 回收 / 过期）：去「我的装扮」查看与佩戴
-    router.push('/user/decorations')
-  } else if (n.bind_type === 'moments' && n.bind_id) {
-    router.push('/moments')
-  } else if (n.bind_type === 'user' && n.bind_id) {
-    // 跳到用户主页（暂无）
-  }
+  // 跳转：bind_type → 路由的规则统一放在 utils/notification.js
+  // （article/moments/page 进详情、comment 先查所属内容、user 进作者页、其余为固定页面）
+  const link = await notificationLink(n)
+  if (link) router.push(link)
 }
 
 onMounted(load)

@@ -70,7 +70,7 @@
         <i ref="collectIcon" class="bi" :class="collected ? 'bi-bookmark-fill' : 'bi-bookmark'" /> {{ collected ? '已收藏' : '收藏' }}
         <span v-if="collectCount">({{ collectCount }})</span>
       </button>
-      <button v-if="rewardEnabled" class="btn btn-sm like-btn" @click="openReward">
+      <button v-if="canReward" class="btn btn-sm like-btn" @click="openReward">
         <i class="bi bi-coin"></i>打赏
       </button>
       <button class="btn btn-sm like-btn" @click="shareArticle">
@@ -132,45 +132,14 @@
     <span class="spinner" /> 加载中...
   </div>
 
-  <!-- 打赏弹窗 -->
-  <Teleport to="body">
-    <Transition name="reward-fade">
-      <div v-if="rewardVisible" class="reward-overlay" @click.self="closeReward">
-        <div class="reward-dialog">
-          <div class="reward-header">
-            <span class="reward-title">感谢支持</span>
-            <button class="btn btn-icon btn-sm btn-round" @click="closeReward"><i class="bi bi-x-lg" /></button>
-          </div>
-          <div v-if="rewardTabs.length > 1" class="reward-tabs">
-            <button
-              v-for="t in rewardTabs"
-              :key="t.key"
-              :class="['reward-tab', { active: rewardTab === t.key }]"
-              @click="rewardTab = t.key"
-            >{{ t.label }}</button>
-          </div>
-          <div class="reward-body">
-            <p class="reward-tip">如果这篇文章对你有帮助，欢迎打赏支持作者～</p>
-            <div class="reward-qr">
-              <img
-                v-if="rewardTab === 'wechat' && reward.wechat"
-                :src="reward.wechat"
-                alt="微信收款码"
-              />
-              <img
-                v-else-if="rewardTab === 'alipay' && reward.alipay"
-                :src="reward.alipay"
-                alt="支付宝收款码"
-              />
-            </div>
-            <div class="qr-label">
-              {{ rewardTab === 'wechat' ? '微信扫码支持' : '支付宝扫码支持' }}
-            </div>
-          </div>
-        </div>
-      </div>
-    </Transition>
-  </Teleport>
+  <!-- 打赏弹窗：积分打赏（作者自己看自己的文章不显示入口） -->
+  <RewardDialog
+    v-model:visible="rewardVisible"
+    bind-type="article"
+    :bind-id="route.params.id"
+    :to-uid="authorUid"
+    :to-name="author?.nickname || ''"
+  />
 </template>
 
 <script setup>
@@ -179,12 +148,12 @@ import { useRoute } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
 import CommentTree from '@/components/CommentTree.vue'
 import ReportDialog from '@/components/ReportDialog.vue'
+import RewardDialog from '@/components/RewardDialog.vue'
 import { createReport } from '@/api/report'
 import EmptyState from '@/components/EmptyState.vue'
 import EmojiText from '@/components/EmojiText.vue'
 import ContentLock from '@/components/ContentLock.vue'
 import { getArticle } from '@/api/article'
-import { getUser } from '@/api/users'
 import {
   like, unlike, isLiked,
   collect, uncollect, isCollected
@@ -240,50 +209,13 @@ const auditTip = computed(() => {
   return null
 })
 
-// 打赏配置：读取文章作者的收款码（作者在 /user/reward 中设置，存于 user.json.reward）
-// 优先用文章详情返回的 author.json；若作者对象未带 json，回退用 users/one 单独拉取
-const reward = ref({ wechat: '', alipay: '' })
+// 打赏对象：文章作者（自己的文章不显示入口，后端同样会拒绝自打赏）
 const rewardVisible = ref(false)
-const rewardTab = ref('wechat')
-
-const rewardEnabled = computed(() => !!(reward.value.wechat || reward.value.alipay))
-const rewardTabs = computed(() => {
-  const tabs = []
-  if (reward.value.wechat) tabs.push({ key: 'wechat', label: '微信' })
-  if (reward.value.alipay) tabs.push({ key: 'alipay', label: '支付宝' })
-  return tabs
-})
-
-async function loadReward() {
-  const authorData = article.value?.result?.author
-  if (!authorData?.id) return
-  try {
-    // 优先使用文章详情里自带的 author.json.reward
-    const fromArticle = authorData.json?.reward
-    if (fromArticle && (fromArticle.wechat || fromArticle.alipay)) {
-      reward.value = { wechat: fromArticle.wechat || '', alipay: fromArticle.alipay || '' }
-      return
-    }
-    // 回退：单独拉取作者信息（后端文章详情可能裁剪了 json 字段）
-    const res = await getUser(authorData.id, 'id,json')
-    const json = res?.data?.json
-    if (json && typeof json === 'object' && json.reward) {
-      reward.value = { wechat: json.reward.wechat || '', alipay: json.reward.alipay || '' }
-    }
-  } catch {
-    // 读取失败时静默，不阻塞文章加载
-  }
-}
+const authorUid = computed(() => Number(article.value?.uid || article.value?.result?.author?.id || 0))
+const canReward = computed(() => authorUid.value > 0 && Number(userStore.user?.id) !== authorUid.value)
 
 function openReward() {
   rewardVisible.value = true
-  rewardTab.value = rewardTabs.value[0]?.key || 'wechat'
-  document.body.style.overflow = 'hidden'
-}
-
-function closeReward() {
-  rewardVisible.value = false
-  document.body.style.overflow = ''
 }
 
 const isRichText = computed(() => isRichTextEditor(article.value?.editor))
@@ -354,9 +286,6 @@ async function load() {
   } finally {
     loading.value = false
   }
-
-  // 加载作者的打赏收款码（依赖 article 已就绪）
-  loadReward()
 
   // 点赞 / 收藏状态
   try {
@@ -561,107 +490,6 @@ onUnmounted(() => {
 }
 .like-btn {
   position: relative;
-}
-/* 打赏弹窗 */
-.reward-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 9999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-}
-.reward-dialog {
-  width: 100%;
-  max-width: 340px;
-  background: var(--bg-card);
-  border-radius: var(--radius-xl);
-  box-shadow: var(--shadow-md);
-  overflow: hidden;
-}
-.reward-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px 20px;
-  background: linear-gradient(135deg, var(--gold-wash), var(--accent-wash));
-  border-bottom: 1px solid var(--border-soft);
-}
-.reward-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--text);
-}
-.reward-tabs {
-  display: flex;
-  border-bottom: 1px solid var(--border-soft);
-}
-.reward-tab {
-  flex: 1;
-  padding: 10px;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: color 0.2s;
-}
-.reward-tab:hover,
-.reward-tab.active {
-  color: var(--primary);
-}
-.reward-tab.active {
-  border-bottom-color: var(--primary);
-}
-.reward-body {
-  padding: 24px 20px;
-  text-align: center;
-}
-.reward-tip {
-  font-size: 13px;
-  color: var(--text-muted);
-  margin-bottom: 16px;
-}
-.reward-qr {
-  display: flex;
-  justify-content: center;
-}
-.reward-qr img {
-  width: 200px;
-  height: 200px;
-  object-fit: contain;
-  background: #fff;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius);
-  padding: 8px;
-}
-.qr-label {
-  margin-top: 12px;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--primary-deep);
-}
-
-.reward-fade-enter-active,
-.reward-fade-leave-active {
-  transition: opacity 0.25s;
-}
-.reward-fade-enter-active .reward-dialog,
-.reward-fade-leave-active .reward-dialog {
-  transition: transform 0.25s, opacity 0.25s;
-}
-.reward-fade-enter-from,
-.reward-fade-leave-to {
-  opacity: 0;
-}
-.reward-fade-enter-from .reward-dialog,
-.reward-fade-leave-to .reward-dialog {
-  transform: scale(0.95) translateY(-10px);
-  opacity: 0;
 }
 .author-card {
   display: flex;

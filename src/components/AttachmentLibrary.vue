@@ -180,9 +180,11 @@ function close() {
 function changePage(p) {
   if (p < 1 || p === page.value) return
   page.value = p
-  load()
+  // 关键：翻页时不能走 load() 的默认 reset —— 那会把 page 打回 1，看起来像分页没反应
+  load(false)
 }
 
+/** 加载列表；reset 为 true 时回到第 1 页（打开弹窗 / 点「刷新」的语义） */
 async function load(reset = true) {
   if (reset) page.value = 1
   loading.value = true

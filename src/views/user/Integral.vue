@@ -127,65 +127,6 @@
       <p v-else class="empty-text">暂无任务</p>
     </div>
 
-    <!-- 积分排行榜 -->
-    <div class="card card-pad">
-      <div class="block-head">
-        <h3 class="block-title">积分排行榜</h3>
-        <div class="rank-tabs">
-          <button
-            v-for="opt in rankOptions"
-            :key="opt.value"
-            type="button"
-            class="chip"
-            :class="{ active: rankBy === opt.value }"
-            @click="switchRank(opt.value)"
-          >{{ opt.label }}</button>
-        </div>
-      </div>
-      <div v-if="loadingRank" class="loading"><span class="spinner" /> 加载中...</div>
-      <ol v-else-if="rankList.length" class="rank-list">
-        <li v-for="r in rankList" :key="r.id" class="rank-item" :class="{ me: r.is_me }">
-          <span class="rank-no" :class="`no-${r.rank}`">{{ r.rank }}</span>
-          <img :src="r.avatar || defaultAvatar" class="rank-avatar" alt="" @error="onImgError" />
-          <div class="rank-info">
-            <span class="rank-name">
-              {{ r.nickname || '匿名用户' }}
-              <em v-if="r.is_me" class="rank-me-tag">我</em>
-            </span>
-            <span class="rank-desc">{{ r.description || '这个人很懒，什么都没留下' }}</span>
-          </div>
-          <span class="rank-value"><i class="bi bi-coin" /> {{ r.value }}</span>
-        </li>
-      </ol>
-      <p v-else class="empty-text">暂无排行数据</p>
-      <p v-if="rankMy.rank > 0" class="rank-mine">
-        我的排名 <strong>第 {{ rankMy.rank }} 名</strong> · {{ rankBy === 'balance' ? '余额' : '累计获得' }} {{ rankMy.value }} 积分
-      </p>
-    </div>
-
-    <!-- 积分获取途径 -->
-    <div class="card card-pad">
-      <h3 class="block-title">积分获取途径</h3>
-      <div v-if="loadingRules" class="loading"><span class="spinner" /> 加载中...</div>
-      <table v-else-if="rules.length" class="data-table">
-        <thead>
-          <tr>
-            <th>获取途径</th>
-            <th>积分</th>
-            <th>每日上限</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="r in rules" :key="r.type">
-            <td><i :class="[r.icon || 'bi bi-coin', 'rule-icon']" /> {{ r.name }}</td>
-            <td class="td-num">+{{ r.value }}</td>
-            <td>{{ Number(r.daily_limit) > 0 ? `${r.daily_limit} 次` : '不限' }}</td>
-          </tr>
-        </tbody>
-      </table>
-      <p v-else class="empty-text">暂无积分规则</p>
-    </div>
-
     <!-- 积分明细 -->
     <div v-if="isLogged" class="card card-pad">
       <div class="block-head">
@@ -243,7 +184,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import SelectMenu from '@/components/SelectMenu.vue'
-import { getIntegral, getIntegralLogs, getIntegralRules, getIntegralTasks, getIntegralRank, redeemIntegralCard } from '@/api/goods'
+import { getIntegral, getIntegralLogs, getIntegralRules, getIntegralTasks, redeemIntegralCard } from '@/api/goods'
 // 我的待兑换卡密（签到等活动的奖励发到账号里，这里找回并兑换）
 import { getMyIntegralCards } from '@/api/integral'
 import { useUserStore } from '@/stores/user'
@@ -252,18 +193,15 @@ import { toast } from '@/utils/toast'
 const userStore = useUserStore()
 const isLogged = computed(() => userStore.isLogged)
 
-const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
-
 const summary = ref({ integral: 0, total_income: 0, total_expense: 0, today_income: 0, today_expense: 0 })
+// 获取途径列表（页面不再展示，仅用于「积分明细」的类型筛选下拉）
 const rules = ref([])
 const logs = ref([])
 const logSummary = ref(null)
 const tasks = ref({ list: [], today_income: 0, done_count: 0, total_count: 0, streak: 0 })
 
-const loadingRules = ref(false)
 const loadingLogs = ref(false)
 const loadingTasks = ref(false)
-const loadingRank = ref(false)
 
 // 卡密兑换
 const cardCode = ref('')
@@ -299,15 +237,6 @@ const typeOptions = computed(() => {
   return list
 })
 
-// 排行榜
-const rankBy = ref('earned')
-const rankList = ref([])
-const rankMy = ref({ rank: 0, value: 0 })
-const rankOptions = [
-  { value: 'earned', label: '累计获得' },
-  { value: 'balance', label: '余额榜' }
-]
-
 const taskList = computed(() => tasks.value.list || [])
 
 const typeMap = {
@@ -321,7 +250,9 @@ const typeMap = {
   'refund': '订单退款',
   'give': '管理员积分调整',
   'card': '卡密兑换',
-  'unlock': '兑换内容可见权限'
+  'unlock': '兑换内容可见权限',
+  'tip': '打赏支出',
+  'tip-income': '收到打赏'
 }
 
 function typeName(t) {
@@ -334,10 +265,6 @@ function formatTime(t) {
   if (isNaN(d)) return '-'
   const p = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
-}
-
-function onImgError(e) {
-  e.target.src = defaultAvatar
 }
 
 async function loadSummary() {
@@ -358,7 +285,6 @@ async function loadSummary() {
 }
 
 async function loadRules() {
-  loadingRules.value = true
   try {
     const res = await getIntegralRules()
     const data = Array.isArray(res.data) ? res.data : (res.data?.data || [])
@@ -366,8 +292,6 @@ async function loadRules() {
     rules.value = data
   } catch {
     rules.value = []
-  } finally {
-    loadingRules.value = false
   }
 }
 
@@ -402,34 +326,13 @@ async function loadLogs() {
   }
 }
 
-async function loadRank() {
-  loadingRank.value = true
-  try {
-    const res = await getIntegralRank({ by: rankBy.value, limit: 20 })
-    const data = res.data || {}
-    rankList.value = Array.isArray(data.list) ? data.list : []
-    rankMy.value = { rank: Number(data.my_rank) || 0, value: Number(data.my_value) || 0 }
-  } catch {
-    rankList.value = []
-    rankMy.value = { rank: 0, value: 0 }
-  } finally {
-    loadingRank.value = false
-  }
-}
-
 function setDirection(v) {
   if (direction.value === v) return
   direction.value = v
   loadLogs()
 }
 
-function switchRank(v) {
-  if (rankBy.value === v) return
-  rankBy.value = v
-  loadRank()
-}
-
-// 卡密兑换：成功后刷新积分概览 / 明细 / 排行榜
+// 卡密兑换：成功后刷新积分概览 / 明细 / 我的卡密
 async function redeem() {
   const code = cardCode.value.trim()
   if (!code) {
@@ -442,7 +345,7 @@ async function redeem() {
     const value = Number(res?.data?.value) || 0
     toast.success(value > 0 ? `兑换成功，获得 ${value} 积分` : '兑换成功')
     cardCode.value = ''
-    await Promise.all([loadSummary(), loadLogs(), loadRank(), loadMyCards()])
+    await Promise.all([loadSummary(), loadLogs(), loadMyCards()])
   } catch {
     // 失败原因（卡密不存在/已使用/已过期/尝试过于频繁等）已由请求拦截器统一提示
   } finally {
@@ -506,7 +409,7 @@ async function redeemAll() {
   redeeming.value = false
   toast.success(success ? `已兑换 ${success} 张，共获得 ${income} 积分` : '没有可兑换的卡密')
 
-  await Promise.all([loadMyCards(), loadSummary(), loadLogs(), loadRank()])
+  await Promise.all([loadMyCards(), loadSummary(), loadLogs()])
 }
 
 onMounted(() => {
@@ -514,7 +417,6 @@ onMounted(() => {
   loadRules()
   loadTasks()
   loadLogs()
-  loadRank()
   loadMyCards()
 })
 </script>
@@ -846,104 +748,6 @@ onMounted(() => {
   font-weight: 600;
 }
 
-/* ---------- 排行榜 ---------- */
-.rank-tabs {
-  display: flex;
-  gap: 6px;
-}
-.rank-list {
-  display: flex;
-  flex-direction: column;
-}
-.rank-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 9px 6px;
-  border-bottom: 1px dashed var(--border-soft);
-}
-.rank-item:last-child {
-  border-bottom: none;
-}
-.rank-item.me {
-  background: var(--gold-wash);
-  border-radius: var(--radius-sm);
-}
-.rank-no {
-  width: 22px;
-  flex-shrink: 0;
-  text-align: center;
-  font-size: 13px;
-  font-weight: 700;
-  color: var(--text-light);
-  font-variant-numeric: tabular-nums;
-}
-.rank-no.no-1 { color: #d4a148; }
-.rank-no.no-2 { color: #a8a29a; }
-.rank-no.no-3 { color: #c08a5e; }
-.rank-avatar {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-  border: 1px solid var(--border);
-}
-.rank-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.rank-name {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.rank-me-tag {
-  flex-shrink: 0;
-  padding: 0 5px;
-  font-size: 10px;
-  font-style: normal;
-  border-radius: 4px;
-  background: var(--primary);
-  color: #fff;
-}
-.rank-desc {
-  font-size: 12px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.rank-value {
-  flex-shrink: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: #d4a148;
-  font-variant-numeric: tabular-nums;
-}
-.rank-value .bi {
-  font-size: 12px;
-}
-.rank-mine {
-  margin: 12px 0 0;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-soft);
-  font-size: 12px;
-  color: var(--text-muted);
-  text-align: center;
-}
-.rank-mine strong {
-  color: var(--primary-deep);
-}
-
 /* ---------- 明细 ---------- */
 .log-filter {
   display: flex;
@@ -982,11 +786,6 @@ onMounted(() => {
   color: var(--primary-deep);
   font-weight: 600;
 }
-.rule-icon {
-  margin-right: 6px;
-  color: #d4a148;
-}
-
 .loading {
   padding: 24px;
   text-align: center;

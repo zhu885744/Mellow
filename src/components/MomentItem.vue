@@ -99,6 +99,10 @@
       <button class="action-item" @click="copyLink">
         <i class="bi bi-share"></i> 分享
       </button>
+      <!-- 打赏：自己的动态不显示（后端同样拒绝自打赏） -->
+      <button v-if="canReward" class="action-item" title="打赏这条动态" @click="openReward">
+        <i class="bi bi-coin" /> 打赏
+      </button>
       <!-- 举报：自己的内容不显示举报入口；未登录也不显示（后端同样要求登录） -->
       <button
         v-if="canReport"
@@ -118,6 +122,15 @@
       :loading="reporting"
       @update:visible="(v) => (reportVisible = v)"
       @confirm="submitReport"
+    />
+
+    <!-- 打赏：积分打赏（自己的动态不显示入口） -->
+    <RewardDialog
+      v-model:visible="rewardVisible"
+      bind-type="moments"
+      :bind-id="moment.id"
+      :to-uid="authorId"
+      :to-name="author?.nickname || ''"
     />
 
     <!-- 动态评论：allow 为 2 时只关掉发表入口，show 为 2 时整个评论入口都不显示 -->
@@ -153,6 +166,7 @@ import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
 import CommentTree from './CommentTree.vue'
 import ReportDialog from './ReportDialog.vue'
+import RewardDialog from './RewardDialog.vue'
 import { createReport } from '@/api/report'
 import { call } from '@/api/request'
 import { like, unlike, isLiked, likesCount } from '@/api/tags'
@@ -323,6 +337,17 @@ const reporting = ref(false)
 const canReport = computed(
   () => userStore.isLogged && Number(props.moment.uid) !== Number(userStore.user?.id)
 )
+
+// ---------- 打赏 ----------
+const rewardVisible = ref(false)
+
+const authorId = computed(() => Number(props.moment.uid || author.value?.id || 0))
+// 自己的动态不打赏（后端同样会拒绝）；未登录也显示入口，点开会引导登录
+const canReward = computed(() => authorId.value > 0 && Number(userStore.user?.id) !== authorId.value)
+
+function openReward() {
+  rewardVisible.value = true
+}
 // 弹窗里显示「动态「今天的风景」」，方便用户确认没点错条目
 const reportLabel = computed(() => {
   const text = String(props.moment.content || '')

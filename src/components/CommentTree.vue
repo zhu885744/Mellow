@@ -131,6 +131,7 @@
         @submit="onSubmit"
         @remove="onRemove"
         @report="onReport"
+        @tip="onTip"
         @unlocked="load"
       />
       <Pagination
@@ -151,6 +152,15 @@
       :loading="reporting"
       @update:visible="(v) => (reportVisible = v)"
       @confirm="submitReport"
+    />
+
+    <!-- 打赏评论：整棵评论树共用一个弹窗（同举报） -->
+    <RewardDialog
+      v-model:visible="tipVisible"
+      bind-type="comment"
+      :bind-id="tipTarget?.id || 0"
+      :to-uid="tipAuthorId"
+      :to-name="tipAuthorName"
     />
   </div>
 </template>
@@ -181,6 +191,7 @@ import {
 } from '@/utils/helper'
 import TitleBadge from './TitleBadge.vue'
 import ReportDialog from './ReportDialog.vue'
+import RewardDialog from './RewardDialog.vue'
 import ScopeRadio from './ScopeRadio.vue'
 import { createReport } from '@/api/report'
 
@@ -254,6 +265,29 @@ async function submitReport({ reason, detail, images }) {
   } finally {
     reporting.value = false
   }
+}
+
+// ---------- 打赏 ----------
+// 与举报一致：整棵评论树共用一个打赏弹窗
+const tipTarget = ref(null)
+const tipVisible = ref(false)
+
+// 评论作者 id：优先评论自身的 uid，兜底取后端带回来的作者对象
+const tipAuthorId = computed(() => {
+  const item = tipTarget.value
+  return Number(
+    item?.uid || item?.result?.author?.id || item?.author?.id || item?.user?.id || 0
+  )
+})
+const tipAuthorName = computed(() => {
+  const item = tipTarget.value
+  return String(item?.result?.author?.nickname || item?.author?.nickname || item?.user?.nickname || '')
+})
+
+/** 打开评论打赏弹窗（接收者由后端按评论作者解析） */
+function onTip(comment) {
+  tipTarget.value = comment
+  tipVisible.value = true
 }
 
 const rawList = ref([])

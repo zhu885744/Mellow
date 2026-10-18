@@ -60,6 +60,8 @@ const routes = [
       },
       // 用户主页 /author/:id（必须在 /:key 之前，避免被兜底路由拦截）
       { path: 'author/:id', name: 'author', component: () => import('@/views/user/Author.vue'), props: true },
+      // 独立页面 /page/:id：按 id 直达（作者页 / 评论通知 / 打赏通知都用 id 形式）
+      { path: 'page/:id', name: 'page-detail', component: () => import('@/views/page/Index.vue'), props: true },
       // 独立页面 /:key（必须放在最后，避免与其他固定路径冲突）
       { path: ':key', name: 'page', component: () => import('@/views/page/Index.vue'), props: (route) => ({ pageKey: route.params.key }) },
     ]
@@ -77,7 +79,6 @@ const routes = [
       // 「联系方式」页已下线：邮箱 / 手机号改绑并入「账号安全」，个人网站设置并入「个人资料」；
       // 旧地址保留为重定向，避免书签 / 外部链接 404
       { path: 'contact', name: 'user-contact', redirect: '/user/profile' },
-      { path: 'reward', name: 'user-reward', component: () => import('@/views/user/Reward.vue') },
       { path: 'security', name: 'user-security', component: () => import('@/views/user/Security.vue') },
       { path: 'exp', name: 'user-exp', component: () => import('@/views/user/Exp.vue') },
       { path: 'integral', name: 'user-integral', component: () => import('@/views/user/Integral.vue') },

@@ -20,6 +20,10 @@ export const getCommentTree = (bind_id, bind_type = 'article', params = {}) =>
     params: { bind_id, bind_type, ...params }
   })
 
+// 单条评论（通知跳转用：先拿 bind_type / bind_id 才能定位评论所属内容）
+export const getComment = (id, field = 'id,bind_type,bind_id') =>
+  call('comment', 'one', { method: 'GET', params: { id, field } })
+
 // 创建评论（用 create 而非 save）
 export const createComment = (data) =>
   call('comment', 'create', { method: 'POST', data })

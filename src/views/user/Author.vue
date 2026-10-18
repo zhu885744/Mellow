@@ -94,6 +94,13 @@
               :disabled="followBusy"
               @click="toggleBlock"
             >{{ blocked ? '已拉黑' : '拉黑' }}</button>
+            <!-- 打赏：给这位用户送积分（自己的主页不显示，后端同样拒绝自打赏） -->
+            <button
+              v-if="!isSelf"
+              class="btn btn-sm btn-ghost"
+              title="用积分打赏 TA"
+              @click="openReward"
+            ><i class="bi bi-coin" aria-hidden="true" /> 打赏</button>
             <button
               v-if="!isSelf"
               class="btn btn-sm btn-ghost"
@@ -249,6 +256,15 @@
       @update:visible="(v) => (reportVisible = v)"
       @confirm="submitReport"
     />
+
+    <!-- 打赏用户：bind_type=user 时 bind_id 就是接收者 uid -->
+    <RewardDialog
+      v-model:visible="rewardVisible"
+      bind-type="user"
+      :bind-id="uid"
+      :to-uid="uid"
+      :to-name="profile.nickname || ''"
+    />
   </div>
 </template>
 
@@ -260,6 +276,7 @@ import AvatarFrame from '@/components/AvatarFrame.vue'
 import TitleBadge from '@/components/TitleBadge.vue'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import ReportDialog from '@/components/ReportDialog.vue'
+import RewardDialog from '@/components/RewardDialog.vue'
 import { blockUser, unblockUser, blockStatus } from '@/api/user-blocks'
 import { createReport } from '@/api/report'
 import { getUser } from '@/api/users'
@@ -350,6 +367,13 @@ const blocked = ref(false)
 // 举报弹窗
 const reportVisible = ref(false)
 const reporting = ref(false)
+
+// 打赏弹窗（接收者由后端按用户 uid 解析）
+const rewardVisible = ref(false)
+
+function openReward() {
+  rewardVisible.value = true
+}
 // 可能认识的人：仅本人的主页展示
 const suggestions = ref([])
 const isSelf = computed(() => userStore.isLogged && Number(userStore.user?.id) === uid.value)

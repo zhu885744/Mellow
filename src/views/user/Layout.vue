@@ -186,7 +186,6 @@ const menuGroups = computed(() => [
     items: [
       { path: '/user/profile', name: '个人资料', icon: 'bi bi-person' },
       { path: '/user/settings', name: '隐私设置', icon: 'bi bi-gear' },
-      { path: '/user/reward', name: '打赏设置', icon: 'bi bi-cash-coin' },
       { path: '/user/security', name: '账号安全', icon: 'bi bi-shield-lock' },
       { path: '/user/exp', name: '等级经验', icon: 'bi bi-stars' },
       { path: '/user/integral', name: '我的积分', icon: 'bi bi-coin' },

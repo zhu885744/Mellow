@@ -263,11 +263,14 @@ async function load() {
   collectCount.value = 0
   commentsCount.value = 0
 
+  // 两种入口：/:key（分享 / 导航用 slug）与 /page/:id（作者页 / 评论通知 / 打赏通知用 id）
+  // pages/one 同时支持 id、key 查询，但参数名不同，这里按入口分别传
+  const pageId = Number(props.id || route.params.id) || 0
   const key = props.pageKey || route.params.key || props.id || route.params.id
   try {
     const res = await call('pages', 'one', {
       method: 'GET',
-      params: { key }
+      params: pageId > 0 ? { id: pageId } : { key }
     })
     page.value = res.data
     // 评论数直接取详情返回里的 result.comment.count（避免等评论列表加载完才显示）
