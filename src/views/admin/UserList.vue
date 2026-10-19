@@ -377,12 +377,23 @@
                 <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickAvatar">
                   <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
                 </button>
+                <button class="btn btn-sm" type="button" title="从附件库选择" @click="showAvatarLibrary = true">
+                  <i class="bi bi-folder2-open" /> 附件库
+                </button>
                 <button v-if="edit.avatar" class="btn btn-sm btn-ghost" type="button" :disabled="uploading" @click="edit.avatar = ''">
                   移除
                 </button>
               </div>
             </div>
             <input ref="avatarFileRef" type="file" accept="image/*" hidden @change="onAvatarChange" />
+
+            <!-- 附件库：选一张已上传的图片作为用户头像 -->
+            <AttachmentLibrary
+              v-model:visible="showAvatarLibrary"
+              title="选择用户头像"
+              accept="image"
+              @select="onAvatarLibrarySelect"
+            />
           </div>
         </div>
 
@@ -746,6 +757,7 @@ import { getUserDecorations } from '@/api/decoration'
 import { platformIcon } from '@/utils/oauth'
 import { getMyOauth } from '@/api/oauth'
 import { uploadAttachments } from '@/api/attachment'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { fromNow, formatTime } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
@@ -1362,6 +1374,14 @@ function askClearRecycle() {
 // ---------- 新建 / 编辑用户 ----------
 const avatarFileRef = ref(null)
 const uploading = ref(false)
+const showAvatarLibrary = ref(false)
+
+// 从附件库选头像：直接复用已上传图片的地址
+function onAvatarLibrarySelect(urls = []) {
+  const url = urls[0]
+  showAvatarLibrary.value = false
+  if (url) edit.avatar = url
+}
 
 const edit = reactive({
   visible: false,

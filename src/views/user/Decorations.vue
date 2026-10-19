@@ -13,8 +13,11 @@
       <AvatarFrame
         :src="user?.avatar"
         :frame="wearingFrame"
-        :animated="!!(wearingFrame && wearingFrame.payload && wearingFrame.payload.animated)"
+        :animated="wearingFrameAnimated"
         :fallback="defaultAvatar"
+        :frame-hole="wearingFrameGeometry.hole"
+        :frame-offset-x="wearingFrameGeometry.offsetX"
+        :frame-offset-y="wearingFrameGeometry.offsetY"
         size="64px"
       />
       <div class="wearing-info">
@@ -155,6 +158,7 @@ import { getMyDecorations, wearDecoration, unwearDecoration } from '@/api/decora
 import { toast } from '@/utils/toast'
 import { formatDuration } from '@/utils/time'
 import { rarityMeta } from '@/utils/decoration'
+import { frameGeometryFromPayload } from '@/utils/helper'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import AvatarFrame from '@/components/AvatarFrame.vue'
@@ -234,9 +238,17 @@ const groups = computed(() =>
 const ownedList = computed(() => groups.value.flatMap((g) => g.list))
 
 // 当前佩戴（wearing: { [type]: 装扮对象 }）
+const wearingFrameItem = computed(() => store.value.wearing?.avatar_frame || null)
 const wearingFrame = computed(
-  () => store.value.wearing?.avatar_frame?.preview || store.value.wearing?.avatar_frame?.payload?.image || ''
+  () => wearingFrameItem.value?.preview || wearingFrameItem.value?.payload?.image || ''
 )
+// 头像框定位参数：这里拿得到装扮的 payload，比 users.json 上的回写值更直接
+const wearingFrameGeometry = computed(() => frameGeometryFromPayload(wearingFrameItem.value?.payload || {}))
+// 动效开关：之前误写成 wearingFrame.payload（wearingFrame 是图片地址字符串，永远取不到）
+const wearingFrameAnimated = computed(() => {
+  const animated = wearingFrameItem.value?.payload?.animated
+  return animated === true || Number(animated) === 1
+})
 const wearingTitle = computed(() => store.value.wearing?.title || null)
 
 async function loadMine() {

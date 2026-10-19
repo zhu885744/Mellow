@@ -4,9 +4,9 @@
 
     <div v-for="(item, index) in list" :key="index" class="reward-row-wrap">
       <div class="reward-row">
-        <select v-model="item.asset" class="input reward-row__asset" title="奖励类型（可扩展：见 model/reward.go 的资产注册表）">
-          <option v-for="asset in assets" :key="asset.key" :value="asset.key">{{ asset.name }}</option>
-        </select>
+        <div class="reward-row__asset" title="奖励类型（可扩展：见 model/reward.go 的资产注册表）">
+          <SelectMenu v-model="item.asset" variant="field" :options="assetOptions" />
+        </div>
         <!-- 卡密是「纯卡密」：没有面额，所以不显示数值输入；发什么由下方的卡密内容决定 -->
         <input
           v-if="!isCard(item)"
@@ -94,6 +94,7 @@
  * 因此二次开发注册的新资产会自动出现在下拉框里。
  */
 import { computed, onMounted, reactive } from 'vue'
+import SelectMenu from '@/components/SelectMenu.vue'
 import { getRewardCardStock } from '@/api/checkin'
 
 const props = defineProps({
@@ -110,6 +111,12 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue'])
 
 const list = computed(() => props.modelValue || [])
+
+// 资产清单 → SelectMenu 选项（{key,name} → {value,label}），
+// 新注册的资产（见 model/reward.go）会自动出现在这里
+const assetOptions = computed(() =>
+  (props.assets || []).map((asset) => ({ value: asset.key, label: asset.name }))
+)
 
 function assetOf(item) {
   return props.assets.find((asset) => asset.key === item?.asset) || null

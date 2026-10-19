@@ -114,13 +114,12 @@
       </header>
 
       <div class="alert-form">
-        <label class="alert-field">
+        <!-- 用 div 而不是 label：SelectMenu 的触发器是 button，
+             label 会把点击再转发给 button，导致「点一下开关又立刻关上」 -->
+        <div class="alert-field">
           <span class="alert-label">开启告警</span>
-          <select v-model.number="alertForm.enabled" class="alert-input">
-            <option :value="0">关闭</option>
-            <option :value="1">开启</option>
-          </select>
-        </label>
+          <SelectMenu v-model="alertForm.enabled" variant="field" :options="ALERT_ON_OFF_OPTIONS" />
+        </div>
         <label class="alert-field">
           <span class="alert-label">CPU 阈值 (%)</span>
           <input v-model.number="alertForm.cpu" class="alert-input" type="number" min="1" max="100" />
@@ -270,6 +269,7 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import LineChart from '@/components/admin/LineChart.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import SelectMenu from '@/components/SelectMenu.vue'
 import { createSocketClient } from '@/utils/socket'
 import { fromNow } from '@/utils/time'
 import { toast } from '@/utils/toast'
@@ -305,6 +305,12 @@ let client = null
 const selfId = ref('')
 
 // ---------- 告警阈值 ----------
+// 下拉选项（统一走 SelectMenu，不用浏览器原生 select）
+const ALERT_ON_OFF_OPTIONS = [
+  { value: 0, label: '关闭' },
+  { value: 1, label: '开启' }
+]
+
 const alertForm = ref({ enabled: 0, cpu: 90, mem: 90, disk: 90, cooldown: 1800 })
 const alertSaving = ref(false)
 

@@ -391,12 +391,8 @@
                 <label class="form-label">启用头像框</label>
                 <SelectMenu v-model="cfg.decoration.frameEnabled" variant="field" :options="ON_OFF" />
               </div>
-              <div class="form-item">
-                <label class="form-label">默认缩放比例</label>
-                <input v-model="cfg.decoration.frameScale" class="input" type="number" step="0.05" min="0.5" max="3" />
-                <p class="form-hint">装扮未单独设置 scale 时使用，1 为贴合头像，建议 1.1 ~ 1.3</p>
-              </div>
             </div>
+            <!-- 缩放/对齐不再走全局默认值：每个头像框在「装扮管理」里用对齐器单独调洞大小与偏移 -->
 
             <h4 class="cfg-sub-title">头衔</h4>
             <div class="form-grid">
@@ -1768,7 +1764,6 @@ const cfg = reactive({
     enabled: '1',
     showInGoods: '1',
     frameEnabled: '1',
-    frameScale: 1.2,
     titleEnabled: '1',
     titleAllowCustom: '1',
     titleMaxLength: 10
@@ -2096,7 +2091,6 @@ function readDecorationConfig(raw) {
   cfg.decoration.enabled = toText(json.enabled, '1')
   cfg.decoration.showInGoods = toText(json.show_in_goods, '1')
   cfg.decoration.frameEnabled = toText(frame.enabled, '1')
-  cfg.decoration.frameScale = Number(frame.frame_scale || 1.2)
   cfg.decoration.titleEnabled = toText(title.enabled, '1')
   cfg.decoration.titleAllowCustom = toText(title.allow_custom, '1')
   cfg.decoration.titleMaxLength = Number(title.max_length || 10)
@@ -2456,8 +2450,7 @@ async function saveDecoration() {
           show_in_goods: Number(cfg.decoration.showInGoods) === 1 ? 1 : 0,
           currency: 'integral',
           avatar_frame: {
-            enabled: Number(cfg.decoration.frameEnabled) === 1 ? 1 : 0,
-            frame_scale: Number(cfg.decoration.frameScale) || 1.2
+            enabled: Number(cfg.decoration.frameEnabled) === 1 ? 1 : 0
           },
           title: {
             enabled: Number(cfg.decoration.titleEnabled) === 1 ? 1 : 0,

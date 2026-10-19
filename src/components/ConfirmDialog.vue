@@ -84,7 +84,8 @@ watch(
 .confirm-mask {
   position: fixed;
   inset: 0;
-  z-index: 3000;
+  /* 页面弹窗 3000 < 附件库 3500 < 确认弹窗 3600：确认要能盖在附件库之上 */
+  z-index: 3600;
   display: flex;
   align-items: center;
   justify-content: center;

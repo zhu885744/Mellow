@@ -316,10 +316,7 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">状态</label>
-          <select v-model.number="edit.status" class="input">
-            <option :value="1">启用（可正常调用）</option>
-            <option :value="0">停用（拒绝调用，但保留记录）</option>
-          </select>
+          <SelectMenu v-model="edit.status" variant="field" :options="STATUS_OPTIONS" />
           <p class="form-hint">停用后调用返回 403「该密钥已停用！」，可随时改回启用</p>
         </div>
         <div class="form-item">
@@ -362,6 +359,7 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
+import SelectMenu from '@/components/SelectMenu.vue'
 import {
   listApiKeys,
   countApiKeys,
@@ -403,6 +401,12 @@ const loadingStats = ref(false)
 const stats = reactive({ total: 0, trash: 0 })
 
 // ===== 弹窗 =====
+// 状态下拉（统一走 SelectMenu，不用浏览器原生 select）
+const STATUS_OPTIONS = [
+  { value: 1, label: '启用（可正常调用）' },
+  { value: 0, label: '停用（拒绝调用，但保留记录）' }
+]
+
 const edit = reactive({
   visible: false,
   loading: false,

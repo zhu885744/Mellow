@@ -107,14 +107,12 @@
                   autocomplete="new-password"
                 />
               </label>
-              <label class="form-item">
+              <!-- 用 div 而不是 label：SelectMenu 的触发器是 button，
+                   label 会把点击再转发一次，导致下拉刚打开就被关掉 -->
+              <div class="form-item">
                 <span class="form-label">字符集</span>
-                <select v-model="form.charset" class="input">
-                  <option value="utf8mb4">utf8mb4（推荐）</option>
-                  <option value="utf8">utf8</option>
-                  <option value="gbk">gbk</option>
-                </select>
-              </label>
+                <SelectMenu v-model="form.charset" variant="field" :options="CHARSET_OPTIONS" />
+              </div>
 
               <button
                 class="btn btn-primary btn-block"
@@ -186,6 +184,7 @@
  * 与老版 public/install.html 的步骤完全一致：检查 → 连接数据库 → 初始化 → 完成。
  */
 import { computed, onMounted, reactive, ref } from 'vue'
+import SelectMenu from '@/components/SelectMenu.vue'
 import { installCheck, installConnectDB, installInfo, installInitDB, installLock } from '@/api/install'
 
 const steps = [
@@ -193,6 +192,13 @@ const steps = [
   { step: 2, label: '数据库配置' },
   { step: 3, label: '初始化数据' },
   { step: 4, label: '完成安装' }
+]
+
+// 数据库字符集（统一走 SelectMenu，不用浏览器原生 select）
+const CHARSET_OPTIONS = [
+  { value: 'utf8mb4', label: 'utf8mb4（推荐）' },
+  { value: 'utf8', label: 'utf8' },
+  { value: 'gbk', label: 'gbk' }
 ]
 
 const current = ref(1)

@@ -4,7 +4,7 @@
       <template #extra>
         <div class="links-extra">
           <button class="btn btn-sm" @click="openExplain">友链说明</button>
-          <button class="btn btn-sm" @click="showApply = true">申请友链</button>
+          <button class="btn btn-sm" @click="openApply">申请友链</button>
         </div>
       </template>
     </SectionTitle>
@@ -108,8 +108,20 @@
           <input v-model="form.description" class="input" />
         </div>
         <div class="form-item">
-          <label class="form-label">头像 URL</label>
-          <input v-model="form.avatar" class="input" />
+          <label class="form-label">站点头像</label>
+          <input v-model="form.avatar" class="input" placeholder="粘贴图片链接，或点击下方按钮" />
+          <div class="image-actions">
+            <button type="button" class="btn btn-sm" :disabled="uploading" @click="avatarFileRef?.click()">
+              <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
+            </button>
+            <button type="button" class="btn btn-sm" title="从附件库选择" @click="showLibrary = true">
+              <i class="bi bi-folder2-open" /> 附件库
+            </button>
+            <button v-if="form.avatar" type="button" class="btn btn-sm btn-ghost" @click="form.avatar = ''">
+              移除
+            </button>
+            <input ref="avatarFileRef" type="file" accept="image/*" hidden @change="onAvatarChange" />
+          </div>
         </div>
         <div class="dialog-actions">
           <button class="btn" @click="showApply = false">取消</button>
@@ -119,6 +131,14 @@
         </div>
       </div>
     </div>
+
+    <!-- 附件库：选一张已上传的图片作为站点头像 -->
+    <AttachmentLibrary
+      v-model:visible="showLibrary"
+      title="选择站点头像"
+      accept="image"
+      @select="onLibrarySelect"
+    />
   </div>
 </template>
 
@@ -127,6 +147,8 @@ import { ref, computed, onMounted } from 'vue'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listLinks, listLinkGroups, createLink } from '@/api/links'
+import { uploadAttachments } from '@/api/attachment'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { call } from '@/api/request'
 import { cache } from '@/utils/cache'
 import { renderMarkdown } from '@/utils/markdown'
@@ -140,6 +162,12 @@ const loading = ref(false)
 const groups = ref([])
 const showApply = ref(false)
 const submitting = ref(false)
+
+// 打开申请弹窗：顺手把附件库关掉，避免上一次残留的打开状态「跟着弹出来」
+function openApply() {
+  showLibrary.value = false
+  showApply.value = true
+}
 const showExplain = ref(false)
 const explainLoading = ref(false)
 const explain = ref(null)
@@ -177,6 +205,49 @@ const form = ref({
   group: 1,
   target: '_blank'
 })
+
+// ===== 站点头像：上传 / 附件库 =====
+const avatarFileRef = ref(null)
+const uploading = ref(false)
+const showLibrary = ref(false)
+
+async function onAvatarChange(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    toast.warning('请选择图片文件')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.warning('图片不能超过 5MB')
+    return
+  }
+
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('files', file)
+    const res = await uploadAttachments(fd)
+    const url = res.data?.results?.[0]?.full_url || res.data?.results?.[0]?.url || ''
+    if (!url) throw new Error('empty')
+
+    form.value.avatar = url
+    toast.success('图片已上传')
+  } catch {
+    toast.error('图片上传失败')
+  } finally {
+    uploading.value = false
+  }
+}
+
+// 从附件库选头像：直接复用已上传图片的地址
+function onLibrarySelect(urls = []) {
+  const url = urls[0]
+  showLibrary.value = false
+  if (url) form.value.avatar = url
+}
 
 // 链接状态缓存键与有效期（12 小时 = 720 分钟）
 const STATUS_CACHE_KEY = 'mellow_links_status'
@@ -596,6 +667,13 @@ onMounted(load)
   display: none;               /* Chrome/Safari/Opera */
 }
 
+.image-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
 .dialog-actions {
   display: flex;
   justify-content: flex-end;

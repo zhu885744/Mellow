@@ -407,10 +407,21 @@
                 <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickCover">
                   <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
                 </button>
+                <button class="btn btn-sm" type="button" title="从附件库选择" @click="showLibrary = true">
+                  <i class="bi bi-folder2-open" /> 附件库
+                </button>
                 <button v-if="edit.cover" class="btn btn-sm btn-ghost" type="button" @click="edit.cover = ''">移除</button>
               </div>
             </div>
             <input ref="coverRef" type="file" accept="image/*" hidden @change="onCoverChange" />
+
+            <!-- 附件库：选一张已上传的图片作为商品封面 -->
+            <AttachmentLibrary
+              v-model:visible="showLibrary"
+              title="选择商品封面"
+              accept="image"
+              @select="onLibrarySelect"
+            />
           </div>
         </div>
 
@@ -591,6 +602,7 @@ import {
   setOrderStatus
 } from '@/api/goods'
 import { uploadAttachments } from '@/api/attachment'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { fromNow, formatTime, toLocalInput, fromLocalInput } from '@/utils/time'
 import { debounce, copyText } from '@/utils/helper'
 import { toast } from '@/utils/toast'
@@ -683,6 +695,14 @@ const orderStatus = ref('')
 // ===== 弹窗 =====
 const coverRef = ref(null)
 const uploading = ref(false)
+const showLibrary = ref(false)
+
+// 从附件库选封面：直接复用已上传图片的地址
+function onLibrarySelect(urls = []) {
+  const url = urls[0]
+  showLibrary.value = false
+  if (url) edit.cover = url
+}
 
 const edit = reactive({
   visible: false,

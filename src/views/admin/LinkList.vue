@@ -282,10 +282,21 @@
               <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickAvatar">
                 <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
               </button>
+              <button class="btn btn-sm" type="button" title="从附件库选择" @click="showLibrary = true">
+                <i class="bi bi-folder2-open" /> 附件库
+              </button>
               <button v-if="edit.avatar" class="btn btn-sm btn-ghost" type="button" @click="edit.avatar = ''">移除</button>
             </div>
           </div>
           <input ref="avatarRef" type="file" accept="image/*" hidden @change="onAvatarChange" />
+
+          <!-- 附件库：选一张已上传的图片作为友链头像 -->
+          <AttachmentLibrary
+            v-model:visible="showLibrary"
+            title="选择友链头像"
+            accept="image"
+            @select="onLibrarySelect"
+          />
         </div>
       </div>
 
@@ -392,6 +403,7 @@ import {
   clearLinkRecycle
 } from '@/api/links'
 import { uploadAttachments } from '@/api/attachment'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { listUsersByIds } from '@/api/users'
 import {
   LINK_TABS,
@@ -450,6 +462,14 @@ const authorMap = ref({})
 // ===== 弹窗 =====
 const avatarRef = ref(null)
 const uploading = ref(false)
+const showLibrary = ref(false)
+
+// 从附件库选头像：直接复用已上传图片的地址
+function onLibrarySelect(urls = []) {
+  const url = urls[0]
+  showLibrary.value = false
+  if (url) edit.avatar = url
+}
 
 const edit = reactive({
   visible: false,

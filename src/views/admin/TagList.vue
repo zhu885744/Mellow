@@ -224,10 +224,7 @@
 
       <div class="form-item">
         <label class="form-label">精选话题</label>
-        <select v-model.number="dialog.recommend" class="input">
-          <option :value="0">普通</option>
-          <option :value="1">精选（话题广场可筛选展示）</option>
-        </select>
+        <SelectMenu v-model="dialog.recommend" variant="field" :options="RECOMMEND_OPTIONS" />
       </div>
 
       <div class="form-item">
@@ -249,12 +246,23 @@
               <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickImage">
                 <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
               </button>
+              <button class="btn btn-sm" type="button" title="从附件库选择" @click="showLibrary = true">
+                <i class="bi bi-folder2-open" /> 附件库
+              </button>
               <button v-if="dialog.avatar" class="btn btn-sm btn-ghost" type="button" :disabled="uploading" @click="dialog.avatar = ''">
                 移除
               </button>
             </div>
           </div>
           <input ref="fileRef" type="file" accept="image/*" hidden @change="onFileChange" />
+
+          <!-- 附件库：选一张已上传的图片作为标签图 -->
+          <AttachmentLibrary
+            v-model:visible="showLibrary"
+            title="选择标签图"
+            accept="image"
+            @select="onLibrarySelect"
+          />
         </div>
         <p class="form-hint">可选，留空时前台用默认样式展示</p>
       </div>
@@ -301,6 +309,8 @@ import {
   clearTagRecycle
 } from '@/api/tags'
 import { uploadAttachments } from '@/api/attachment'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
+import SelectMenu from '@/components/SelectMenu.vue'
 import { fromNow } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
@@ -317,8 +327,22 @@ const keyword = ref('')
 // 防抖后的实际搜索词（避免每敲一个字就打一次接口）
 const searchKey = ref('')
 
+// 下拉选项（统一走 SelectMenu，不用浏览器原生 select）
+const RECOMMEND_OPTIONS = [
+  { value: 0, label: '普通' },
+  { value: 1, label: '精选（话题广场可筛选展示）' }
+]
+
 const fileRef = ref(null)
 const uploading = ref(false)
+const showLibrary = ref(false)
+
+// 从附件库选标签图：直接复用已上传图片的地址
+function onLibrarySelect(urls = []) {
+  const url = urls[0]
+  showLibrary.value = false
+  if (url) dialog.avatar = url
+}
 
 const dialog = reactive({
   visible: false,

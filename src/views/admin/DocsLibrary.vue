@@ -10,19 +10,42 @@
           </p>
         </div>
         <div class="head-actions">
+          <button v-if="trash" type="button" class="btn btn-sm" :disabled="busy" @click="askClearRecycle">
+            <i class="bi bi-trash3" /> 清空回收站
+          </button>
           <button type="button" class="btn btn-sm" @click="load">
             <i class="bi bi-arrow-clockwise" /> 刷新
           </button>
-          <button type="button" class="btn btn-primary btn-sm" @click="openDialog(null)">
+          <button v-if="!trash" type="button" class="btn btn-primary btn-sm" @click="openDialog(null)">
             <i class="bi bi-plus-lg" /> 新建项目
           </button>
         </div>
       </header>
 
+      <!-- 视图切换：项目列表 / 回收站 -->
+      <div class="view-tabs">
+        <button type="button" :class="{ active: !trash }" @click="switchTrash(false)">
+          <i class="bi bi-collection" /> 全部项目
+        </button>
+        <button type="button" class="view-tabs__trash" :class="{ active: trash }" @click="switchTrash(true)">
+          <i class="bi bi-trash3" /> 回收站
+        </button>
+      </div>
+
+      <div v-if="trash" class="trash-bar">
+        <span><i class="bi bi-trash3" /> 回收站里的项目不会出现在前台，可恢复或彻底删除</span>
+      </div>
+
       <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
 
+      <EmptyState
+        v-else-if="!projects.length"
+        :icon="trash ? 'bi bi-trash3' : 'bi bi-journal-bookmark'"
+        :text="trash ? '回收站是空的' : '还没有文档项目，点右上角新建一个'"
+      />
+
       <div v-else class="proj-grid">
-        <article v-for="item in projects" :key="item.id" class="proj-card">
+        <article v-for="item in projects" :key="item.id" class="proj-card" :class="{ 'is-trashed': trash }">
           <div class="proj-card__head">
             <span class="proj-card__icon" aria-hidden="true">
               <i :class="iconOf(item)" />
@@ -36,11 +59,25 @@
           <p class="proj-card__desc">{{ item.description || '暂无描述' }}</p>
 
           <div class="proj-card__meta">
-            <span>共 {{ counts[item.slug] || 0 }} 篇文档</span>
+            <template v-if="trash">
+              <span>删除于 {{ formatDate(item.delete_time) }}</span>
+            </template>
+            <template v-else>
+              <span>共 {{ counts[item.slug] || 0 }} 篇文档</span>
+            </template>
             <code>/docs/{{ item.slug }}</code>
           </div>
 
-          <div class="proj-card__foot">
+          <div v-if="trash" class="proj-card__foot">
+            <button type="button" class="btn btn-sm" :disabled="busy" @click="restore(item)">
+              <i class="bi bi-arrow-counterclockwise" /> 恢复
+            </button>
+            <button type="button" class="btn btn-sm btn-ghost is-danger" :disabled="busy" @click="askForceDelete(item)">
+              <i class="bi bi-x-circle" /> 彻底删除
+            </button>
+          </div>
+
+          <div v-else class="proj-card__foot">
             <a class="btn btn-sm" :href="`/docs/${item.slug}`" target="_blank" rel="noopener">访问</a>
             <RouterLink class="btn btn-sm" :to="`/admin/docs/${item.slug}`">编辑</RouterLink>
             <button type="button" class="btn btn-sm" @click="openDialog(item)">设置</button>
@@ -50,7 +87,7 @@
           </div>
         </article>
 
-        <button type="button" class="proj-card proj-card--new" @click="openDialog(null)">
+        <button v-if="!trash" type="button" class="proj-card proj-card--new" @click="openDialog(null)">
           <i class="bi bi-plus-circle" aria-hidden="true" />
           <span>新建项目</span>
         </button>
@@ -109,10 +146,7 @@
           <div class="form-row form-row--half">
             <div>
               <label>状态</label>
-              <select v-model.number="dialog.form.status" class="input">
-                <option :value="1">启用</option>
-                <option :value="0">禁用</option>
-              </select>
+              <SelectMenu v-model="dialog.form.status" variant="field" :options="STATUS_OPTIONS" />
             </div>
             <div>
               <label>排序</label>
@@ -122,11 +156,7 @@
 
           <div class="form-row">
             <label>可见性</label>
-            <select v-model.number="dialog.form.visible" class="input">
-              <option :value="1">公开</option>
-              <option :value="2">登录可见</option>
-              <option :value="3">指定角色组</option>
-            </select>
+            <SelectMenu v-model="dialog.form.visible" variant="field" :options="VISIBLE_OPTIONS" />
           </div>
 
           <div v-if="dialog.form.visible === 3" class="form-row">
@@ -143,22 +173,71 @@
         </footer>
       </div>
     </div>
+
+    <ConfirmDialog
+      v-model:visible="confirmDialog.open"
+      :title="confirmDialog.title"
+      :message="confirmDialog.message"
+      :confirm-text="confirmDialog.text"
+      :danger="confirmDialog.danger"
+      @confirm="runConfirm"
+    />
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
+import SelectMenu from '@/components/SelectMenu.vue'
+import EmptyState from '@/components/EmptyState.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import { formatDate } from '@/utils/time'
 import { toast } from '@/utils/toast'
-import { listAllDocsProjects, saveDocsProject, removeDocsProjects, listDocs } from '@/api/docs'
+import {
+  listAllDocsProjects,
+  saveDocsProject,
+  removeDocsProjects,
+  restoreDocsProjects,
+  deleteDocsProjects,
+  clearDocsProjectRecycle,
+  listDocs
+} from '@/api/docs'
 
 const DEFAULT_ICON = 'bi bi-journal-bookmark'
+
+// 下拉选项（统一走 SelectMenu，不用浏览器原生 select）
+const STATUS_OPTIONS = [
+  { value: 1, label: '启用' },
+  { value: 0, label: '禁用' }
+]
+const VISIBLE_OPTIONS = [
+  { value: 1, label: '公开' },
+  { value: 2, label: '登录可见' },
+  { value: 3, label: '指定角色组' }
+]
 
 const projects = ref([])
 const counts = reactive({})
 const loading = ref(false)
 const saving = ref(false)
 
+// 回收站视图：与「全部项目」共用同一个列表，只换查询参数
+const trash = ref(false)
+const busy = ref(false)
+
 const dialog = reactive({ open: false, form: emptyForm() })
+
+// 确认弹窗（删除 / 彻底删除 / 清空 都走它，替代原生 confirm）
+const confirmDialog = reactive({ open: false, title: '', message: '', text: '确定', danger: false, run: null })
+
+function askConfirm({ title, message, text = '确定', danger = false, run }) {
+  Object.assign(confirmDialog, { open: true, title, message, text, danger, run })
+}
+
+async function runConfirm() {
+  const run = confirmDialog.run
+  confirmDialog.open = false
+  if (run) await run()
+}
 
 // 复选框用 boolean 双向绑定，提交时再转成后端的 0/1
 const commentEnabled = computed({
@@ -183,8 +262,11 @@ function iconOf(item) {
 async function load() {
   loading.value = true
   try {
-    const res = await listAllDocsProjects()
+    const res = await listAllDocsProjects(trash.value ? { onlyTrashed: true } : {})
     projects.value = res?.data || []
+
+    // 回收站里的项目不给文档数（前台已不可见，统计没意义）
+    if (trash.value) return
 
     // 后台列表不带文档数，逐个项目查一次（项目数量很少）
     for (const item of projects.value) {
@@ -199,6 +281,12 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function switchTrash(value) {
+  if (trash.value === value) return
+  trash.value = value
+  load()
 }
 
 function openDialog(item) {
@@ -249,18 +337,87 @@ async function save() {
   }
 }
 
-async function askRemove(item) {
-  if (!confirm(`确定删除项目「${item.name}」？项目下还有文档或目录时无法删除。`)) return
+function askRemove(item) {
+  askConfirm({
+    title: '删除项目',
+    message: `确定删除项目「${item.name}」吗？项目下还有文档或目录时无法删除；删除后可在回收站恢复。`,
+    text: '删除',
+    danger: true,
+    run: async () => {
+      const res = await removeDocsProjects(item.id)
+      if (res?.code !== 200) {
+        toast.error(res?.msg || '删除失败')
+        return
+      }
+      delete counts[item.slug]
+      toast.success('已移入回收站')
+      await load()
+    }
+  })
+}
 
-  const res = await removeDocsProjects(item.id)
-  if (res?.code !== 200) {
-    toast.error(res?.msg || '删除失败')
-    return
+// ===== 回收站 =====
+
+async function restore(item) {
+  busy.value = true
+  try {
+    const res = await restoreDocsProjects(item.id)
+    if (res?.code !== 200) {
+      toast.error(res?.msg || '恢复失败')
+      return
+    }
+    toast.success('已恢复')
+    await load()
+  } finally {
+    busy.value = false
   }
+}
 
-  delete counts[item.slug]
-  toast.success('已删除')
-  await load()
+function askForceDelete(item) {
+  askConfirm({
+    title: '彻底删除项目',
+    message: `确定彻底删除「${item.name}」吗？该项目下的目录与文档会一并删除，不可恢复！`,
+    text: '彻底删除',
+    danger: true,
+    run: async () => {
+      busy.value = true
+      try {
+        const res = await deleteDocsProjects(item.id)
+        if (res?.code !== 200) {
+          toast.error(res?.msg || '彻底删除失败')
+          return
+        }
+        delete counts[item.slug]
+        toast.success('已彻底删除')
+        await load()
+      } finally {
+        busy.value = false
+      }
+    }
+  })
+}
+
+function askClearRecycle() {
+  askConfirm({
+    title: '清空回收站',
+    message: '确定清空回收站吗？回收站内所有项目及其目录、文档都会被彻底删除，不可恢复！',
+    text: '清空',
+    danger: true,
+    run: async () => {
+      busy.value = true
+      try {
+        const res = await clearDocsProjectRecycle()
+        if (res?.code !== 200 && res?.code !== 204) {
+          toast.error(res?.msg || '清空失败')
+          return
+        }
+        toast.success('回收站已清空')
+        await load()
+      } finally {
+        busy.value = false
+      }
+    }
+  })
 }
 
 onMounted(load)
@@ -301,11 +458,63 @@ onMounted(load)
   flex-shrink: 0;
 }
 
+/* ---------- 视图切换 / 回收站 ---------- */
+.view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 12px;
+  background: var(--bg-muted);
+  border-radius: var(--radius);
+  width: fit-content;
+  max-width: 100%;
+  overflow-x: auto;
+}
+.view-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: var(--text-soft);
+  background: transparent;
+  border: none;
+  border-radius: calc(var(--radius) - 2px);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, background-color 0.15s;
+}
+.view-tabs button:hover {
+  color: var(--text);
+}
+.view-tabs button.active {
+  color: var(--primary);
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+.trash-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  background: var(--bg-alt);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-sm);
+}
+
 /* ---------- 项目卡片 ---------- */
 .proj-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
+}
+.proj-card.is-trashed {
+  opacity: 0.9;
+  border-style: dashed;
 }
 .proj-card {
   display: flex;

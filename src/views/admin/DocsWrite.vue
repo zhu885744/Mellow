@@ -46,10 +46,7 @@
 
           <div class="form-row">
             <label>所属目录</label>
-            <select v-model.number="form.gid" class="input">
-              <option :value="0">未分类（一级根）</option>
-              <option v-for="item in groupOptions" :key="item.id" :value="item.id">{{ item.name }}</option>
-            </select>
+            <SelectMenu v-model="form.gid" variant="field" :options="groupSelectOptions" />
           </div>
 
           <div class="form-row">
@@ -59,11 +56,7 @@
 
           <div class="form-row">
             <label>可见性</label>
-            <select v-model.number="form.visible" class="input">
-              <option :value="1">公开</option>
-              <option :value="2">登录可见</option>
-              <option :value="3">指定角色组</option>
-            </select>
+            <SelectMenu v-model="form.visible" variant="field" :options="VISIBLE_OPTIONS" />
           </div>
 
           <div v-if="form.visible === 3" class="form-row">
@@ -108,6 +101,7 @@
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
+import SelectMenu from '@/components/SelectMenu.vue'
 import { toast } from '@/utils/toast'
 import { docsGroupTree, getDocs, getDocsProject, saveDocs } from '@/api/docs'
 
@@ -150,6 +144,19 @@ const groupOptions = computed(() => {
   walk(tree.value)
   return result
 })
+
+// 下拉选项（统一走 SelectMenu，不用浏览器原生 select）
+const VISIBLE_OPTIONS = [
+  { value: 1, label: '公开' },
+  { value: 2, label: '登录可见' },
+  { value: 3, label: '指定角色组' }
+]
+
+// 所属目录：未分类 + 现有目录
+const groupSelectOptions = computed(() => [
+  { value: 0, label: '未分类（一级根）' },
+  ...groupOptions.value.map((item) => ({ value: item.id, label: item.name }))
+])
 
 function emptyForm() {
   return {

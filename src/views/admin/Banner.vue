@@ -224,12 +224,23 @@
               <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickImage">
                 <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
               </button>
+              <button class="btn btn-sm" type="button" title="从附件库选择" @click="showLibrary = true">
+                <i class="bi bi-folder2-open" /> 附件库
+              </button>
               <button v-if="dialog.image" class="btn btn-sm btn-ghost" type="button" :disabled="uploading" @click="dialog.image = ''">
                 移除
               </button>
             </div>
           </div>
           <input ref="fileRef" type="file" accept="image/*" hidden @change="onFileChange" />
+
+          <!-- 附件库：选一张已上传的图片作为轮播图 -->
+          <AttachmentLibrary
+            v-model:visible="showLibrary"
+            title="选择轮播图"
+            accept="image"
+            @select="onLibrarySelect"
+          />
         </div>
       </div>
 
@@ -319,6 +330,7 @@ import {
   clearBannerRecycle
 } from '@/api/banner'
 import { uploadAttachments } from '@/api/attachment'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { fromNow, formatTime, toLocalInput, fromLocalInput } from '@/utils/time'
 import { truncate, debounce } from '@/utils/helper'
 import { openLightbox } from '@/utils/lightbox'
@@ -346,6 +358,14 @@ const nowTs = ref(Math.floor(Date.now() / 1000))
 
 const fileRef = ref(null)
 const uploading = ref(false)
+const showLibrary = ref(false)
+
+// 从附件库选图：直接复用已上传图片的地址
+function onLibrarySelect(urls = []) {
+  const url = urls[0]
+  showLibrary.value = false
+  if (url) dialog.image = url
+}
 
 const dialog = reactive({
   visible: false,

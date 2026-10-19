@@ -310,11 +310,34 @@
       <div class="form-item">
         <label class="form-label">评论图片</label>
         <input v-model="edit.images" class="input" type="text" placeholder="多个图片链接用英文逗号分隔" />
+
+        <div class="image-actions">
+          <button type="button" class="btn btn-sm" :disabled="uploading" @click="pickCommentImages">
+            <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
+          </button>
+          <button type="button" class="btn btn-sm" title="从附件库选择" @click="showImageLibrary = true">
+            <i class="bi bi-folder2-open" /> 附件库
+          </button>
+          <button v-if="editImageList.length" type="button" class="btn btn-sm btn-ghost" @click="edit.images = ''">
+            清空
+          </button>
+        </div>
+        <input ref="imageFileRef" type="file" accept="image/*" multiple hidden @change="onCommentImagesChange" />
+
         <div v-if="editImageList.length" class="thumb-row">
           <img v-for="(img, i) in editImageList" :key="`${img}-${i}`" :src="img" alt="评论图片" loading="lazy" />
         </div>
         <p class="form-hint">留空表示移除该评论的全部图片</p>
       </div>
+
+      <AttachmentLibrary
+        v-model:visible="showImageLibrary"
+        title="选择评论图片"
+        accept="image"
+        multiple
+        :max="9"
+        @select="onImageLibrarySelect"
+      />
     </AdminFormDialog>
 
     <!-- 操作确认 -->
@@ -367,6 +390,8 @@ import EmojiText from '@/components/EmojiText.vue'
 import ScopeBadge from '@/components/ScopeBadge.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import AuditDialog from '@/components/admin/AuditDialog.vue'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
+import { uploadAttachments } from '@/api/attachment'
 import {
   listComments,
   updateComment,
@@ -896,6 +921,68 @@ const edit = reactive({
 // 输入框里是逗号分隔字符串，这里解析出来做缩略图预览
 const editImageList = computed(() => parseCommentImages(edit.images))
 
+// ===== 评论图片：上传 / 附件库 =====
+const imageFileRef = ref(null)
+const uploading = ref(false)
+const showImageLibrary = ref(false)
+
+// 追加到 edit.images（逗号分隔），重复地址跳过
+function appendCommentImages(urls = []) {
+  const merged = [...editImageList.value]
+  for (const url of urls) {
+    if (url && !merged.includes(url)) merged.push(url)
+  }
+  edit.images = merged.join(',')
+}
+
+function pickCommentImages() {
+  imageFileRef.value?.click()
+}
+
+async function onCommentImagesChange(event) {
+  const files = Array.from(event.target.files || [])
+  event.target.value = ''
+  if (!files.length) return
+
+  const valid = files.filter((file) => {
+    if (!file.type.startsWith('image/')) {
+      toast.warning(`文件「${file.name}」不是图片`)
+      return false
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.warning(`图片「${file.name}」超过 5MB`)
+      return false
+    }
+    return true
+  })
+  if (!valid.length) return
+
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    valid.forEach((file) => fd.append('files', file))
+    const res = await uploadAttachments(fd)
+    const urls = (res.data?.results || [])
+      .map((item) => item.full_url || item.url)
+      .filter(Boolean)
+
+    if (!urls.length) throw new Error('empty')
+
+    appendCommentImages(urls)
+    toast.success('图片已上传')
+  } catch {
+    toast.error('图片上传失败')
+  } finally {
+    uploading.value = false
+  }
+}
+
+// 从附件库选图：多选，追加到现有列表
+function onImageLibrarySelect(urls = []) {
+  showImageLibrary.value = false
+  appendCommentImages(urls)
+}
+
 function openEdit(item) {
   edit.id = Number(item.id)
   edit.content = item.content || ''
@@ -1323,6 +1410,13 @@ onUnmounted(() => {
 }
 
 /* ---------- 弹窗 ---------- */
+.image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  /* .form-item 不是 flex 布局，和上面的输入框之间要自己留间距 */
+  margin-top: 8px;
+}
 .thumb-row {
   display: flex;
   flex-wrap: wrap;

@@ -9,13 +9,13 @@
       decoding="async"
       @error="onError"
     />
-    <!-- 顶层头像框：放大渲染，容纳向外延伸的装饰 -->
+    <!-- 顶层头像框：按「洞」定位，装饰可自由向外延伸 -->
     <img
       v-if="frame && !frameFailed"
       :src="frame"
       class="avatar-frame-overlay"
       :class="{ 'is-animated': animated }"
-      :style="{ transform: `translate(-50%, -50%) scale(${frameScale})` }"
+      :style="frameStyle"
       alt=""
       loading="lazy"
       decoding="async"
@@ -27,17 +27,30 @@
 <script setup>
 import { ref, computed } from 'vue'
 
+// 与后端 app/model/decoration.go 的 frameHoleMin / frameHoleMax / frameOffsetLimit 保持一致
+const HOLE_MIN = 0.2
+const HOLE_MAX = 1.5
+const OFFSET_LIMIT = 0.5
+
 const props = defineProps({
   src: { type: String, default: '' },
   frame: { type: String, default: '' },
   alt: { type: String, default: '头像' },
   size: { type: String, default: '80px' },
   /**
-   * 头像框缩放系数
-   * 1 = 和头像一样大
-   * >1 放大头像框（推荐1.15 ~ 1.3，根据素材调整）
+   * 头像框「洞」的大小：洞直径 ÷ 素材宽度
+   *
+   * 1   = 洞正好是素材的内切圆，素材按头像大小 1:1 渲染
+   * 0.6 = 素材要放大到 1.67 倍，洞才等于头像（装饰画得大的框通常是这个量级）
+   *
+   * 数据来自 users.json.frame_hole（佩戴时由服务端回写），
+   * 没配过的老数据取默认 1，等同于「素材就是贴合头像的」。
    */
-  frameScale: { type: Number, default: 1.2 },
+  frameHole: { type: Number, default: 1 },
+  /** 洞心相对素材中心的横向偏移，单位=素材宽度的比例（修正画布留白不对称） */
+  frameOffsetX: { type: Number, default: 0 },
+  /** 洞心相对素材中心的纵向偏移，同上 */
+  frameOffsetY: { type: Number, default: 0 },
   // 头像加载失败时的回退图
   fallback: { type: String, default: '' },
   /**
@@ -49,6 +62,26 @@ const props = defineProps({
 
 const failed = ref(false)
 const frameFailed = ref(false)
+
+function clampOffset(value) {
+  const num = Number(value)
+  if (!Number.isFinite(num)) return 0
+  return Math.min(OFFSET_LIMIT, Math.max(-OFFSET_LIMIT, num))
+}
+
+// 用 CSS 变量传参，避免在模板里拼一长串 transform
+const frameStyle = computed(() => {
+  const raw = Number(props.frameHole)
+  const hole = Number.isFinite(raw) && raw > 0
+    ? Math.min(HOLE_MAX, Math.max(HOLE_MIN, raw))
+    : 1
+
+  return {
+    '--frame-hole': hole,
+    '--frame-offset-x': clampOffset(props.frameOffsetX),
+    '--frame-offset-y': clampOffset(props.frameOffsetY)
+  }
+})
 
 // 头像为空或加载失败时回退到 fallback
 const currentSrc = computed(() => {
@@ -81,17 +114,30 @@ function onError() {
   z-index: 1;
 }
 
-/* 头像框居中放大 */
+/*
+ * 头像框：以「洞」为基准定位
+ *
+ * --frame-hole      洞直径 ÷ 素材宽度 → 素材宽度取「头像直径 / hole」
+ * --frame-offset-x  洞心横向偏移（素材宽度的比例）
+ * --frame-offset-y  洞心纵向偏移
+ *
+ * height:auto 让 <img> 保持素材自身比例：非正方形素材也不会被拉伸，
+ * 同时 translate(-50%,-50%) 正好以图片实际尺寸居中。
+ */
 .avatar-frame-overlay {
   position: absolute;
   top: 50%;
   left: 50%;
-  width: 100%;
-  height: 100%;
+  width: calc(100% / var(--frame-hole, 1));
+  height: auto;
   pointer-events: none;
   z-index: 2;
-  object-fit: contain;
   transform-origin: center center;
+  /* translate 的百分比以元素自身宽度为基准：先居中，再按偏移量平移 */
+  transform: translate(
+    calc(-50% - var(--frame-offset-x, 0) * 100%),
+    calc(-50% - var(--frame-offset-y, 0) * 100%)
+  );
 }
 
 /* 开启动效：亮度呼吸 + 泛光（与头衔的呼吸动效风格保持一致） */

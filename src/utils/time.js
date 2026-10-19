@@ -17,6 +17,18 @@ export const formatDate = (timestamp) => {
   return dayjs(t).format('YYYY-MM-DD')
 }
 
+/**
+ * unix 秒 -> 完整时间（YYYY-MM-DD HH:mm:ss）
+ *
+ * 与 formatTime 的区别：多了秒。用于「同一天可能操作多次」的场景（文档历史记录等），
+ * 只到分的话短时间内连续保存会显示成一模一样的时间。
+ */
+export const formatDateTime = (timestamp) => {
+  if (!timestamp) return ''
+  const t = typeof timestamp === 'string' ? parseInt(timestamp) * 1000 : timestamp * 1000
+  return dayjs(t).format('YYYY-MM-DD HH:mm:ss')
+}
+
 export const fromNow = (timestamp) => {
   if (!timestamp) return ''
   const t = typeof timestamp === 'string' ? parseInt(timestamp) * 1000 : timestamp * 1000

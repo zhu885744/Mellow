@@ -217,6 +217,47 @@ export const pickUserFrameAnimated = (user) => {
 }
 
 /**
+ * 头像框的定位参数（后端佩戴时按装扮 payload 回写到 users.json）
+ *
+ * 返回 { hole, offsetX, offsetY }，直接透传给 AvatarFrame：
+ *   - hole      洞直径 ÷ 素材宽度，1 表示素材按头像大小 1:1 渲染
+ *   - offsetX/Y 洞心偏移，单位是素材宽度的比例
+ *
+ * 老数据没有这几个字段时返回默认值（1 / 0 / 0），等同于「素材就是贴合头像的」。
+ */
+export const pickUserFrameGeometry = (user) => {
+  const json = user?.json || {}
+  return {
+    hole: Number(json.frame_hole) > 0 ? Number(json.frame_hole) : 1,
+    offsetX: Number(json.frame_offset_x) || 0,
+    offsetY: Number(json.frame_offset_y) || 0
+  }
+}
+
+/**
+ * 从装扮 payload 解析头像框几何参数（后台对齐预览 / 前台佩戴预览共用）
+ *
+ * 与后端 app/model/decoration.go 的 frameGeometry 同口径：
+ *   - 优先取 hole；
+ *   - 没有 hole 时按旧的 scale 换算（hole = 1/scale），老装扮保持原观感；
+ *   - 都没有则 hole = 1（素材按头像大小 1:1 渲染）。
+ */
+export const frameGeometryFromPayload = (payload = {}) => {
+  const rawHole = Number(payload?.hole)
+  const rawScale = Number(payload?.scale)
+
+  let hole = 1
+  if (rawHole > 0) hole = rawHole
+  else if (rawScale > 0) hole = 1 / rawScale
+
+  return {
+    hole,
+    offsetX: Number(payload?.offset_x) || 0,
+    offsetY: Number(payload?.offset_y) || 0
+  }
+}
+
+/**
  * 判断用户是否为管理员
  * 兼容两种用户结构：user.auth（顶层）和 user.result.auth（嵌套）
  * 参考主题实现：auth.all 或 auth.group.list 中存在 key === 'admin'

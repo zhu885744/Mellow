@@ -7,6 +7,11 @@
   <Lightbox />
   <!-- 全局滑块验证：发送验证码被判定为频繁时，由 request.js 的拦截器唤起（见 utils/captchaGate） -->
   <SliderCaptcha />
+  <!-- 右侧悬浮按钮（主题切换 / 自定义按钮 / 返回顶部）
+       同样挂全局：前台、登录页、后台、用户中心、创作中心、文档站都显示。
+       安装向导页不显示 —— 未安装时 /api 会被整体拦住（412），
+       悬浮按钮拿不到站点配置，也不该出现在安装流程里。 -->
+  <FloatButtons v-if="route.name !== 'install'" />
 </template>
 
 <script setup>
@@ -16,6 +21,7 @@ import { useSiteStore } from '@/stores/site'
 import { applySiteAssets } from '@/utils/siteAssets'
 import SliderCaptcha from '@/components/SliderCaptcha.vue'
 import Lightbox from '@/components/Lightbox.vue'
+import FloatButtons from '@/components/FloatButtons.vue'
 
 const siteStore = useSiteStore()
 const route = useRoute()

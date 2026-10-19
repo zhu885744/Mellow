@@ -405,16 +405,94 @@
                         : 'https://.../badge.png，留空则为纯文字头衔'
                     "
                   />
+                  <div class="image-actions">
+                    <button type="button" class="btn btn-sm" :disabled="uploading" @click="pickDecorationImage">
+                      <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
+                    </button>
+                    <button type="button" class="btn btn-sm" title="从附件库选择" @click="showImageLibrary = true">
+                      <i class="bi bi-folder2-open" /> 附件库
+                    </button>
+                    <button v-if="form.p_image" type="button" class="btn btn-sm btn-ghost" @click="form.p_image = ''">
+                      移除
+                    </button>
+                  </div>
+                  <input ref="imageFileRef" type="file" accept="image/*" hidden @change="onDecorationImageChange" />
+
+                  <AttachmentLibrary
+                    v-model:visible="showImageLibrary"
+                    title="选择装扮素材"
+                    accept="image"
+                    @select="onImageLibrarySelect"
+                  />
+
                   <p v-if="form.type === 'title'" class="form-hint">
                     填了图片即为「纯图片头衔」：只显示图片、不再显示文字（与文字头衔二选一）
                   </p>
                 </div>
-                <div class="form-item">
+                <div v-if="form.type !== 'avatar_frame'" class="form-item">
                   <label class="form-label">缩放比例</label>
                   <input v-model="form.p_scale" class="input" type="number" step="0.05" min="0.5" max="3" />
-                  <p class="form-hint">
-                    {{ form.type === 'avatar_frame' ? '1 为贴合头像，建议 1.1 ~ 1.3' : '控制图片头衔的高度，1 为默认尺寸' }}
-                  </p>
+                  <p class="form-hint">控制图片头衔的高度，1 为默认尺寸</p>
+                </div>
+              </div>
+
+              <!--
+                头像框对齐器（仅 avatar_frame）
+
+                为什么不是「一个缩放数字」：等比放大会把框中间的洞一起放大，
+                装饰越大洞就越撑，头像怎么都填不满。这里改成以「洞」为基准：
+                洞大小固定贴合头像，装饰自然向外延伸，再用两个偏移修画布留白不对称。
+              -->
+              <div v-if="form.type === 'avatar_frame'" class="frame-aligner">
+                <div class="frame-aligner__head">
+                  <span class="frame-aligner__title">
+                    <i class="bi bi-crosshair" /> 对齐预览
+                  </span>
+                  <button type="button" class="btn btn-sm btn-ghost" @click="resetFrameAlign">
+                    <i class="bi bi-arrow-counterclockwise" /> 重置
+                  </button>
+                </div>
+
+                <div class="frame-aligner__body">
+                  <div class="frame-aligner__stage">
+                    <img class="frame-aligner__avatar" :src="alignerAvatar" alt="头像示例" />
+                    <img
+                      v-if="form.p_image"
+                      class="frame-aligner__overlay"
+                      :style="alignerStyle"
+                      :src="form.p_image"
+                      alt=""
+                      draggable="false"
+                      @pointerdown="onAlignPointerDown"
+                      @pointermove="onAlignPointerMove"
+                      @pointerup="onAlignPointerUp"
+                      @pointercancel="onAlignPointerUp"
+                    />
+                    <p v-else class="frame-aligner__empty">先填上面的素材地址</p>
+                  </div>
+
+                  <div class="frame-aligner__controls">
+                    <label class="align-row">
+                      <span class="align-row__label">洞大小</span>
+                      <input v-model.number="form.p_hole" class="align-range" type="range" min="0.2" max="1.5" step="0.01" />
+                      <span class="align-row__value">{{ Number(form.p_hole).toFixed(2) }}</span>
+                    </label>
+                    <label class="align-row">
+                      <span class="align-row__label">水平偏移</span>
+                      <input v-model.number="form.p_ox" class="align-range" type="range" min="-0.5" max="0.5" step="0.005" />
+                      <span class="align-row__value">{{ Number(form.p_ox).toFixed(3) }}</span>
+                    </label>
+                    <label class="align-row">
+                      <span class="align-row__label">垂直偏移</span>
+                      <input v-model.number="form.p_oy" class="align-range" type="range" min="-0.5" max="0.5" step="0.005" />
+                      <span class="align-row__value">{{ Number(form.p_oy).toFixed(3) }}</span>
+                    </label>
+
+                    <p class="form-hint">
+                      「洞大小」= 框中间透出头像的圆 ÷ 素材宽度。洞偏了就调下面的偏移，
+                      也可以直接在预览里拖动素材。
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -578,6 +656,10 @@ import {
   revokeDecorations as revokeDecorationsApi
 } from '@/api/decoration'
 import { toast } from '@/utils/toast'
+import { uploadAttachments } from '@/api/attachment'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
+import { frameGeometryFromPayload } from '@/utils/helper'
+import { useUserStore } from '@/stores/user'
 import TitleBadge from '@/components/TitleBadge.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
@@ -585,6 +667,56 @@ import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 
 const pageSize = 12
+
+// 头像框对齐器的示例头像用当前管理员的，更接近真实观感
+const userStore = useUserStore()
+
+// ===== 装扮素材：上传 / 附件库 =====
+const imageFileRef = ref(null)
+const uploading = ref(false)
+const showImageLibrary = ref(false)
+
+function pickDecorationImage() {
+  imageFileRef.value?.click()
+}
+
+async function onDecorationImageChange(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    toast.warning('请选择图片文件')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.warning('图片不能超过 5MB')
+    return
+  }
+
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('files', file)
+    const res = await uploadAttachments(fd)
+    const url = res.data?.results?.[0]?.full_url || res.data?.results?.[0]?.url || ''
+    if (!url) throw new Error('empty')
+
+    form.p_image = url
+    toast.success('图片已上传')
+  } catch {
+    toast.error('图片上传失败')
+  } finally {
+    uploading.value = false
+  }
+}
+
+// 从附件库选素材：直接复用已上传图片的地址
+function onImageLibrarySelect(urls = []) {
+  const url = urls[0]
+  showImageLibrary.value = false
+  if (url) form.p_image = url
+}
 
 // 列表状态：all 全部 / on 已上架 / off 已下架 / trash 回收站
 const STATUS_TABS = [
@@ -820,12 +952,19 @@ const form = reactive({
   p_glow: '',
   p_icon: '',
   p_scale: 1.15,
+  // 头像框的「洞」参数（见 frameGeometryFromPayload / 后端 frameGeometry）
+  p_hole: 1,
+  p_ox: 0,
+  p_oy: 0,
   p_animated: false,
   extraJson: ''
 })
 
 // 已知的结构化字段：其余键进入「高级 JSON」编辑
-const KNOWN_PAYLOAD_KEYS = ['image', 'text', 'color', 'bg', 'border', 'glow', 'icon', 'scale', 'animated']
+const KNOWN_PAYLOAD_KEYS = [
+  'image', 'text', 'color', 'bg', 'border', 'glow', 'icon',
+  'scale', 'hole', 'offset_x', 'offset_y', 'animated'
+]
 
 // 弹窗内的实时预览（结构与提交时的 payload 保持一致）
 const formPayloadPreview = computed(() => buildPayload())
@@ -835,9 +974,21 @@ function buildPayload() {
   // 素材地址与缩放：头像框必填、头衔选填（头衔填了即「图片头衔」），两者共用一套字段
   if (form.p_image) {
     payload.image = form.p_image
-    const scale = Number(form.p_scale)
-    if (scale > 0) payload.scale = scale
+
+    if (form.type === 'avatar_frame') {
+      // 头像框用「洞模型」：hole = 洞直径 ÷ 素材宽度，offset 修洞心偏移。
+      // 同时回写一个等价的 scale（= 1/hole），让还在读旧字段的消费方保持一致。
+      const hole = clampRange(Number(form.p_hole), HOLE_MIN, HOLE_MAX, 1)
+      payload.hole = hole
+      payload.offset_x = clampRange(Number(form.p_ox), -OFFSET_LIMIT, OFFSET_LIMIT, 0)
+      payload.offset_y = clampRange(Number(form.p_oy), -OFFSET_LIMIT, OFFSET_LIMIT, 0)
+      payload.scale = Number((1 / hole).toFixed(3))
+    } else {
+      const scale = Number(form.p_scale)
+      if (scale > 0) payload.scale = scale
+    }
   }
+
   if (form.type !== 'avatar_frame') {
     if (form.p_text) payload.text = form.p_text
     if (form.p_color) payload.color = form.p_color
@@ -863,6 +1014,85 @@ function buildPayload() {
   return payload
 }
 
+// ===== 头像框对齐器 =====
+//
+// 舞台里放一个「真实尺寸的头像」（120px），素材按「头像直径 / hole」渲染，
+// 洞正好贴住头像。拖素材或拖滑块改的是 hole / offset，实时看到的就是前台效果。
+const HOLE_MIN = 0.2
+const HOLE_MAX = 1.5
+const OFFSET_LIMIT = 0.5
+const ALIGNER_AVATAR = 120
+
+const FRAME_FALLBACK_AVATAR =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
+
+function clampRange(value, min, max, fallback = 0) {
+  if (!Number.isFinite(value)) return fallback
+  return Math.min(max, Math.max(min, value))
+}
+
+const alignerAvatar = computed(() => userStore.user?.avatar || FRAME_FALLBACK_AVATAR)
+
+const alignerHole = computed(() => clampRange(Number(form.p_hole), HOLE_MIN, HOLE_MAX, 1))
+
+// 素材渲染宽度 = 头像直径 / hole（hole 越小，素材越大、装饰越舒展）
+const alignerOverlayWidth = computed(() => ALIGNER_AVATAR / alignerHole.value)
+
+const alignerStyle = computed(() => {
+  const ox = clampRange(Number(form.p_ox), -OFFSET_LIMIT, OFFSET_LIMIT, 0)
+  const oy = clampRange(Number(form.p_oy), -OFFSET_LIMIT, OFFSET_LIMIT, 0)
+
+  return {
+    width: `${alignerOverlayWidth.value.toFixed(2)}px`,
+    height: 'auto',
+    // translate 的百分比以素材自身宽度为基准，与 AvatarFrame 的实现保持一致
+    transform: `translate(calc(-50% - ${(ox * 100).toFixed(2)}%), calc(-50% - ${(oy * 100).toFixed(2)}%))`
+  }
+})
+
+// 拖动素材：像素位移 ÷ 素材宽度 = 偏移量。方向取反 ——
+// offset 变大时素材是往左/上移的（洞心右移等于素材左移）。
+const alignDrag = ref(null)
+
+function onAlignPointerDown(event) {
+  if (!form.p_image) return
+
+  alignDrag.value = {
+    x: event.clientX,
+    y: event.clientY,
+    ox: Number(form.p_ox) || 0,
+    oy: Number(form.p_oy) || 0,
+    width: alignerOverlayWidth.value || 1
+  }
+
+  event.currentTarget?.setPointerCapture?.(event.pointerId)
+}
+
+function onAlignPointerMove(event) {
+  const drag = alignDrag.value
+  if (!drag) return
+
+  const width = drag.width || 1
+  const nextX = drag.ox - (event.clientX - drag.x) / width
+  const nextY = drag.oy - (event.clientY - drag.y) / width
+
+  form.p_ox = Number(clampRange(nextX, -OFFSET_LIMIT, OFFSET_LIMIT, 0).toFixed(3))
+  form.p_oy = Number(clampRange(nextY, -OFFSET_LIMIT, OFFSET_LIMIT, 0).toFixed(3))
+}
+
+function onAlignPointerUp(event) {
+  if (!alignDrag.value) return
+
+  alignDrag.value = null
+  event.currentTarget?.releasePointerCapture?.(event.pointerId)
+}
+
+function resetFrameAlign() {
+  form.p_hole = 1
+  form.p_ox = 0
+  form.p_oy = 0
+}
+
 function resetForm(type) {
   form.id = 0
   form.type = type || types.value[0]?.type || 'avatar_frame'
@@ -884,8 +1114,12 @@ function resetForm(type) {
   form.p_border = ''
   form.p_glow = ''
   form.p_icon = ''
-  // 头像框的 1 基准是「贴合头像」（略放大更好看），头衔图片的 1 就是默认高度
-  form.p_scale = form.type === 'avatar_frame' ? 1.15 : 1
+  // 头衔图片的 1 就是默认高度；头像框不再用 scale，改由下面的洞参数控制
+  form.p_scale = 1
+  // 洞默认 1：素材按头像大小 1:1 渲染，洞 = 画布内切圆
+  form.p_hole = 1
+  form.p_ox = 0
+  form.p_oy = 0
   form.p_animated = false
   form.extraJson = ''
 }
@@ -919,8 +1153,21 @@ function openEdit(item) {
   form.p_border = payload.border || ''
   form.p_glow = payload.glow || ''
   form.p_icon = payload.icon || ''
-  form.p_scale = payload.scale ?? (item.type === 'avatar_frame' ? 1.15 : 1)
+  form.p_scale = payload.scale ?? 1
   form.p_animated = payload.animated === true || payload.animated === 1
+
+  // 头像框：优先读 hole；老数据只有 scale 时按 hole = 1/scale 换算（与后端同口径）
+  if (item.type === 'avatar_frame') {
+    const geometry = frameGeometryFromPayload(payload)
+    // 历史数据可能超出滑块范围（或 hole=0），这里夹一下，避免滑块位置和实际值不一致
+    form.p_hole = clampRange(geometry.hole, HOLE_MIN, HOLE_MAX, 1)
+    form.p_ox = clampRange(geometry.offsetX, -OFFSET_LIMIT, OFFSET_LIMIT, 0)
+    form.p_oy = clampRange(geometry.offsetY, -OFFSET_LIMIT, OFFSET_LIMIT, 0)
+  } else {
+    form.p_hole = 1
+    form.p_ox = 0
+    form.p_oy = 0
+  }
 
   const extra = {}
   Object.keys(payload).forEach((key) => {
@@ -1777,7 +2024,8 @@ onMounted(() => {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  /* 与 AdminFormDialog 保持同一层（3000）：附件库（3500）要能盖在本弹窗之上 */
+  z-index: 3000;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1878,6 +2126,125 @@ onMounted(() => {
   width: 40px;
   height: 40px;
   object-fit: contain;
+}
+
+/* 素材地址下方的操作按钮（上传 / 附件库 / 移除） */
+.image-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  /* .form-item 不是 flex 布局，兄弟节点之间没有间距，这里必须自己补 */
+  margin-top: 8px;
+}
+
+/* ---------- 头像框对齐器 ---------- */
+.frame-aligner {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.frame-aligner__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.frame-aligner__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.frame-aligner__body {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.frame-aligner__stage {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 200px;
+  overflow: hidden;
+  /* 棋盘格底：方便看清素材的透明区域和实际边界 */
+  background: repeating-conic-gradient(var(--bg-card) 0% 25%, var(--bg-muted) 0% 50%) 50% / 16px 16px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+}
+.frame-aligner__avatar {
+  width: 120px;
+  height: 120px;
+  object-fit: cover;
+  border-radius: 50%;
+}
+.frame-aligner__overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  transform-origin: center center;
+}
+.frame-aligner__overlay:active {
+  cursor: grabbing;
+}
+.frame-aligner__empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-light);
+}
+.frame-aligner__controls {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.align-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.align-row__label {
+  flex-shrink: 0;
+  width: 58px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.align-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--primary);
+}
+.align-row__value {
+  flex-shrink: 0;
+  width: 46px;
+  font-size: 12px;
+  color: var(--text-soft);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .frame-aligner__body {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .frame-aligner__stage {
+    width: 100%;
+    max-width: 200px;
+    margin: 0 auto;
+  }
 }
 .color-field {
   display: flex;

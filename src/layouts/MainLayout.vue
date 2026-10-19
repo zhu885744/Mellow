@@ -224,15 +224,13 @@
     <!-- 全局封禁申诉弹窗（当前用户被封禁时自动弹出） -->
     <BanAppealDialog ref="banDialogRef" />
 
-    <!-- 右侧悬浮按钮 -->
-    <FloatButtons />
+    <!-- 右侧悬浮按钮已提到 App.vue（全局所有布局共用，不只前台） -->
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import SidebarRight from '@/components/SidebarRight.vue'
-import FloatButtons from '@/components/FloatButtons.vue'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import MobileTabBar from '@/components/MobileTabBar.vue'
 import { call } from '@/api/request'

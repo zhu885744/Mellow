@@ -52,9 +52,7 @@
         </div>
         <div class="form-item">
           <label class="form-label">每日重置时间</label>
-          <select v-model.number="form.reset_hour" class="input">
-            <option v-for="item in RESET_HOURS" :key="item.value" :value="item.value">{{ item.label }}</option>
-          </select>
+          <SelectMenu v-model="form.reset_hour" variant="field" :options="RESET_HOURS" />
           <p class="form-hint">选择 4 点表示凌晨 4 点之前仍算前一天，方便熬夜用户。</p>
         </div>
         <div class="form-item">
@@ -91,9 +89,7 @@
         </div>
         <div class="form-item">
           <label class="form-label">奖励类型</label>
-          <select v-model="form.streak.asset" class="input">
-            <option v-for="asset in assets" :key="asset.key" :value="asset.key">{{ asset.name }}</option>
-          </select>
+          <SelectMenu v-model="form.streak.asset" variant="field" :options="assetOptions" />
         </div>
         <div class="form-item">
           <label class="form-label">每连续一天额外奖励</label>
@@ -234,9 +230,7 @@
         </div>
         <div class="form-item">
           <label class="form-label">消耗类型</label>
-          <select v-model="form.makeup.asset" class="input">
-            <option v-for="asset in assets" :key="asset.key" :value="asset.key">{{ asset.name }}</option>
-          </select>
+          <SelectMenu v-model="form.makeup.asset" variant="field" :options="assetOptions" />
         </div>
         <div class="form-item">
           <label class="form-label">每次消耗</label>
@@ -284,7 +278,8 @@
  * 奖励项里的 asset 由后端「奖励资产表」决定（内置 exp / integral，可扩展注册），
  * 前端不写死类型，资产清单从 /api/checkin/rules 拉取。
  */
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
+import SelectMenu from '@/components/SelectMenu.vue'
 import RewardItemsEditor from '@/components/admin/RewardItemsEditor.vue'
 import { getCheckinConfig, saveCheckinConfig, getCheckinRules } from '@/api/checkin'
 // 卡密奖励不再依赖「积分 → 卡密」的池子（卡密内容在奖励项里自己填），因此这里不再拉卡密统计
@@ -303,6 +298,11 @@ const RESET_HOURS = [
 const loading = ref(false)
 const saving = ref(false)
 const assets = ref([])
+
+// 资产清单 → SelectMenu 选项（{key,name} → {value,label}）
+const assetOptions = computed(() =>
+  assets.value.map((asset) => ({ value: asset.key, label: asset.name }))
+)
 
 const form = reactive({
   enabled: 1,

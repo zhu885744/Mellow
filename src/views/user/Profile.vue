@@ -14,7 +14,9 @@
               :animated="frameAnimated"
               :fallback="defaultAvatar"
               :size="'75px'"
-              :frame-scale="1.6"
+              :frame-hole="frameGeometry.hole"
+              :frame-offset-x="frameGeometry.offsetX"
+              :frame-offset-y="frameGeometry.offsetY"
               alt="头像预览"
             />
           </div>
@@ -239,13 +241,15 @@ import { toast } from '@/utils/toast'
 import AvatarFrame from '@/components/AvatarFrame.vue'
 import TitleBadge from '@/components/TitleBadge.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
-import { pickUserTitlePayload, pickUserFrameAnimated } from '@/utils/helper'
+import { pickUserTitlePayload, pickUserFrameAnimated, pickUserFrameGeometry } from '@/utils/helper'
 
 const userStore = useUserStore()
 
 // 头衔样式 / 头像框动效（都由装扮系统写入 users.json，佩戴时服务端回写）
 const currentTitlePayload = computed(() => pickUserTitlePayload(userStore.user))
 const frameAnimated = computed(() => pickUserFrameAnimated(userStore.user))
+// 头像框定位参数（洞大小 + 洞心偏移），同上由服务端回写
+const frameGeometry = computed(() => pickUserFrameGeometry(userStore.user))
 
 const DEFAULT_AVATARS = [
   'https://img.zhuxu.asia/tx/1.png',

@@ -232,6 +232,11 @@ watch(
 onUnmounted(() => {
   document.removeEventListener('keydown', onKeydown)
   lockBody(false)
+
+  // 宿主弹窗用 v-if 收起时会把本组件一起卸载，但宿主自己的 showLibrary 仍是 true；
+  // 下次再打开宿主弹窗（重新挂载本组件）就会「跟着一起弹出来」。
+  // 卸载时把 visible 同步回 false，从根上消掉这份残留状态。
+  if (props.visible) emit('update:visible', false)
 })
 
 function formatSize(bytes) {
@@ -247,8 +252,14 @@ function formatSize(bytes) {
 .attach-mask {
   position: fixed;
   inset: 0;
-  /* 低于 ConfirmDialog（3000）：确认弹窗需要盖在附件库之上；高于全屏编辑器（2000） */
-  z-index: 2900;
+  /*
+   * 层级约定（详见 styles.css 末尾的说明）：
+   *   全屏编辑器 2000 < 页面弹窗 3000 < 附件库 3500 < 确认弹窗 3600 < 灯箱 10000
+   *
+   * 附件库经常从「某个表单弹窗」里打开，所以必须比页面弹窗高一层；
+   * 之前是 2900，被 AdminFormDialog（3000）和装扮编辑弹窗盖住，看起来在最下层。
+   */
+  z-index: 3500;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -11,11 +11,13 @@
       </div>
 
       <div v-if="projects.length > 1" class="docs-version-row">
-        <select class="docs-version" :value="version" aria-label="文档项目" @change="switchProject($event.target.value)">
-          <option v-for="item in projects" :key="item.slug" :value="item.slug">
-            {{ item.name }}
-          </option>
-        </select>
+        <SelectMenu
+          :model-value="version"
+          variant="field"
+          :options="projectOptions"
+          aria-label="文档项目"
+          @update:model-value="switchProject"
+        />
       </div>
 
       <nav class="docs-nav" aria-label="文档目录">
@@ -81,6 +83,7 @@ import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { call } from '@/api/request'
 import { listDocsProjects } from '@/api/docs'
+import SelectMenu from '@/components/SelectMenu.vue'
 import NavNode from './NavNode.vue'
 
 const route = useRoute()
@@ -93,6 +96,11 @@ const drawerOpen = ref(false)
 
 // 未带项目名（/docs）时展示项目列表，不加载目录树
 const version = computed(() => String(route.params.version || ''))
+
+// 项目切换下拉（SelectMenu 选项格式：{ value, label }）
+const projectOptions = computed(() =>
+  projects.value.map((item) => ({ value: item.slug, label: item.name }))
+)
 
 // 顶栏标题：详情页显示项目名，项目列表页显示「文档中心」
 const pageTitle = computed(() => {
@@ -199,16 +207,6 @@ onMounted(loadProjects)
 }
 .docs-version-row {
   padding: 0 8px 10px;
-}
-.docs-version {
-  width: 100%;
-  padding: 5px 8px;
-  font-size: 12px;
-  color: var(--text-soft);
-  background: var(--bg-alt);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
-  cursor: pointer;
 }
 
 .docs-nav {

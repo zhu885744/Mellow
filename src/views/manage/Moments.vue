@@ -746,7 +746,8 @@ onMounted(() => {
 .dialog-overlay {
   position: fixed;
   inset: 0;
-  z-index: 9000;
+  /* 页面弹窗层级（3000）：附件库 3500 要能盖在本弹窗之上 */
+  z-index: 3000;
   background: rgba(0, 0, 0, 0.45);
   display: flex;
   align-items: center;

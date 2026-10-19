@@ -257,14 +257,38 @@
               <input v-model="button.tooltip" class="input" placeholder="鼠标悬停时显示" />
             </div>
             <div class="form-item">
-              <label class="form-label">图片链接</label>
+              <label class="form-label">悬浮图片</label>
               <input v-model="button.image_url" class="input" placeholder="鼠标移到此处的图片" />
+              <div class="image-actions">
+                <button
+                  type="button"
+                  class="btn btn-sm"
+                  :disabled="uploading"
+                  @click="pickButtonImage(button.id)"
+                >
+                  <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
+                </button>
+                <button type="button" class="btn btn-sm" title="从附件库选择" @click="openButtonLibrary(button.id)">
+                  <i class="bi bi-folder2-open" /> 附件库
+                </button>
+                <button
+                  v-if="button.image_url"
+                  type="button"
+                  class="btn btn-sm btn-ghost"
+                  @click="button.image_url = ''"
+                >
+                  移除
+                </button>
+              </div>
               <p class="form-hint">设置此处后，按钮链接将失效</p>
             </div>
           </div>
         </div>
       </template>
     </section>
+
+    <!-- 悬浮按钮图片上传（多个按钮共用一个隐藏 input，靠 uploadingButtonId 定位） -->
+    <input ref="buttonFileRef" type="file" accept="image/*" hidden @change="onButtonImageChange" />
 
     <!-- 保存 -->
     <section class="card card-pad">
@@ -284,6 +308,7 @@ import { ref, onMounted, computed } from 'vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { saveConfig } from '@/api/config'
+import { uploadAttachments } from '@/api/attachment'
 import { useSiteStore } from '@/stores/site'
 import { toast } from '@/utils/toast'
 
@@ -302,19 +327,83 @@ const floatPositionOptions = [
   { value: 'bottom', label: '右侧底部' }
 ]
 
-// 附件库：选择已上传图片作为站点 LOGO / favicon
+// 附件库：选择已上传图片作为站点 LOGO / favicon / 悬浮按钮图片
 const showLibrary = ref(false)
 const libraryKey = ref('avatar')
-const libraryTitle = computed(() => (libraryKey.value === 'favicon' ? '选择网站图标' : '选择网站 LOGO'))
+// 悬浮按钮图片：记录要写入哪个按钮（按按钮 id 定位，避免增删后下标错位）
+const libraryButtonId = ref(0)
+const libraryTitle = computed(() => {
+  if (libraryButtonId.value) return '选择悬浮按钮图片'
+  return libraryKey.value === 'favicon' ? '选择网站图标' : '选择网站 LOGO'
+})
+
 function openLibrary(key) {
   libraryKey.value = key
+  libraryButtonId.value = 0
   showLibrary.value = true
 }
+
+function openButtonLibrary(buttonId) {
+  libraryButtonId.value = Number(buttonId) || 0
+  showLibrary.value = true
+}
+
 function onLibrarySelect(urls = []) {
   const url = urls[0]
   if (!url) return
-  globalConfig.value[libraryKey.value] = url
+
+  if (libraryButtonId.value) {
+    const button = globalConfig.value.float_buttons.buttons.find((item) => item.id === libraryButtonId.value)
+    if (button) button.image_url = url
+    libraryButtonId.value = 0
+  } else {
+    globalConfig.value[libraryKey.value] = url
+  }
+
   toast.success('图片已应用，记得点「保存」')
+}
+
+// 悬浮按钮图片：上传
+const uploading = ref(false)
+const buttonFileRef = ref(null)
+const uploadingButtonId = ref(0)
+
+function pickButtonImage(buttonId) {
+  uploadingButtonId.value = Number(buttonId) || 0
+  buttonFileRef.value?.click()
+}
+
+async function onButtonImageChange(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    toast.warning('请选择图片文件')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.warning('图片不能超过 5MB')
+    return
+  }
+
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('files', file)
+    const res = await uploadAttachments(fd)
+    const url = res.data?.results?.[0]?.full_url || res.data?.results?.[0]?.url || ''
+    if (!url) throw new Error('empty')
+
+    const button = globalConfig.value.float_buttons.buttons.find((item) => item.id === uploadingButtonId.value)
+    if (button) button.image_url = url
+    toast.success('图片已上传，记得点「保存」')
+  } catch {
+    toast.error('图片上传失败')
+  } finally {
+    uploading.value = false
+    uploadingButtonId.value = 0
+  }
 }
 
 // 全局配置
@@ -503,6 +592,15 @@ onMounted(getGlobalConfig)
 }
 .input-group .btn {
   flex-shrink: 0;
+}
+
+/* 图片字段下方的操作按钮（上传 / 附件库 / 移除） */
+.image-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
 
 .code-textarea {

@@ -59,8 +59,20 @@
           <input v-model="form.description" class="input" />
         </div>
         <div class="form-item">
-          <label class="form-label">头像 URL</label>
-          <input v-model="form.avatar" class="input" />
+          <label class="form-label">站点头像</label>
+          <input v-model="form.avatar" class="input" placeholder="粘贴图片链接，或点击下方按钮" />
+          <div class="image-actions">
+            <button type="button" class="btn btn-sm" :disabled="uploading" @click="avatarFileRef?.click()">
+              <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
+            </button>
+            <button type="button" class="btn btn-sm" title="从附件库选择" @click="showLibrary = true">
+              <i class="bi bi-folder2-open" /> 附件库
+            </button>
+            <button v-if="form.avatar" type="button" class="btn btn-sm btn-ghost" @click="form.avatar = ''">
+              移除
+            </button>
+            <input ref="avatarFileRef" type="file" accept="image/*" hidden @change="onAvatarChange" />
+          </div>
         </div>
         <div class="dialog-actions">
           <button class="btn" @click="showDialog = false">取消</button>
@@ -70,6 +82,14 @@
         </div>
       </div>
     </div>
+
+    <!-- 附件库：选一张已上传的图片作为站点头像 -->
+    <AttachmentLibrary
+      v-model:visible="showLibrary"
+      title="选择站点头像"
+      accept="image"
+      @select="onLibrarySelect"
+    />
   </div>
 </template>
 
@@ -77,6 +97,8 @@
 import { ref, computed, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listLinks, createLink, updateLink, removeLink } from '@/api/links'
+import { uploadAttachments } from '@/api/attachment'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
 import { toast } from '@/utils/toast'
@@ -94,6 +116,49 @@ const submitting = ref(false)
 const editing = ref(null) // 正在编辑的友链对象，null 表示新增
 
 const form = ref({ nickname: '', url: '', description: '', avatar: '' })
+
+// ===== 站点头像：上传 / 附件库 =====
+const avatarFileRef = ref(null)
+const uploading = ref(false)
+const showLibrary = ref(false)
+
+async function onAvatarChange(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    toast.warning('请选择图片文件')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.warning('图片不能超过 5MB')
+    return
+  }
+
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('files', file)
+    const res = await uploadAttachments(fd)
+    const url = res.data?.results?.[0]?.full_url || res.data?.results?.[0]?.url || ''
+    if (!url) throw new Error('empty')
+
+    form.value.avatar = url
+    toast.success('图片已上传')
+  } catch {
+    toast.error('图片上传失败')
+  } finally {
+    uploading.value = false
+  }
+}
+
+// 从附件库选头像：直接复用已上传图片的地址
+function onLibrarySelect(urls = []) {
+  const url = urls[0]
+  showLibrary.value = false
+  if (url) form.value.avatar = url
+}
 
 function statusText(audit) {
   if (audit === 1) return '已通过'
@@ -136,6 +201,8 @@ async function load() {
 function openCreate() {
   editing.value = null
   form.value = { nickname: '', url: '', description: '', avatar: '' }
+  // 附件库在上一次编辑时被打开过就关掉，避免「跟着弹窗一起打开」
+  showLibrary.value = false
   showDialog.value = true
 }
 
@@ -147,6 +214,7 @@ function openEdit(item) {
     description: item.description || '',
     avatar: item.avatar || ''
   }
+  showLibrary.value = false
   showDialog.value = true
 }
 
@@ -350,6 +418,13 @@ onMounted(load)
 .input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.image-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
 }
 .dialog-actions {
   display: flex;

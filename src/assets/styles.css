@@ -917,6 +917,12 @@ a.hashtag:hover {
   font-size: 13px;
   line-height: 1.6;
   margin: 1em 0;
+  /* pre-wrap：长行自动折行，不再只能横向滚动看半截
+     （保留 pre 语义：换行与缩进原样展示，只是到了容器宽度就折） */
+  white-space: pre-wrap;
+  /* 超长 token（URL / 哈希 / 连续英文）也强制断开，避免撑破容器 */
+  overflow-wrap: anywhere;
+  tab-size: 4;
 }
 .markdown-body pre code {
   background: transparent;
@@ -924,7 +930,9 @@ a.hashtag:hover {
   border-radius: 0;
   font-size: inherit;
   color: inherit;
-  word-break: normal;
+  /* 继承 pre 的折行设置（原本写死 normal 会让长 token 不折） */
+  white-space: inherit;
+  word-break: inherit;
 }
 .markdown-body pre::-webkit-scrollbar {
   height: 8px;
@@ -1302,3 +1310,22 @@ a.hashtag:hover {
     animation: none;
   }
 }
+
+/*
+ * 层级（z-index）约定
+ * ---------------------------------------------------------------
+ * 浮层越来越多，这里统一一套顺序，新增浮层请往对应档位里取值，
+ * 不要随手写 9999 —— 那会把别的浮层盖住。
+ *
+ *   内容 / 悬浮按钮 / 侧边栏      <= 999
+ *   编辑器全屏（MarkdownEditor）   2000
+ *   页面弹窗（AdminFormDialog、各页 .dialog-mask / .modal-overlay） 3000
+ *   附件库 / 选择器类浮层          3500
+ *   确认弹窗（ConfirmDialog）      3600
+ *   滑块验证                       4000
+ *   业务全屏（商店兑换、装扮佩戴、协议弹窗） 9000 ~ 9999
+ *   图片灯箱                       10000
+ *
+ * 关键点：附件库经常从「某个表单弹窗」里打开，所以它必须比页面弹窗高；
+ * 确认弹窗又要能盖在附件库上（选附件后可能有二次确认）。
+ */

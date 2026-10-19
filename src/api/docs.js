@@ -26,6 +26,20 @@ export const removeDocsProjects = (ids) =>
     params: { ids: (Array.isArray(ids) ? ids : [ids]).join(',') }
   })
 
+// 回收站：恢复 / 彻底删除
+// restore 走 PUT + ids 数组（与 users / banner 等模块一致），delete 走 DELETE + ids 逗号串
+export const restoreDocsProjects = (ids) =>
+  call('docs-project', 'restore', { method: 'PUT', data: { ids: Array.isArray(ids) ? ids : [ids] } })
+
+export const deleteDocsProjects = (ids) =>
+  call('docs-project', 'delete', {
+    method: 'DELETE',
+    params: { ids: (Array.isArray(ids) ? ids : [ids]).join(',') }
+  })
+
+export const clearDocsProjectRecycle = () =>
+  call('docs-project', 'clear', { method: 'DELETE' })
+
 // ===== 文档目录（docs-group）=====
 
 export const docsGroupTree = (params = {}) =>
@@ -74,6 +88,20 @@ export const removeDocs = (ids) =>
     method: 'DELETE',
     params: { ids: (Array.isArray(ids) ? ids : [ids]).join(',') }
   })
+
+// 回收站：恢复 / 彻底删除
+export const restoreDocs = (ids) =>
+  call('docs', 'restore', { method: 'PUT', data: { ids: Array.isArray(ids) ? ids : [ids] } })
+
+export const deleteDocs = (ids) =>
+  call('docs', 'delete', {
+    method: 'DELETE',
+    params: { ids: (Array.isArray(ids) ? ids : [ids]).join(',') }
+  })
+
+// 清空回收站：带 version 时只清该项目
+export const clearDocsRecycle = (params = {}) =>
+  call('docs', 'clear', { method: 'DELETE', params })
 
 export const sortDocs = (items) =>
   call('docs', 'sort', { method: 'POST', data: { items } })

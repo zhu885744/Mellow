@@ -141,9 +141,29 @@
           <textarea v-model="editForm.description" rows="4" maxlength="200" placeholder="介绍一下这个话题" />
         </label>
         <label class="topic-edit-label">
-          封面图片地址
+          封面图片
           <input v-model="editForm.avatar" type="text" placeholder="https://..." />
         </label>
+        <div class="topic-edit-images">
+          <button type="button" class="btn btn-sm" :disabled="uploading" @click="coverFileRef?.click()">
+            <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
+          </button>
+          <button type="button" class="btn btn-sm" title="从附件库选择" @click="showCoverLibrary = true">
+            <i class="bi bi-folder2-open" /> 附件库
+          </button>
+          <button v-if="editForm.avatar" type="button" class="btn btn-sm btn-ghost" @click="editForm.avatar = ''">
+            移除
+          </button>
+          <input ref="coverFileRef" type="file" accept="image/*" hidden @change="onCoverChange" />
+        </div>
+
+        <!-- 附件库：选一张已上传的图片作为话题封面 -->
+        <AttachmentLibrary
+          v-model:visible="showCoverLibrary"
+          title="选择话题封面"
+          accept="image"
+          @select="onCoverLibrarySelect"
+        />
         <p class="topic-edit-tip">话题名不支持修改：正文里的 #话题# 链接是按名称写入的。</p>
         <div class="topic-edit-actions">
           <button class="btn btn-sm" type="button" @click="editVisible = false">取消</button>
@@ -188,6 +208,8 @@ import {
   deleteTopicContent
 } from '@/api/topics'
 import { useUserStore } from '@/stores/user'
+import { uploadAttachments } from '@/api/attachment'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { isAdmin, copyText } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
@@ -348,6 +370,48 @@ async function shareTopic() {
 const editVisible = ref(false)
 const editBusy = ref(false)
 const editForm = ref({ description: '', avatar: '' })
+
+// 封面图片：上传 / 附件库
+const coverFileRef = ref(null)
+const uploading = ref(false)
+const showCoverLibrary = ref(false)
+
+async function onCoverChange(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+
+  if (!file.type.startsWith('image/')) {
+    toast.warning('请选择图片文件')
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.warning('图片不能超过 5MB')
+    return
+  }
+
+  uploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('files', file)
+    const res = await uploadAttachments(fd)
+    const url = res.data?.results?.[0]?.full_url || res.data?.results?.[0]?.url || ''
+    if (!url) throw new Error('empty')
+
+    editForm.value.avatar = url
+    toast.success('图片已上传')
+  } catch {
+    toast.error('图片上传失败')
+  } finally {
+    uploading.value = false
+  }
+}
+
+function onCoverLibrarySelect(urls = []) {
+  const url = urls[0]
+  showCoverLibrary.value = false
+  if (url) editForm.value.avatar = url
+}
 
 function openEdit() {
   editForm.value = {
@@ -676,6 +740,14 @@ onMounted(init)
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+.topic-edit-images {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+  margin-bottom: 12px;
 }
 
 @media (max-width: 640px) {
