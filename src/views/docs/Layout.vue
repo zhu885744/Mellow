@@ -42,11 +42,13 @@
             <span class="docs-nav-text">概览</span>
           </RouterLink>
 
+          <!-- 侧边栏默认全部收起，只有第一个目录默认展开 -->
           <NavNode
-            v-for="node in tree"
+            v-for="(node, index) in tree"
             :key="node.id"
             :node="node"
             :version="version"
+            :default-expanded="index === 0"
             @select="drawerOpen = false"
           />
 
