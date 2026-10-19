@@ -27,11 +27,13 @@ export const COMMENT_TRASH_KEY = 'trash'
 export const BIND_TYPE_ARTICLE = 'article'
 export const BIND_TYPE_PAGE = 'page'
 export const BIND_TYPE_MOMENTS = 'moments'
+export const BIND_TYPE_DOCS = 'docs'
 
 export const BIND_TYPE_LABELS = {
   [BIND_TYPE_ARTICLE]: '文章',
   [BIND_TYPE_PAGE]: '页面',
-  [BIND_TYPE_MOMENTS]: '动态'
+  [BIND_TYPE_MOMENTS]: '动态',
+  [BIND_TYPE_DOCS]: '文档'
 }
 
 /**
@@ -74,6 +76,14 @@ export const COMMENT_FILTERS = [
     icon: 'bi bi-lightning-charge',
     color: '#f59e0b',
     where: { bind_type: BIND_TYPE_MOMENTS }
+  },
+  {
+    key: BIND_TYPE_DOCS,
+    label: '文档评论',
+    tabLabel: '文档',
+    icon: 'bi bi-journal-bookmark',
+    color: '#0d9488',
+    where: { bind_type: BIND_TYPE_DOCS }
   },
   {
     // 待审核：开关在「系统设置 → 评论配置 → 内容审核」，开启后前台新评论落在这里
@@ -238,6 +248,8 @@ export function commentBindTitle(item) {
       return result.page?.title || result.page?.key || ''
     case BIND_TYPE_MOMENTS:
       return result.moments?.content || ''
+    case BIND_TYPE_DOCS:
+      return result.docs?.title || ''
     default:
       return ''
   }
@@ -245,7 +257,7 @@ export function commentBindTitle(item) {
 
 /**
  * 前台来源链接（不存在可跳转目标时返回空串，调用方据此禁用入口）
- * 文章 /archives/:id、动态 /moments/:id、页面 /:key
+ * 文章 /archives/:id、动态 /moments/:id、页面 /:key、文档 /docs/:项目/:目录/:页面
  */
 export function commentBindLink(item) {
   const result = item?.result || {}
@@ -256,6 +268,10 @@ export function commentBindLink(item) {
       return result.moments?.id ? `/moments/${result.moments.id}` : ''
     case BIND_TYPE_PAGE:
       return result.page?.key ? `/${result.page.key}` : ''
+    case BIND_TYPE_DOCS:
+      // result.docs 只有 {id, version, slug, title}，目录段拿不到，
+      // 统一跳到项目概览，避免生成死链
+      return result.docs?.version ? `/docs/${result.docs.version}` : ''
     default:
       return ''
   }

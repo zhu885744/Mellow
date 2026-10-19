@@ -86,6 +86,10 @@
           <router-link to="/topics" active-class="active" class="nav-item">
             <span class="nav-zh">话题</span>
           </router-link>
+          <!-- 文档站：独立布局（/docs） -->
+          <router-link to="/docs" active-class="active" class="nav-item">
+            <span class="nav-zh">文档</span>
+          </router-link>
           <!-- <router-link to="/moments" active-class="active" class="nav-item">
             <span class="nav-zh">奇思</span>
           </router-link> -->

@@ -17,7 +17,7 @@ export const ADMIN_MENU_GROUPS = [
     label: '创作',
     items: [
       '/admin/article/write', '/admin/article', '/admin/article/group',
-      '/admin/pages', '/admin/pages/write', '/admin/moments'
+      '/admin/pages', '/admin/pages/write', '/admin/docs', '/admin/moments'
     ]
   },
   {

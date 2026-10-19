@@ -12,6 +12,28 @@ const routes = [
     component: () => import('@/views/install/Index.vue'),
     meta: { title: '安装向导' }
   },
+  // 文档站：独立布局（独立侧边栏 + 独立内容区，与 /user 同级）
+  // 必须放在 `/` 之前：MainLayout 下最后有 `:key` 兜底路由，否则 /docs 会被它吞掉
+  //路径规则：/docs 为项目列表，/docs/:项目 为项目概览，/docs/:项目/:目录/:页面 为正文
+    {
+      path: '/docs',
+      component: () => import('@/views/docs/Layout.vue'),
+      children: [
+        { path: '', name: 'docs', component: () => import('@/views/docs/Projects.vue') },
+        {
+          path: ':version',
+          name: 'docs-version',
+          component: () => import('@/views/docs/Home.vue'),
+          props: true
+        },
+      {
+        path: ':version/:group/:slug',
+        name: 'docs-detail',
+        component: () => import('@/views/docs/Page.vue'),
+        props: true
+      }
+    ]
+  },
   {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
@@ -132,6 +154,12 @@ const routes = [
       },
       { path: 'article/group', name: 'admin-article-group', component: () => import('@/views/admin/ArticleGroup.vue'), meta: { title: '文章分类' } },
       { path: 'pages', name: 'admin-pages', component: () => import('@/views/admin/PageList.vue'), meta: { title: '独立页面' } },
+      // 文档站管理：文档库（项目列表） → 项目内目录/页面 → 独立整页编辑器
+      // 三层平级路由：pageOfPath() 会把它们都归到 /admin/docs，共用一个权限点
+      { path: 'docs', name: 'admin-docs', component: () => import('@/views/admin/DocsLibrary.vue'), meta: { title: '文档库' } },
+      { path: 'docs/:slug', name: 'admin-docs-project', component: () => import('@/views/admin/Docs.vue'), meta: { title: '文档管理' } },
+      { path: 'docs/:slug/write', name: 'admin-docs-write', component: () => import('@/views/admin/DocsWrite.vue'), meta: { title: '新建文档' } },
+      { path: 'docs/:slug/:id/edit', name: 'admin-docs-edit', component: () => import('@/views/admin/DocsWrite.vue'), meta: { title: '编辑文档' } },
       { path: 'pages/write', name: 'admin-pages-write', component: () => import('@/views/admin/PageWrite.vue'), meta: { title: '撰写独立页面' } },
       { path: 'pages/edit/:id', name: 'admin-pages-edit', component: () => import('@/views/admin/PageWrite.vue'), meta: { title: '编辑独立页面' } },
       // 动态管理：Moments.vue 承载统计概览，MomentList.vue 为列表子路由（子页通过 inject 联动筛选）
