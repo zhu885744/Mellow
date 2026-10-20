@@ -430,7 +430,12 @@ onMounted(() => {
   display: block;
   padding: 24px 0 32px;
   text-align: center;
-  border-bottom: 1px solid var(--border);
+  /*
+   * 这里原本有一条 border-bottom 作为「品牌区 / 导航区」的分割线，
+   * 但紧挨着它下面就是带完整描边的搜索按钮，两者叠在一起看起来就是
+   * 「搜索框上方多出一条横线」。由于搜索按钮本身已经有边框区分区域，
+   * 这条分割线是冗余的，去掉。
+   */
   color: inherit;
   text-decoration: none;
   transition: opacity 0.2s;

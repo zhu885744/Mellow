@@ -131,10 +131,10 @@
       </div>
     </div>
 
-    <!-- 标签云 -->
+    <!-- 话题云 -->
     <div class="card card-pad-sm">
       <div class="card-title">
-        <span>标签云</span>
+        <span>话题云</span>
         <router-link to="/topics" class="more-link">话题广场 <i class="bi bi-arrow-right" /></router-link>
       </div>
       <div class="tag-cloud">
@@ -144,7 +144,7 @@
           :to="`/topic/${t.id}`"
           class="tag tag-primary"
         >{{ t.name }}</router-link>
-        <span v-if="!tags.length" class="empty" style="padding: 12px 0;">暂无标签</span>
+        <span v-if="!tags.length" class="empty" style="padding: 12px 0;">暂无话题</span>
       </div>
     </div>
 
@@ -173,7 +173,7 @@
         <strong>{{ stats.moment }}</strong>
       </div>
       <div class="stat-row">
-        <span>标签</span>
+        <span>话题</span>
         <strong>{{ tagCount }}</strong>
       </div>
       <div class="stat-row">
@@ -353,7 +353,7 @@ async function loadTags() {
   } catch {}
 }
 
-// 站点信息：建站日期（来自 Mellow_functions 配置的 date 字段，秒级时间戳）+ 标签总数
+// 站点信息：建站日期（来自 Mellow_functions 配置的 date 字段，秒级时间戳）+ 话题总数
 async function loadSiteInfo() {
   try {
     const cfg = await siteStore.load()

@@ -112,7 +112,7 @@
               @mouseenter="selected = item._index"
               @click="goResult(item)"
             >
-              <!-- 缩略图：文章封面 / 标签、用户、友链头像 / 动态首图；没有或加载失败时退回类型图标 -->
+              <!-- 缩略图：文章封面 / 话题、用户、友链头像 / 动态首图；没有或加载失败时退回类型图标 -->
               <span class="result-thumb" :class="`is-${item._type}`">
                 <img
                   v-if="thumbOf(item)"
@@ -134,7 +134,7 @@
                 <!-- 摘要 / 正文片段 / 简介（后端已做 <mark> 高亮，其余用户内容在此转义） -->
                 <p v-if="summaryOf(item)" class="result-summary" v-html="safeHtml(summaryOf(item))" />
 
-                <!-- 元信息：标签、地址、位置、阅读量、时间等 -->
+                <!-- 元信息：话题、地址、位置、阅读量、时间等 -->
                 <div v-if="metaOf(item).length" class="result-meta">
                   <span v-for="(meta, i) in metaOf(item)" :key="i" class="result-meta__item">
                     <i :class="meta.icon" aria-hidden="true" />
@@ -158,7 +158,7 @@
  *
  * 由原来的搜索弹窗改成独立页面：
  * - 关键词与搜索范围同步到地址栏（/search?q=xxx&scope=article），可分享、可刷新、可后退；
- * - scope=all 时并行查询全部类型并按「文章 / 页面 / 用户 / 友链 / 动态 / 标签」分组展示，
+ * - scope=all 时并行查询全部类型并按「文章 / 页面 / 用户 / 友链 / 动态 / 话题」分组展示，
  *   指定范围时只查该类型；
  * - 键盘可用：↑↓ 选择、Enter 打开（Enter 在输入框内触发提交，选中项优先）；
  * - 后端接口：search/{article,pages,tags,links,users,moments}（type=common，无需登录）。
@@ -180,7 +180,7 @@ const SCOPES = [
   { key: 'all', label: '全部', icon: 'bi bi-grid', api: '' },
   { key: 'article', label: '文章', icon: 'bi bi-file-text', api: 'article' },
   { key: 'page', label: '页面', icon: 'bi bi-file-earmark', api: 'pages' },
-  { key: 'tag', label: '标签', icon: 'bi bi-tag', api: 'tags' },
+  { key: 'tag', label: '话题', icon: 'bi bi-tag', api: 'tags' },
   { key: 'links', label: '友链', icon: 'bi bi-link-45deg', api: 'links' },
   { key: 'users', label: '用户', icon: 'bi bi-person', api: 'users' },
   { key: 'moments', label: '动态', icon: 'bi bi-chat-square-text', api: 'moments' }
@@ -193,7 +193,7 @@ const GROUP_ORDER = [
   { key: 'users', label: '用户', icon: 'bi bi-person' },
   { key: 'links', label: '友链', icon: 'bi bi-link-45deg' },
   { key: 'moments', label: '动态', icon: 'bi bi-chat-square-text' },
-  { key: 'tag', label: '标签', icon: 'bi bi-tag' }
+  { key: 'tag', label: '话题', icon: 'bi bi-tag' }
 ]
 
 const HOT_SEARCHES = ['随记', '旅行', '博客', 'Vue', 'Node.js', '前端开发', '算法', '数据库']
@@ -201,7 +201,7 @@ const HOT_SEARCHES = ['随记', '旅行', '博客', 'Vue', 'Node.js', '前端开
 const TYPE_NAMES = {
   article: '文章',
   page: '页面',
-  tag: '标签',
+  tag: '话题',
   links: '友链',
   users: '用户',
   moments: '动态'
@@ -210,7 +210,7 @@ const TYPE_NAMES = {
 const PLACEHOLDER = {
   article: '搜索文章...',
   page: '搜索页面...',
-  tag: '搜索标签...',
+  tag: '搜索话题...',
   links: '搜索友链...',
   users: '搜索用户...',
   moments: '搜索动态...'
@@ -229,7 +229,7 @@ const selected = ref(-1)
 let debounceTimer = null
 
 const placeholder = computed(
-  () => PLACEHOLDER[scope.value] || '搜索文章、页面、标签、友链、用户或动态...'
+  () => PLACEHOLDER[scope.value] || '搜索文章、页面、话题、友链、用户或动态...'
 )
 
 // 按类型分组（results 是扁平数组，_index 用于键盘选中）
@@ -356,7 +356,7 @@ async function runSearch(word) {
   }
 }
 
-// 全部范围：并行查询 + 合并去重（标签最多 3 条，避免刷屏）
+// 全部范围：并行查询 + 合并去重（话题最多 3 条，避免刷屏）
 async function searchAll(word) {
   const [articles, pages, tags, links, users, moments] = await Promise.all([
     searchType('article', word),
@@ -443,7 +443,7 @@ function markThumbBroken(item) {
   brokenThumbs.value = new Set(brokenThumbs.value).add(item._index)
 }
 
-// 缩略图：文章 → 封面；标签 / 用户 / 友链 → 头像；动态 → 首图
+// 缩略图：文章 → 封面；话题 / 用户 / 友链 → 头像；动态 → 首图
 function thumbOf(item) {
   if (brokenThumbs.value.has(item._index)) return ''
 
@@ -492,7 +492,7 @@ function hostOf(url) {
 }
 
 // 元信息：随类型展示不同维度（地址 / 位置 / 阅读量 / 时间 / 邮箱）
-// 注：文章不展示标签（tags），搜索结果里标签噪声大且与摘要重复
+// 注：文章不展示话题（tags），搜索结果里话题噪声大且与摘要重复
 function metaOf(item) {
   const meta = []
   const time = item.create_time ? fromNow(item.create_time) : ''
@@ -945,7 +945,7 @@ onMounted(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 元信息：标签 / 地址 / 位置 / 阅读量 / 时间 */
+/* 元信息：话题 / 地址 / 位置 / 阅读量 / 时间 */
 .result-meta {
   display: flex;
   flex-wrap: wrap;

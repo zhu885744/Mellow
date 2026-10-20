@@ -42,11 +42,11 @@ const routes = [
       { path: 'articles', name: 'articles', component: () => import('@/views/article/List.vue') },
       { path: 'archives/:id', name: 'article-detail', component: () => import('@/views/article/Detail.vue') },
       { path: 'archives', name: 'archives', component: () => import('@/views/article/Archives.vue') },
-      // 标签云页已由话题广场取代（/topics：热度榜 + 搜索 + 我关注的，侧栏标签云的「话题广场」入口也指向它）
+      // 独立的话题云页已并入话题广场（/topics：热度榜 + 搜索 + 我关注的，侧栏的「话题广场」入口也指向它）
       // 旧地址保留重定向，避免老书签 / 站内自定义导航链接失效
       { path: 'tags', name: 'tags', redirect: '/topics' },
       // 话题（Hashtag）：广场 + 聚合页
-      // 旧的 /tag/:key 统一重定向到话题页（话题页同时含动态与文章，是标签页的超集）
+      // 旧的 /tag/:key 统一重定向到话题页（话题页同时含动态与文章，是话题页的超集）
       { path: 'topics', name: 'topics', component: () => import('@/views/topic/Index.vue') },
       { path: 'topic/:key', name: 'topic', component: () => import('@/views/topic/Detail.vue'), props: true },
       { path: 'tag/:key', name: 'tag', redirect: (to) => ({ path: `/topic/${to.params.key}` }) },

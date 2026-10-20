@@ -2,14 +2,19 @@
   <article class="feed-article">
     <!-- 头部：作者信息（头像 / 昵称 / 等级 / 头衔 / 置顶），与动态卡片保持一致 -->
     <div class="fa-head">
-      <img
-        :src="author?.avatar || defaultAvatar"
+      <!-- 作者头像 + 装扮头像框（与侧栏 / 作者主页同一套渲染参数） -->
+      <AvatarFrame
         class="fa-avatar"
+        :src="author?.avatar || defaultAvatar"
+        :frame="author?.json?.frame"
+        :frame-hole="frameRender.hole"
+        :frame-offset-x="frameRender.offsetX"
+        :frame-offset-y="frameRender.offsetY"
+        :animated="frameRender.animated"
+        :fallback="defaultAvatar"
         :alt="author?.nickname"
-        loading="lazy"
-        decoding="async"
+        size="40px"
         @click="goAuthor"
-        @error="onAvatarError"
       />
       <div class="fa-info">
         <div class="fa-name">
@@ -94,6 +99,8 @@ import { toast } from '@/utils/toast'
 import TitleBadge from './TitleBadge.vue'
 import EmojiText from './EmojiText.vue'
 import ScopeBadge from './ScopeBadge.vue'
+import AvatarFrame from './AvatarFrame.vue'
+import { resolveFrameRender } from '@/utils/frameRender'
 
 const props = defineProps({
   article: { type: Object, required: true },
@@ -107,13 +114,7 @@ const userStore = useUserStore()
 const defaultAvatar =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
 
-function onAvatarError(e) {
-  const el = e.target
-  if (el && !el.dataset.fallback) {
-    el.dataset.fallback = '1'
-    el.src = defaultAvatar
-  }
-}
+// 头像加载失败的回退由 AvatarFrame 内部处理（fallback 属性），这里不再需要手动兜底
 
 const author = computed(() => props.article.result?.author || props.article.user || null)
 const authorLink = computed(() => {
@@ -124,6 +125,8 @@ const authorLevel = computed(() => pickUserLevel(author.value))
 const authorTitle = computed(() => pickUserTitle(author.value))
 const authorTitleClass = computed(() => getTitleColorClass(authorTitle.value))
 const authorTitlePayload = computed(() => pickUserTitlePayload(author.value))
+// 头像框渲染参数（洞大小 / 偏移 / 动效）：以装扮 payload 为准，users.json 副本兜底
+const frameRender = computed(() => resolveFrameRender(author.value?.json))
 
 const cover = computed(() => {
   const c = props.article.covers
@@ -205,14 +208,10 @@ async function copyLink() {
   gap: 10px;
   align-items: flex-start;
 }
+/* 尺寸由 AvatarFrame 的 size 属性控制（inline width/height），这里只管布局与交互 */
 .fa-avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
   flex-shrink: 0;
   cursor: pointer;
-  background: var(--bg-muted);
 }
 .fa-info {
   flex: 1;

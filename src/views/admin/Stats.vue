@@ -561,7 +561,7 @@ const countItems = computed(() => {
     { key: 'links', label: '友链', icon: 'bi bi-link-45deg', total: counts.links },
     { key: 'banners', label: '轮播', icon: 'bi bi-images', total: counts.banners },
     { key: 'placards', label: '公告', icon: 'bi bi-megaphone', total: counts.placards },
-    { key: 'tags', label: '标签', icon: 'bi bi-tags', total: counts.tags },
+    { key: 'tags', label: '话题', icon: 'bi bi-tags', total: counts.tags },
     { key: 'attachments', label: '附件', icon: 'bi bi-paperclip', total: counts.attachments }
   ]
 })

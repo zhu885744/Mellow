@@ -68,7 +68,7 @@ const group = computed(() => {
   return Array.isArray(g) ? g[0] : g
 })
 
-// 标签（后端返回数组对象）
+// 话题（后端返回数组对象）
 const tagList = computed(() => {
   const t = props.article.result?.tags
   if (Array.isArray(t)) return t.slice(0, 3)

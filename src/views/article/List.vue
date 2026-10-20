@@ -92,7 +92,7 @@ async function load() {
     if (filter.value.group) {
       params.where.group = filter.value.group
     }
-    // 标签过滤：用 like 匹配 tags 字段中的 |id|
+    // 话题过滤：用 like 匹配 tags 字段中的 |id|
     if (filter.value.tag) {
       params.like = `tags|%7C${filter.value.tag}%7C`
     }

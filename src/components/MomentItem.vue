@@ -1,14 +1,19 @@
 <template>
   <div class="moment-card">
     <div class="moment-head">
-      <img
-        :src="author?.avatar || defaultAvatar"
+      <!-- 作者头像 + 装扮头像框（与侧栏 / 作者主页同一套渲染参数） -->
+      <AvatarFrame
         class="avatar"
+        :src="author?.avatar || defaultAvatar"
+        :frame="author?.json?.frame"
+        :frame-hole="frameRender.hole"
+        :frame-offset-x="frameRender.offsetX"
+        :frame-offset-y="frameRender.offsetY"
+        :animated="frameRender.animated"
+        :fallback="defaultAvatar"
         :alt="author?.nickname"
-        loading="lazy"
-        decoding="async"
+        size="44px"
         @click="goAuthor"
-        @error="onAvatarError"
       />
       <div class="info">
         <div class="name">
@@ -158,6 +163,8 @@ import {
   getTitleColorClass
 } from '@/utils/helper'
 import TitleBadge from './TitleBadge.vue'
+import AvatarFrame from './AvatarFrame.vue'
+import { resolveFrameRender } from '@/utils/frameRender'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
 import ContentLock from './ContentLock.vue'
 import ScopeBadge from './ScopeBadge.vue'
@@ -186,14 +193,7 @@ const router = useRouter()
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><circle cx="20" cy="20" r="20" fill="%23e8e6dd"/></svg>'
 
-// 头像加载失败时回退到默认图，避免出现破损图标
-function onAvatarError(e) {
-  const el = e.target
-  if (el && !el.dataset.fallback) {
-    el.dataset.fallback = '1'
-    el.src = defaultAvatar
-  }
-}
+// 头像加载失败的回退由 AvatarFrame 内部处理（fallback 属性），这里不再需要手动兜底
 
 const showComments = ref(false)
 
@@ -326,6 +326,8 @@ const authorTitle = computed(() => pickUserTitle(author.value))
 const authorTitleClass = computed(() => getTitleColorClass(authorTitle.value))
 // 头衔样式（装扮系统写入 users.json.title_decoration.payload）
 const authorTitlePayload = computed(() => pickUserTitlePayload(author.value))
+// 头像框渲染参数（洞大小 / 偏移 / 动效）：以装扮 payload 为准，users.json 副本兜底
+const frameRender = computed(() => resolveFrameRender(author.value?.json))
 function goAuthor() {
   if (authorLink.value) router.push(authorLink.value)
 }
@@ -471,11 +473,9 @@ function previewImage(i) {
   gap: 12px;
   margin-bottom: 12px;
 }
+/* 尺寸由 AvatarFrame 的 size 属性控制（inline width/height），这里只管交互 */
 .avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
+  flex-shrink: 0;
   cursor: pointer;
 }
 .info {

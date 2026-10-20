@@ -13,22 +13,22 @@ const toIdsArray = (ids) =>
     .map((i) => Number(i))
     .filter((i) => i > 0)
 
-// 全量标签（供文章编辑选择标签时使用）
+// 全量话题（供文章编辑选择话题时使用）
 export const listAllTags = (params = {}) =>
   call('tags', 'all', {
     method: 'GET',
     params: { page: 1, limit: 100, order: 'create_time desc', ...params }
   })
 
-// 新建标签
+// 新建话题
 export const createTag = (name) =>
   call('tags', 'create', { method: 'POST', data: { name } })
 
 // ===== 后台（管理员）=====
 
 /**
- * 后台标签列表
- * 后端 tags/all 会额外注入 article_count（该标签被已审核文章引用的数量），
+ * 后台话题列表
+ * 后端 tags/all 会额外注入 article_count（该话题被已审核文章引用的数量），
  * 传 field 时必须把它带上，否则会被字段过滤掉。
  */
 export const listTagsAdmin = (params = {}) =>
@@ -45,7 +45,7 @@ export const listTagsAdmin = (params = {}) =>
     }
   })
 
-// 保存标签：无 id 为新增，有 id 为更新（后端 save 自动分流）
+// 保存话题：无 id 为新增，有 id 为更新（后端 save 自动分流）
 export const saveTag = (data) =>
   call('tags', 'save', { method: 'POST', data })
 

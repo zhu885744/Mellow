@@ -201,7 +201,7 @@
           </div>
 
           <div class="form-item">
-            <label class="form-label">标签</label>
+            <label class="form-label">话题</label>
             <div class="tag-picker">
               <span
                 v-for="t in selectedTags"
@@ -222,7 +222,7 @@
                   v-model="newTag"
                   class="tag-input"
                   type="text"
-                  placeholder="+ 新标签"
+                  placeholder="+ 新话题"
                   maxlength="16"
                   @keyup.enter="addTag"
                 />
@@ -282,7 +282,7 @@
  *   - 管理后台 /admin/article/write、/admin/article/edit/:id（mode=article，管理员可编辑任意文章）
  *   - 管理后台 /admin/pages/write、/admin/pages/edit/:id（mode=page）
  *
- * 两者共用同一套编辑器 / 封面 / 标签 / 评论开关 / 审核状态逻辑，字段差异由 mode 决定：
+ * 两者共用同一套编辑器 / 封面 / 话题 / 评论开关 / 审核状态逻辑，字段差异由 mode 决定：
  *   - article：摘要、封面、分类，有草稿与发布（status）
  *   - page  ：唯一标识（key）、备注（remark），无草稿概念
  * 通过 props 注入差异，避免维护两份几乎相同的页面代码。
@@ -496,9 +496,9 @@ async function addTag() {
     tags.value.push({ id, name })
     form.tagIds.push(id)
     newTag.value = ''
-    toast.success('标签已创建')
+    toast.success('话题已创建')
   } catch {
-    toast.error('标签创建失败')
+    toast.error('话题创建失败')
   }
 }
 
@@ -706,7 +706,7 @@ async function submit(status) {
   }
 }
 
-// 分类字典仅文章需要；标签两者共用
+// 分类字典仅文章需要；话题两者共用
 async function loadMeta() {
   if (!isPage.value) {
     try {
@@ -981,7 +981,7 @@ onBeforeRouteLeave(() => {
 
 /* ---------- 表单（更多设置内） ---------- */
 
-/* 标签 */
+/* 话题 */
 .tag-picker {
   display: flex;
   flex-wrap: wrap;

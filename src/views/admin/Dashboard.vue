@@ -296,7 +296,7 @@ const statGroupDefs = [
       { key: 'moments', label: '动态', icon: 'bi bi-chat-square-quote', color: C.amber, ctrl: 'moments' },
       { key: 'pages', label: '独立页面', icon: 'bi bi-window', color: C.sky, ctrl: 'pages' },
       { key: 'comment', label: '评论', icon: 'bi bi-chat-square-text', color: C.blue, ctrl: 'comment' },
-      { key: 'tags', label: '标签', icon: 'bi bi-tags', color: C.pink, ctrl: 'tags' },
+      { key: 'tags', label: '话题', icon: 'bi bi-tags', color: C.pink, ctrl: 'tags' },
       { key: 'articleGroup', label: '文章分类', icon: 'bi bi-collection', color: C.teal, ctrl: 'article-group' }
     ]
   },

@@ -3,7 +3,7 @@ import { call } from './request'
 /**
  * 话题（Hashtag）接口
  *
- * 与后台「标签管理」共用 tags 表，但走独立的 topics 控制器：
+ * 与后台「话题管理」共用 tags 表，但走独立的 topics 控制器：
  * 管理侧增删改仍在 api/tags.js，这里只放面向用户的能力。
  */
 

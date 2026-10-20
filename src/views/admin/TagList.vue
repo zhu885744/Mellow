@@ -4,15 +4,15 @@
       <!-- 头部 -->
       <header class="list-head">
         <div>
-          <h2 class="block-title">标签管理</h2>
+          <h2 class="block-title">话题管理</h2>
           <p class="block-desc">
-            维护文章标签：名称、描述与标签图
+            维护文章话题：名称、描述与话题图
             <template v-if="total > 0"> · 共 {{ total }} 个</template>
           </p>
         </div>
         <div class="head-actions">
           <button class="btn btn-primary btn-sm" :disabled="trash" @click="openAdd">
-            <i class="bi bi-plus-lg" /> 新建标签
+            <i class="bi bi-plus-lg" /> 新建话题
           </button>
         </div>
       </header>
@@ -25,7 +25,7 @@
             class="status-tab"
             :class="{ active: !trash }"
             @click="switchTab(false)"
-          >全部标签</button>
+          >全部话题</button>
           <button
             type="button"
             class="status-tab trash-tab"
@@ -56,7 +56,7 @@
 
       <!-- 回收站提示 -->
       <div v-if="trash" class="trash-bar">
-        <span><i class="bi bi-trash3" /> 回收站内的标签不会在前台展示，可恢复或彻底删除</span>
+        <span><i class="bi bi-trash3" /> 回收站内的话题不会在前台展示，可恢复或彻底删除</span>
         <button class="btn btn-sm btn-danger" :disabled="busy || !list.length" @click="askClearRecycle()">
           清空回收站
         </button>
@@ -120,7 +120,7 @@
                 type="checkbox"
                 :checked="isSelected(item.id)"
                 :disabled="busy"
-                :aria-label="`选择标签 ${item.name || item.id}`"
+                :aria-label="`选择话题 ${item.name || item.id}`"
                 @change="toggleSelect(item.id)"
               />
             </label>
@@ -132,7 +132,7 @@
 
           <div class="tag-main">
             <div class="tag-name-row">
-              <span class="tag-name">#{{ item.name || '未命名标签' }}</span>
+              <span class="tag-name">#{{ item.name || '未命名话题' }}</span>
               <span class="count-chip" :title="countTitle(item)">
                 <i class="bi bi-file-earmark-text" /> {{ countText(item) }}
               </span>
@@ -184,27 +184,27 @@
       />
     </div>
 
-    <!-- 新增 / 编辑标签 -->
+    <!-- 新增 / 编辑话题 -->
     <AdminFormDialog
       v-model:visible="dialog.visible"
-      :title="dialog.id ? '编辑标签' : '新建标签'"
+      :title="dialog.id ? '编辑话题' : '新建话题'"
       :icon="dialog.id ? 'bi bi-pencil-square' : 'bi bi-plus-circle'"
       :loading="dialog.loading"
       confirm-text="保存"
       @confirm="save"
     >
       <div class="form-item">
-        <label class="form-label">标签名称</label>
+        <label class="form-label">话题名称</label>
         <input v-model="dialog.name" class="input" type="text" maxlength="32" placeholder="最多 32 字" />
       </div>
 
       <div class="form-item">
-        <label class="form-label">标签描述</label>
+        <label class="form-label">话题描述</label>
         <textarea
           v-model="dialog.description"
           class="textarea"
           rows="3"
-          placeholder="可选，用于前台标签页展示"
+          placeholder="可选，用于前台话题页展示"
         />
       </div>
 
@@ -228,15 +228,15 @@
       </div>
 
       <div class="form-item">
-        <label class="form-label">标签图</label>
+        <label class="form-label">话题图</label>
         <div class="avatar-row">
           <div class="cover-box">
-            <img v-if="dialog.avatar" :src="dialog.avatar" alt="标签图预览" />
+            <img v-if="dialog.avatar" :src="dialog.avatar" alt="话题图预览" />
             <div v-else class="cover-empty" @click="pickImage">
               <i class="bi bi-image" />
               <span>上传</span>
             </div>
-            <button v-if="dialog.avatar" type="button" class="cover-del" title="移除标签图" @click="dialog.avatar = ''">
+            <button v-if="dialog.avatar" type="button" class="cover-del" title="移除话题图" @click="dialog.avatar = ''">
               <i class="bi bi-x" />
             </button>
           </div>
@@ -256,10 +256,10 @@
           </div>
           <input ref="fileRef" type="file" accept="image/*" hidden @change="onFileChange" />
 
-          <!-- 附件库：选一张已上传的图片作为标签图 -->
+          <!-- 附件库：选一张已上传的图片作为话题图 -->
           <AttachmentLibrary
             v-model:visible="showLibrary"
-            title="选择标签图"
+            title="选择话题图"
             accept="image"
             @select="onLibrarySelect"
           />
@@ -283,17 +283,17 @@
 
 <script setup>
 /**
- * 标签管理（/admin/tags）
+ * 话题管理（/admin/tags）
  *
- * 标签字段很少（名称 / 描述 / 标签图），做成单页 CRUD：全部标签 + 回收站两个视图。
+ * 话题字段很少（名称 / 描述 / 话题图），做成单页 CRUD：全部话题 + 回收站两个视图。
  *
  * 后端约束（app/api/controller/tags.go）：
- * - tags/all 会额外注入 article_count（该标签被「已审核且未删除」文章引用的数量）；
+ * - tags/all 会额外注入 article_count（该话题被「已审核且未删除」文章引用的数量）；
  *   传 field 时必须带上它，否则会被字段过滤掉；
  * - tags/count 不支持 onlyTrashed，回收站数量不另做统计；
  * - tags/save 自动分流 create / update；允许字段为 name,description,avatar,json,text；
  * - avatar 走 SanitizeURL，name / description / avatar / text 会做 XSS 检测；
- * - 标签没有唯一索引，同名标签可以重复创建（后端不做重名校验）。
+ * - 话题没有唯一索引，同名话题可以重复创建（后端不做重名校验）。
  */
 import { ref, reactive, computed, onMounted, watchEffect } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -337,7 +337,7 @@ const fileRef = ref(null)
 const uploading = ref(false)
 const showLibrary = ref(false)
 
-// 从附件库选标签图：直接复用已上传图片的地址
+// 从附件库选话题图：直接复用已上传图片的地址
 function onLibrarySelect(urls = []) {
   const url = urls[0]
   showLibrary.value = false
@@ -351,7 +351,7 @@ const dialog = reactive({
   name: '',
   description: '',
   avatar: '',
-  // 话题（Hashtag）扩展字段：标签即话题，见 Mellow/src/views/topic/*
+  // 话题（Hashtag）扩展字段：话题即 tags 表，见 Mellow/src/views/topic/*
   moderator_uid: 0,
   recommend: 0
 })
@@ -367,9 +367,9 @@ const confirm = reactive({
 })
 
 const emptyText = computed(() => {
-  if (searchKey.value) return '没有匹配的标签'
+  if (searchKey.value) return '没有匹配的话题'
   if (trash.value) return '回收站是空的'
-  return '还没有标签，先新建一个吧'
+  return '还没有话题，先新建一个吧'
 })
 
 // ---------- 展示辅助 ----------
@@ -493,7 +493,7 @@ function openEdit(item) {
 async function save() {
   const name = dialog.name.trim()
   if (!name) {
-    toast.warning('请输入标签名称')
+    toast.warning('请输入话题名称')
     return
   }
 
@@ -509,7 +509,7 @@ async function save() {
   dialog.loading = true
   try {
     await saveTag(payload)
-    toast.success(dialog.id ? '修改已保存' : '标签已创建')
+    toast.success(dialog.id ? '修改已保存' : '话题已创建')
     dialog.visible = false
     await load()
   } catch {
@@ -547,10 +547,10 @@ async function runConfirm() {
 
 function askRemove(item) {
   const used = Number(item.article_count) > 0
-  const extra = used ? '已有文章引用该标签，删除后这些文章不会携带此标签。' : ''
+  const extra = used ? '已有文章引用该话题，删除后这些文章不会携带此话题。' : ''
   openConfirm({
-    title: '删除标签',
-    message: `确定删除标签「${item.name || item.id}」吗？${extra}删除后可在回收站找回。`,
+    title: '删除话题',
+    message: `确定删除话题「${item.name || item.id}」吗？${extra}删除后可在回收站找回。`,
     confirmText: '删除',
     danger: true,
     action: async () => {
@@ -577,7 +577,7 @@ async function restore(item) {
 function askForceDelete(item) {
   openConfirm({
     title: '彻底删除',
-    message: `确定彻底删除标签「${item.name || item.id}」吗？此操作不可恢复！`,
+    message: `确定彻底删除话题「${item.name || item.id}」吗？此操作不可恢复！`,
     confirmText: '彻底删除',
     danger: true,
     action: async () => {
@@ -591,7 +591,7 @@ function askForceDelete(item) {
 function askClearRecycle() {
   openConfirm({
     title: '清空回收站',
-    message: '确定清空回收站吗？回收站内所有标签将被彻底删除，不可恢复！',
+    message: '确定清空回收站吗？回收站内所有话题将被彻底删除，不可恢复！',
     confirmText: '清空',
     danger: true,
     action: async () => {
@@ -641,12 +641,12 @@ function askBatchRemove() {
   if (!ids.length) return
   openConfirm({
     title: '批量删除',
-    message: `确定删除选中的 ${ids.length} 个标签吗？删除后可在回收站找回。`,
+    message: `确定删除选中的 ${ids.length} 个话题吗？删除后可在回收站找回。`,
     confirmText: '删除',
     danger: true,
     action: async () => {
       await removeTags(ids)
-      toast.success(`已删除 ${ids.length} 个标签`)
+      toast.success(`已删除 ${ids.length} 个话题`)
       selectedIds.value = []
       await load()
     }
@@ -659,7 +659,7 @@ async function batchRestore() {
   busy.value = true
   try {
     await restoreTags(ids)
-    toast.success(`已恢复 ${ids.length} 个标签`)
+    toast.success(`已恢复 ${ids.length} 个话题`)
     selectedIds.value = []
     await load()
   } catch {
@@ -674,12 +674,12 @@ function askBatchForceDelete() {
   if (!ids.length) return
   openConfirm({
     title: '批量彻底删除',
-    message: `确定彻底删除选中的 ${ids.length} 个标签吗？此操作不可恢复！`,
+    message: `确定彻底删除选中的 ${ids.length} 个话题吗？此操作不可恢复！`,
     confirmText: '彻底删除',
     danger: true,
     action: async () => {
       await forceDeleteTags(ids)
-      toast.success(`已彻底删除 ${ids.length} 个标签`)
+      toast.success(`已彻底删除 ${ids.length} 个话题`)
       selectedIds.value = []
       await load()
     }

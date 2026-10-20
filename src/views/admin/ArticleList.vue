@@ -504,7 +504,7 @@ async function loadAuthors(items) {
   }
 }
 
-// 分类 / 标签字典只需加载一次
+// 分类 / 话题字典只需加载一次
 let metaReady = false
 async function ensureMeta() {
   if (metaReady) return

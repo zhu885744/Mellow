@@ -4,6 +4,17 @@
       <EmojiText :text="article.title" :size="24" />
     </h1>
     <div class="meta">
+      <!-- 作者入口：小头像 + 昵称，点击进入作者主页（无 id 时退化为纯文本） -->
+      <component
+        :is="authorLink ? 'router-link' : 'span'"
+        :to="authorLink || undefined"
+        class="meta-author"
+        :class="{ 'is-link': !!authorLink }"
+      >
+        <img :src="author?.avatar || defaultAvatar" class="meta-author__avatar" alt="" />
+        <span class="meta-author__name">{{ author?.nickname || '匿名' }}</span>
+      </component>
+      <span class="dot">·</span>
       <span>{{ formatDate(article.create_time) }}</span>
       <span class="dot">·</span>
       <span>{{ article.views || 0 }} 次阅读</span>
@@ -92,21 +103,34 @@
       @confirm="submitReport"
     />
 
-    <!-- 作者（点击进入作者主页） -->
-    <component
-      :is="authorLink ? 'router-link' : 'div'"
-      v-if="author"
-      :to="authorLink || undefined"
-      class="author-card card card-pad"
-      :class="{ 'is-link': !!authorLink }"
-    >
-      <img :src="author.avatar || defaultAvatar" class="author-avatar" />
-      <div class="author-info">
-        <div class="author-name">{{ author.nickname }}</div>
-        <div class="author-desc">{{ author.description || '' }}</div>
-      </div>
-      <i v-if="authorLink" class="bi bi-chevron-right author-arrow" />
-    </component>
+    <!-- 文末：上一篇 / 下一篇（按发布顺序切换，只统计已发布且审核通过的文章） -->
+    <nav v-if="prevArticle || nextArticle" class="article-nav" aria-label="文章导航">
+      <component
+        :is="prevArticle ? 'router-link' : 'span'"
+        :to="prevArticle ? `/archives/${prevArticle.id}` : undefined"
+        class="article-nav__item article-nav__item--prev"
+        :class="{ 'is-disabled': !prevArticle }"
+      >
+        <span class="article-nav__label">
+          <i class="bi bi-arrow-left" aria-hidden="true" />
+          上一篇
+        </span>
+        <span class="article-nav__title">{{ prevArticle?.title || '已经是第一篇了' }}</span>
+      </component>
+
+      <component
+        :is="nextArticle ? 'router-link' : 'span'"
+        :to="nextArticle ? `/archives/${nextArticle.id}` : undefined"
+        class="article-nav__item article-nav__item--next"
+        :class="{ 'is-disabled': !nextArticle }"
+      >
+        <span class="article-nav__label">
+          下一篇
+          <i class="bi bi-arrow-right" aria-hidden="true" />
+        </span>
+        <span class="article-nav__title">{{ nextArticle?.title || '已经是最后一篇了' }}</span>
+      </component>
+    </nav>
 
     <!-- 评论（json.comment.show：1 显示 / 2 不显示；allow：1 允许 / 2 禁止，禁止时仅隐藏输入框） -->
     <template v-if="commentShow">
@@ -172,7 +196,8 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/></svg>'
+const defaultAvatar =
+  'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/></svg>'
 
 const article = ref(null)
 const loading = ref(false)
@@ -261,11 +286,14 @@ function onContentClick(e) {
 }
 
 const author = computed(() => article.value?.result?.author || null)
-// 作者主页链接（无 id 时退化为不可点击的普通卡片）
+// 作者主页链接（无 id 时标题区退化为不可点击的纯文本）
 const authorLink = computed(() => {
   const id = author.value?.id
   return id ? `/author/${id}` : ''
 })
+// 上一篇 / 下一篇：后端在详情里按发布顺序给出相邻文章（只含已发布且审核通过的）
+const prevArticle = computed(() => article.value?.prev || null)
+const nextArticle = computed(() => article.value?.next || null)
 const tagList = computed(() => {
   const t = article.value?.result?.tags
   if (Array.isArray(t)) return t
@@ -425,6 +453,36 @@ onUnmounted(() => {
 .meta .dot {
   color: var(--border);
 }
+/* 作者入口：小头像 + 昵称 */
+.meta-author {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.meta-author.is-link {
+  cursor: pointer;
+}
+.meta-author.is-link:hover {
+  color: var(--primary);
+}
+.meta-author__avatar {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: var(--bg-muted);
+}
+.meta-author__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 12em;
+}
 .abstract {
   padding: 16px 20px;
   background: var(--bg-muted);
@@ -491,70 +549,88 @@ onUnmounted(() => {
 .like-btn {
   position: relative;
 }
-.author-card {
+/* 文末：上一篇 / 下一篇 */
+.article-nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 28px 0 8px;
+}
+.article-nav__item {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  margin: 24px 0;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
   color: inherit;
   text-decoration: none;
-}
-/* 可跳转时给出可点击反馈 */
-.author-card.is-link {
-  cursor: pointer;
-  transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s;
   -webkit-tap-highlight-color: transparent;
+  transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
 }
-.author-card.is-link:hover {
+.article-nav__item--next {
+  text-align: right;
+}
+a.article-nav__item:hover {
   border-color: var(--primary-soft);
-  box-shadow: var(--shadow-sm);
-  /* 覆盖全局 a:hover 的链接色，避免主题色渗透到描述文字 */
+  background: var(--bg-muted);
+  /* 覆盖全局 a:hover 的链接色，标题颜色单独控制 */
   color: var(--text);
 }
-.author-card.is-link:hover .author-name {
+a.article-nav__item:hover .article-nav__title {
   color: var(--primary);
 }
-.author-card.is-link:active {
+a.article-nav__item:active {
   transform: translateY(1px);
 }
-.author-card.is-link:focus-visible {
-  outline: 2px solid var(--primary-soft);
-  outline-offset: 2px;
+/* 到头了：保留位置与占位文案，避免整块突然只剩一边 */
+.article-nav__item.is-disabled {
+  opacity: 0.55;
+  cursor: default;
 }
-.author-arrow {
-  flex-shrink: 0;
-  color: var(--text-light);
-  transition: transform 0.2s, color 0.2s;
-}
-.author-card.is-link:hover .author-arrow {
-  color: var(--primary);
-  transform: translateX(2px);
-}
-.author-avatar {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-}
-.author-info {
-  flex: 1;
-  min-width: 0;
-}
-.author-name {
-  font-size: 15px;
-  font-weight: 500;
-  margin-bottom: 4px;
-  transition: color 0.2s;
-}
-.author-desc {
+.article-nav__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-light);
+}
+.article-nav__item--next .article-nav__label {
+  justify-content: flex-end;
+}
+.article-nav__title {
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  /* 最多两行：长标题不会把左右两块撑得高低不齐 */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  transition: color 0.2s;
 }
 .loading {
   padding: 64px;
   text-align: center;
   color: var(--text-muted);
+}
+
+/* 窄屏：上一篇 / 下一篇改为上下堆叠，右对齐的那块也回归左对齐 */
+@media (max-width: 640px) {
+  .article-nav {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 22px 0 8px;
+  }
+  .article-nav__item--next {
+    text-align: left;
+  }
+  .article-nav__item--next .article-nav__label {
+    justify-content: flex-start;
+  }
 }
 
 /* Markdown 排版样式统一使用全局 styles.css 中的 .markdown-body */

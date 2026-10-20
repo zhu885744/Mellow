@@ -2,7 +2,7 @@
   <!--
     管理后台独立页面编辑器
     与文章编辑器共用 components/admin/ContentWriteForm.vue（mode=page）：
-    Markdown 编辑器、标签、评论开关、审核状态一致；
+    Markdown 编辑器、话题、评论开关、审核状态一致；
     字段差异为「唯一标识 key + 备注 remark」，且没有草稿/发布之分（仅保存）。
   -->
   <ContentWriteForm

@@ -662,7 +662,7 @@ h1, h2, h3 {
   color: var(--danger);
 }
 
-/* ========== 标签 ========== */
+/* ========== 话题 ========== */
 .tag {
   display: inline-block;
   padding: 2px 8px;
