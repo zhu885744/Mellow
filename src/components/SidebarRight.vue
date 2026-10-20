@@ -6,12 +6,12 @@
         <AvatarFrame
           :src="user?.avatar"
           :frame="user?.json?.frame"
-          :animated="Number(user?.json?.frame_animated) === 1"
+          :animated="frameRender.animated"
           :fallback="defaultAvatar"
           :size="'75px'"
-          :frame-hole="frameGeometry.hole"
-          :frame-offset-x="frameGeometry.offsetX"
-          :frame-offset-y="frameGeometry.offsetY"
+          :frame-hole="frameRender.hole"
+          :frame-offset-x="frameRender.offsetX"
+          :frame-offset-y="frameRender.offsetY"
           alt="用户头像"
         />
         <div class="user-name">{{ user?.nickname }}</div>
@@ -204,7 +204,8 @@ import { call } from '@/api/request'
 import { useSiteStore } from '@/stores/site'
 import { fromNow } from '@/utils/time'
 import { notificationLink, contentLink } from '@/utils/notification'
-import { pickCommentAuthor, pickUserFrameGeometry } from '@/utils/helper'
+import { pickCommentAuthor } from '@/utils/helper'
+import { resolveFrameRender } from '@/utils/frameRender'
 import { renderEmoji } from '@/utils/emoji'
 
 import { useRouter } from 'vue-router'
@@ -218,8 +219,8 @@ const { user } = storeToRefs(userStore)
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 
-// 头像框定位参数（洞大小 + 洞心偏移），佩戴时由服务端写入 users.json
-const frameGeometry = computed(() => pickUserFrameGeometry(user.value))
+// 头像框渲染参数：以装扮 payload 为准（users.json 上的副本只作兜底）
+const frameRender = computed(() => resolveFrameRender(user.value?.json))
 
 const groups = ref([])
 const tags = ref([])

@@ -2194,6 +2194,8 @@ onMounted(() => {
   touch-action: none;
   user-select: none;
   transform-origin: center center;
+  /* 同上：素材宽度会超过舞台，不能被全局 img{max-width:100%} 截断 */
+  max-width: none;
 }
 .frame-aligner__overlay:active {
   cursor: grabbing;

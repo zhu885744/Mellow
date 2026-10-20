@@ -129,6 +129,12 @@ function onError() {
   top: 50%;
   left: 50%;
   width: calc(100% / var(--frame-hole, 1));
+  /*
+   * 必须解除全局 `img { max-width: 100% }` 的限制：
+   * 洞模型靠「宽度 > 头像」把素材放大，而 max-width 会把它卡在 100%，
+   * 表现就是「洞大小调了没反应、但偏移有效」（偏移走 transform，不受 max-width 影响）。
+   */
+  max-width: none;
   height: auto;
   pointer-events: none;
   z-index: 2;

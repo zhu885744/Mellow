@@ -2,10 +2,10 @@
   <div class="layout">
     <!-- 移动端顶栏（仅手机端显示） -->
     <div class="mobile-topbar">
-      <span class="mobile-brand">
+      <router-link to="/" class="mobile-brand" title="返回首页">
         <img v-if="site.avatar" class="mobile-brand__logo" :src="site.avatar" :alt="site.title" />
         {{ site.title }}
-      </span>
+      </router-link>
       <div class="mobile-actions">
         <!-- 搜索入口：手机端左栏（含搜索按钮）整块被隐藏，这里是唯一的入口 -->
         <button
@@ -49,7 +49,8 @@
     <div class="layout-body">
       <!-- 左栏 - 站点信息 + 导航 -->
       <aside class="layout-left">
-        <div class="site-card">
+        <!-- 站点信息整块可点，回到首页（LOGO / 标题 / 描述都是品牌的一部分） -->
+        <router-link to="/" class="site-card" title="返回首页">
           <!-- 网站 LOGO（后台「网站设置 → 网站 LOGO」，对应配置里的 avatar 字段）
                配了 LOGO 就只显示 LOGO（标题/描述已在图片里，不再重复）；
                没配、或地址失效时退回「标题 + 描述」的文字版 -->
@@ -65,7 +66,7 @@
             <div class="site-card__title">{{ site.title }}</div>
             <div class="site-card__subtitle">{{ site.description }}</div>
           </template>
-        </div>
+        </router-link>
 
         <!-- 全局搜索（独立页面 /search，Ctrl+K 可直达） -->
         <router-link to="/search" class="btn btn-ghost btn-sm btn-block" active-class="active">
@@ -223,8 +224,6 @@
 
     <!-- 全局封禁申诉弹窗（当前用户被封禁时自动弹出） -->
     <BanAppealDialog ref="banDialogRef" />
-
-    <!-- 右侧悬浮按钮已提到 App.vue（全局所有布局共用，不只前台） -->
   </div>
 </template>
 
@@ -427,9 +426,17 @@ onMounted(() => {
 }
 
 .site-card {
+  /* 整块是「返回首页」的链接：吃掉默认下划线与链接色，保持原样 */
+  display: block;
   padding: 24px 0 32px;
   text-align: center;
   border-bottom: 1px solid var(--border);
+  color: inherit;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+.site-card:hover {
+  opacity: 0.82;
 }
 /* 网站 LOGO：配了 LOGO 时它就是左栏顶部唯一内容（不再显示标题/描述）
    方形图标按 96px 展示，横向 LOGO 自动缩到栏宽内，不裁切 */
@@ -705,6 +712,8 @@ onMounted(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     min-width: 0;
+    /* 顶栏品牌也是「返回首页」的链接 */
+    text-decoration: none;
   }
   /* 网站 LOGO：移动端顶栏只留一个小图标 */
   .mobile-brand__logo {

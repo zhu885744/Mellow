@@ -39,6 +39,11 @@ function clearToken() {
 let checkingToken = false
 let checkTokenPromise = null
 
+// 最近一次向后端确认登录态的时间（ms）：ensureLogin 在启动链路上会被调用两次
+// （main.js + MainLayout），用它做短时去重，避免每次打开页面发两遍 check-token
+let lastCheckedAt = 0
+const RECHECK_INTERVAL = 5000
+
 // 规范化用户对象：确保 json 字段是对象（后端可能返回字符串）
 function normalizeUser(u) {
   if (!u || typeof u !== 'object') return u || {}
@@ -113,6 +118,9 @@ export const useUserStore = defineStore('user', () => {
       return login.value
     }
     checkingToken = true
+    // 记录「最近一次真正问过后端的时间」，供 ensureLogin 做短时去重：
+    // 启动链路里 main.js 和 MainLayout 都会调 ensureLogin，不该各发一次请求
+    lastCheckedAt = Date.now()
     checkTokenPromise = (async () => {
       login.value.finish = false
       try {
@@ -156,13 +164,29 @@ export const useUserStore = defineStore('user', () => {
   async function ensureLogin() {
     const hasToken = !!getCookie(TOKEN_NAME)
     const hasCachedUser = user.value || cache.get(USER_CACHE)
+
     if (!hasToken && !hasCachedUser) {
       login.value.finish = true
       return login.value
     }
-    if (!login.value.finish || !hasCachedUser) {
-      await checkLoginState()
+
+    if (hasToken) {
+      // 有 token 就必须回后端确认一次。
+      //
+      // 本地缓存的 user（localStorage 的 blog_user / user-info）只是「先让界面不闪」的快照，
+      // 可能是很久以前的：权限组、封禁状态、头像框的 json.frame_hole 等都可能已在后台改过。
+      // 旧逻辑写成 `if (!login.finish || !hasCachedUser)`，而 restore() 已经把两者都置好了，
+      // 于是刷新页面完全跳过请求 —— 后台改了装扮，前台一直不生效，最长要等缓存过期（可达数天）。
+      //
+      // 5 秒内重复调用直接跳过：启动链路上 main.js 与 MainLayout 各会调一次，没必要发两遍。
+      if (Date.now() - lastCheckedAt > RECHECK_INTERVAL) {
+        await checkLoginState()
+      }
+      return login.value
     }
+
+    // 没有 token 但有缓存用户：沿用上次的资料，不发请求
+    login.value.finish = true
     return login.value
   }
 

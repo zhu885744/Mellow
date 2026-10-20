@@ -6,12 +6,12 @@
         <AvatarFrame
           :src="profile.avatar"
           :frame="frame"
-          :animated="frameAnimated"
+          :animated="frameRender.animated"
           :fallback="defaultAvatar"
           :size="'75px'"
-          :frame-hole="frameGeometry.hole"
-          :frame-offset-x="frameGeometry.offsetX"
-          :frame-offset-y="frameGeometry.offsetY"
+          :frame-hole="frameRender.hole"
+          :frame-offset-x="frameRender.offsetX"
+          :frame-offset-y="frameRender.offsetY"
           alt="头像"
         />
         <div class="author-meta">
@@ -288,7 +288,8 @@ import { call } from '@/api/request'
 import { useUserStore } from '@/stores/user'
 import { fromNow, formatDate } from '@/utils/time'
 import { banTypeText } from '@/utils/user'
-import { pickUserTitlePayload, pickUserFrameAnimated, pickUserFrameGeometry } from '@/utils/helper'
+import { pickUserTitlePayload } from '@/utils/helper'
+import { resolveFrameRender } from '@/utils/frameRender'
 import { toast } from '@/utils/toast'
 import { renderEmoji } from '@/utils/emoji'
 import EmptyState from '@/components/EmptyState.vue'
@@ -308,9 +309,8 @@ const website = computed(() => (profile.value?.json && profile.value.json.websit
 
 // 头像框（来自 json.frame，佩戴头像框时由服务端回写；frame_animated 为动效开关）
 const frame = computed(() => (profile.value?.json && profile.value.json.frame) || '')
-const frameAnimated = computed(() => pickUserFrameAnimated(profile.value))
-// 头像框定位参数（洞大小 + 洞心偏移），佩戴时由服务端写入 users.json
-const frameGeometry = computed(() => pickUserFrameGeometry(profile.value))
+// 头像框渲染参数：以装扮 payload 为准（users.json 上的副本只作兜底）
+const frameRender = computed(() => resolveFrameRender(profile.value?.json))
 
 // 主页封面（来自 json.cover）：用户在「我的资料」里二选一
 //   { type: 'image', value: 'https://...' }  自定义图片
