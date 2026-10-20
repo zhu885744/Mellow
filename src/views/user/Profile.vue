@@ -47,7 +47,7 @@
         />
 
         <!-- 默认头像 -->
-        <div class="preset-section">
+        <div v-if="DEFAULT_AVATARS.length" class="preset-section">
           <div class="preset-label"><span><i class="bi bi-people" /> 默认头像</span></div>
           <div class="frame-grid">
             <button
@@ -236,6 +236,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { useSiteStore } from '@/stores/site'
 import { updateUser, uploadAvatar } from '@/api/users'
 import { toast } from '@/utils/toast'
 import AvatarFrame from '@/components/AvatarFrame.vue'
@@ -245,19 +246,22 @@ import { pickUserTitlePayload } from '@/utils/helper'
 import { resolveFrameRender } from '@/utils/frameRender'
 
 const userStore = useUserStore()
+const siteStore = useSiteStore()
 
 // 头衔样式 / 头像框动效（都由装扮系统写入 users.json，佩戴时服务端回写）
 const currentTitlePayload = computed(() => pickUserTitlePayload(userStore.user))
 // 头像框渲染参数：以装扮 payload 为准（users.json 上的副本只作兜底）
 const frameRender = computed(() => resolveFrameRender(userStore.user?.json))
 
-const DEFAULT_AVATARS = [
+const BUILTIN_AVATARS = [
   'https://img.zhuxu.asia/tx/1.png',
   'https://img.zhuxu.asia/tx/2.png',
   'https://img.zhuxu.asia/tx/3.png',
   'https://img.zhuxu.asia/tx/4.png',
   'https://img.zhuxu.asia/tx/5.png'
 ]
+// 优先用后台「默认值设置 → 默认头像」配置；未配置时使用主题内置头像兜底
+const DEFAULT_AVATARS = ref(BUILTIN_AVATARS)
 
 // 注意：头像框 / 头衔的佩戴、卸下、换字全部收口在「我的装扮」(/user/decorations)，
 // 本页只做「头像上传 + 基本信息」——这里不再拉取装扮数据、也不提供装扮设置控件。
@@ -552,8 +556,25 @@ async function save() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   fetchUserInfo()
+  // 读取后台配置的默认头像（Mellow_functions）
+  try {
+    const site = await siteStore.load()
+    // 开关关闭：前台不展示任何预设头像，用户只能自行上传
+    if (site?.default_avatars_enabled === false) {
+      DEFAULT_AVATARS.value = []
+      return
+    }
+    const list = site?.default_avatars
+    if (Array.isArray(list)) {
+      // 已配置（含空数组）：尊重之——管理员删光后前台即无预设头像
+      DEFAULT_AVATARS.value = list.filter((u) => typeof u === 'string' && u.trim())
+    }
+    // 字段不存在（从未配置）：保持内置兜底（DEFAULT_AVATARS 初始值）
+  } catch {
+    /* 读取失败保持内置头像兜底 */
+  }
 })
 watch(() => userStore.user, (nu) => {
   if (nu && Object.keys(nu).length > 0) fetchUserInfo()
@@ -741,14 +762,18 @@ watch(() => userStore.user, (nu) => {
   box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--primary);
 }
 .frame-grid {
+  /* 预设头像只有 5 个：写死列数会让宽屏把它们均分成大方块，
+     改用固定尺寸 + auto-fill，格子大小可控，窄屏自动换行 */
+  --preset-size: 56px;
   display: grid;
-  grid-template-columns: repeat(8, 1fr);
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, var(--preset-size));
+  gap: 8px;
 }
 .frame-item {
   position: relative;
-  aspect-ratio: 1;
-  padding: 6px;
+  width: var(--preset-size);
+  height: var(--preset-size);
+  padding: 4px;
   background: var(--bg-card);
   border: 2px solid var(--border);
   border-radius: var(--radius);
@@ -882,7 +907,7 @@ watch(() => userStore.user, (nu) => {
     align-items: center;
   }
   .frame-grid {
-    grid-template-columns: repeat(5, 1fr);
+    --preset-size: 48px;
   }
 }
 </style>

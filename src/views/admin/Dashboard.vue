@@ -27,6 +27,7 @@
         <span class="meta-item" title="后端程序版本">
           <i class="bi bi-box-seam" /> INIS
           <b>{{ version.inis || '—' }}</b>
+          <em v-if="release.status === 'update'" class="meta-update">可更新 {{ release.tag_name }}</em>
         </span>
         <span class="meta-item" title="当前主题版本">
           <i class="bi bi-palette" /> Mellow
@@ -40,6 +41,24 @@
           <i class="bi bi-clock-history" /> 服务器时间
           <b>{{ serverTimeText || '—' }}</b>
         </span>
+      </div>
+    </section>
+
+    <!-- 版本更新：远端 tag_name 高于本地 INIS 版本时提示（只检测与跳转，不做在线更新） -->
+    <section v-if="release.status === 'update'" class="update-banner">
+      <span class="update-icon"><i class="bi bi-cloud-arrow-down" /></span>
+      <div class="update-main">
+        <div class="update-head">
+          <span class="update-title">发现新版本 <b>{{ release.tag_name }}</b></span>
+          <span class="update-current">当前 INIS {{ version.inis }}</span>
+          <a :href="release.html_url" class="update-link" target="_blank" rel="noopener noreferrer">
+            查看详情 <i class="bi bi-box-arrow-up-right" />
+          </a>
+        </div>
+        <div v-if="releaseNotesHtml" class="update-notes" v-html="releaseNotesHtml"></div>
+        <div v-if="release.published_at" class="update-time">
+          <i class="bi bi-clock" /> {{ formatReleaseDate(release.published_at) }} 发布
+        </div>
       </div>
     </section>
 
@@ -150,12 +169,15 @@
  * - 各模块 <count> 接口返回 { code, data: 数字 }，data 直接是数量；
  * - goods/orders-all 返回 { data: { data: [...], count, page } }，数量取 count；
  * - integral/card-stats 返回 { data: { total, unused, used, expired, ... } }；
- * - 版本信息走 dev 类接口 /dev/info/version（公开，返回 { go, inis, text }）。
+ * - 版本信息走 dev 类接口 /dev/info/version（公开，返回 { go, inis, text }）；
+ * - 版本更新检测走 GitHub Releases API（公开、跨域，用原生 fetch），拿 tag_name 与本地
+ *   INIS 版本比对，仅提示并跳转 Release 页面，不做在线更新；远端结果缓存 1 小时。
  * 统计口径差异：article/comment/goods/users 的 count 支持 where 过滤，
  * 因此「待审核」「今日新增」用 where 传 JSON 字符串（后端 IWhere 支持字符串 JSON）。
  */
 import { ref, reactive, computed, onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
+import MarkdownIt from 'markdown-it'
 import { call, devService } from '@/api/request'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
@@ -197,6 +219,9 @@ async function loadVersion() {
     /* 版本接口不可用时保持占位 */
   }
 
+  // 本地 INIS 版本就绪后再比对远端 Release（失败不影响其余加载）
+  checkUpdate()
+
   try {
     const { code, data } = await devService.get('/dev/info/time')
     if (code === 200 && data) {
@@ -220,6 +245,137 @@ function formatTime(ms) {
   const d = new Date(ms)
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+// ---------- 版本更新检测 ----------
+// 仓库 inisv1 的 Release 对应后端 INIS 版本（facade.Version），
+// 因此用「本地 INIS 版本」而不是主题 package.json 的 Mellow 版本去比对远端 tag_name。
+const GITHUB_RELEASE_API = 'https://api.github.com/repos/zhu885744/inisv1/releases/latest'
+
+// 未认证调用 GitHub API 限流 60 次/小时/IP，后台每次打开都请求很容易打满，
+// 因此把远端结果缓存 1 小时（缓存的是远端 Release，本地版本每次照常比对）
+const RELEASE_CACHE_KEY = 'mellow_github_release'
+const RELEASE_CACHE_TTL = 60 * 60 * 1000
+
+// status: idle(未检测) / loading / update(有新版本) / latest(已是最新) / error(检测失败)
+const release = reactive({
+  status: 'idle',
+  tag_name: '',
+  body: '',
+  published_at: '',
+  html_url: ''
+})
+
+// Release body 是 Markdown，这里用最普通的 markdown-it 渲染（不接代码高亮，
+// 避免把 highlight.js 的 chunk 拖进后台首页）
+const mdLite = new MarkdownIt({ html: false, linkify: true, breaks: true })
+// 外链统一新窗口打开（与 utils/markdown.js 的正文渲染保持一致）
+const mdLinkOpen = mdLite.renderer.rules.link_open
+  || function (tokens, idx, options, env, self) { return self.renderToken(tokens, idx, options) }
+mdLite.renderer.rules.link_open = function (tokens, idx, options, env, self) {
+  const hrefIndex = tokens[idx].attrIndex('href')
+  if (hrefIndex >= 0 && String(tokens[idx].attrs[hrefIndex][1]).startsWith('http')) {
+    tokens[idx].attrSet('target', '_blank')
+    tokens[idx].attrSet('rel', 'noopener noreferrer')
+  }
+  return mdLinkOpen(tokens, idx, options, env, self)
+}
+
+const releaseNotesHtml = computed(() => (release.body ? mdLite.render(release.body) : ''))
+
+// 去掉 tag 的 v 前缀：v1.0.2 → 1.0.2（本地 version.inis 不带 v）
+function normalizeVersion(value) {
+  return String(value || '').trim().replace(/^[vV]/, '')
+}
+
+function parseVersion(value) {
+  return normalizeVersion(value)
+    .split('.')
+    .map((item) => {
+      const num = parseInt(item, 10)
+      return Number.isNaN(num) ? 0 : num
+    })
+}
+
+// 逐段比较点分数字，缺位按 0：1.0.3 > 1.0.2，1.0.2 == v1.0.2
+function isNewer(remote, local) {
+  const r = parseVersion(remote)
+  const l = parseVersion(local)
+  const len = Math.max(r.length, l.length)
+  for (let i = 0; i < len; i++) {
+    const rv = r[i] || 0
+    const lv = l[i] || 0
+    if (rv !== lv) return rv > lv
+  }
+  return false
+}
+
+// 读缓存：未超过 1 小时的才作数
+function readReleaseCache() {
+  try {
+    const raw = localStorage.getItem(RELEASE_CACHE_KEY)
+    if (!raw) return null
+    const cached = JSON.parse(raw)
+    if (!cached?.ts || Date.now() - cached.ts > RELEASE_CACHE_TTL) return null
+    return cached.data || null
+  } catch {
+    // 缓存损坏 / localStorage 不可用（隐私模式）：当作没有缓存，正常请求
+    return null
+  }
+}
+
+function writeReleaseCache(data) {
+  try {
+    localStorage.setItem(RELEASE_CACHE_KEY, JSON.stringify({ ts: Date.now(), data }))
+  } catch {
+    /* 写不进去不影响本次展示 */
+  }
+}
+
+// 用原生 fetch：GitHub API 返回的是裸 JSON，不能走项目 axios 那套 { code, msg, data } 拦截器
+async function fetchRelease() {
+  const res = await fetch(GITHUB_RELEASE_API, {
+    headers: { Accept: 'application/vnd.github+json' }
+  })
+  if (!res.ok) throw new Error(`HTTP ${res.status}`)
+  const data = await res.json()
+  return {
+    tag_name: data?.tag_name || '',
+    body: data?.body || '',
+    published_at: data?.published_at || '',
+    html_url: data?.html_url || ''
+  }
+}
+
+async function checkUpdate() {
+  // 本地版本未知时无从比对，保持 idle（不提示、不打扰）
+  if (!version.inis) return
+
+  release.status = 'loading'
+  try {
+    const cached = readReleaseCache()
+    const data = cached || (await fetchRelease())
+    // 只缓存新鲜拉到的结果，避免把已有缓存的时间戳一直往后推
+    if (!cached && data) writeReleaseCache(data)
+
+    release.tag_name = data.tag_name
+    release.body = data.body
+    release.published_at = data.published_at
+    release.html_url = data.html_url
+
+    const remote = normalizeVersion(data.tag_name)
+    release.status = remote && isNewer(remote, version.inis) ? 'update' : 'latest'
+  } catch {
+    // 网络不可达 / 触发 GitHub 限流等：静默降级为不提示
+    release.status = 'error'
+  }
+}
+
+function formatReleaseDate(iso) {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
 // ---------- 快捷跳转 ----------
@@ -555,6 +711,155 @@ onMounted(async () => {
   font-weight: 600;
   color: var(--text-soft);
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+/* INIS 版本号后面的「可更新」徽章：仅在检测到新版本时出现 */
+.meta-update {
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--gold-wash);
+  border: 1px solid var(--gold-line);
+  color: var(--warning);
+  white-space: nowrap;
+}
+
+/* ---------- 版本更新横幅 ---------- */
+.update-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--gold-wash);
+  border: 1px solid var(--gold-line);
+  border-radius: var(--radius);
+}
+.update-icon {
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  background: var(--bg-card);
+  color: var(--warning);
+  font-size: 19px;
+}
+.update-main {
+  flex: 1;
+  min-width: 0;
+}
+.update-head {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+}
+.update-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.update-title b {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--warning);
+}
+.update-current {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.update-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--primary);
+  text-decoration: none;
+  transition: opacity 0.18s;
+}
+.update-link:hover {
+  opacity: 0.75;
+}
+/* Release body 经 markdown-it 渲染后插入：v-html 的内容不带 scoped 标记，需用 :deep */
+.update-notes {
+  margin-top: 8px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--text-soft);
+  word-break: break-word;
+}
+.update-notes :deep(p) {
+  margin: 0 0 6px;
+}
+.update-notes :deep(p:last-child) {
+  margin-bottom: 0;
+}
+.update-notes :deep(h1),
+.update-notes :deep(h2),
+.update-notes :deep(h3),
+.update-notes :deep(h4),
+.update-notes :deep(h5),
+.update-notes :deep(h6) {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.update-notes :deep(ul),
+.update-notes :deep(ol) {
+  margin: 0 0 6px;
+  padding-left: 20px;
+}
+.update-notes :deep(li) {
+  margin: 2px 0;
+}
+.update-notes :deep(a) {
+  color: var(--primary);
+  text-decoration: none;
+}
+.update-notes :deep(a:hover) {
+  text-decoration: underline;
+}
+.update-notes :deep(code) {
+  padding: 1px 5px;
+  background: var(--bg-card);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.update-notes :deep(pre) {
+  margin: 6px 0;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+.update-notes :deep(pre code) {
+  padding: 0;
+  background: transparent;
+}
+.update-notes :deep(blockquote) {
+  margin: 6px 0;
+  padding-left: 10px;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+}
+.update-notes :deep(hr) {
+  margin: 8px 0;
+  border: none;
+  border-top: 1px solid var(--border);
+}
+.update-notes :deep(img) {
+  max-width: 100%;
+}
+.update-time {
+  margin-top: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-light);
 }
 
 /* ---------- 待办 ---------- */

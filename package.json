@@ -1,7 +1,7 @@
 {
   "name": "Mellow",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.0.3",
   "type": "module",
   "description": "INIS 博客三栏主题",
   "scripts": {

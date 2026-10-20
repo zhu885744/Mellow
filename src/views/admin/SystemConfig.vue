@@ -1271,6 +1271,89 @@
               </dl>
             </section>
           </template>
+
+          <!-- ============ 默认值设置：默认头像 ============ -->
+          <template v-else-if="tab === 'defaults'">
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">默认头像</h3>
+                  <p class="cfg-desc">
+                    前台「个人资料」页里供用户一键选择的预设头像。可添加 / 删除，支持粘贴图片地址或从附件库选取；
+                    留空时前台使用主题内置头像
+                  </p>
+                </div>
+              </header>
+
+              <div class="switch-row">
+                <div>
+                  <div class="form-label">启用默认头像</div>
+                  <p class="form-hint">
+                    关闭后前台「个人资料」页不再展示预设头像，用户只能自行上传；开启时展示上面的头像列表（列表为空则使用主题内置头像）
+                  </p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" v-model="cfg.defaultAvatarsEnabled" />
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+
+              <div class="avatar-grid">
+                <div
+                  v-for="(url, idx) in cfg.defaultAvatars"
+                  :key="idx"
+                  class="avatar-item"
+                >
+                  <img :src="url" :alt="`默认头像 ${idx + 1}`" />
+                  <button
+                    type="button"
+                    class="avatar-del"
+                    title="删除"
+                    @click="removeDefaultAvatar(idx)"
+                  >
+                    <i class="bi bi-x-lg" />
+                  </button>
+                </div>
+                <p v-if="!cfg.defaultAvatars.length" class="avatar-empty">
+                  暂未配置默认头像，前台将使用主题内置头像
+                </p>
+              </div>
+
+              <div class="avatar-add">
+                <input
+                  v-model="newAvatarUrl"
+                  class="input"
+                  placeholder="粘贴图片地址，或点「附件库」选择"
+                  @keyup.enter="addDefaultAvatar"
+                />
+                <button type="button" class="btn btn-sm" @click="openAvatarLibrary">
+                  <i class="bi bi-folder2-open" /> 附件库
+                </button>
+                <button type="button" class="btn btn-primary btn-sm" @click="addDefaultAvatar">
+                  <i class="bi bi-plus-lg" /> 添加
+                </button>
+              </div>
+
+              <div class="cfg-foot">
+                <span class="save-hint">修改后需点击保存才会写入配置，前台立即读取最新值</span>
+                <button
+                  class="btn btn-primary btn-sm"
+                  :disabled="isSaving('defaultAvatars')"
+                  @click="saveDefaultAvatars"
+                >
+                  {{ isSaving('defaultAvatars') ? '保存中...' : '保存' }}
+                </button>
+              </div>
+
+              <AttachmentLibrary
+                v-model:visible="showAvatarLibrary"
+                title="选择默认头像"
+                accept="image"
+                @select="onAvatarLibrarySelect"
+              />
+            </section>
+          </template>
+
           <!-- ============ 第三方登录（QQ / GitHub / Gitee，SYSTEM_OAUTH）============ -->
           <template v-else-if="tab === 'oauth'">
             <section class="card card-pad">
@@ -1391,7 +1474,9 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SelectMenu from '@/components/SelectMenu.vue'
 import SiteSettingsForm from '@/components/admin/SiteSettingsForm.vue'
-import { getConfig, getAllConfigs, saveSystemConfig } from '@/api/config'
+import { getConfig, getAllConfigs, saveSystemConfig, saveConfig } from '@/api/config'
+import { useSiteStore } from '@/stores/site'
+import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { listAuthGroups } from '@/api/auth-group'
 import {
   saveToml,
@@ -1554,7 +1639,8 @@ const modules = [
       { key: 'sms', label: '短信', icon: 'bi bi-send' },
       { key: 'notify', label: '消息与日志', icon: 'bi bi-archive' }
     ]
-  }
+  },
+  { key: 'defaults', label: '默认值设置', icon: 'bi bi-sliders' }
 ]
 
 // 内容配置的 key 与展示名（PAGE / ARTICLE / MOMENTS 三份结构相同）
@@ -1690,6 +1776,10 @@ function mailScenesOf(group) {
 }
 
 const cfg = reactive({
+  // 默认头像：前台「个人资料」页供用户选择的预设头像，存于 Mellow_functions.default_avatars
+  defaultAvatars: [],
+  // 是否启用预设头像：关闭后前台隐藏预设、只能自行上传
+  defaultAvatarsEnabled: true,
   apiKey: { value: '0', local: '1' },
   qps: { value: '1', json: { point: 120, global: 600 } },
   qpsBlock: { value: '0', json: { count: 200, second: '60 * 60' } },
@@ -2325,13 +2415,88 @@ async function loadAll() {
   loading.value = true
   loadError.value = false
   try {
-    await Promise.all([loadConfigs(), loadTomlAll(), loadAuthGroups()])
+    await Promise.all([loadConfigs(), loadTomlAll(), loadAuthGroups(), loadDefaultAvatars()])
   } catch {
     loadError.value = true
     toast.error('配置加载失败')
   } finally {
     loading.value = false
   }
+}
+
+// 主题内置默认头像：后台「默认值设置」首次进入时预填，前台无配置时兜底
+const BUILTIN_AVATARS = [
+  'https://img.zhuxu.asia/tx/1.png',
+  'https://img.zhuxu.asia/tx/2.png',
+  'https://img.zhuxu.asia/tx/3.png',
+  'https://img.zhuxu.asia/tx/4.png',
+  'https://img.zhuxu.asia/tx/5.png'
+]
+
+// 默认头像（Mellow_functions.default_avatars）：读取完整站点配置后取该字段；
+// - 未配置（字段不存在）→ 预填内置头像，开箱即用
+// - 已配置（含空数组）→ 尊重之，管理员删光后前台即不再展示预设
+// default_avatars_enabled：开关，缺字段视为开启
+const siteStore = useSiteStore()
+
+async function loadDefaultAvatars() {
+  try {
+    const data = (await siteStore.load(true)) || {}
+    const list = data.default_avatars
+    cfg.defaultAvatars = Array.isArray(list)
+      ? list.filter((u) => typeof u === 'string' && u.trim())
+      : [...BUILTIN_AVATARS]
+    cfg.defaultAvatarsEnabled = data.default_avatars_enabled !== false
+  } catch {
+    cfg.defaultAvatars = [...BUILTIN_AVATARS]
+    cfg.defaultAvatarsEnabled = true
+  }
+}
+
+// ---------- 默认头像管理 ----------
+const newAvatarUrl = ref('')
+
+function addDefaultAvatar() {
+  const url = newAvatarUrl.value.trim()
+  if (!url) {
+    toast.warning('请先输入或选择图片地址')
+    return
+  }
+  if (cfg.defaultAvatars.includes(url)) {
+    toast.warning('该头像已存在')
+    return
+  }
+  cfg.defaultAvatars.push(url)
+  newAvatarUrl.value = ''
+}
+
+function removeDefaultAvatar(index) {
+  cfg.defaultAvatars.splice(index, 1)
+}
+
+// 附件库选图（复用 Mellow 通用附件库，选中的图片写入输入框，需点「添加」才入列表）
+const showAvatarLibrary = ref(false)
+function openAvatarLibrary() {
+  showAvatarLibrary.value = true
+}
+function onAvatarLibrarySelect(urls = []) {
+  const url = urls[0]
+  if (!url) return
+  newAvatarUrl.value = url
+  toast.success('图片已选择，记得点「添加」')
+}
+
+// 保存：Mellow_functions 的 json 是整体覆盖，必须先拿最新完整配置再合并本字段，
+// 否则会清掉 title / float_buttons 等其它配置
+async function saveDefaultAvatars() {
+  await withSaving('defaultAvatars', async () => {
+    const full = (await siteStore.load(true)) || {}
+    full.default_avatars = cfg.defaultAvatars.filter((u) => u && u.trim())
+    full.default_avatars_enabled = cfg.defaultAvatarsEnabled
+    await saveConfig('Mellow_functions', full)
+    await siteStore.invalidate()
+    toast.success('已保存')
+  })
 }
 
 // ---------- config 保存 ----------
@@ -3047,6 +3212,122 @@ onMounted(loadAll)
 .loading {
   padding: 40px;
   text-align: center;
+  color: var(--text-muted);
+}
+
+/* 默认头像管理（默认值设置 → 默认头像） */
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 14px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  margin-bottom: 14px;
+}
+.switch-row .form-label {
+  margin-bottom: 0;
+}
+.switch-row .form-hint {
+  margin-top: 2px;
+}
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 22px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.switch-slider {
+  position: absolute;
+  inset: 0;
+  background: var(--border);
+  border-radius: 22px;
+  transition: 0.2s;
+}
+.switch-slider::before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  left: 3px;
+  top: 3px;
+  background: var(--switch-knob, #fff);
+  border-radius: 50%;
+  transition: 0.2s;
+}
+.switch input:checked + .switch-slider {
+  background: var(--primary);
+}
+.switch input:checked + .switch-slider::before {
+  transform: translateX(18px);
+}
+.avatar-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.avatar-item {
+  position: relative;
+  width: 64px;
+  height: 64px;
+  padding: 4px;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.avatar-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--radius) - 4px);
+}
+.avatar-del {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  transition: background 0.18s;
+}
+.avatar-del:hover {
+  background: var(--danger, #e5484d);
+}
+.avatar-empty {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.avatar-add {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.avatar-add .input {
+  flex: 1;
+  min-width: 0;
+}
+.save-hint {
+  margin-right: auto;
+  font-size: 12px;
   color: var(--text-muted);
 }
 
