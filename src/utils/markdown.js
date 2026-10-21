@@ -103,6 +103,18 @@ md.renderer.rules.link_open = function (tokens, idx, options, env, self) {
   return defaultLinkOpen(tokens, idx, options, env, self)
 }
 
+// 正文图片（![alt](src)）：统一补懒加载 + 异步解码。
+// 文章 / 独立页面 / 文档正文都是长文，一次性把所有配图都拉下来既慢又费流量。
+const defaultImage = md.renderer.rules.image || function (tokens, idx, options, env, self) {
+  return self.renderToken(tokens, idx, options)
+}
+md.renderer.rules.image = function (tokens, idx, options, env, self) {
+  const token = tokens[idx]
+  token.attrSet('loading', 'lazy')
+  token.attrSet('decoding', 'async')
+  return defaultImage(tokens, idx, options, env, self)
+}
+
 /**
  * 行内表情：[emoji:表情链接] -> <img class="inline-emoji">
  *

@@ -19,7 +19,7 @@
       <ul v-else class="blocks-list">
         <li v-for="item in blocks" :key="item.id" class="block-item">
           <router-link :to="`/author/${item.block_uid}`" class="block-link">
-            <img :src="item.user?.avatar || defaultAvatar" class="block-avatar" alt="" />
+            <img :src="item.user?.avatar || defaultAvatar" class="block-avatar" alt="" loading="lazy" />
             <div class="block-info">
               <span class="block-name">{{ item.user?.nickname || '匿名用户' }}</span>
               <span class="block-sub">

@@ -41,7 +41,7 @@
 
     <!-- 发布动态：入口条，点击以弹窗形式编辑发布（未登录时整条即登录入口） -->
     <button v-if="userStore.isLogged" type="button" class="compose" @click="composeOpen = true">
-      <img class="compose__avatar" :src="composeAvatar" :alt="composeName" />
+      <img class="compose__avatar" :src="composeAvatar" :alt="composeName" loading="lazy" />
       <span class="compose__placeholder">分享此刻的想法…</span>
       <span class="btn btn-primary btn-sm">发布动态</span>
     </button>
@@ -158,7 +158,7 @@
 
 <script setup>
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
 import ArticleFeedItem from '@/components/ArticleFeedItem.vue'
 import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
@@ -222,7 +222,19 @@ function typeLabel(type) {
   return { notice: '公告', warning: '警告', info: '提示' }[type] || '公告'
 }
 
+const route = useRoute()
 const router = useRouter()
+
+/**
+ * 站内「发布动态」入口（旧地址 /moments，见 router/index.js）会重定向到 /?compose=1。
+ * 落地即打开弹窗，随即把参数从地址栏抹掉 —— 否则关掉弹窗后刷新 / 后退会再弹一次。
+ */
+function openComposeFromQuery() {
+  if (route.query.compose !== '1' || !userStore.isLogged) return
+  const { compose, ...rest } = route.query
+  composeOpen.value = true
+  router.replace({ query: rest })
+}
 
 // 公告原文跳转方式：仅支持 _blank（新窗口）/ _self（当前窗口），其他值回退为新窗口
 function placardLinkTarget(p) {
@@ -425,9 +437,13 @@ watch(sentinel, (el) => {
   if (el) observer.observe(el)
 })
 
+// 参数可能来自「已在本页时再点一次发布入口」，所以除了首屏还要跟着 watch
+watch(() => route.query.compose, openComposeFromQuery)
+
 onMounted(() => {
   loadPlacards()
   reload()
+  openComposeFromQuery()
 
   if (typeof IntersectionObserver !== 'undefined') {
     observer = new IntersectionObserver(

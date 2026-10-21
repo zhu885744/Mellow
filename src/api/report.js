@@ -1,4 +1,5 @@
 import { call } from './request'
+import { uploadAttachments } from './attachment'
 
 /**
  * 举报（动态 / 文章 / 评论 / 用户）
@@ -41,13 +42,10 @@ export const REPORT_REASONS = [
 export const createReport = (data) => call('report', 'create', { method: 'POST', data })
 
 /**
- * 上传举报证据图片（走 attachment/batch，multipart/form-data）
+ * 上传举报证据图片（统一走 uploadAttachments，含 WebP 压缩处理）
  * 返回 res.data.results：数组项含 status 与 full_url
- * 注意：不要手动设置 Content-Type，request 拦截器会移除它，
- * 由浏览器自动生成带 boundary 的 multipart/form-data
  */
-export const uploadReportImages = (formData) =>
-  call('attachment', 'batch', { method: 'POST', data: formData })
+export const uploadReportImages = (formData) => uploadAttachments(formData)
 
 /** 我提交的举报（分页） */
 export const myReports = (params = {}) =>

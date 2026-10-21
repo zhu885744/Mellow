@@ -423,7 +423,7 @@
       <!-- 单个用户：展示当前余额，便于核对 -->
       <div v-if="adjust.mode === 'single'" class="adjust-user">
         <div class="user-avatar sm">
-          <img v-if="adjust.user?.avatar" :src="adjust.user.avatar" :alt="adjust.user.nickname" />
+          <img v-if="adjust.user?.avatar" :src="adjust.user.avatar" :alt="adjust.user.nickname" loading="lazy" />
           <i v-else class="bi bi-person-circle" />
         </div>
         <div class="user-main">
@@ -585,7 +585,7 @@
         <!-- 目标用户回显：确认选对人 -->
         <div class="bind-user">
           <template v-if="bind.user">
-            <img v-if="bind.user.avatar" :src="bind.user.avatar" class="bind-avatar" alt="头像" />
+            <img v-if="bind.user.avatar" :src="bind.user.avatar" class="bind-avatar" alt="头像" loading="lazy" />
             <i v-else class="bi bi-person-circle bind-avatar is-icon" />
             <span class="bind-user__name">{{ bind.user.nickname || bind.user.account }}</span>
             <span v-if="bind.user.account" class="bind-user__account">{{ bind.user.account }}</span>

@@ -1304,7 +1304,7 @@
                   :key="idx"
                   class="avatar-item"
                 >
-                  <img :src="url" :alt="`默认头像 ${idx + 1}`" />
+                  <img :src="url" :alt="`默认头像 ${idx + 1}`" loading="lazy" />
                   <button
                     type="button"
                     class="avatar-del"
@@ -1351,6 +1351,37 @@
                 accept="image"
                 @select="onAvatarLibrarySelect"
               />
+            </section>
+
+            <section class="card card-pad">
+              <header class="cfg-head">
+                <div>
+                  <h3 class="cfg-title">图片上传压缩</h3>
+                  <p class="cfg-desc">
+                    上传图片附件前在浏览器端压缩并转换为 WebP（不改变分辨率，仅调整编码与质量），可显著减小体积；
+                    仅对 jpg / png / webp / bmp / tiff 生效，gif、svg 保持原样
+                  </p>
+                </div>
+              </header>
+
+              <div class="form-item">
+                <label class="form-label">压缩模式</label>
+                <SelectMenu v-model="cfg.uploadWebpMode" variant="field" :options="WEBP_MODE_OPTIONS" />
+                <p class="form-hint">
+                  关闭：不处理，原样上传；强制压缩：所有可压缩图片（jpg / png / webp / bmp / tiff）
+                  在上传前统一转换为 WebP，gif / svg 保持原样
+                </p>
+              </div>
+
+              <div class="cfg-foot">
+                <button
+                  class="btn btn-primary btn-sm"
+                  :disabled="isSaving('uploadWebp')"
+                  @click="saveUploadWebpMode"
+                >
+                  {{ isSaving('uploadWebp') ? '保存中...' : '保存' }}
+                </button>
+              </div>
             </section>
           </template>
 
@@ -1780,6 +1811,8 @@ const cfg = reactive({
   defaultAvatars: [],
   // 是否启用预设头像：关闭后前台隐藏预设、只能自行上传
   defaultAvatarsEnabled: true,
+  // 图片上传压缩为 WebP：off 关闭 / optional 用户可选 / force 强制压缩
+  uploadWebpMode: 'off',
   apiKey: { value: '0', local: '1' },
   qps: { value: '1', json: { point: 120, global: 600 } },
   qpsBlock: { value: '0', json: { count: 200, second: '60 * 60' } },
@@ -2415,7 +2448,7 @@ async function loadAll() {
   loading.value = true
   loadError.value = false
   try {
-    await Promise.all([loadConfigs(), loadTomlAll(), loadAuthGroups(), loadDefaultAvatars()])
+    await Promise.all([loadConfigs(), loadTomlAll(), loadAuthGroups(), loadSiteDefaults()])
   } catch {
     loadError.value = true
     toast.error('配置加载失败')
@@ -2423,6 +2456,12 @@ async function loadAll() {
     loading.value = false
   }
 }
+
+// 图片上传压缩模式选项（存 Mellow_functions.upload_webp_mode）
+const WEBP_MODE_OPTIONS = [
+  { value: 'off', label: '关闭' },
+  { value: 'force', label: '强制压缩' }
+]
 
 // 主题内置默认头像：后台「默认值设置」首次进入时预填，前台无配置时兜底
 const BUILTIN_AVATARS = [
@@ -2439,17 +2478,40 @@ const BUILTIN_AVATARS = [
 // default_avatars_enabled：开关，缺字段视为开启
 const siteStore = useSiteStore()
 
-async function loadDefaultAvatars() {
+// 读取 Mellow_functions 的完整 json
+// config/one 返回的 json 可能是对象，也可能是 JSON 字符串（后端两种都兼容），这里统一解析，
+// 否则遇到字符串形态会读成空对象、保存时把整份站点配置覆盖掉
+async function readMellowFunctions() {
+  const res = await getConfig('Mellow_functions', { silent: true })
+  const raw = res?.data?.json
+  if (raw && typeof raw === 'object') return { ...raw }
+  if (typeof raw === 'string') {
+    try {
+      const decoded = JSON.parse(raw)
+      return decoded && typeof decoded === 'object' ? { ...decoded } : {}
+    } catch {
+      return {}
+    }
+  }
+  return {}
+}
+
+async function loadSiteDefaults() {
   try {
-    const data = (await siteStore.load(true)) || {}
+    const data = await readMellowFunctions()
     const list = data.default_avatars
     cfg.defaultAvatars = Array.isArray(list)
       ? list.filter((u) => typeof u === 'string' && u.trim())
       : [...BUILTIN_AVATARS]
     cfg.defaultAvatarsEnabled = data.default_avatars_enabled !== false
+    // 历史值 optional 已下线，统一回落到 off
+    cfg.uploadWebpMode = ['off', 'force'].includes(data.upload_webp_mode)
+      ? data.upload_webp_mode
+      : 'off'
   } catch {
     cfg.defaultAvatars = [...BUILTIN_AVATARS]
     cfg.defaultAvatarsEnabled = true
+    cfg.uploadWebpMode = 'off'
   }
 }
 
@@ -2490,9 +2552,20 @@ function onAvatarLibrarySelect(urls = []) {
 // 否则会清掉 title / float_buttons 等其它配置
 async function saveDefaultAvatars() {
   await withSaving('defaultAvatars', async () => {
-    const full = (await siteStore.load(true)) || {}
+    const full = await readMellowFunctions()
     full.default_avatars = cfg.defaultAvatars.filter((u) => u && u.trim())
     full.default_avatars_enabled = cfg.defaultAvatarsEnabled
+    await saveConfig('Mellow_functions', full)
+    await siteStore.invalidate()
+    toast.success('已保存')
+  })
+}
+
+// 保存图片上传压缩模式（与默认头像同属 Mellow_functions，先取完整配置再合并单字段）
+async function saveUploadWebpMode() {
+  await withSaving('uploadWebp', async () => {
+    const full = await readMellowFunctions()
+    full.upload_webp_mode = cfg.uploadWebpMode
     await saveConfig('Mellow_functions', full)
     await siteStore.invalidate()
     toast.success('已保存')

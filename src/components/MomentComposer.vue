@@ -2,7 +2,7 @@
   <div class="composer">
     <!-- 作者 -->
     <div class="composer__head">
-      <img v-if="avatar" :src="avatar" class="composer__avatar" alt="" />
+      <img v-if="avatar" :src="avatar" class="composer__avatar" alt="" loading="lazy" />
       <i v-else class="bi bi-person-circle composer__avatar-icon" aria-hidden="true" />
       <span class="composer__name">{{ nickname }}</span>
     </div>
@@ -78,7 +78,7 @@
     <!-- 已选图片 -->
     <div v-if="images.length" class="composer__images">
       <div v-for="(img, i) in images" :key="img" class="composer__image">
-        <img :src="img" class="composer__image-img" alt="预览" />
+        <img :src="img" class="composer__image-img" alt="预览" loading="lazy" />
         <button type="button" class="composer__image-del" title="移除" @click="removeImage(i)">
           <i class="bi bi-x-lg" />
         </button>
@@ -131,10 +131,8 @@
 /**
  * 动态发布器（**唯一实现**）
  *
- * 两处共用这一个组件，不要各自再写一份：
- *   - 动态页 `views/moments/Index.vue`：内联使用（`<MomentComposer class="card card-pad" />`，
- *     卡片外观由调用方通过 class 提供）
- *   - 首页「发布动态」弹窗 `components/MomentComposeDialog.vue`：包一层弹窗外壳
+ * 唯一调用方是 `components/MomentComposeDialog.vue`（发布动态弹窗，首页 / 手机端底栏 / 「我的」
+ * 三处入口都用它）。动态列表页（原 `views/moments/Index.vue`）已下线，不要再为某个页面另写一份表单。
  *
  * 接口与参数口径：api/moments.js 的 createMoment —— content 必填、images 传逗号分隔字符串、
  * status=1 表示发布（0 为草稿）；不传 audit，是否进待审核由后端按站点「动态审核」开关决定
@@ -156,7 +154,7 @@ const MAX_SIZE = 50 * 1024 * 1024
 
 defineProps({
   // 表情面板是否内联展开：弹窗里必须 true（面板撑高弹窗）；
-  // 页面内联使用时保持默认 false（浮层，不把页面顶长）
+  // 保留默认 false 是为了以后若在页面里内联复用（浮层，不把页面顶长）
   inlinePicker: { type: Boolean, default: false }
 })
 

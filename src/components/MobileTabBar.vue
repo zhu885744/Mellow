@@ -47,6 +47,9 @@
       </button>
     </div>
   </Transition>
+
+  <!-- 发动态：动态列表页已下线，改用首页同一个发布弹窗（components/MomentComposeDialog.vue） -->
+  <MomentComposeDialog v-model:visible="composeOpen" />
 </template>
 
 <script setup>
@@ -55,6 +58,7 @@ import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
+import MomentComposeDialog from './MomentComposeDialog.vue'
 
 /**
  * 移动端底部 Tab Bar
@@ -136,9 +140,11 @@ function onTabClick(tab) {
 
 // 发布面板：发文章 / 发动态（两个入口都需要登录）
 const publishOpen = ref(false)
+// 「发动态」不再跳页面（动态列表页已下线），就地打开发布弹窗
+const composeOpen = ref(false)
 const PUBLISH_ACTIONS = [
   { key: 'post', label: '发文章', desc: '写一篇图文文章', icon: 'bi-pencil-square', to: '/manage/posts/write' },
-  { key: 'moment', label: '发动态', desc: '分享此刻的想法', icon: 'bi-chat-square-dots', to: '/moments' }
+  { key: 'moment', label: '发动态', desc: '分享此刻的想法', icon: 'bi-chat-square-dots', action: 'compose' }
 ]
 
 function togglePublish() {
@@ -152,6 +158,10 @@ function togglePublish() {
 
 function goPublish(item) {
   publishOpen.value = false
+  if (item.action === 'compose') {
+    composeOpen.value = true
+    return
+  }
   router.push(item.to)
 }
 

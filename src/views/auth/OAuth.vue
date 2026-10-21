@@ -30,7 +30,7 @@
     <!-- 未绑定：选择「创建新账号」或「绑定已有账号」 -->
     <template v-else-if="status === 'choice'">
       <div class="oauth-peer">
-        <img v-if="peer.avatar" class="oauth-peer-avatar" :src="peer.avatar" alt="" />
+        <img v-if="peer.avatar" class="oauth-peer-avatar" :src="peer.avatar" alt="" loading="lazy" />
         <div class="oauth-peer-info">
           <div class="oauth-peer-name">{{ peer.nickname || '第三方账号' }}</div>
           <div class="oauth-peer-tip">该 {{ platformName }} 账号还未绑定本站账号</div>

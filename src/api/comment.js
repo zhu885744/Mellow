@@ -1,4 +1,5 @@
 import { call } from './request'
+import { uploadAttachments } from './attachment'
 
 // ids 归一化：DELETE 走 query 传参，数组会被序列化成 ids[]= 导致后端取不到，统一转逗号分隔字符串
 const toIdsString = (ids) =>
@@ -32,12 +33,9 @@ export const createComment = (data) =>
 export const removeComment = (ids) =>
   call('comment', 'remove', { method: 'DELETE', params: { ids: toIdsString(ids) } })
 
-// 上传评论图片（attachment/batch，multipart/form-data）
+// 上传评论图片（统一走 uploadAttachments，含 WebP 压缩处理）
 // 返回 res.data.results：数组项含 status 与 full_url
-// 注意：不要手动设置 Content-Type，request 拦截器会移除它，
-// 由浏览器自动生成带 boundary 的 multipart/form-data
-export const uploadCommentImages = (formData) =>
-  call('attachment', 'batch', { method: 'POST', data: formData })
+export const uploadCommentImages = (formData) => uploadAttachments(formData)
 
 // ===== 后台（管理员）=====
 

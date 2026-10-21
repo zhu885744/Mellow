@@ -193,7 +193,7 @@
         <label class="form-label">分组图标</label>
         <div class="cover-row">
           <div class="cover-box">
-            <img v-if="edit.avatar" :src="edit.avatar" alt="图标预览" />
+            <img v-if="edit.avatar" :src="edit.avatar" alt="图标预览" loading="lazy" />
             <div v-else class="cover-empty" @click="pickAvatar">
               <i class="bi bi-image" />
               <span>上传</span>

@@ -3,7 +3,7 @@
     <!-- 移动端顶栏（仅手机端显示） -->
     <div class="mobile-topbar">
       <router-link to="/" class="mobile-brand" title="返回首页">
-        <img v-if="site.avatar" class="mobile-brand__logo" :src="site.avatar" :alt="site.title" />
+        <img v-if="site.avatar" class="mobile-brand__logo" :src="site.avatar" :alt="site.title" loading="lazy" />
         {{ site.title }}
       </router-link>
       <div class="mobile-actions">
@@ -40,6 +40,7 @@
             :src="userStore.user.avatar"
             class="mobile-avatar"
             alt="头像"
+            loading="lazy"
           />
           <span v-else class="mobile-user-fallback">我的</span>
         </router-link>
@@ -76,59 +77,73 @@
         </router-link>
 
         <nav class="site-nav">
-          <router-link to="/" exact-active-class="active" class="nav-item">
-            <span class="nav-zh">发现</span>
-          </router-link>
-          <!-- 聚合流（关注 / 推荐 / 热门）：按关注关系聚合，未登录由路由守卫引导登录 -->
-          <router-link to="/feed" active-class="active" class="nav-item">
-            <span class="nav-zh">关注</span>
-          </router-link>
-          <!-- 话题广场：热度榜 + 我关注的（聚合页见 /topic/:key） -->
-          <router-link to="/topics" active-class="active" class="nav-item">
-            <span class="nav-zh">话题</span>
-          </router-link>
-          <!-- 文档站：独立布局（/docs） -->
-          <router-link to="/docs" active-class="active" class="nav-item">
-            <span class="nav-zh">文档</span>
-          </router-link>
-          <!-- <router-link to="/moments" active-class="active" class="nav-item">
-            <span class="nav-zh">奇思</span>
-          </router-link> -->
-          <!-- 动态导航页（来自 /api/pages/all） -->
-          <router-link
-            v-for="p in pages"
-            :key="p.id"
-            :to="navTarget(p)"
-            active-class="active"
-            class="nav-item"
-          >
-            <span class="nav-zh">{{ p.title }}</span>
-          </router-link>
+          <!-- 未配置自定义菜单：显示默认导航 -->
+          <template v-if="!customMenus.length">
+            <router-link to="/" exact-active-class="active" class="nav-item">
+              <span class="nav-zh">发现</span>
+            </router-link>
+            <!-- 聚合流（关注 / 推荐 / 热门）：按关注关系聚合，未登录由路由守卫引导登录 -->
+            <router-link to="/feed" active-class="active" class="nav-item">
+              <span class="nav-zh">关注</span>
+            </router-link>
+            <!-- 话题广场：热度榜 + 我关注的（聚合页见 /topic/:key） -->
+            <router-link to="/topics" active-class="active" class="nav-item">
+              <span class="nav-zh">话题</span>
+            </router-link>
+            <!-- 文档站：独立布局（/docs） -->
+            <router-link to="/docs" active-class="active" class="nav-item">
+              <span class="nav-zh">文档</span>
+            </router-link>
+            <!-- 动态导航页（来自 /api/pages/all） -->
+            <router-link
+              v-for="p in pages"
+              :key="p.id"
+              :to="navTarget(p)"
+              active-class="active"
+              class="nav-item"
+            >
+              <span class="nav-zh">{{ p.title }}</span>
+            </router-link>
+            <!-- 积分商城 -->
+            <router-link to="/goods" active-class="active" class="nav-item">
+              <span class="nav-zh">商城</span>
+            </router-link>
+          </template>
 
-          <!-- 自定义导航链接（来自 Mellow_functions.custom_nav_links） -->
-          <a
-            v-for="(link, i) in customNavLinks"
-            :key="'custom-' + i"
-            :href="link.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="nav-item"
-          >
-            <span class="nav-zh">{{ link.name }}</span>
-          </a>
+          <!-- 已配置自定义菜单：只显示这里的菜单项（站内用 router-link，站外用 a 新窗口） -->
+          <template v-else>
+            <template v-for="(item, i) in customMenus" :key="'menu-' + i">
+              <a
+                v-if="item.external"
+                :href="item.url"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="nav-item"
+              >
+                <i v-if="item.icon" :class="item.icon" aria-hidden="true" />
+                <span class="nav-zh">{{ item.name }}</span>
+              </a>
+              <router-link
+                v-else
+                :to="item.url"
+                :active-class="isMenuRoot(item.url) ? 'router-link-active' : 'active'"
+                :exact-active-class="isMenuRoot(item.url) ? 'active' : 'router-link-exact-active'"
+                class="nav-item"
+              >
+                <i v-if="item.icon" :class="item.icon" aria-hidden="true" />
+                <span class="nav-zh">{{ item.name }}</span>
+              </router-link>
+            </template>
+          </template>
 
-          <!-- 积分商城 -->
-          <router-link to="/goods" active-class="active" class="nav-item">
-            <span class="nav-zh">商城</span>
-          </router-link>
-
-          <!-- 管理后台入口：有任意后台页面权限即显示（非 admin 的运营组也要能进自己那部分页面） -->
+          <!-- 管理后台入口：始终保留（有任意后台页面权限即显示，不受自定义菜单影响） -->
           <router-link
             v-if="canEnterAdmin(userStore.user)"
             to="/admin"
             active-class="active"
             class="nav-item"
           >
+            <i class="bi bi-gear-wide-connected"></i>
             <span class="nav-zh">管理</span>
           </router-link>
         </nav>
@@ -313,8 +328,28 @@ function navTarget(p) {
   return `/${p.key || p.id}`
 }
 
-// 解析自定义导航链接：格式 "跳转文字 || 跳转链接"，一行一个
-const customNavLinks = computed(() => {
+// 根路径（/）必须用精确匹配：否则 router-link 的前缀匹配会让「首页」在所有页面常亮
+function isMenuRoot(url) {
+  return String(url || '').split(/[?#]/)[0] === '/'
+}
+
+// 自定义菜单（Mellow_functions.custom_menus，JSON 数组）：
+// 每项 { name, icon, url, target: 'internal' | 'external' }
+// 非空时替换默认导航；为空时前台继续显示默认导航。
+// 同时兼容旧版 custom_nav_links（"名称 || 链接" 一行一个），老数据无需手动迁移即可继续展示。
+const customMenus = computed(() => {
+  const list = siteStore.config?.custom_menus
+  if (Array.isArray(list)) {
+    return list
+      .filter((item) => item && item.name && item.url)
+      .map((item) => ({
+        name: item.name,
+        icon: item.icon || '',
+        url: item.url,
+        external: item.target === 'external'
+      }))
+  }
+
   const raw = siteStore.config?.custom_nav_links || ''
   return raw
     .split('\n')
@@ -322,9 +357,10 @@ const customNavLinks = computed(() => {
     .filter(Boolean)
     .map((line) => {
       const [name, url] = line.split('||').map((s) => s.trim())
-      return { name: name || '', url: url || '' }
+      if (!name || !url) return null
+      return { name, icon: '', url, external: /^https?:\/\//i.test(url) }
     })
-    .filter((item) => item.name && item.url)
+    .filter(Boolean)
 })
 
 // 封禁检测：当前用户被封禁时自动弹出申诉弹窗（同一会话只弹一次）
@@ -502,6 +538,10 @@ onMounted(() => {
   color: var(--primary);
   font-weight: 600;
   background: var(--accent-soft);
+}
+/* 自定义菜单项的前置图标（bootstrap-icons） */
+.nav-item .bi {
+  margin-right: 6px;
 }
 .nav-item.active::before {
   content: '';

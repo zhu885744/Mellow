@@ -13,8 +13,8 @@
             </button>
           </header>
 
-          <!-- 表单本体与「动态」页（views/moments/Index.vue）共用同一个组件：
-               正文 / 图片 / 附件库 / 位置 / 发布都在 MomentComposer 里，这里只负责弹窗外壳 -->
+          <!-- 表单本体在 components/MomentComposer.vue：
+               正文 / 图片 / 附件库 / 位置 / 发布都在那边，这里只负责弹窗外壳 -->
           <div class="mc-body">
             <MomentComposer ref="composerRef" inline-picker @published="onPublished" />
           </div>
@@ -26,10 +26,11 @@
 
 <script setup>
 /**
- * 发布动态弹窗（首页用）
+ * 发布动态弹窗
  *
- * 只是一层「弹窗外壳」：表单本体是 components/MomentComposer.vue，与动态页共用，
- * 所以两处的字段、校验、图片上传、@ 提及行为完全一致 —— 不会再出现两份实现各自演化的问题。
+ * 所有「发动态」入口都走这里（首页、手机端底栏、我的页），动态列表页已下线。
+ * 只是一层「弹窗外壳」：表单本体是 components/MomentComposer.vue，
+ * 所以各入口的字段、校验、图片上传、@ 提及行为完全一致 —— 不会再出现多份实现各自演化的问题。
  */
 import { ref } from 'vue'
 import MomentComposer from './MomentComposer.vue'

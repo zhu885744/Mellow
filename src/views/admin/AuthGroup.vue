@@ -351,7 +351,7 @@
 
         <div v-if="memberPreview.length" class="member-chips">
           <span v-for="member in memberPreview" :key="member.id" class="member-chip">
-            <img v-if="member.avatar" :src="member.avatar" :alt="member.nickname" />
+            <img v-if="member.avatar" :src="member.avatar" :alt="member.nickname" loading="lazy" />
             <i v-else class="bi bi-person-circle" />
             {{ member.nickname || member.account || `用户 ${member.id}` }}
           </span>

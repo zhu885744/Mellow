@@ -73,7 +73,7 @@
       class="author-card card card-pad"
       :class="{ 'is-link': !!authorLink }"
     >
-      <img :src="author.avatar || defaultAvatar" class="author-avatar" />
+      <img :src="author.avatar || defaultAvatar" class="author-avatar" loading="lazy" />
       <div class="author-info">
         <div class="author-name">{{ author.nickname }}</div>
         <div class="author-desc">{{ author.description || '' }}</div>

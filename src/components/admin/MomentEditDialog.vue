@@ -54,7 +54,7 @@
 
     <div v-if="form.images.length" class="edit-images">
       <div v-for="(img, i) in form.images" :key="img + i" class="edit-img-item">
-        <img :src="img" alt="配图" />
+        <img :src="img" alt="配图" loading="lazy" />
         <button type="button" class="img-remove" title="移除" @click="removeImage(i)">
           <i class="bi bi-x-lg" />
         </button>

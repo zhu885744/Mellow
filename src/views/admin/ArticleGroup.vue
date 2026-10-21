@@ -125,7 +125,7 @@
 
             <div class="group-main" :style="{ paddingLeft: g.level * 22 + 'px' }">
             <span v-if="g.level > 0" class="tree-mark">└</span>
-            <img v-if="g.avatar" :src="g.avatar" class="group-avatar" alt="" />
+            <img v-if="g.avatar" :src="g.avatar" class="group-avatar" alt="" loading="lazy" />
             <span v-else class="group-avatar placeholder"><i class="bi bi-folder2" /></span>
 
             <div class="group-info">
@@ -206,7 +206,7 @@
         <label class="form-label">分类头像</label>
         <div class="avatar-row">
           <div v-if="dialog.avatar" class="avatar-preview">
-            <img :src="dialog.avatar" alt="分类头像" />
+            <img :src="dialog.avatar" alt="分类头像" loading="lazy" />
             <button type="button" class="avatar-del" title="移除头像" @click="dialog.avatar = ''">
               <i class="bi bi-x" />
             </button>

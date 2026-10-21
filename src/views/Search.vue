@@ -589,8 +589,8 @@ function goResult(item) {
       if (item.id) router.push(`/author/${item.id}`)
       break
     case 'moments':
-      // Mellow 无动态详情路由，跳转动态列表页
-      router.push('/moments')
+      // 动态列表页已下线，直接进动态详情（/moments/:id）
+      if (item.id) router.push(`/moments/${item.id}`)
       break
   }
 }

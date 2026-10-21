@@ -1,4 +1,6 @@
 import { call } from './request'
+import { getConfig } from './config'
+import { canCompressImage, compressImageToWebp } from '@/utils/imageCompress'
 
 // ids 归一化：DELETE 走 query 传参，数组会被序列化成 ids[]= 导致后端取不到，统一转逗号分隔字符串
 const toIdsString = (ids) =>
@@ -26,10 +28,100 @@ export const listMyAttachments = (params = {}) =>
     }
   })
 
+/**
+ * 读取「图片上传压缩」模式（每次上传读一次，不缓存）
+ *
+ * 不走 siteStore（30 分钟本地缓存会让人误以为改了配置没生效），也不做模块级缓存：
+ * 上传频率远低于列表查询，多这一次 config/one 请求换「改完立即生效」是值得的。
+ * 配置来自 Mellow_functions.upload_webp_mode（off / force），读取失败按 off 处理。
+ */
+// config/one 的 json 可能是已解码对象，也可能是 JSON 字符串（后端 ParseConfigJson 两种都兼容），
+// 这里同样两种都处理，避免因形态不同导致配置读成 undefined
+function parseConfigJson(raw) {
+  if (!raw) return {}
+  if (typeof raw === 'object') return raw
+  if (typeof raw === 'string') {
+    try {
+      const decoded = JSON.parse(raw)
+      return decoded && typeof decoded === 'object' ? decoded : {}
+    } catch {
+      return {}
+    }
+  }
+  return {}
+}
+
+async function getUploadWebpMode() {
+  try {
+    const res = await getConfig('Mellow_functions', { silent: true })
+    const config = parseConfigJson(res?.data?.json)
+    const mode = config.upload_webp_mode === 'force' ? 'force' : 'off'
+    console.info('[webp] 上传压缩模式：', mode)
+    return mode
+  } catch (error) {
+    console.warn('[webp] 读取压缩配置失败，按关闭处理：', error)
+    return 'off'
+  }
+}
+
+// FormData 里的值在个别环境可能不是 File 实例（跨 iframe / 粘贴产生的 Blob），用鸭子类型判断更稳
+function isFileLike(value) {
+  return Boolean(value)
+    && typeof value === 'object'
+    && typeof value.type === 'string'
+    && typeof value.size === 'number'
+}
+
+/**
+ * 按后台「图片上传压缩」配置，把 FormData 里的图片先转成 WebP
+ *
+ * - off：原样上传
+ * - force：所有可压缩图片一律转 WebP
+ * 读取失败按 off 处理，绝不阻断上传。
+ */
+async function prepareUploadFormData(formData) {
+  // 兼容两种字段名：批量上传用 'files'（多文件），头像 / 封面等单文件场景用 'file'
+  // （后端 batch 优先取 files，取不到再取 file，两种都接受）
+  const single = formData.getAll('file')
+  const multiple = formData.getAll('files')
+  const all = [...single, ...multiple]
+  if (!all.length) return formData
+
+  if ((await getUploadWebpMode()) !== 'force') return formData
+
+  // 没有可压缩的图片时避免多余重建
+  const hasImage = all.some((file) => isFileLike(file) && canCompressImage(file))
+  if (!hasImage) {
+    console.info('[webp] 未识别到可压缩图片，按原样上传：', all.map((f) => `${f?.name || '?'}(${f?.type || '?'})`))
+    return formData
+  }
+
+  const compressOne = async (file) => {
+    if (isFileLike(file) && canCompressImage(file)) return compressImageToWebp(file)
+    return file
+  }
+
+  const next = new FormData()
+  // 保留文件之外的字段（target_type / target_id 等）
+  for (const [key, value] of formData.entries()) {
+    if (key !== 'file' && key !== 'files') next.append(key, value)
+  }
+  // 按原字段名重建，避免后端按 files / file 分支解析时取不到
+  for (const file of single) {
+    next.append('file', await compressOne(file))
+  }
+  for (const file of multiple) {
+    next.append('files', await compressOne(file))
+  }
+  return next
+}
+
 // 批量上传（单文件/多文件通用），multipart/form-data
 // 注意：不要手动设置 Content-Type，request 拦截器会移除它，由浏览器自动补 boundary
-export const uploadAttachments = (formData) =>
-  call('attachment', 'batch', { method: 'POST', data: formData })
+export const uploadAttachments = async (formData) => {
+  const data = await prepareUploadFormData(formData)
+  return call('attachment', 'batch', { method: 'POST', data })
+}
 
 // ===== 后台（管理员）=====
 

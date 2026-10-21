@@ -392,7 +392,7 @@
           <label class="form-label">商品封面</label>
           <div class="cover-row">
             <div class="cover-box">
-              <img v-if="edit.cover" :src="edit.cover" alt="封面预览" />
+              <img v-if="edit.cover" :src="edit.cover" alt="封面预览" loading="lazy" />
               <div v-else class="cover-empty" @click="pickCover">
                 <i class="bi bi-image" />
                 <span>上传</span>

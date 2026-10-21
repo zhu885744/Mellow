@@ -443,6 +443,12 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+/* 概览卡与条目列表卡是上下两块，需要竖向间距（与其它后台页统一 16px） */
+.log-admin {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
 .panel-head,
 .list-head {
   display: flex;
@@ -468,7 +474,9 @@ onMounted(async () => {
   border-radius: 3px;
   background: var(--bg-muted);
 }
+/* 截断提示紧跟在统计卡下面，单独给一点上间距，否则会贴着卡片 */
 .warn-text {
+  margin-top: 12px;
   color: var(--warning, #b8860b);
 }
 .head-actions {

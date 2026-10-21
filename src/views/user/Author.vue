@@ -147,7 +147,7 @@
       <ul class="suggest-list">
         <li v-for="u in suggestions" :key="u.id" class="suggest-item">
           <router-link :to="`/author/${u.id}`" class="suggest-link">
-            <img :src="u.avatar || defaultAvatar" class="suggest-avatar" alt="" @error="onImgError" />
+            <img :src="u.avatar || defaultAvatar" class="suggest-avatar" alt="" @error="onImgError" loading="lazy" />
             <div class="suggest-info">
               <span class="suggest-name">{{ u.nickname || '匿名用户' }}</span>
               <span class="suggest-sub">
@@ -206,7 +206,7 @@
         <ul v-else class="user-list">
           <li v-for="item in list" :key="item.id" class="user-item">
             <router-link :to="`/author/${item.uid || item.user_id || item.id}`" class="user-link">
-              <img :src="item.avatar || defaultAvatar" class="user-avatar" @error="onImgError" />
+              <img :src="item.avatar || defaultAvatar" class="user-avatar" @error="onImgError" loading="lazy" />
               <div class="user-info">
                 <span class="user-name">{{ item.nickname || item.name || '匿名用户' }}</span>
                 <span class="user-sub">{{ item.description || '' }}</span>

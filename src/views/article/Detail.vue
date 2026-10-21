@@ -11,7 +11,7 @@
         class="meta-author"
         :class="{ 'is-link': !!authorLink }"
       >
-        <img :src="author?.avatar || defaultAvatar" class="meta-author__avatar" alt="" />
+        <img :src="author?.avatar || defaultAvatar" class="meta-author__avatar" alt="" loading="lazy" />
         <span class="meta-author__name">{{ author?.nickname || '匿名' }}</span>
       </component>
       <span class="dot">·</span>

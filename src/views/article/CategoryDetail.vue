@@ -11,6 +11,7 @@
           :src="categoryInfo.avatar"
           class="category-avatar"
           @error="onAvatarError"
+          loading="lazy"
         />
         <div class="category-info-main">
           <h1 class="category-title">

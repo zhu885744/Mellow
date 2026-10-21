@@ -56,7 +56,7 @@
               :class="['frame-item', { selected: form.avatar === url }]"
               @click="selectDefaultAvatar(url)"
             >
-              <img :src="url" :alt="`默认头像 ${idx + 1}`" />
+              <img :src="url" :alt="`默认头像 ${idx + 1}`" loading="lazy" />
             </button>
           </div>
         </div>
@@ -85,7 +85,7 @@
           <!-- 自定义图片 -->
           <template v-if="coverMode === 'image'">
             <div class="cover-preview" :class="{ 'is-empty': !form.cover }">
-              <img v-if="form.cover" :src="form.cover" alt="主页封面预览" />
+              <img v-if="form.cover" :src="form.cover" alt="主页封面预览" loading="lazy" />
               <span v-else>未设置封面，用户主页将使用主题色渐变</span>
             </div>
             <div class="cover-actions">

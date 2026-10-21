@@ -81,7 +81,7 @@
  * - 本页只展示**公开**动态，不提供查看草稿 / 待审核内容的入口（那是「我的动态」的职责）
  * - 接口必须登录，未登录由路由守卫拦下，后端也会 401
  * - 分页大小固定 15（后端上限 20）、页码不得超过后端 feedMaxPage，
- *   以避免「深翻页批量抓取」——需要更多内容请用搜索 / 动态页，不要在这里放大 limit
+ *   以避免「深翻页批量抓取」——需要更多内容请用搜索页，不要在这里放大 limit
  */
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -126,7 +126,8 @@ const emptyState = computed(() => {
     return {
       icon: '👀',
       text: '关注流还没有内容',
-      action: { text: '去动态页逛逛', to: '/moments' }
+      // 动态列表页已下线：全站动态（文章 + 动态混排）在首页「发现」
+      action: { text: '去首页逛逛', to: '/' }
     }
   }
   if (type.value === 'recommend') {
@@ -187,7 +188,7 @@ onMounted(load)
 </script>
 
 <style scoped>
-/* 基础样式：.loading 不是全局样式（各页面自带一份，见 views/moments/Index.vue） */
+/* 基础样式：.loading 不是全局样式（各页面自带一份，见 views/home/Index.vue） */
 .loading {
   padding: 40px;
   text-align: center;

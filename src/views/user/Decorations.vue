@@ -63,6 +63,7 @@
                 :src="item.preview || item.payload?.image"
                 class="deco-frame"
                 :alt="item.name"
+                loading="lazy"
               />
               <TitleBadge v-else :payload="item.payload" :text="item.custom_text" size="lg" />
               <!-- 稀有度角标：与装扮商城保持一致，取值来自后台「装扮管理」 -->

@@ -56,7 +56,7 @@
             class="link-card"
           >
             <div class="link-head">
-              <img :src="link.avatar || defaultAvatar" alt="头像" class="link-avatar" />
+              <img :src="link.avatar || defaultAvatar" alt="头像" class="link-avatar" loading="lazy" />
               <div class="link-info">
                 <div class="link-name">{{ link.nickname }}</div>
                 <div class="link-url">{{ host(link.url) }}</div>

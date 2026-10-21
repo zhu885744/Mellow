@@ -15,7 +15,7 @@
         :to="`/category/${c.key || c.id}`"
         class="cat-card"
       >
-        <img v-if="c.avatar" :src="c.avatar" class="cat-cover" @error="onImgError" />
+        <img v-if="c.avatar" :src="c.avatar" class="cat-cover" @error="onImgError" loading="lazy" />
         <div v-else class="cat-cover cat-cover-empty">{{ c.name?.[0] || '·' }}</div>
         <div class="cat-name">{{ c.name }}</div>
       </router-link>

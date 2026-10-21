@@ -4,7 +4,7 @@
     <section class="hero">
       <div class="hero-main">
         <div class="hero-user">
-          <img class="hero-avatar" :src="avatar" :alt="nickname" @error="onAvatarError" />
+          <img class="hero-avatar" :src="avatar" :alt="nickname" @error="onAvatarError" loading="lazy" />
           <div class="hero-line">
             <div class="hero-title">你好，{{ nickname }}</div>
             <div class="hero-sub">{{ siteTitle }} · 管理后台</div>
@@ -279,6 +279,14 @@ mdLite.renderer.rules.link_open = function (tokens, idx, options, env, self) {
     tokens[idx].attrSet('rel', 'noopener noreferrer')
   }
   return mdLinkOpen(tokens, idx, options, env, self)
+}
+// 更新说明里的配图同样懒加载（与 utils/markdown.js 的正文渲染保持一致）
+const mdImage = mdLite.renderer.rules.image
+  || function (tokens, idx, options, env, self) { return self.renderToken(tokens, idx, options) }
+mdLite.renderer.rules.image = function (tokens, idx, options, env, self) {
+  tokens[idx].attrSet('loading', 'lazy')
+  tokens[idx].attrSet('decoding', 'async')
+  return mdImage(tokens, idx, options, env, self)
 }
 
 const releaseNotesHtml = computed(() => (release.body ? mdLite.render(release.body) : ''))

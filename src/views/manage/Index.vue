@@ -68,7 +68,7 @@
         <span class="entry-ico"><i class="bi bi-stars" /></span>
         <span class="entry-body">
           <span class="entry-title">发布动态</span>
-          <span class="entry-desc">前往动态广场，随手记录此刻的想法</span>
+          <span class="entry-desc">回到首页，弹窗里随手记录此刻的想法</span>
         </span>
         <i class="bi bi-chevron-right entry-arrow" />
       </router-link>

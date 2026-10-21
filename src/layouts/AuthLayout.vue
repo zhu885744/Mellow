@@ -4,7 +4,7 @@
     <div class="auth-card">
       <!-- 顶部品牌区：配了网站 LOGO 就只显示 LOGO（标题已在图片里，不再重复），否则显示站点标题 -->
       <router-link to="/" class="auth-logo" :class="{ 'auth-logo--image': site.avatar }">
-        <img v-if="site.avatar" class="auth-logo__img" :src="site.avatar" :alt="site.title" />
+        <img v-if="site.avatar" class="auth-logo__img" :src="site.avatar" :alt="site.title" loading="lazy" />
         <span v-else>{{ site.title }}</span>
       </router-link>
       <router-view />

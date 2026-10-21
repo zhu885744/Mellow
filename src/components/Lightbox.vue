@@ -25,6 +25,7 @@
           class="lightbox-img"
           alt="图片预览"
           @click.stop
+          loading="lazy"
         />
 
         <button

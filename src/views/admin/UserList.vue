@@ -362,7 +362,7 @@
           <label class="form-label">头像</label>
           <div class="avatar-row">
             <div class="avatar-box">
-              <img v-if="edit.avatar" :src="edit.avatar" alt="头像预览" />
+              <img v-if="edit.avatar" :src="edit.avatar" alt="头像预览" loading="lazy" />
               <div v-else class="avatar-empty" @click="pickAvatar">
                 <i class="bi bi-image" />
                 <span>上传</span>
@@ -665,6 +665,7 @@
                 :src="item.preview || item.payload?.image"
                 class="deco-thumb"
                 :alt="item.name"
+                loading="lazy"
               />
               <i v-else class="bi bi-award deco-thumb-icon" />
 

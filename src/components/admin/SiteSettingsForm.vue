@@ -70,25 +70,103 @@
       </div>
     </section>
 
-    <!-- 自定义导航栏 -->
+    <!-- 自定义菜单 -->
     <section class="card card-pad">
       <header class="cfg-head">
         <div>
-          <h3 class="cfg-title">自定义导航栏</h3>
-          <p class="cfg-desc">在前台导航中加入自定义跳转链接</p>
+          <h3 class="cfg-title">自定义菜单</h3>
+          <p class="cfg-desc">
+            自定义前台左栏导航。不设置时显示默认导航；添加菜单项后，前台只显示这里配置的菜单（「管理」入口始终保留）
+          </p>
         </div>
       </header>
-      <div class="form-item">
-        <label class="form-label">自定义导航链接</label>
-        <textarea
-          v-model="globalConfig.custom_nav_links"
-          class="textarea code-textarea"
-          rows="5"
-          placeholder="百度一下 || https://baidu.com&#10;腾讯视频 || https://v.qq.com"
-        ></textarea>
-        <p class="form-hint">
-          格式：<code>跳转文字 || 跳转链接</code>（中间使用两个竖杠分隔），一行一个。
+
+      <div class="menu-manager">
+        <div class="manager-head">
+          <span class="form-label">菜单项</span>
+          <button type="button" class="btn btn-sm" @click="addMenu">
+            <i class="bi bi-plus-lg" /> 添加
+          </button>
+        </div>
+        <p v-if="!globalConfig.custom_menus.length" class="manager-empty">
+          还没有自定义菜单，此时前台显示默认导航。
         </p>
+
+        <div v-for="(menu, index) in globalConfig.custom_menus" :key="menu.id" class="menu-item">
+          <div class="menu-item-head">
+            <strong class="menu-item-name">
+              <i v-if="menu.icon" :class="menu.icon" aria-hidden="true" />
+              {{ menu.name || '未命名菜单' }}
+            </strong>
+            <div class="menu-item-actions">
+              <button
+                type="button"
+                class="btn btn-sm"
+                :disabled="index === 0"
+                title="上移"
+                @click="moveMenu(index, 'up')"
+              >
+                <i class="bi bi-arrow-up" />
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm"
+                :disabled="index === globalConfig.custom_menus.length - 1"
+                title="下移"
+                @click="moveMenu(index, 'down')"
+              >
+                <i class="bi bi-arrow-down" />
+              </button>
+              <button type="button" class="btn btn-sm btn-danger" @click="removeMenu(index)">删除</button>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-item">
+              <label class="form-label">名称</label>
+              <input v-model="menu.name" class="input" placeholder="例如：关于" />
+            </div>
+            <div class="form-item">
+              <label class="form-label">图标（bootstrap-icons）</label>
+              <div class="input-group">
+                <input v-model="menu.icon" class="input" placeholder="bi bi-info-circle" />
+                <span class="menu-icon-preview">
+                  <i :class="menu.icon || 'bi bi-question-circle'" aria-hidden="true" />
+                </span>
+                <a
+                  class="btn btn-sm icon-library-link"
+                  href="https://icons.getbootstrap.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="去 Bootstrap Icons 官网查找并复制图标类名"
+                >
+                  <i class="bi bi-box-arrow-up-right" /> 图标库
+                </a>
+              </div>
+              <p class="form-hint">
+                在图标库搜索后复制类名（如 <code>bi bi-info-circle</code>）粘贴到这里
+              </p>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-item">
+              <label class="form-label">跳转类型</label>
+              <SelectMenu v-model="menu.target" variant="field" :options="MENU_TARGET_OPTIONS" />
+            </div>
+            <div class="form-item">
+              <label class="form-label">链接</label>
+              <input
+                v-model="menu.url"
+                class="input"
+                :placeholder="menu.target === 'external' ? 'https://example.com' : '/about'"
+              />
+              <p class="form-hint">
+                {{ menu.target === 'external' ? '站外链接，会在新窗口打开' : '站内路径，例如 /about、/topics' }}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -417,6 +495,10 @@ function defaultConfig() {
     avatar: '',
     favicon: '',
     date: Math.floor(Date.now() / 1000).toString(),
+    // 自定义菜单（JSON 数组）：设置后前台只显示这些导航项，为空则显示默认导航
+    // 每项 { id, name, icon, url, target: 'internal' | 'external' }
+    custom_menus: [],
+    // 旧版自定义链接（"名称 || 链接"），仅用于读取时迁移，保存后不再使用
     custom_nav_links: '',
     copy: { code: '', link: 'https://beian.miit.gov.cn/#/Integrated/index' },
     police: { code: '', link: 'https://beian.mps.gov.cn/#/query/webSearch' },
@@ -436,6 +518,61 @@ function defaultConfig() {
 }
 
 const saving = ref(false)
+
+// ---------- 自定义菜单 ----------
+const MENU_TARGET_OPTIONS = [
+  { value: 'internal', label: '站内跳转' },
+  { value: 'external', label: '站外跳转' }
+]
+
+// 归一化菜单数据：优先 custom_menus（数组），没有则把旧版 custom_nav_links 迁移成数组
+function normalizeMenus(list, legacyText) {
+  if (Array.isArray(list) && list.length) {
+    return list.map((item, index) => ({
+      id: Number(item?.id) || index + 1,
+      name: item?.name || '',
+      icon: item?.icon || '',
+      url: item?.url || '',
+      target: item?.target === 'external' ? 'external' : 'internal'
+    }))
+  }
+
+  return String(legacyText || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line, index) => {
+      const [name, url] = line.split('||').map((s) => s.trim())
+      if (!name || !url) return null
+      return {
+        id: index + 1,
+        name,
+        icon: '',
+        url,
+        target: /^https?:\/\//i.test(url) ? 'external' : 'internal'
+      }
+    })
+    .filter(Boolean)
+}
+
+function addMenu() {
+  const list = globalConfig.value.custom_menus
+  const id = list.length ? Math.max(...list.map((m) => Number(m.id) || 0)) + 1 : 1
+  list.push({ id, name: '新菜单', icon: 'bi bi-link-45deg', url: '', target: 'internal' })
+}
+
+function removeMenu(index) {
+  globalConfig.value.custom_menus.splice(index, 1)
+}
+
+function moveMenu(index, direction) {
+  const list = globalConfig.value.custom_menus
+  const target = direction === 'up' ? index - 1 : index + 1
+  if (target < 0 || target >= list.length) return
+  const temp = list[index]
+  list[index] = list[target]
+  list[target] = temp
+}
 
 // 格式化日期
 function formatDate(timestamp) {
@@ -463,6 +600,7 @@ async function getGlobalConfig() {
       avatar: config.avatar || '',
       favicon: config.favicon || '',
       date: config.date || base.date,
+      custom_menus: normalizeMenus(config.custom_menus, config.custom_nav_links),
       custom_nav_links: config.custom_nav_links || '',
       copy: { code: config.copy?.code || '', link: config.copy?.link || base.copy.link },
       police: { code: config.police?.code || '', link: config.police?.link || base.police.link },
@@ -710,6 +848,58 @@ onMounted(getGlobalConfig)
 .float-btn-actions {
   display: flex;
   gap: 4px;
+}
+
+/* 自定义菜单管理 */
+.menu-manager {
+  margin-top: 4px;
+}
+.menu-item {
+  background: var(--bg-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  padding: 14px;
+  margin-bottom: 12px;
+}
+.menu-item-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.menu-item-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+.menu-item-name .bi {
+  color: var(--primary);
+}
+.menu-item-actions {
+  display: flex;
+  gap: 4px;
+}
+.menu-icon-preview {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-soft);
+  font-size: 16px;
+}
+/* 图标库外链（与输入框同行，保持按钮外观） */
+.icon-library-link {
+  flex-shrink: 0;
+  white-space: nowrap;
+  text-decoration: none;
 }
 
 @media (max-width: 720px) {

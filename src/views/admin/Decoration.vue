@@ -176,6 +176,7 @@
                   :src="item.preview || item.payload?.image"
                   class="deco-frame"
                   :alt="item.name"
+                  loading="lazy"
                 />
                 <!-- 图片头衔只显示图片；「纯样式模板」（无文字无图片）才用装扮名占位预览 -->
                 <TitleBadge
@@ -260,7 +261,7 @@
                     @change="toggleGrantUser(user.id)"
                   />
                 </label>
-                <img v-if="user.avatar" class="pick-avatar" :src="user.avatar" :alt="user.nickname" />
+                <img v-if="user.avatar" class="pick-avatar" :src="user.avatar" :alt="user.nickname" loading="lazy" />
                 <span v-else class="pick-avatar is-empty"><i class="bi bi-person" /></span>
                 <span class="pick-name">{{ user.nickname || '未命名' }}</span>
                 <span class="pick-sub">#{{ user.id }}</span>
@@ -301,6 +302,7 @@
                   class="pick-avatar"
                   :src="item.preview || item.payload?.image"
                   :alt="item.name"
+                  loading="lazy"
                 />
                 <span v-else class="pick-avatar is-empty"><i class="bi bi-award" /></span>
                 <span class="pick-name">{{ item.name }}</span>
@@ -378,6 +380,7 @@
                     class="preview-frame"
                     :src="form.p_image || form.preview"
                     alt="预览"
+                    loading="lazy"
                   />
                   <!-- 图片头衔由 TitleBadge 自己识别：有图片就只显示图片，这里传的文字会被忽略 -->
                   <TitleBadge
@@ -455,7 +458,7 @@
 
                 <div class="frame-aligner__body">
                   <div class="frame-aligner__stage">
-                    <img class="frame-aligner__avatar" :src="alignerAvatar" alt="头像示例" />
+                    <img class="frame-aligner__avatar" :src="alignerAvatar" alt="头像示例" loading="lazy" />
                     <img
                       v-if="form.p_image"
                       class="frame-aligner__overlay"
@@ -467,6 +470,7 @@
                       @pointermove="onAlignPointerMove"
                       @pointerup="onAlignPointerUp"
                       @pointercancel="onAlignPointerUp"
+                      loading="lazy"
                     />
                     <p v-else class="frame-aligner__empty">先填上面的素材地址</p>
                   </div>

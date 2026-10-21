@@ -15,6 +15,7 @@
           class="topic-cover"
           alt=""
           @error="onCoverError"
+          loading="lazy"
         />
         <div class="topic-main">
           <h1 class="topic-title">#{{ topic.name }}#</h1>

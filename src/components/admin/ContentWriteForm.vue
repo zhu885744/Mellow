@@ -48,7 +48,7 @@
             <label class="form-label">封面</label>
             <div class="cover-box">
               <div v-if="form.cover" class="cover-preview">
-                <img :src="form.cover" alt="封面预览" />
+                <img :src="form.cover" alt="封面预览" loading="lazy" />
                 <button type="button" class="cover-del" title="移除封面" @click="form.cover = ''">
                   <i class="bi bi-x" />
                 </button>

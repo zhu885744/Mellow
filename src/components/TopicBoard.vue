@@ -7,7 +7,7 @@
       <div v-for="(item, index) in items" :key="item.id" class="topic-card">
         <RouterLink v-if="!plain" :to="`/topic/${item.id}`" class="topic-card-link">
           <span v-if="showRank" class="topic-rank" :class="{ hot: index < 3 }">{{ index + 1 }}</span>
-          <img v-if="item.avatar" :src="item.avatar" class="topic-card-cover" alt="" @error="onCoverError" />
+          <img v-if="item.avatar" :src="item.avatar" class="topic-card-cover" alt="" @error="onCoverError" loading="lazy" />
           <span v-else class="topic-card-cover topic-card-cover--empty">#</span>
           <span class="topic-card-main">
             <span class="topic-card-name">
@@ -25,7 +25,7 @@
         <!-- plain：外层自己包跳转（feed 页的 tab 里整块卡片可点） -->
         <div v-else class="topic-card-link">
           <span v-if="showRank" class="topic-rank" :class="{ hot: index < 3 }">{{ index + 1 }}</span>
-          <img v-if="item.avatar" :src="item.avatar" class="topic-card-cover" alt="" @error="onCoverError" />
+          <img v-if="item.avatar" :src="item.avatar" class="topic-card-cover" alt="" @error="onCoverError" loading="lazy" />
           <span v-else class="topic-card-cover topic-card-cover--empty">#</span>
           <span class="topic-card-main">
             <span class="topic-card-name">

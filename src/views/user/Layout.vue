@@ -9,7 +9,7 @@
       </div>
 
       <div class="user-card">
-        <img :src="user?.avatar || defaultAvatar" class="user-card-avatar" alt="avatar" />
+        <img :src="user?.avatar || defaultAvatar" class="user-card-avatar" alt="avatar" loading="lazy" />
         <div class="user-card-info">
           <div class="user-card-name">{{ user?.nickname || '未登录' }}</div>
           <div class="user-card-level">
@@ -97,7 +97,7 @@
               :aria-expanded="userMenuOpen"
               @click="userMenuOpen = !userMenuOpen"
             >
-              <img :src="user?.avatar || defaultAvatar" class="user-topbar-avatar" alt="avatar" />
+              <img :src="user?.avatar || defaultAvatar" class="user-topbar-avatar" alt="avatar" loading="lazy" />
               <span class="user-topbar-name">{{ user?.nickname || '未登录' }}</span>
               <i class="bi bi-chevron-down user-menu-caret" />
             </button>

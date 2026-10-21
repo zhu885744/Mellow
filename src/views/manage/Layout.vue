@@ -87,7 +87,7 @@
               :aria-expanded="userMenuOpen"
               @click="userMenuOpen = !userMenuOpen"
             >
-              <img :src="user?.avatar || defaultAvatar" class="manage-avatar" alt="avatar" />
+              <img :src="user?.avatar || defaultAvatar" class="manage-avatar" alt="avatar" loading="lazy" />
               <span class="manage-user-name">{{ user?.nickname || '未登录' }}</span>
               <i class="bi bi-chevron-down manage-menu-caret" />
             </button>

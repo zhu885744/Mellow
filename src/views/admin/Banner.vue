@@ -209,7 +209,7 @@
         <label class="form-label">轮播图片</label>
         <div class="avatar-row">
           <div class="cover-box">
-            <img v-if="dialog.image" :src="dialog.image" alt="轮播图预览" />
+            <img v-if="dialog.image" :src="dialog.image" alt="轮播图预览" loading="lazy" />
             <div v-else class="cover-empty" @click="pickImage">
               <i class="bi bi-image" />
               <span>上传</span>

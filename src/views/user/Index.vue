@@ -9,7 +9,7 @@
       <!-- 资料卡：昵称可进个人主页；右侧签到 -->
       <section class="my-profile">
         <div class="my-profile__top">
-          <img class="my-avatar" :src="avatar" :alt="nickname" @error="onAvatarError" />
+          <img class="my-avatar" :src="avatar" :alt="nickname" @error="onAvatarError" loading="lazy" />
           <div class="my-profile__text">
             <RouterLink v-if="uid" :to="`/author/${uid}`" class="my-nickname" title="进入我的主页">
               <span class="my-nickname__text">{{ nickname }}</span>
@@ -179,6 +179,9 @@
         <i class="bi bi-chevron-right my-arrow" aria-hidden="true" />
       </RouterLink>
     </nav>
+
+    <!-- 发布动态：动态列表页已下线，与首页共用同一个发布弹窗 -->
+    <MomentComposeDialog v-model:visible="composeOpen" />
   </div>
 </template>
 
@@ -191,6 +194,7 @@ import { useNotificationStore } from '@/stores/notification'
 import { getIntegral, getIntegralTasks } from '@/api/goods'
 import { getCheckinStatus, signIn } from '@/api/checkin'
 import { toast } from '@/utils/toast'
+import MomentComposeDialog from '@/components/MomentComposeDialog.vue'
 
 /**
  * 「我的」聚合页（/user）
@@ -211,7 +215,8 @@ const DEFAULT_VISIBLE = 8
 
 // 全部可放进「常用」的入口（名称 / 图标与侧栏、底栏口径保持一致）
 const CATALOGUE = [
-  { key: 'moment-new', name: '发布动态', icon: 'bi bi-chat-square-text', to: '/moments' },
+  // 发布动态没有独立页面（动态列表页已下线）：点击直接打开发布弹窗，见 onShortcutTap
+  { key: 'moment-new', name: '发布动态', icon: 'bi bi-chat-square-text', action: 'compose' },
   { key: 'manage', name: '创作中心', icon: 'bi bi-pencil-square', to: '/manage' },
   { key: 'manage-posts', name: '我的文章', icon: 'bi bi-journal-text', to: '/manage/posts' },
   { key: 'integral', name: '我的积分', icon: 'bi bi-coin', to: '/user/integral' },
@@ -367,6 +372,9 @@ function pushRecent(item) {
   }
 }
 
+// 发布动态弹窗（CATALOGUE 里 action === 'compose' 的入口用）
+const composeOpen = ref(false)
+
 // 编辑态下点「常用」是增删；非编辑态才跳转并记入最近使用
 function onShortcutTap(item) {
   if (editing.value) {
@@ -374,6 +382,11 @@ function onShortcutTap(item) {
     return
   }
   pushRecent(item)
+  // 「发布动态」没有目标页面：就地打开发布弹窗，不做路由跳转
+  if (item.action === 'compose') {
+    composeOpen.value = true
+    return
+  }
   router.push(item.to)
 }
 

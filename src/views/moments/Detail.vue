@@ -1,8 +1,9 @@
 <template>
   <div class="moment-detail-page">
     <div class="detail-bar">
-      <RouterLink :to="{ name: 'moments' }" class="back-link">
-        <i class="bi bi-arrow-left" /> 返回动态
+      <!-- 动态列表页已下线：返回走首页「发现」（动态与文章混排），与 /moments 旧地址的重定向目标一致 -->
+      <RouterLink :to="{ name: 'home' }" class="back-link">
+        <i class="bi bi-arrow-left" /> 返回首页
       </RouterLink>
     </div>
 
@@ -47,7 +48,8 @@ async function load() {
 }
 
 function onDeleted() {
-  router.replace({ name: 'moments' })
+  // 动态已被删除，详情页无内容可留：回首页（列表页已下线，不再有 /moments 可回）
+  router.replace({ name: 'home' })
 }
 
 onMounted(load)

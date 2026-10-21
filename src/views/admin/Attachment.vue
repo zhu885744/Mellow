@@ -247,7 +247,7 @@
       @confirm="preview.visible = false"
     >
       <div v-if="preview.image" class="preview-image">
-        <img :src="preview.image" :alt="preview.title" />
+        <img :src="preview.image" :alt="preview.title" loading="lazy" />
       </div>
       <div v-else class="preview-icon">
         <i :class="preview.icon" />

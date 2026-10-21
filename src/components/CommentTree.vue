@@ -2,7 +2,7 @@
   <div class="comment-tree">
     <!-- 发表评论（根评论）；allowComment = false 时只隐藏输入发布模块，评论列表照常展示 -->
     <div v-if="allowComment" class="root-comment-box">
-      <img v-if="userStore.isLogged" class="root-avatar" :src="userStore.user?.avatar || defaultAvatar" alt="" @click="goMe" />
+      <img v-if="userStore.isLogged" class="root-avatar" :src="userStore.user?.avatar || defaultAvatar" alt="" @click="goMe" loading="lazy" />
       <div class="root-input">
         <div v-if="userStore.isLogged" class="root-meta">
           <span class="root-name" @click="goMe">{{ userStore.user.nickname || '我' }}</span>
@@ -45,7 +45,7 @@
           <!-- 已选图片预览 -->
           <div v-if="newImages.length" class="img-preview">
             <div v-for="(img, i) in newImages" :key="img" class="img-thumb">
-              <img :src="img" alt="" />
+              <img :src="img" alt="" loading="lazy" />
               <span class="img-del" title="移除" @click="removeImage(i)">×</span>
             </div>
           </div>

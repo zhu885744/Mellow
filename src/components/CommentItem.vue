@@ -1,7 +1,7 @@
 <template>
   <div class="comment-item" :id="`comment-${comment.id}`" :class="{ 'is-child': isChild, 'comment-highlight': highlightId && String(highlightId) === String(comment.id) }">
     <div class="c-avatar">
-      <img :src="author.avatar || defaultAvatar" :alt="author.nickname" @error="onImgError" />
+      <img :src="author.avatar || defaultAvatar" :alt="author.nickname" @error="onImgError" loading="lazy" />
     </div>
     <div class="c-body">
       <div class="c-head">
@@ -132,7 +132,7 @@
         </EmojiEditor>
         <div v-if="replyImages.length" class="c-reply-images">
           <div v-for="(img, i) in replyImages" :key="img" class="reply-thumb">
-            <img :src="img" alt="" />
+            <img :src="img" alt="" loading="lazy" />
             <span class="img-del" title="移除" @click="removeImage(i)">×</span>
           </div>
         </div>

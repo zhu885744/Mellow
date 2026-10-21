@@ -1,4 +1,5 @@
 import { call } from './request'
+import { uploadAttachments } from './attachment'
 
 export const getUser = (id, field = '') =>
   call('users', 'one', { method: 'GET', params: { id, field } })
@@ -6,8 +7,8 @@ export const getUser = (id, field = '') =>
 export const updateUser = (data) =>
   call('users', 'update', { method: 'PUT', data })
 
-export const uploadAvatar = (formData) =>
-  call('attachment', 'batch', { method: 'POST', data: formData })
+// 头像上传统一走 uploadAttachments（含「图片压缩为 WebP」处理）
+export const uploadAvatar = (formData) => uploadAttachments(formData)
 
 // 修改邮箱（发验证码 / 提交验证码）
 export const updateEmail = (data) =>

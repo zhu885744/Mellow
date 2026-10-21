@@ -18,7 +18,7 @@
 
     <ul v-else class="link-list">
       <li v-for="item in list" :key="item.id" class="link-row">
-        <img :src="item.avatar || defaultAvatar" class="link-avatar" alt="avatar" />
+        <img :src="item.avatar || defaultAvatar" class="link-avatar" alt="avatar" loading="lazy" />
         <div class="link-main">
           <div class="link-name-row">
             <a :href="item.url" target="_blank" rel="noopener" class="link-name">{{ item.nickname || '未命名' }}</a>

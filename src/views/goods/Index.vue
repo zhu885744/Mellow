@@ -100,7 +100,7 @@
     <div v-else class="goods-grid">
       <div v-for="g in decoratedGoods" :key="g.id" class="goods-card card">
         <div class="goods-cover-wrap">
-          <img :src="g.cover || defaultCover" class="goods-cover" :alt="g.title" @error="onCoverError" />
+          <img :src="g.cover || defaultCover" class="goods-cover" :alt="g.title" @error="onCoverError" loading="lazy" />
           <!-- 兑换时间状态角标：未开始 / 即将结束（1 小时内）/ 已结束 -->
           <span v-if="g._state" class="goods-state" :class="g._state.type">
             <i :class="g._state.icon" aria-hidden="true" /> {{ g._state.text }}
@@ -167,7 +167,7 @@
       </div>
       <div v-else class="order-list">
         <div v-for="o in orders" :key="o.id" class="order-card card">
-          <img :src="o.result?.goods?.cover || defaultCover" class="order-card-cover" :alt="o.result?.goods?.title" @error="onCoverError" />
+          <img :src="o.result?.goods?.cover || defaultCover" class="order-card-cover" :alt="o.result?.goods?.title" @error="onCoverError" loading="lazy" />
           <div class="order-card-body">
             <div class="order-card-head">
               <span class="order-card-title">{{ o.result?.goods?.title || o.goods_title || `商品 #${o.goods_id}` }}</span>
@@ -237,7 +237,7 @@
             </div>
             <div class="modal-body">
               <div class="confirm-goods">
-                <img :src="confirmGoods?.cover || defaultCover" class="confirm-cover" :alt="confirmGoods?.title" @error="onCoverError" />
+                <img :src="confirmGoods?.cover || defaultCover" class="confirm-cover" :alt="confirmGoods?.title" @error="onCoverError" loading="lazy" />
                 <div class="confirm-info">
                   <div class="confirm-title">{{ confirmGoods?.title }}</div>
                   <div class="confirm-price"><i class="bi bi-coin" /> {{ confirmGoods?.price }} 积分</div>

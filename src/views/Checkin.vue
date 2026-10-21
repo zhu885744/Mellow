@@ -299,7 +299,7 @@
                 <i v-if="item.rank <= 3" class="bi" :class="`bi-${item.rank}-circle-fill`" />
                 <template v-else>{{ item.rank }}</template>
               </span>
-              <img class="rank-avatar" :src="item.avatar || defaultAvatar" :alt="item.nickname || '用户'" />
+              <img class="rank-avatar" :src="item.avatar || defaultAvatar" :alt="item.nickname || '用户'" loading="lazy" />
               <div class="rank-info">
                 <span class="rank-name">{{ item.nickname || '匿名用户' }}</span>
                 <span class="rank-stats">

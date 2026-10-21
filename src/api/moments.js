@@ -1,4 +1,5 @@
 import { call } from './request'
+import { uploadAttachments } from './attachment'
 
 // 获取动态列表（默认审核通过 + 已发布）
 export const listMoments = (params = {}) =>
@@ -26,9 +27,8 @@ export const getMomentComments = (bind_id, params = {}) =>
 export const createMoment = (data) =>
   call('moments', 'create', { method: 'POST', data })
 
-// 上传动态图片（attachment/batch，multipart/form-data）
-export const uploadMomentImages = (formData) =>
-  call('attachment', 'batch', { method: 'POST', data: formData })
+// 上传动态图片（统一走 uploadAttachments，含 WebP 压缩处理）
+export const uploadMomentImages = (formData) => uploadAttachments(formData)
 
 // 更新动态（可改 content/images/location/status 等）
 export const updateMoment = (data) =>

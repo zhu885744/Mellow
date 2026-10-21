@@ -52,7 +52,10 @@ const routes = [
       { path: 'tag/:key', name: 'tag', redirect: (to) => ({ path: `/topic/${to.params.key}` }) },
       { path: 'categories', name: 'categories', component: () => import('@/views/article/CategoryList.vue') },
       { path: 'category/:key', name: 'category', component: () => import('@/views/article/CategoryDetail.vue'), props: true },
-      { path: 'moments', name: 'moments', component: () => import('@/views/moments/Index.vue') },
+      // 动态列表页已下线（views/moments 只保留详情页）：列表场景由首页「发现」与 /feed 聚合流承担。
+      // 旧地址 /moments 原本是「发动态」页，所以重定向到首页并带 compose=1，落地直接打开发布弹窗
+      // （首页 onMounted / watch 处理，见 views/home/Index.vue 的 openComposeFromQuery）
+      { path: 'moments', name: 'moments', redirect: { name: 'home', query: { compose: '1' } } },
       { path: 'moments/:id', name: 'moment-detail', component: () => import('@/views/moments/Detail.vue'), props: true },
       // 聚合流（关注 / 推荐 / 热门）：按关注关系算的个性化数据，必须登录
       // （后端 feed 接口同样是 path=all&type=login，见 app/model/auth-rules.go）

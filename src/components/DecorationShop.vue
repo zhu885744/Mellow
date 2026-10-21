@@ -48,6 +48,7 @@
             :src="item.preview || item.payload?.image"
             class="decoration-frame"
             :alt="item.name"
+            loading="lazy"
           />
           <TitleBadge v-else :payload="item.payload" :size="'lg'" />
           <!-- 稀有度：后台「装扮管理」里设置的档位，用于区分装扮的稀有程度 -->

@@ -56,7 +56,7 @@
       </span>
       <div class="report-images__list">
         <div v-for="(img, i) in images" :key="img" class="report-thumb">
-          <img :src="img" alt="举报证据" @click="previewImage(i)" />
+          <img :src="img" alt="举报证据" @click="previewImage(i)" loading="lazy" />
           <span class="report-thumb__del" title="移除" @click="removeImage(i)">×</span>
         </div>
         <button

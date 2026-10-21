@@ -12,6 +12,7 @@
       :src="payload.image"
       :style="imageStyle"
       :alt="label || '头衔'"
+      loading="lazy"
     />
     <template v-else>
       <i v-if="payload.icon" :class="payload.icon" class="title-badge-icon" />

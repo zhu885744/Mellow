@@ -3,7 +3,7 @@
     <!-- 用户信息与等级 -->
     <div class="card card-pad">
       <div class="profile-hero">
-        <img :src="user?.avatar || defaultAvatar" class="profile-avatar" alt="avatar" />
+        <img :src="user?.avatar || defaultAvatar" class="profile-avatar" alt="avatar" loading="lazy" />
         <div class="profile-main">
           <div class="profile-name-row">
             <span class="profile-name">{{ user?.nickname || '未登录' }}</span>

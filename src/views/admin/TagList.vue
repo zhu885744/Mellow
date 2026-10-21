@@ -231,7 +231,7 @@
         <label class="form-label">话题图</label>
         <div class="avatar-row">
           <div class="cover-box">
-            <img v-if="dialog.avatar" :src="dialog.avatar" alt="话题图预览" />
+            <img v-if="dialog.avatar" :src="dialog.avatar" alt="话题图预览" loading="lazy" />
             <div v-else class="cover-empty" @click="pickImage">
               <i class="bi bi-image" />
               <span>上传</span>

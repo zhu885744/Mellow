@@ -43,7 +43,7 @@ export const imageMarker = (alt, src, title) =>
 /** 表情原子（行内表情图片） */
 function emojiAtomHtml(url, resolveUrl) {
   const src = resolveUrl(url)
-  return `<img src="${src}" data-emoji="${url}" class="inline-emoji editor-emoji" contenteditable="false" alt="emoji">`
+  return `<img src="${src}" data-emoji="${url}" class="inline-emoji editor-emoji" contenteditable="false" alt="emoji" loading="lazy" decoding="async">`
 }
 
 /** 图片原子（图片卡片，带可选说明文字） */

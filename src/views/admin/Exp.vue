@@ -363,7 +363,7 @@
       <!-- 单个用户：展示当前经验与等级，便于核对 -->
       <div v-if="adjust.mode === 'single'" class="adjust-user">
         <div class="user-avatar sm">
-          <img v-if="adjust.user?.avatar" :src="adjust.user.avatar" :alt="adjust.user.nickname" />
+          <img v-if="adjust.user?.avatar" :src="adjust.user.avatar" :alt="adjust.user.nickname" loading="lazy" />
           <i v-else class="bi bi-person-circle" />
         </div>
         <div class="user-main">

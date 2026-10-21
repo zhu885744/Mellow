@@ -136,6 +136,7 @@
           class="report-image"
           alt="举报证据"
           @click="openLightbox(dialog.item.images, i)"
+          loading="lazy"
         />
       </div>
 
