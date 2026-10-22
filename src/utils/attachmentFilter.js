@@ -4,8 +4,11 @@
  * 不依赖构建别名，便于单独测试。
  */
 
-// 常见图片扩展名（后端未返回 mime_type 时兜底判断）
+// 常见图片 / 视频 / 音频扩展名（后端未返回 mime_type 时兜底判断）
 export const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif']
+export const VIDEO_EXTS = ['mp4', 'webm', 'ogv', 'mov', 'm4v', 'avi', 'mkv', 'flv', 'wmv', 'm3u8', 'ts']
+export const AUDIO_EXTS = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'wma', 'opus']
+const SIMPLE_EXTS = { image: IMAGE_EXTS, video: VIDEO_EXTS, audio: AUDIO_EXTS }
 
 /** 取小写扩展名（去掉可能的点） */
 export const extOf = (item) => String(item?.file_ext || '').replace(/^\./, '').toLowerCase()
@@ -44,8 +47,8 @@ export function matchAccept(item, accept) {
     if (one.endsWith('/*')) return mime.startsWith(one.slice(0, -1))
     if (one.startsWith('.')) return ext === one.slice(1)
     if (one.includes('/')) return mime === one
-    // 简写：image / video / pdf 等
-    if (one === 'image') return mime.startsWith('image/') || IMAGE_EXTS.includes(ext)
+    // 简写：image / video / audio / pdf 等
+    if (SIMPLE_EXTS[one]) return mime.startsWith(`${one}/`) || SIMPLE_EXTS[one].includes(ext)
     return mime.startsWith(`${one}/`) || ext === one
   })
 }

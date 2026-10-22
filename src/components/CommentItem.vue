@@ -16,6 +16,8 @@
           size="sm"
         />
         <span v-else-if="author.title" :class="['c-title', titleClass]">{{ author.title }}</span>
+        <!-- 佩戴中的勋章（作者信息里带 users.json，不需要额外请求） -->
+        <WearingBadge v-if="author.json?.wearing_badge" :badge="author.json.wearing_badge" />
         <span v-if="author.id === authorId" class="c-badge">作者</span>
         <!-- 仅作者可见：评论者 / 内容作者自己看得到正文，用徽标标明这条是私密评论 -->
         <span
@@ -200,6 +202,7 @@ import { formatDate } from '@/utils/time'
 import { useUserStore } from '@/stores/user'
 import { isAdmin, pickCommentAuthor, getTitleColorClass, pickUserTitlePayload } from '@/utils/helper'
 import TitleBadge from './TitleBadge.vue'
+import WearingBadge from './WearingBadge.vue'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
 import { parseUserAgent } from '@/utils/ua'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'

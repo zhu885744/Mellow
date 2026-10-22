@@ -52,6 +52,19 @@
 </template>
 
 <script setup>
+/**
+ * 主题统一的下拉选择器 —— 全站唯一的「下拉列表」实现
+ *
+ * 约定（全站强制）：页面上任何下拉都必须用本组件，禁止使用浏览器原生 <select> / <datalist>：
+ *   1. 原生下拉的浮层由系统绘制，CSS 完全改不动，暗色主题 / 圆角 / 动效都对不上；
+ *   2. 原生 option 不能放图标、副标题、禁用态样式，扩展性差；
+ *   3. 本项目已有 30+ 处用本组件，混用会让同类控件在不同页面长得不一样。
+ *
+ * 用法：
+ *   - 筛选栏 / 工具条：默认 pill 形态  <SelectMenu v-model="x" :options="list" icon="bi bi-funnel" />
+ *   - 表单内部：variant="field"        <SelectMenu v-model="x" variant="field" :options="list" />
+ *   options 为 [{ value, label, disabled? }]；值比较统一走 String()，数字 / 字符串都能对上。
+ */
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 
 const props = defineProps({

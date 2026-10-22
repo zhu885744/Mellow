@@ -177,6 +177,8 @@ const typeOptions = [
   { value: 'links', label: '友链' },
   { value: 'moments', label: '动态' },
   { value: 'decoration', label: '装扮' },
+  // 勋章：限定勋章即将到期提醒
+  { value: 'badge', label: '勋章' },
   // 内容被兑换：别人消耗积分兑换了你设置的付费内容
   { value: 'unlock', label: '兑换' },
   // 收到积分打赏
@@ -211,6 +213,8 @@ const typeMap = {
   moments: '动态',
   // 装扮：获得 / 续期 / 被回收 / 即将过期 / 已过期
   decoration: '装扮',
+  // 勋章：限定勋章即将到期（见 model.BadgeExpireWarn）
+  badge: '勋章',
   // 兑换：别人消耗积分兑换了你的付费内容（见 model.SendUnlockNotify）
   unlock: '兑换',
   // 打赏：别人给你送了积分（见 model.SendTipNotify）
@@ -270,6 +274,8 @@ function iconOf(t) {
     links: 'bi bi-link-45deg',
     moments: 'bi bi-chat-square-text',
     decoration: 'bi bi-gem',
+    // 勋章：到期提醒
+    badge: 'bi bi-award',
     // 兑换：积分消费类，用金币图标
     unlock: 'bi bi-coin',
     // 打赏：收到的积分，用礼物图标区分于「兑换」
@@ -499,6 +505,7 @@ onMounted(load)
 .notif-icon.type-links { background: rgba(106, 168, 79, 0.14); color: #6aa84f; }
 .notif-icon.type-moments { background: rgba(127, 109, 189, 0.12); color: #7f6dbd; }
 .notif-icon.type-system { background: rgba(74, 144, 226, 0.12); color: #4a90e2; }
+.notif-icon.type-badge { background: var(--gold-soft); color: var(--warning); }
 
 .notif-body {
   flex: 1;

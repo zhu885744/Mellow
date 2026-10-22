@@ -29,6 +29,8 @@
               v-else-if="profile.title"
               :class="['author-title', titleClass]"
             >{{ profile.title }}</span>
+            <!-- 佩戴中的勋章：users.json.wearing_badge，佩戴时后端已把名称/图标/配色/稀有度冗余写入 -->
+            <WearingBadge v-if="profile.json?.wearing_badge" :badge="profile.json.wearing_badge" />
             <!-- 封禁标识（后端 users/one 的 result.ban）：申诉中 / 申诉驳回期间也保持显示 -->
             <span v-if="isBanned" class="author-ban-tag" :class="{ 'is-appeal': banStatus !== 0 }">
               <i class="bi" :class="banStatus === 0 ? 'bi-slash-circle' : 'bi-hourglass-split'" />
@@ -38,6 +40,16 @@
           <!-- 用户 ID：仅手机端展示（参考移动端个人主页的 ID 行） -->
           <div v-if="profile.id" class="author-id">ID {{ profile.id }}</div>
           <div class="author-desc">{{ profile.description || '这个人很懒，什么都没留下' }}</div>
+          <!-- 勋章：只展示已获得的（公开接口 badge/held），未获得的属于「任务进度」，不在这里露出 -->
+          <div v-if="badges.length" class="author-badges">
+            <AchievementBadge
+              v-for="item in badges"
+              :key="item.id"
+              :badge="item"
+              size="sm"
+              held
+            />
+          </div>
           <a
             v-if="website && website.url"
             class="author-website"
@@ -276,6 +288,9 @@ import { useRoute, useRouter } from 'vue-router'
 import ArticleCard from '@/components/ArticleCard.vue'
 import AvatarFrame from '@/components/AvatarFrame.vue'
 import TitleBadge from '@/components/TitleBadge.vue'
+import WearingBadge from '@/components/WearingBadge.vue'
+import AchievementBadge from '@/components/AchievementBadge.vue'
+import { getUserBadges } from '@/api/badge'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import ReportDialog from '@/components/ReportDialog.vue'
 import RewardDialog from '@/components/RewardDialog.vue'
@@ -618,6 +633,18 @@ async function enrichTargets(items) {
   }
 }
 
+// 已获得的勋章（公开接口，用户主页只展示拿到的）
+const badges = ref([])
+
+async function loadBadges() {
+  try {
+    const res = await getUserBadges(uid.value)
+    badges.value = Array.isArray(res.data) ? res.data : []
+  } catch {
+    badges.value = []
+  }
+}
+
 async function loadProfile() {
   try {
     const res = await getUser(uid.value)
@@ -645,6 +672,7 @@ async function loadProfile() {
     // 社交数据卡片（文章 / 动态 / 关注 / 粉丝 / 获赞）统一由后端 user-follows/stats 提供：
     // 口径只统计公开内容，且不会像原来那样「文章数用 countArticlesByAuthor、关注/粉丝用 counts」各算一份
     loadSocialStats()
+    loadBadges()
   } catch {
     profile.value = { nickname: '用户不存在', avatar: '', description: '' }
   }
@@ -1193,6 +1221,13 @@ watch(() => route.params.id, () => {
   margin: 8px 0 14px;
   line-height: 1.6;
   overflow-wrap: break-word;
+}
+/* 勋章行：只读展示，横向换行排列（手机上会自动折成两行） */
+.author-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0 0 14px;
 }
 .author-website {
   display: inline-flex;

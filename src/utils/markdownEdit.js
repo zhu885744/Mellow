@@ -1,10 +1,10 @@
 /**
- * 文章编辑器文本层工具（markdown 源码 + 图片/表情即时渲染）
+ * 文章编辑器文本层工具（markdown 源码 + 表情即时渲染）
  *
  * 设计：正文始终以 markdown 源码字符串为唯一数据源，编辑器 DOM 只是它的可视化形式：
- *  - [emoji:url]       -> <img class="editor-emoji">（行内）
- *  - ![alt](url "t")   -> 图片卡片（原子节点，整体删除/移动）
- * 其余 markdown 语法仍以源码形式展示，交给预览与正文渲染统一解析。
+ *  - [emoji:url] -> <img class="editor-emoji">（行内）
+ *  - 图片 ![alt](url "t")、媒体短代码 @[video](url) 等一律保持源码文本，所见即所存；
+ *    真正的渲染只发生在预览与正文（@/utils/markdown），编辑器里不做视觉替换。
  *
  * 本文件不依赖构建别名（URL 解析通过参数注入），便于独立测试。
  */
@@ -12,14 +12,11 @@
 /** 行内表情标记（非全局，便于 test/exec） */
 export const EMOJI_RE = /\[emoji:\s*([^\]\s]+)\s*\]/
 
-/** markdown 图片标记（文本已 HTML 转义，因此标题引号是 &quot;） */
-export const MD_IMAGE_RE = /!\[([^\]]*)\]\(\s*([^)\s]+?)(?:\s+&quot;([^&]*)&quot;)?\s*\)/g
+/** 光标前恰好是一个完整表情标记（用于「边输入边渲染」判断，作用于未转义源码） */
+export const TAIL_MARKER_RE = /(\[emoji:[^\]\s]+\])$/
 
-/** 光标前恰好是一个完整标记（用于「边输入边渲染」判断，作用于未转义源码） */
-export const TAIL_MARKER_RE = /(\[emoji:[^\]\s]+\]|!\[[^\]]*\]\([^)\s]+(?:\s+"[^"]*")?\))$/
-
-/** 源码中是否含有可渲染标记 */
-export const HAS_MARKER_RE = /\[emoji:\s*[^\]\s]+\]|!\[[^\]]*\]\([^)\s]+/
+/** 源码中是否含有可渲染的标记（目前仅表情） */
+export const HAS_MARKER_RE = /\[emoji:\s*[^\]\s]+\]/
 
 /** 会被视为「独立一行」的块级标签 */
 const BLOCK_TAGS = new Set([
@@ -46,35 +43,24 @@ function emojiAtomHtml(url, resolveUrl) {
   return `<img src="${src}" data-emoji="${url}" class="inline-emoji editor-emoji" contenteditable="false" alt="emoji" loading="lazy" decoding="async">`
 }
 
-/** 图片原子（图片卡片，带可选说明文字） */
-function imageAtomHtml({ alt, src, title, resolveUrl }) {
-  const full = resolveUrl(src)
-  const caption = alt ? `<span class="md-image__alt">${alt}</span>` : ''
-  return (
-    `<span class="md-image" contenteditable="false" data-md-src="${src}"` +
-    ` data-md-alt="${alt || ''}" data-md-title="${title || ''}">` +
-    `<img src="${full}" alt="${alt || '图片'}" loading="lazy" decoding="async">${caption}</span>`
-  )
-}
-
 /**
  * 源码 -> 编辑器 HTML
+ *
+ * 只把 [emoji:url] 换成行内表情图；图片 markdown 与媒体短代码保持纯文本，
+ * 用户在编辑器里直接看到并编辑 `![alt](url)` / `@[video](url)`。
+ *
  * @param {string} text markdown 源码
- * @param {(url: string) => string} resolveUrl 图片地址解析（默认原样返回）
+ * @param {(url: string) => string} resolveUrl 表情地址解析（默认原样返回）
  */
 export function sourceToHtml(text, resolveUrl = (url) => url) {
   let html = escapeHtml(text)
-  // 先处理图片（标记里含 []()），再处理表情，最后换行
-  html = html.replace(MD_IMAGE_RE, (match, alt, src, title) =>
-    imageAtomHtml({ alt, src, title, resolveUrl })
-  )
   html = html.replace(/\[emoji:\s*([^\]\s]+)\s*\]/g, (match, url) => emojiAtomHtml(url, resolveUrl))
   html = html.replace(/\n/g, '<br>')
   return html
 }
 
 /**
- * 取元素的原子标记（图片/表情），普通元素返回 null
+ * 取元素的原子标记（表情；兼容旧内容里残留的图片卡片），普通元素返回 null
  */
 export function atomMarker(el) {
   if (!el || el.nodeType !== 1) return null

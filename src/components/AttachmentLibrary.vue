@@ -140,7 +140,9 @@ const filtered = computed(() =>
 const acceptTip = computed(() => {
   const accept = String(props.accept || '').toLowerCase()
   if (!accept || accept === '*' || accept === 'all' || showAllTypes.value) return '选择要应用的附件'
-  return '仅显示图片类型的附件'
+  // 类型简写 → 中文，避免所有场景都写死「图片」
+  const LABELS = { image: '图片', video: '视频', audio: '音频', pdf: 'PDF', doc: '文档' }
+  return `仅显示${LABELS[accept] || accept}类型的附件`
 })
 
 function isPicked(item) {

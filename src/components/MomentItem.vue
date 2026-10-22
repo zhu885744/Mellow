@@ -28,6 +28,8 @@
             size="sm"
           />
           <span v-else-if="authorTitle" :class="['c-title', authorTitleClass]">{{ authorTitle }}</span>
+          <!-- 佩戴中的勋章（作者信息带 users.json） -->
+          <WearingBadge v-if="author?.json?.wearing_badge" :badge="author.json.wearing_badge" />
           <span v-if="moment.top" class="top-tag">置顶</span>
         </div>
         <div class="time">
@@ -163,6 +165,7 @@ import {
   getTitleColorClass
 } from '@/utils/helper'
 import TitleBadge from './TitleBadge.vue'
+import WearingBadge from './WearingBadge.vue'
 import AvatarFrame from './AvatarFrame.vue'
 import { resolveFrameRender } from '@/utils/frameRender'
 import { renderEmojiWithBreaks } from '@/utils/emoji'

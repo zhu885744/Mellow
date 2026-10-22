@@ -47,6 +47,49 @@
         <i class="bi bi-folder2-open" />
       </button>
 
+      <!-- 视频 / 音频 / 附件：从附件库选择，插入 @[video] / @[audio] / @[file] 短代码 -->
+      <button
+        type="button"
+        class="md-tool"
+        title="插入视频"
+        @mousedown.prevent
+        @click="openMediaLibrary('video')"
+      >
+        <i class="bi bi-camera-video" />
+      </button>
+
+      <button
+        type="button"
+        class="md-tool"
+        title="插入音频"
+        @mousedown.prevent
+        @click="openMediaLibrary('audio')"
+      >
+        <i class="bi bi-music-note-beamed" />
+      </button>
+
+      <button
+        type="button"
+        class="md-tool"
+        title="插入附件"
+        @mousedown.prevent
+        @click="openMediaLibrary('file')"
+      >
+        <i class="bi bi-paperclip" />
+      </button>
+
+      <!-- 上传视频 / 音频 / 附件（按扩展名自动生成对应短代码） -->
+      <button
+        type="button"
+        class="md-tool"
+        title="上传视频 / 音频 / 附件"
+        :disabled="mediaUploading"
+        @mousedown.prevent
+        @click="pickMedia"
+      >
+        <i :class="mediaUploading ? 'bi bi-arrow-repeat md-spin' : 'bi bi-cloud-arrow-up'" />
+      </button>
+
       <span class="md-toolbar__split" />
 
       <button
@@ -76,23 +119,36 @@
         <i :class="fullscreen ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen'" />
       </button>
 
+      <!-- 分屏预览：仅全屏下可用（左写右预览，边写边看） -->
+      <button
+        v-if="fullscreen"
+        type="button"
+        class="md-tool"
+        :class="{ 'is-active': splitView }"
+        :title="splitView ? '退出分屏，单栏编辑' : '分屏预览（左写右预览）'"
+        @mousedown.prevent
+        @click="toggleSplit"
+      >
+        <i class="bi bi-layout-split" />
+      </button>
+
       <!-- 预览 / 继续编辑 -->
       <button
         type="button"
         class="md-tool"
-        :class="{ 'is-active': mode === 'preview' }"
-        :title="mode === 'preview' ? '继续编辑' : '预览'"
+        :class="{ 'is-active': mode === 'preview' && !splitView }"
+        :title="mode === 'preview' && !splitView ? '继续编辑' : splitView ? '只看预览' : '预览'"
         @click="toggleMode"
       >
-        <i :class="mode === 'preview' ? 'bi bi-pencil-square' : 'bi bi-eye'" />
+        <i :class="mode === 'preview' && !splitView ? 'bi bi-pencil-square' : 'bi bi-eye'" />
       </button>
     </div>
 
     <!-- 正文 -->
-    <div class="md-body">
-      <!-- 源码编辑（[emoji:url] 与 ![alt](url) 直接渲染为图片） -->
+    <div class="md-body" :class="{ 'is-split': splitView }">
+      <!-- 源码编辑：只有 [emoji:url] 渲染成表情图，图片 markdown 与 @[video] 等短代码保持文本 -->
       <div
-        v-show="mode === 'write'"
+        v-show="showEditor"
         ref="editorRef"
         class="md-content"
         :class="{ 'is-empty': !modelValue }"
@@ -108,7 +164,7 @@
       />
 
       <div
-        v-show="mode === 'preview'"
+        v-show="showPreview"
         class="md-preview markdown-body"
         :style="{ minHeight: fullscreen ? '0px' : minHeight }"
         v-html="html"
@@ -131,6 +187,16 @@
 
     <input ref="fileRef" type="file" accept="image/*" hidden @change="onFileChange" />
 
+    <!-- 视频 / 音频 / 附件：实际允许的类型由后端 storage 配置兜底校验 -->
+    <input
+      ref="mediaRef"
+      type="file"
+      accept="video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,.rar,.7z,.tar,.gz"
+      multiple
+      hidden
+      @change="onMediaChange"
+    />
+
     <!-- 附件库（选择已上传图片，按 markdown 图片语法插入光标处） -->
     <AttachmentLibrary
       v-model:visible="showLibrary"
@@ -139,6 +205,16 @@
       multiple
       :max="9"
       @select="onLibrarySelect"
+    />
+
+    <!-- 附件库（视频 / 音频 / 任意附件）：三个按钮共用，按当前类型过滤，选中后生成对应短代码 -->
+    <AttachmentLibrary
+      v-model:visible="showMediaLibrary"
+      :title="mediaTitle"
+      :accept="mediaAccept"
+      multiple
+      :max="9"
+      @select="onMediaLibrarySelect"
     />
   </div>
 </template>
@@ -151,6 +227,8 @@ import AttachmentLibrary from './AttachmentLibrary.vue'
 import { renderMarkdown } from '@/utils/markdown'
 import { getFullUrl } from '@/utils/runtimeConfig'
 import { uploadArticleImage } from '@/api/article'
+import { uploadAttachments } from '@/api/attachment'
+import { attachmentMarker } from '@/utils/attachment'
 import { toast } from '@/utils/toast'
 import {
   sourceToHtml,
@@ -397,9 +475,9 @@ function onInput(e) {
   // 输入 @ / 继续输入关键词时，同步 @ 候选面板
   syncMentionState()
 
-  // 手动敲出完整标记（] 或 ) 收尾）时，即时渲染成图片，边写边看
+  // 手动敲完一个表情标记（[emoji:url]）时即时渲染成表情图；图片 / 短代码保持文本
   const data = e?.data || ''
-  if (!e?.isComposing && (data === ']' || data === ')' || data === '）')) {
+  if (!e?.isComposing && (data === ']' || data === '］')) {
     nextTick(renderCompletedMarker)
   }
 }
@@ -413,7 +491,7 @@ function renderCompletedMarker() {
   const before = text.slice(0, offsets.start)
   const matched = before.match(TAIL_MARKER_RE)
   if (!matched) return
-  // 文本不变，但重建一次 DOM 即可把刚输入的标记变成图片
+  // 文本不变，但重建一次 DOM 即可把刚输入的标记变成表情图
   applySource(text, offsets.end)
 }
 
@@ -509,10 +587,30 @@ function runTool(apply) {
 }
 
 function toggleMode() {
+  // 分屏下点「预览」= 退出分屏、只看预览
+  if (splitView.value) {
+    splitView.value = false
+    mode.value = 'preview'
+    return
+  }
   mode.value = mode.value === 'write' ? 'preview' : 'write'
   if (mode.value === 'write') {
     nextTick(() => editorRef.value?.focus())
   }
+}
+
+// ===== 全屏分屏（左写右预览） =====
+// 只在全屏下启用：正文区左侧是 markdown 源码，右侧是实时预览，两边各自滚动。
+const splitView = ref(false)
+
+const showEditor = computed(() => splitView.value || mode.value === 'write')
+const showPreview = computed(() => splitView.value || mode.value === 'preview')
+
+function toggleSplit() {
+  splitView.value = !splitView.value
+  // 分屏必须有一栏可写，否则和「只看预览」没区别
+  if (splitView.value) mode.value = 'write'
+  nextTick(() => editorRef.value?.focus())
 }
 
 // ===== 全屏编辑 =====
@@ -521,11 +619,15 @@ let bodyOverflow = ''
 function toggleFullscreen() {
   fullscreen.value = !fullscreen.value
   if (fullscreen.value) {
+    // 全屏默认就是「边写边预览」的分屏形态
+    splitView.value = true
+    mode.value = 'write'
     // 锁住页面滚动，避免全屏时背景跟着滚
     bodyOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     nextTick(() => editorRef.value?.focus())
   } else {
+    splitView.value = false
     restoreBodyOverflow()
   }
 }
@@ -599,7 +701,9 @@ async function uploadAndInsert(file) {
     const res = await uploadArticleImage(fd)
     const url = res.data?.results?.[0]?.full_url || res.data?.results?.[0]?.url || ''
     if (!url) throw new Error('empty')
-    insertMarker(`![${file.name}](${url})`, true)
+    // 图片现在以 markdown 文本插入，文件名里的 [ ] 会破坏语法，先抹掉
+    const alt = String(file.name || '').replace(/[[\]]/g, '').trim()
+    insertMarker(`![${alt}](${url})`, true)
     toast.success('图片已插入')
   } catch {
     toast.error('图片上传失败，请稍后重试')
@@ -611,7 +715,7 @@ async function uploadAndInsert(file) {
 const isImageNode = (el) =>
   !!el && el.nodeType === 1 && (el.tagName === 'IMG' || (el.tagName === 'SPAN' && el.hasAttribute('data-md-src')))
 
-/** 删除光标紧邻的图片原子，返回是否已处理 */
+/** 删除光标紧邻的表情原子（图片已是纯文本，不再需要整体删除），返回是否已处理 */
 function removeAdjacentImage(key) {
   const root = editorRef.value
   const selection = window.getSelection()
@@ -646,6 +750,86 @@ function onLibrarySelect(urls = []) {
   if (!list.length) return
   insertMarker(list.map((url) => `![](${url})`).join('\n\n'), true)
   toast.success(`已插入 ${list.length} 张图片`)
+}
+
+/* ===== 视频 / 音频 / 附件（正文短代码） =====
+ * 工具栏三个按钮（视频 / 音频 / 附件）共用同一个附件库弹窗，只是按当前类型过滤；
+ * 插入的是 @[video](url "标题") / @[audio](url "标题") / @[file](url "文件名" "大小")，
+ * 在编辑器里只是普通文本（不渲染播放器），解析在 @/utils/markdown（markdown-it 规则 media_shortcode）。
+ */
+const showMediaLibrary = ref(false)
+const mediaRef = ref(null)
+const mediaUploading = ref(false)
+// 当前弹窗对应的短代码类型：video / audio / file
+const mediaKind = ref('file')
+
+const MEDIA_LIBRARY = {
+  video: { title: '插入视频', accept: 'video' },
+  audio: { title: '插入音频', accept: 'audio' },
+  file: { title: '插入附件', accept: 'all' }
+}
+
+const mediaTitle = computed(() => MEDIA_LIBRARY[mediaKind.value]?.title || '插入附件')
+const mediaAccept = computed(() => MEDIA_LIBRARY[mediaKind.value]?.accept || 'all')
+
+function openMediaLibrary(kind) {
+  mediaKind.value = MEDIA_LIBRARY[kind] ? kind : 'file'
+  showMediaLibrary.value = true
+}
+
+function pickMedia() {
+  mediaRef.value?.click()
+}
+
+/** 一批附件 → 若干短代码（每个独占一行）；kind 显式指定时不按扩展名猜 */
+function attachmentMarkers(items = [], kind) {
+  return items.map((item) => attachmentMarker(item, kind)).filter(Boolean).join('\n\n')
+}
+
+async function onMediaChange(e) {
+  const files = Array.from(e.target.files || [])
+  e.target.value = ''
+  if (!files.length) return
+
+  mediaUploading.value = true
+  try {
+    const fd = new FormData()
+    files.forEach((file) => fd.append('files', file))
+    const res = await uploadAttachments(fd)
+
+    // 后端返回的结果里带 original_name / file_size，取不到时回退本地文件信息
+    const results = res.data?.results || []
+    const items = results.map((row, index) => ({
+      url: row.full_url || row.url || '',
+      name: row.original_name || files[index]?.name || '',
+      size: row.file_size || files[index]?.size || 0
+    }))
+
+    const markers = attachmentMarkers(items)
+    if (!markers) throw new Error('empty')
+    insertMarker(markers, true)
+    toast.success(`已插入 ${items.length} 个文件`)
+  } catch {
+    toast.error('上传失败，请检查文件类型与大小限制')
+  } finally {
+    mediaUploading.value = false
+  }
+}
+
+function onMediaLibrarySelect(urls = [], items = []) {
+  const list = items?.length
+    ? items.map((item) => ({
+        url: item.full_url || item.url || '',
+        name: item.original_name || '',
+        size: item.file_size || 0
+      }))
+    : (urls || []).filter(Boolean).map((url) => ({ url }))
+
+  // 显式带上当前按钮的类型，避免「附件」里选到视频时被猜成播放器短代码
+  const markers = attachmentMarkers(list, mediaKind.value)
+  if (!markers) return
+  insertMarker(markers, true)
+  toast.success(`已插入 ${list.length} 个短代码`)
 }
 
 /** 拖拽图片到编辑器直接上传 */
@@ -749,9 +933,12 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   padding: 16px 18px 40px;
   overflow-y: auto;
   max-height: 620px;
+  /* 预览区（尤其分屏时只有半屏宽）比正文窄，视频按 70vh 撑开会占满整列，
+     这里用播放器暴露的 CSS 变量收一收高度（自定义属性会穿透 shadow DOM） */
+  --md-video-max-height: 360px;
 }
 
-/* ---------- 行内表情 / 图片（innerHTML 注入，需 deep） ---------- */
+/* ---------- 行内表情（innerHTML 注入，需 deep） ---------- */
 .md-content :deep(.editor-emoji) {
   width: 24px;
   height: 24px;
@@ -760,34 +947,6 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   object-fit: contain;
   margin: 0 2px;
   border-radius: 4px;
-}
-.md-content :deep(.md-image) {
-  display: inline-block;
-  max-width: 100%;
-  margin: 8px 0;
-  padding: 0;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius);
-  background: var(--bg-muted);
-  overflow: hidden;
-  vertical-align: bottom;
-  cursor: default;
-}
-.md-content :deep(.md-image img) {
-  display: block;
-  max-width: 100%;
-  max-height: 460px;
-  object-fit: contain;
-  margin: 0 auto;
-}
-.md-content :deep(.md-image__alt) {
-  display: block;
-  padding: 4px 10px 6px;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--text-muted);
-  text-align: center;
-  background: var(--bg-card);
 }
 
 /* 右下角字数统计 */
@@ -845,6 +1004,23 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   margin: 0 auto;
   overflow-y: auto;
   padding: 24px 24px 72px;
+}
+/* 全屏分屏：左写右预览，两栏各自滚动 */
+.md-editor.is-fullscreen .md-body.is-split {
+  flex-direction: row;
+  align-items: stretch;
+}
+.md-editor.is-fullscreen .md-body.is-split .md-content,
+.md-editor.is-fullscreen .md-body.is-split .md-preview {
+  flex: 1 1 50%;
+  min-width: 0;
+  max-width: none;
+  margin: 0;
+  padding: 22px 20px 64px;
+}
+.md-editor.is-fullscreen .md-body.is-split .md-preview {
+  border-left: 1px solid var(--border-soft);
+  background: var(--bg-card);
 }
 .md-editor.is-fullscreen .md-count {
   right: 20px;
@@ -910,6 +1086,19 @@ defineExpose({ focus: () => editorRef.value?.focus() })
     font-size: 14px;
     padding-left: 14px;
     padding-right: 14px;
+  }
+  /* 窄屏放不下左右两栏：分屏改成上下两半（上写下看） */
+  .md-editor.is-fullscreen .md-body.is-split {
+    flex-direction: column;
+  }
+  .md-editor.is-fullscreen .md-body.is-split .md-content,
+  .md-editor.is-fullscreen .md-body.is-split .md-preview {
+    flex: 1 1 50%;
+    padding: 16px 14px 40px;
+  }
+  .md-editor.is-fullscreen .md-body.is-split .md-preview {
+    border-left: none;
+    border-top: 1px solid var(--border-soft);
   }
 }
 </style>

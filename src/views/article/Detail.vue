@@ -13,6 +13,8 @@
       >
         <img :src="author?.avatar || defaultAvatar" class="meta-author__avatar" alt="" loading="lazy" />
         <span class="meta-author__name">{{ author?.nickname || '匿名' }}</span>
+        <!-- 佩戴中的勋章（作者信息带 users.json） -->
+        <WearingBadge v-if="author?.json?.wearing_badge" :badge="author.json.wearing_badge" />
       </component>
       <span class="dot">·</span>
       <span>{{ formatDate(article.create_time) }}</span>
@@ -177,6 +179,7 @@ import { createReport } from '@/api/report'
 import EmptyState from '@/components/EmptyState.vue'
 import EmojiText from '@/components/EmojiText.vue'
 import ContentLock from '@/components/ContentLock.vue'
+import WearingBadge from '@/components/WearingBadge.vue'
 import { getArticle } from '@/api/article'
 import {
   like, unlike, isLiked,

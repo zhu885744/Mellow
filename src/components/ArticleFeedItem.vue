@@ -27,6 +27,8 @@
             size="sm"
           />
           <span v-else-if="authorTitle" :class="['c-title', authorTitleClass]">{{ authorTitle }}</span>
+          <!-- 佩戴中的勋章（作者信息带 users.json） -->
+          <WearingBadge v-if="author?.json?.wearing_badge" :badge="author.json.wearing_badge" />
           <span v-if="article.top" class="fa-top">置顶</span>
         </div>
         <div class="fa-time">
@@ -97,6 +99,7 @@ import { renderMarkdown } from '@/utils/markdown'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
 import TitleBadge from './TitleBadge.vue'
+import WearingBadge from './WearingBadge.vue'
 import EmojiText from './EmojiText.vue'
 import ScopeBadge from './ScopeBadge.vue'
 import AvatarFrame from './AvatarFrame.vue'

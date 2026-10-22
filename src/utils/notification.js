@@ -74,6 +74,9 @@ export async function notificationLink(n) {
     case 'decoration':
       // 装扮（获得 / 续期 / 回收 / 过期）
       return '/user/decorations'
+    case 'badge':
+      // 勋章（限定勋章即将到期）：去「我的勋章」看进度并佩戴
+      return '/user/badges'
     case 'user':
       // 用户主页打赏 / 关注 / 提及
       return bindId ? `/author/${bindId}` : ''

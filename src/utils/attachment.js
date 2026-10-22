@@ -110,6 +110,51 @@ export function formatFileSize(bytes) {
   return `${index === 0 ? Math.round(value) : value.toFixed(1)} ${units[index]}`
 }
 
+/**
+ * 扩展名 → 正文短代码类型
+ *
+ * video / audio 用播放器渲染，其余（pdf、zip、docx…）一律走「附件下载卡」，
+ * 所以这里只需要区分三种，不需要更细的类型。
+ */
+export function mediaKindOf(nameOrUrl) {
+  const clean = String(nameOrUrl ?? '')
+    .split('?')[0]
+    .split('#')[0]
+  const ext = normalizeExt(clean.slice(clean.lastIndexOf('.') + 1))
+  if (ATTACHMENT_EXT_GROUPS.video.includes(ext)) return 'video'
+  if (ATTACHMENT_EXT_GROUPS.audio.includes(ext)) return 'audio'
+  return 'file'
+}
+
+/**
+ * 生成正文短代码（编辑器插入用）
+ *
+ *   @[video](url "标题")
+ *   @[audio](url "标题")
+ *   @[file](url "文件名" "2.3 MB")
+ *
+ * kind 可显式指定 video / audio / file（编辑器的「视频 / 音频 / 附件」按钮按类型取用），
+ * 不传则按扩展名自动判断。解析侧见 @/utils/markdown 的 media_shortcode 规则。
+ */
+export function attachmentMarker({ url, name, size } = {}, kind) {
+  const src = String(url ?? '').trim()
+  if (!src) return ''
+
+  // 引号会截断短代码参数，统一换成单引号；换行直接抹掉
+  const title = String(name ?? '')
+    .replace(/["\r\n]/g, ' ')
+    .trim()
+
+  const type = ['video', 'audio', 'file'].includes(kind) ? kind : mediaKindOf(title || src)
+  if (type === 'file') {
+    const bytes = Number(size) || 0
+    const meta = bytes > 0 ? formatFileSize(bytes) : ''
+    return `@[file](${src} "${title}" "${meta}")`
+  }
+
+  return `@[${type}](${src}${title ? ` "${title}"` : ''})`
+}
+
 /** 搜索关键字清理：剔除会干扰后端 LIKE「字段名|值」格式的字符 */
 export function sanitizeAttachmentKeyword(keyword) {
   return String(keyword ?? '')

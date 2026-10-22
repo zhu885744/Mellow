@@ -64,6 +64,8 @@ const routes = [
       // 搜索 / 签到：原先是弹窗，现改为独立页面（支持 /search?q=xxx&scope=article 直达）
       { path: 'search', name: 'search', component: () => import('@/views/Search.vue') },
       { path: 'checkin', name: 'checkin', component: () => import('@/views/Checkin.vue') },
+      // 勋章馆 / 佩戴榜：公开的荣誉墙（按稀有度分组，带持有人数与正在佩戴的用户）
+      { path: 'badges', name: 'badges', component: () => import('@/views/badge/Index.vue') },
       { path: 'goods', name: 'goods', component: () => import('@/views/goods/Index.vue') },
       { path: 'about', name: 'about', component: () => import('@/views/page/Index.vue'), props: { pageKey: 'about' } },
       // 用户协议 / 隐私协议：内容取自站点配置 Mellow_functions.auth_dialog_agreement
@@ -109,6 +111,8 @@ const routes = [
       { path: 'integral', name: 'user-integral', component: () => import('@/views/user/Integral.vue') },
       // 我的装扮：查看/佩戴已拥有的头像框与头衔（商城只负责兑换，管理集中在这里）
       { path: 'decorations', name: 'user-decorations', component: () => import('@/views/user/Decorations.vue') },
+      // 我的勋章：已获得的勋章 + 未完成的任务条件与进度
+      { path: 'badges', name: 'user-badges', component: () => import('@/views/user/Badges.vue') },
       { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
       // 拉黑与举报：我的拉黑列表（可解除）+ 我提交的举报与处理进展（可撤回）
       { path: 'blocks', name: 'user-blocks', component: () => import('@/views/user/Blocks.vue') },
@@ -202,6 +206,8 @@ const routes = [
       { path: 'integral', name: 'admin-integral', component: () => import('@/views/admin/Integral.vue'), meta: { title: '积分管理' } },
       // 装扮管理：头像框 / 头衔等装扮的增删改查、批量发放与回收（关联商城商品自动同步）
       { path: 'decoration', name: 'admin-decoration', component: () => import('@/views/admin/Decoration.vue'), meta: { title: '装扮管理' } },
+      // 勋章：任务条件（发布文章 / 注册满 N 天…）自动发放 + 手动发放与收回
+      { path: 'badges', name: 'admin-badges', component: () => import('@/views/admin/Badges.vue'), meta: { title: '勋章管理' } },
       // 签到配置（独立模块：奖励项 / 周期 / 里程碑 / 月全勤 / 随机奖励 / 补签）
       { path: 'checkin', name: 'admin-checkin', component: () => import('@/views/admin/Checkin.vue'), meta: { title: '签到管理' } },
       // 举报管理：处理用户提交的举报（属实可同时移除内容，封禁仍走用户管理）

@@ -310,6 +310,21 @@ import { listAllTags, createTag } from '@/api/tags'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
 import { parseIdField, toIdField, truncate, isAdmin } from '@/utils/helper'
+
+/**
+ * 自动摘要：先把正文里的标记（媒体短代码 / 图片 / 表情）剥掉再截断
+ *
+ * 否则摘要会直接显示 @[video](https://.../a.mp4) 这种源码 —— 列表页不渲染 markdown。
+ */
+function autoAbstract(content) {
+  const plain = String(content || '')
+    .replace(/@\[(?:video|audio|file)\]\([^)]*\)/g, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[emoji:[^\]]+\]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return truncate(plain, 120)
+}
 import { toLocalInput } from '@/utils/time'
 import { toast } from '@/utils/toast'
 
@@ -591,7 +606,7 @@ function buildPayload(status) {
 
   const payload = {
     title: form.title.trim(),
-    abstract: form.abstract.trim() || truncate(form.content, 120),
+    abstract: form.abstract.trim() || autoAbstract(form.content),
     content: form.content,
     covers: form.cover,
     group: toIdField(form.group === '' ? [] : [form.group]),

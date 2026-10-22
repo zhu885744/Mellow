@@ -90,6 +90,10 @@
             <router-link to="/topics" active-class="active" class="nav-item">
               <span class="nav-zh">话题</span>
             </router-link>
+            <!-- 勋章馆：公开的荣誉墙 / 佩戴榜 -->
+            <router-link to="/badges" active-class="active" class="nav-item">
+              <span class="nav-zh">勋章</span>
+            </router-link>
             <!-- 文档站：独立布局（/docs） -->
             <router-link to="/docs" active-class="active" class="nav-item">
               <span class="nav-zh">文档</span>

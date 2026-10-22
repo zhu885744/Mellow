@@ -135,7 +135,9 @@ export const pickCommentAuthor = (item) => {
     nickname: author?.nickname || item?.nickname || '匿名',
     avatar: author?.avatar || item?.avatar || '',
     title: pickUserTitle(author),
-    level: pickUserLevel(author)
+    level: pickUserLevel(author),
+    // json 里带佩戴中的勋章（wearing_badge），评论昵称旁要渲染它
+    json: author?.json || item?.json || {}
   }
 }
 
