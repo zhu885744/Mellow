@@ -241,7 +241,7 @@
       :icon="edit.id ? 'bi bi-pencil-square' : 'bi bi-plus-circle'"
       :loading="edit.loading"
       confirm-text="保存"
-      width="720px"
+      width="880px"
       @confirm="save"
     >
       <section class="form-section">
@@ -280,30 +280,88 @@
         </label>
 
         <template v-if="!edit.rulesAll">
-          <div class="pick-toolbar">
-            <input v-model="ruleKeyword" class="input" type="search" placeholder="搜索规则名称或路由…" />
-            <button class="btn btn-sm btn-ghost" type="button" @click="toggleAllRules">
-              {{ visibleRules.length && visibleRules.every((r) => edit.rules.includes(r.hash)) ? '取消全选' : '全选当前' }}
+          <!-- 快速套用：常见角色一键勾好，不用逐条找 -->
+          <div class="preset-bar">
+            <span class="preset-label"><i class="bi bi-lightning-charge" /> 快速套用</span>
+            <button
+              v-for="preset in AUTH_RULE_PRESETS"
+              :key="preset.key"
+              type="button"
+              class="preset-chip"
+              :title="`${preset.desc}（叠加勾选，不会取消已选）`"
+              @click="applyPreset(preset)"
+            >
+              <i :class="preset.icon" /> {{ preset.label }}
             </button>
           </div>
 
+          <div class="pick-toolbar">
+            <input v-model="ruleKeyword" class="input" type="search" placeholder="搜索模块 / 规则名称 / 路由…" />
+            <button class="btn btn-sm btn-ghost" type="button" @click="toggleExpandAll">
+              {{ allExpanded ? '收起全部' : '展开全部' }}
+            </button>
+            <button class="btn btn-sm btn-ghost" type="button" @click="selectAllRules">全部选中</button>
+            <button class="btn btn-sm btn-ghost" type="button" :disabled="!edit.rules.length" @click="edit.rules = []">
+              清空
+            </button>
+          </div>
+
+          <label class="check-line check-line--inline">
+            <input v-model="showUselessRules" type="checkbox" />
+            <span>显示无需授权的规则（免登录 / 需登录，默认隐藏）</span>
+          </label>
+
           <div v-if="loadingRules" class="pick-loading">规则加载中...</div>
-          <div v-else-if="!visibleRules.length" class="pick-empty">没有匹配的规则</div>
-          <ul v-else class="pick-list">
-            <li v-for="rule in visibleRules" :key="rule.hash">
-              <label class="pick-item">
-                <input v-model="edit.rules" type="checkbox" :value="rule.hash" />
-                <span class="pick-main">
-                  <span class="pick-title">{{ rule.name || rule.route }}</span>
-                  <code class="pick-route">{{ rule.route }}</code>
-                </span>
-                <span class="method-chip" :class="`is-${String(rule.method || 'GET').toLowerCase()}`">
-                  {{ String(rule.method || 'GET').toUpperCase() }}
-                </span>
-              </label>
-            </li>
-          </ul>
-          <p class="form-hint">已选 {{ edit.rules.length }} 条</p>
+          <div v-else-if="!ruleGroups.length" class="pick-empty">没有匹配的规则</div>
+          <div v-else class="group-cards">
+            <section v-for="group in ruleGroups" :key="group.key" class="group-card">
+              <header class="group-card__head">
+                <label class="pick" :title="group.allChecked ? '取消本模块' : '勾选本模块全部规则'">
+                  <input
+                    type="checkbox"
+                    :checked="group.allChecked"
+                    :indeterminate.prop="group.someChecked"
+                    @change="toggleRuleGroup(group)"
+                  />
+                </label>
+                <button
+                  type="button"
+                  class="group-card__title"
+                  @click="toggleGroupOpen(group.key)"
+                >
+                  <i :class="group.icon" class="group-card__icon" />
+                  <span class="group-card__name">{{ group.label }}</span>
+                  <code class="group-card__route">/api/{{ group.key }}</code>
+                  <span class="group-card__count" :class="{ 'is-on': group.selectedCount > 0 }">
+                    {{ group.selectedCount }}/{{ group.items.length }}
+                  </span>
+                  <i
+                    class="bi group-card__caret"
+                    :class="isGroupOpen(group.key) ? 'bi-chevron-up' : 'bi-chevron-down'"
+                  />
+                </button>
+              </header>
+
+              <ul v-if="isGroupOpen(group.key)" class="pick-list pick-list--nested">
+                <li v-for="rule in group.items" :key="rule.hash">
+                  <label class="pick-item">
+                    <input v-model="edit.rules" type="checkbox" :value="rule.hash" />
+                    <span class="pick-main">
+                      <span class="pick-title">{{ authRuleTitle(rule) }}</span>
+                      <code class="pick-route">{{ rule.route }}</code>
+                    </span>
+                    <span class="method-chip" :class="`is-${String(rule.method || 'GET').toLowerCase()}`">
+                      {{ String(rule.method || 'GET').toUpperCase() }}
+                    </span>
+                  </label>
+                </li>
+              </ul>
+            </section>
+          </div>
+
+          <p class="form-hint">
+            已选 {{ edit.rules.length }} 条 · 当前显示 {{ visibleRuleCount }} 条（共 {{ selectableRules.length }} 条需授权规则）
+          </p>
         </template>
       </section>
 
@@ -404,7 +462,16 @@ import {
   AUTH_GROUP_ADMIN_FIELD
 } from '@/api/auth-group'
 import { listAuthRules } from '@/api/auth-rules'
-import { AUTH_RULE_FIELD } from '@/utils/auth-rule'
+import {
+  AUTH_RULE_FIELD,
+  AUTH_RULE_PRESETS,
+  authRuleModuleKey,
+  authRuleModuleMeta,
+  authRuleModuleOrder,
+  authRuleMethodRank,
+  authRuleTitle,
+  authRuleTypeKey
+} from '@/utils/auth-rule'
 import { getAuthPagesFlat } from '@/api/auth-pages'
 import {
   parsePipeIds,
@@ -448,6 +515,10 @@ const loadingRules = ref(false)
 const loadingPages = ref(false)
 const ruleKeyword = ref('')
 const pageKeyword = ref('')
+// 展开的模块卡片（key 列表）；搜索时全部视为展开
+const openGroups = ref([])
+// 默认只显示 type=default（真正校验权限点的规则），另两类勾了也没用
+const showUselessRules = ref(false)
 
 // ===== 弹窗 =====
 const edit = reactive({
@@ -640,13 +711,78 @@ async function loadPagesOnce() {
   }
 }
 
-const visibleRules = computed(() => {
+/**
+ * 真正需要授权的规则：type=default。
+ * common（免登录）与 login（登录即放行）在中间件里根本不查权限点，勾了也没用，
+ * 默认隐藏，避免上千条里混进一堆「勾了不生效」的开关。
+ * （历史分组里若已存了这类 hash，隐藏不影响提交 —— edit.rules 原样保留。）
+ */
+const selectableRules = computed(() =>
+  allRules.value.filter((rule) => showUselessRules.value || authRuleTypeKey(rule) === 'default')
+)
+
+/**
+ * 按模块归类：一个模块一张卡片，卡片头可整组勾选。
+ * 搜索命中「模块中文名 / 模块 key / 规则名 / 路由」任意一项。
+ */
+const ruleGroups = computed(() => {
   const kw = ruleKeyword.value.trim().toLowerCase()
-  if (!kw) return allRules.value
-  return allRules.value.filter(
-    (r) => String(r.name || '').toLowerCase().includes(kw) || String(r.route || '').toLowerCase().includes(kw)
+  const picked = new Set(edit.rules)
+  const map = new Map()
+
+  for (const rule of selectableRules.value) {
+    const key = authRuleModuleKey(rule)
+    const meta = authRuleModuleMeta(key)
+    if (kw) {
+      const hay = `${meta.label} ${key} ${rule.name || ''} ${rule.route || ''}`.toLowerCase()
+      if (!hay.includes(kw)) continue
+    }
+    if (!map.has(key)) {
+      map.set(key, { key, label: meta.label, icon: meta.icon, items: [], selectedCount: 0 })
+    }
+    const group = map.get(key)
+    group.items.push(rule)
+    if (picked.has(rule.hash)) group.selectedCount += 1
+  }
+
+  const groups = [...map.values()]
+  for (const group of groups) {
+    // 组内按「查看 → 新增 → 修改 → 删除」排，再按名称
+    group.items.sort(
+      (a, b) =>
+        authRuleMethodRank(a) - authRuleMethodRank(b) ||
+        authRuleTitle(a).localeCompare(authRuleTitle(b), 'zh')
+    )
+    group.allChecked = group.items.length > 0 && group.selectedCount === group.items.length
+    group.someChecked = group.selectedCount > 0 && !group.allChecked
+  }
+
+  return groups.sort(
+    (a, b) => authRuleModuleOrder(a.key) - authRuleModuleOrder(b.key) || a.key.localeCompare(b.key)
   )
 })
+
+const visibleRuleCount = computed(() => ruleGroups.value.reduce((sum, group) => sum + group.items.length, 0))
+
+const allExpanded = computed(
+  () => ruleGroups.value.length > 0 && ruleGroups.value.every((group) => openGroups.value.includes(group.key))
+)
+
+// 搜索时一律展开，命中项直接可见
+function isGroupOpen(key) {
+  return !!ruleKeyword.value.trim() || openGroups.value.includes(key)
+}
+
+function toggleGroupOpen(key) {
+  const next = new Set(openGroups.value)
+  if (next.has(key)) next.delete(key)
+  else next.add(key)
+  openGroups.value = [...next]
+}
+
+function toggleExpandAll() {
+  openGroups.value = allExpanded.value ? [] : ruleGroups.value.map((group) => group.key)
+}
 
 const visiblePages = computed(() => {
   const kw = pageKeyword.value.trim().toLowerCase()
@@ -656,12 +792,58 @@ const visiblePages = computed(() => {
   )
 })
 
-function toggleAllRules() {
-  const hashes = visibleRules.value.map((r) => r.hash)
-  const allChecked = hashes.length && hashes.every((h) => edit.rules.includes(h))
+/** 勾 / 取消整个模块 */
+function toggleRuleGroup(group) {
   const next = new Set(edit.rules)
-  hashes.forEach((h) => (allChecked ? next.delete(h) : next.add(h)))
+  const allChecked = group.items.length > 0 && group.items.every((rule) => next.has(rule.hash))
+  group.items.forEach((rule) => (allChecked ? next.delete(rule.hash) : next.add(rule.hash)))
   edit.rules = [...next]
+}
+
+/** 全选当前可见的规则（受搜索与「显示无需授权」影响） */
+function selectAllRules() {
+  const next = new Set(edit.rules)
+  ruleGroups.value.forEach((group) => group.items.forEach((rule) => next.add(rule.hash)))
+  edit.rules = [...next]
+}
+
+/** 快速套用模板：叠加勾选，不会取消已选的权限（可再手动微调） */
+function applyPreset(preset) {
+  const modules = preset.modules ? new Set(preset.modules) : null
+  const methods = preset.methods ? new Set(preset.methods.map((item) => item.toUpperCase())) : null
+  // 路由区分大小写，只把方法部分统一成大写再比对
+  const permits = preset.permits
+    ? new Set(
+        preset.permits.map((item) => {
+          const [method, ...rest] = item.split(' ')
+          return `${method.toUpperCase()} ${rest.join(' ')}`
+        })
+      )
+    : null
+  const next = new Set(edit.rules)
+  let added = 0
+
+  allRules.value.forEach((rule) => {
+    // 只有 default 类型才真正校验权限点
+    if (authRuleTypeKey(rule) !== 'default') return
+    if (modules && !modules.has(authRuleModuleKey(rule))) return
+    if (methods && !methods.has(String(rule.method || 'GET').toUpperCase())) return
+    if (permits && !permits.has(`${String(rule.method || 'GET').toUpperCase()} ${rule.route}`)) return
+    if (next.has(rule.hash)) return
+    next.add(rule.hash)
+    added += 1
+  })
+
+  edit.rules = [...next]
+
+  // 套用后把受影响的模块展开，方便核对
+  const touched = ruleGroups.value
+    .filter((group) => group.items.some((rule) => next.has(rule.hash)))
+    .map((group) => group.key)
+  openGroups.value = [...new Set([...openGroups.value, ...touched])]
+
+  if (added) toast.success(`已套用「${preset.label}」，新增 ${added} 条权限`)
+  else toast.info(`「${preset.label}」没有需要新增的权限`)
 }
 
 function toggleAllPages() {
@@ -695,6 +877,7 @@ function resetEdit() {
   edit.memberIds = ''
   ruleKeyword.value = ''
   pageKeyword.value = ''
+  openGroups.value = []
 }
 
 async function openCreate() {
@@ -1330,6 +1513,128 @@ onMounted(() => {
   list-style: none;
   border: 1px solid var(--border);
   border-radius: var(--radius);
+}
+/* 模块卡片里的规则列表：卡片自带边框，内层不再重复描边 */
+.pick-list--nested {
+  max-height: 300px;
+  border: none;
+  border-top: 1px dashed var(--border-soft);
+  border-radius: 0;
+}
+
+/* ---------- 快速套用 ---------- */
+.preset-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 6px 0 10px;
+}
+.preset-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.preset-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--primary-deep);
+  background: var(--accent-wash);
+  border: 1px solid var(--accent-soft);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.preset-chip:hover {
+  background: var(--accent-soft);
+  border-color: var(--primary);
+}
+
+.check-line--inline {
+  padding: 0 0 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---------- 按模块分组的卡片 ---------- */
+.group-cards {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.group-card {
+  /* 必须禁止收缩：外层是 max-height + overflow 的列向 flex，
+     卡片又有 overflow:hidden（会让 min-height:auto 失效），
+     不写 flex-shrink:0 的话几十张卡片会被平均压成几像素高的细线，内容全被裁掉 */
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.group-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px 6px 8px;
+  background: var(--bg-muted);
+}
+.group-card__title {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 0;
+  font-size: 13px;
+  color: var(--text);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+}
+.group-card__icon {
+  flex-shrink: 0;
+  color: var(--primary);
+}
+.group-card__name {
+  flex-shrink: 0;
+  font-weight: 600;
+}
+.group-card__route {
+  min-width: 0;
+  font-size: 11px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: var(--text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.group-card__count {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--bg-card);
+  border-radius: 999px;
+}
+.group-card__count.is-on {
+  color: var(--primary-deep);
+  background: var(--accent-soft);
+}
+.group-card__caret {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-light);
 }
 .pick-item {
   display: flex;
