@@ -42,6 +42,8 @@
           />
         </div>
       </div>
+      <!-- 右上角三点菜单：分享 / 打赏 / 举报，卡片底部只留互动按钮 -->
+      <CardActionMenu :items="actionMenuItems" @select="onActionMenu" />
     </div>
 
     <!-- 标题：文章比动态多的信息，点击进详情 -->
@@ -62,16 +64,55 @@
       <img :src="cover" :alt="article.title" loading="lazy" decoding="async" />
     </div>
 
-    <!-- 操作栏：阅读 / 评论 / 分享（文章列表没有点赞数据，保持轻量） -->
+    <!-- 底部互动：点赞 / 评论 / 阅读（分享、打赏、举报在右上角三点菜单） -->
     <div class="fa-actions">
-      <span class="fa-stat"><i class="bi bi-eye" aria-hidden="true" /> {{ article.views || 0 }} 阅读</span>
-      <span v-if="showComment" class="fa-stat">
-        <i class="bi bi-chat-dots" aria-hidden="true" /> {{ commentCount }} 评论
-      </span>
-      <button class="fa-stat fa-share" type="button" @click="copyLink">
-        <i class="bi bi-share" aria-hidden="true" /> 分享
+      <!-- 内容类型标注：首页混排里一眼分清动态和长文 -->
+      <span class="kind-tag"><i class="bi bi-file-text" /> 长文</span>
+      <button
+        ref="likeBtn"
+        class="fa-action like-btn push-right"
+        :class="{ liked }"
+        type="button"
+        title="点赞"
+        @click="toggleLike"
+      >
+        <i ref="likeIcon" class="bi" :class="liked ? 'bi-heart-fill' : 'bi-heart'" />
+        <span>{{ likeCount }}</span>
       </button>
+      <button
+        v-if="showComment"
+        class="fa-action"
+        type="button"
+        title="查看评论"
+        @click="goDetail"
+      >
+        <i class="bi bi-chat-dots" />
+        <span>{{ commentCount }}</span>
+      </button>
+      <span class="fa-action is-static" title="阅读量">
+        <i class="bi bi-eye" />
+        <span>{{ article.views || 0 }}</span>
+      </span>
     </div>
+
+    <ReportDialog
+      :visible="reportVisible"
+      target-type="article"
+      :target-id="article.id"
+      :target-label="reportLabel"
+      :loading="reporting"
+      @update:visible="(v) => (reportVisible = v)"
+      @confirm="submitReport"
+    />
+
+    <!-- 打赏：积分打赏（自己的文章不显示入口） -->
+    <RewardDialog
+      v-model:visible="rewardVisible"
+      bind-type="article"
+      :bind-id="article.id"
+      :to-uid="authorUid"
+      :to-name="author?.nickname || ''"
+    />
   </article>
 </template>
 
@@ -83,7 +124,7 @@
  * 纯文本片段，超出部分用「查看更多」引导到详情页，整体观感与 MomentItem 对齐。
  * 只在首页使用，列表页 / 搜索页仍用 ArticleCard。
  */
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { fromNow } from '@/utils/time'
 import {
@@ -103,6 +144,12 @@ import WearingBadge from './WearingBadge.vue'
 import EmojiText from './EmojiText.vue'
 import ScopeBadge from './ScopeBadge.vue'
 import AvatarFrame from './AvatarFrame.vue'
+import CardActionMenu from './CardActionMenu.vue'
+import ReportDialog from './ReportDialog.vue'
+import RewardDialog from './RewardDialog.vue'
+import { like, unlike, isLiked, likesCount } from '@/api/tags'
+import { createReport } from '@/api/report'
+import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import { resolveFrameRender } from '@/utils/frameRender'
 
 const props = defineProps({
@@ -190,6 +237,132 @@ async function copyLink() {
   if (ok) toast.success('已复制链接和标题，去分享吧')
   else toast.error('复制失败，请手动复制')
 }
+
+/* ===== 底部互动：点赞 / 评论 / 阅读 =====
+ * 列表接口的 result.like 是点赞用户 id 数组，用长度当点赞数；
+ * 是否已点赞仍需按卡片查一次 is-liked（与动态卡片一致），换卡片状态即时。
+ */
+const likeBtn = ref(null)
+const likeIcon = ref(null)
+const liked = ref(false)
+// 先用列表里自带的点赞数组兜个数，避免首帧显示 0 再跳变
+const likeCount = ref(Number(props.article.result?.like?.length || props.article.likes || 0))
+
+async function loadLikeState() {
+  try {
+    if (userStore.isLogged) {
+      const res = await isLiked('article', props.article.id)
+      liked.value = !!(res?.data?.is_liked ?? res?.data)
+      likeCount.value = res?.data?.count ?? 0
+    } else {
+      const res = await likesCount('article', [props.article.id])
+      const counts = res?.data?.counts || res?.data?.data?.counts || {}
+      likeCount.value = counts[props.article.id] || 0
+    }
+  } catch {
+    /* 保持初值 */
+  }
+}
+
+function requireLogin() {
+  if (!userStore.isLogged) {
+    toast.warning('请先登录')
+    router.push({ name: 'login', query: { redirect: router.currentRoute.value.fullPath } })
+    return false
+  }
+  return true
+}
+
+async function toggleLike() {
+  if (!requireLogin()) return
+
+  const prevLiked = liked.value
+  const prevCount = likeCount.value
+  liked.value = !prevLiked
+  likeCount.value = Math.max(0, prevCount + (liked.value ? 1 : -1))
+
+  if (liked.value) {
+    popIcon(likeIcon.value)
+    burstHeart(likeBtn.value)
+    toast.success('点赞成功')
+  } else {
+    popOut(likeIcon.value)
+    toast.info('已取消点赞')
+  }
+
+  try {
+    if (liked.value) await like('article', props.article.id)
+    else await unlike('article', props.article.id)
+  } catch {
+    liked.value = prevLiked
+    likeCount.value = prevCount
+    toast.error('操作失败，请重试')
+  }
+}
+
+/* ===== 打赏 / 举报 ===== */
+const authorUid = computed(() => Number(props.article.uid || author.value?.id || 0))
+const rewardVisible = ref(false)
+// 自己的文章不打赏（后端同样会拒绝）
+const canReward = computed(() => authorUid.value > 0 && Number(userStore.user?.id) !== authorUid.value)
+
+function openReward() {
+  rewardVisible.value = true
+}
+
+const reportVisible = ref(false)
+const reporting = ref(false)
+// 未登录不显示入口；自己的文章也不显示（后端同样拒绝「举报自己」）
+const canReport = computed(() => {
+  const me = userStore.user?.id
+  if (!me) return false
+  return String(props.article.uid || author.value?.id || '') !== String(me)
+})
+
+// 弹窗里显示「文章「标题」」，避免在信息流里点错条目
+const reportLabel = computed(() => `文章「${String(props.article.title || '').slice(0, 20)}」`)
+
+async function submitReport({ reason, detail, images }) {
+  reporting.value = true
+  try {
+    await createReport({ target_type: 'article', target_id: props.article.id, reason, detail, images })
+    reportVisible.value = false
+    toast.success('举报已提交，我们会尽快处理')
+  } catch {
+    /* 拦截器已提示（重复举报 / 超过每日上限等） */
+  } finally {
+    reporting.value = false
+  }
+}
+
+/* ===== 右上角三点菜单 ===== */
+// 低频操作收进菜单，底部只留点赞、评论、阅读
+const actionMenuItems = computed(() => {
+  const items = [{ key: 'share', label: '分享', icon: 'bi bi-share' }]
+
+  if (canReward.value) items.push({ key: 'reward', label: '打赏', icon: 'bi bi-coin' })
+  if (canReport.value) items.push({ key: 'report', label: '举报', icon: 'bi bi-flag' })
+
+  return items
+})
+
+function onActionMenu(key) {
+  switch (key) {
+    case 'share':
+      copyLink()
+      break
+    case 'reward':
+      openReward()
+      break
+    case 'report':
+      reportVisible.value = true
+      break
+  }
+}
+
+onMounted(() => {
+  loadLikeState()
+})
 </script>
 
 <style scoped>
@@ -350,30 +523,66 @@ async function copyLink() {
   transform: scale(1.02);
 }
 
+/* 底部互动栏：点赞 / 评论 / 阅读，图标 + 数字，与动态卡片一致 */
 .fa-actions {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   margin-top: 12px;
-  padding-top: 12px;
+  padding-top: 10px;
   border-top: 1px dashed var(--border);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
-.fa-stat {
+/* 内容类型标注（动态 / 长文）：低对比度胶囊，靠左；互动按钮靠右 */
+.kind-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-}
-.fa-share {
-  padding: 0;
-  font-size: 12px;
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.6;
   color: var(--text-muted);
+  background: var(--bg-muted);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.kind-tag i {
+  font-size: 12px;
+}
+.push-right {
+  margin-left: auto;
+}
+.fa-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
+  font: inherit;
+  color: inherit;
   background: none;
   border: none;
   cursor: pointer;
+  transition: color var(--dur) var(--ease);
 }
-.fa-share:hover {
+.fa-action i {
+  font-size: 15px;
+}
+.fa-action:hover {
   color: var(--primary);
+}
+/* 只读的阅读数：不要 hover 变色，避免看着像可点 */
+.fa-action.is-static {
+  cursor: default;
+}
+.fa-action.is-static:hover {
+  color: inherit;
+}
+/* 点赞飘心的定位容器 */
+.like-btn {
+  position: relative;
+}
+.fa-action.liked {
+  color: var(--accent);
 }
 </style>

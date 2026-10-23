@@ -75,23 +75,28 @@
       >#{{ t.name }}</router-link>
     </div>
 
+    <!-- 操作区：宽屏是横排按钮，窄屏收成等宽的「图标在上、文字在下」操作栏 -->
     <div class="article-actions">
-      <button ref="likeBtn" class="btn btn-sm like-btn" @click="toggleLike">
-        <i ref="likeIcon" class="bi" :class="liked ? 'bi-star-fill' : 'bi-star'" /> 点赞 <span v-if="likeCount">({{ likeCount }})</span>
+      <button ref="likeBtn" class="btn btn-sm action-btn" :class="{ 'is-on': liked }" @click="toggleLike">
+        <i ref="likeIcon" class="bi" :class="liked ? 'bi-star-fill' : 'bi-star'" />
+        <span class="action-text">点赞<em v-if="likeCount" class="action-count">{{ likeCount }}</em></span>
       </button>
-      <button class="btn btn-sm" @click="toggleCollect">
-        <i ref="collectIcon" class="bi" :class="collected ? 'bi-bookmark-fill' : 'bi-bookmark'" /> {{ collected ? '已收藏' : '收藏' }}
-        <span v-if="collectCount">({{ collectCount }})</span>
+      <button class="btn btn-sm action-btn" :class="{ 'is-on': collected }" @click="toggleCollect">
+        <i ref="collectIcon" class="bi" :class="collected ? 'bi-bookmark-fill' : 'bi-bookmark'" />
+        <span class="action-text">{{ collected ? '已收藏' : '收藏' }}<em v-if="collectCount" class="action-count">{{ collectCount }}</em></span>
       </button>
-      <button v-if="canReward" class="btn btn-sm like-btn" @click="openReward">
-        <i class="bi bi-coin"></i>打赏
+      <button v-if="canReward" class="btn btn-sm action-btn" @click="openReward">
+        <i class="bi bi-coin" />
+        <span class="action-text">打赏</span>
       </button>
-      <button class="btn btn-sm like-btn" @click="shareArticle">
-        <i class="bi bi-share" /> 分享
+      <button class="btn btn-sm action-btn" @click="shareArticle">
+        <i class="bi bi-share" />
+        <span class="action-text">分享</span>
       </button>
       <!-- 举报：自己的文章不显示；提交后只通知管理员，作者不会收到提示 -->
-      <button v-if="canReport" class="btn btn-sm like-btn" title="举报这篇文章" @click="reportVisible = true">
-        <i class="bi bi-flag" /> 举报
+      <button v-if="canReport" class="btn btn-sm action-btn" title="举报这篇文章" @click="reportVisible = true">
+        <i class="bi bi-flag" />
+        <span class="action-text">举报</span>
       </button>
     </div>
 
@@ -543,14 +548,37 @@ onUnmounted(() => {
 }
 .article-actions {
   display: flex;
-  gap: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
   justify-content: center;
   padding: 16px 0;
   border-top: 1px dashed var(--border);
   border-bottom: 1px dashed var(--border);
 }
-.like-btn {
+/* 计数跟在文字后面，比原来的「点赞 (3)」省地方，窄屏也不容易换行 */
+.action-text {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  white-space: nowrap;
+}
+.action-count {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+/* 点赞飘心的定位容器（burstHeart 会把飘心贴在按钮上） */
+.action-btn {
   position: relative;
+}
+/* 已点赞 / 已收藏：整颗按钮变色，不再是「图标黄了、文字还是灰的」 */
+.action-btn.is-on {
+  color: var(--primary);
+  border-color: var(--primary-soft);
+}
+.action-btn.is-on .action-count {
+  color: inherit;
+  opacity: 0.75;
 }
 /* 文末：上一篇 / 下一篇 */
 .article-nav {
@@ -633,6 +661,51 @@ a.article-nav__item:active {
   }
   .article-nav__item--next .article-nav__label {
     justify-content: flex-start;
+  }
+
+  /* 操作区：窄屏放不下横排按钮（5 个按钮 + 计数会挤成两行），
+     改成等宽操作栏 —— 图标在上、文字在下，去按钮框，靠留白分隔 */
+  .article-actions {
+    gap: 0;
+    padding: 4px 0;
+    border-bottom: 0;
+  }
+  .article-actions .action-btn {
+    flex: 1 1 0;
+    min-width: 0;
+    height: auto;
+    flex-direction: column;
+    gap: 3px;
+    padding: 8px 2px;
+    font-size: 11px;
+    line-height: 1.2;
+    border: 0;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-muted);
+  }
+  .article-actions .action-btn i {
+    font-size: 19px;
+    line-height: 1;
+  }
+  .article-actions .action-text {
+    justify-content: center;
+    font-size: 11px;
+  }
+  .article-actions .action-count {
+    font-size: 10px;
+  }
+  /* 触摸反馈代替 hover：手机上 hover 会「粘住」，点一下整排按钮都像被选中 */
+  .article-actions .action-btn:hover {
+    color: var(--text-muted);
+    background: transparent;
+  }
+  .article-actions .action-btn:active {
+    background: var(--bg-muted);
+  }
+  /* 覆盖上面的中性色，已点赞 / 已收藏仍然高亮 */
+  .article-actions .action-btn.is-on {
+    color: var(--primary);
   }
 }
 

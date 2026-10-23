@@ -42,19 +42,8 @@
           />
         </div>
       </div>
-      <div v-if="canManage" class="head-actions">
-        <button
-          class="btn-icon"
-          :class="{ active: moment.top }"
-          :title="moment.top ? '取消置顶' : '设为置顶'"
-          @click="toggleTop"
-        ><i class="bi" :class="moment.top ? 'bi-pin-fill' : 'bi-pin'" /></button>
-        <button
-          class="btn-icon danger"
-          title="删除"
-          @click="$emit('delete', moment)"
-        ><i class="bi bi-x-lg" /></button>
-      </div>
+      <!-- 右上角三点菜单：分享 / 打赏 / 举报 / 置顶 / 删除，卡片底部只留互动按钮 -->
+      <CardActionMenu :items="actionMenuItems" @select="onActionMenu" />
     </div>
     <!-- 可见范围：登录可见 / 付费可见时后端已清空正文，这里展示引导并支持积分兑换 -->
     <ContentLock
@@ -85,40 +74,34 @@
     <div v-if="moment.location" class="moment-loc">
       <i class="bi bi-geo-alt" /> {{ moment.location }}
     </div>
+    <!-- 底部只保留高频互动：点赞 / 评论 / 阅读（分享、打赏、举报在右上角三点菜单） -->
     <div class="moment-actions">
+      <!-- 内容类型标注：首页混排里一眼分清动态和长文 -->
+      <span class="kind-tag"><i class="bi bi-chat-square-text" /> 动态</span>
       <button
         ref="likeBtn"
-        class="action-item like-btn"
+        class="action-item like-btn push-right"
         :class="{ liked }"
+        title="点赞"
         @click="toggleLike"
       >
         <span class="like-heart"><i ref="likeHeart" class="bi" :class="liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
         <span class="like-count">{{ likeCount }}</span>
       </button>
-      <button v-if="commentShow" class="action-item" @click="toggleComments">
-        <i class="bi bi-chat-dots" /> {{ commentCount }}
-        <span v-if="showComments">收起</span>
-        <span v-else>评论</span>
-      </button>
-      <span class="action-item">
-        <i class="bi bi-eye" /> {{ moment.views || 0 }} 阅读
-      </span>
-      <button class="action-item" @click="copyLink">
-        <i class="bi bi-share"></i> 分享
-      </button>
-      <!-- 打赏：自己的动态不显示（后端同样拒绝自打赏） -->
-      <button v-if="canReward" class="action-item" title="打赏这条动态" @click="openReward">
-        <i class="bi bi-coin" /> 打赏
-      </button>
-      <!-- 举报：自己的内容不显示举报入口；未登录也不显示（后端同样要求登录） -->
       <button
-        v-if="canReport"
+        v-if="commentShow"
         class="action-item"
-        title="举报这条动态"
-        @click="reportVisible = true"
+        :class="{ 'is-open': showComments }"
+        :title="showComments ? '收起评论' : '查看评论'"
+        @click="toggleComments"
       >
-        <i class="bi bi-flag" /> 举报
+        <i class="bi" :class="showComments ? 'bi-chat-dots-fill' : 'bi-chat-dots'" />
+        <span>{{ commentCount }}</span>
       </button>
+      <span class="action-item is-static" title="阅读量">
+        <i class="bi bi-eye" />
+        <span>{{ moment.views || 0 }}</span>
+      </span>
     </div>
 
     <ReportDialog
@@ -165,6 +148,7 @@ import {
   getTitleColorClass
 } from '@/utils/helper'
 import TitleBadge from './TitleBadge.vue'
+import CardActionMenu from './CardActionMenu.vue'
 import WearingBadge from './WearingBadge.vue'
 import AvatarFrame from './AvatarFrame.vue'
 import { resolveFrameRender } from '@/utils/frameRender'
@@ -456,6 +440,52 @@ async function copyLink() {
 function previewImage(i) {
   openLightbox(imageList.value, i)
 }
+
+// ---------- 右上角三点菜单 ----------
+// 低频操作（分享 / 打赏 / 举报 / 置顶 / 删除）收进菜单，底部只留点赞、评论、阅读。
+// 权限口径不变：打赏、举报对「自己的动态」隐藏；置顶仅管理员；删除按 canDelete。
+const actionMenuItems = computed(() => {
+  const items = [{ key: 'share', label: '分享', icon: 'bi bi-share' }]
+
+  if (canReward.value) {
+    items.push({ key: 'reward', label: '打赏', icon: 'bi bi-coin' })
+  }
+  if (canReport.value) {
+    items.push({ key: 'report', label: '举报', icon: 'bi bi-flag' })
+  }
+  // 管理项口径与改版前一致（按钮原来就只在 canManage 下出现）：
+  // 具体的删除动作由父级处理（首页会调接口，详情页只做跳转），这里不擅自改权限
+  if (canManage.value) {
+    items.push({
+      key: 'top',
+      label: props.moment.top ? '取消置顶' : '设为置顶',
+      icon: props.moment.top ? 'bi bi-pin-fill' : 'bi bi-pin'
+    })
+    items.push({ key: 'delete', label: '删除', icon: 'bi bi-trash', danger: true })
+  }
+
+  return items
+})
+
+function onActionMenu(key) {
+  switch (key) {
+    case 'share':
+      copyLink()
+      break
+    case 'reward':
+      openReward()
+      break
+    case 'report':
+      reportVisible.value = true
+      break
+    case 'top':
+      toggleTop()
+      break
+    case 'delete':
+      emit('delete', props.moment)
+      break
+  }
+}
 </script>
 
 <style scoped>
@@ -547,42 +577,7 @@ function previewImage(i) {
   font-size: 12px;
   color: var(--text-muted);
 }
-.head-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin-left: auto;
-}
-.btn-icon {
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: var(--bg-muted);
-  color: var(--text-muted);
-  cursor: pointer;
-  font-size: 15px;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  border: none;
-}
-.btn-icon:hover {
-  background: var(--primary);
-  color: #fff;
-}
-.btn-icon.danger:hover {
-  background: var(--danger);
-  color: #fff;
-}
-.btn-icon.active {
-  background: var(--accent);
-  color: #fff;
-}
-.btn-icon:hover {
-  background: var(--danger);
-  color: #fff;
-}
+
 
 .moment-content {
   font-size: 14px;
@@ -639,23 +634,62 @@ function previewImage(i) {
   margin-bottom: 12px;
 }
 
+/* 底部互动栏：只有点赞 / 评论 / 阅读，图标 + 数字，等间距排开 */
 .moment-actions {
   display: flex;
-  gap: 16px;
-  padding-top: 12px;
+  align-items: center;
+  gap: 18px;
+  padding-top: 10px;
   border-top: 1px dashed var(--border-soft);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-muted);
 }
+/* 内容类型标注（动态 / 长文）：低对比度胶囊，靠左；互动按钮靠右 */
+.kind-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-muted);
+  background: var(--bg-muted);
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.kind-tag i {
+  font-size: 12px;
+}
+.push-right {
+  margin-left: auto;
+}
 .action-item {
-  cursor: pointer;
-  border: none;
-  background: none;
-  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 0;
   font: inherit;
-  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease);
+}
+.action-item i {
+  font-size: 15px;
 }
 .action-item:hover {
+  color: var(--primary);
+}
+/* 只读的阅读数：不要 hover 变色，避免看着像可点 */
+.action-item.is-static {
+  cursor: default;
+}
+.action-item.is-static:hover {
+  color: inherit;
+}
+/* 评论区展开时，评论按钮保持主色提示「再点一下收起」 */
+.action-item.is-open {
   color: var(--primary);
 }
 .like-btn {
@@ -663,8 +697,7 @@ function previewImage(i) {
 }
 .action-item .like-heart {
   display: inline-block;
-  font-size: 13px;
-  margin-right: 3px;
+  font-size: 15px;
   transition: transform 0.2s;
 }
 .action-item.liked {
