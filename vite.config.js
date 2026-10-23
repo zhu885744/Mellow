@@ -43,6 +43,14 @@ export default defineConfig(({ mode }) => {
           cookieDomainRewrite: '',
           cookiePathRewrite: '/'
         },
+        // 主题配色样式表：由后端按后台配置动态生成（见 app/model/theme.go），
+        // dev 下不代理会拿到 Vite 的 index.html，配色改动看不到效果
+        '/theme-custom.css': {
+          target: API_URI,
+          changeOrigin: true,
+          cookieDomainRewrite: '',
+          cookiePathRewrite: '/'
+        },
         // 静态资源（含表情图片、上传附件等）也转发到后端
         '/assets': {
           target: API_URI,

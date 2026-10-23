@@ -225,6 +225,8 @@ const routes = [
       { path: 'links/group', name: 'admin-links-group', component: () => import('@/views/admin/LinkGroup.vue'), meta: { title: '友链分组' } },
       { path: 'attachment', name: 'admin-attachment', component: () => import('@/views/admin/Attachment.vue'), meta: { title: '附件管理' } },
       { path: 'system', name: 'admin-system', component: () => import('@/views/admin/SystemConfig.vue'), meta: { title: '系统设置' } },
+      // 主题配色：设计 token（浅色 / 深色两套），保存后 /theme-custom.css 立即生效
+      { path: 'theme', name: 'admin-theme', component: () => import('@/views/admin/Theme.vue'), meta: { title: '主题配色' } },
       // 日志解析：只读查看 runtime/ 下的系统日志与通知日志（后端 app/api/controller/log.go）
       { path: 'logs', name: 'admin-logs', component: () => import('@/views/admin/Logs.vue'), meta: { title: '日志' } },
       // 数据统计：消费服务端 socket 每秒推送的实时状态（app/socket/controller/status.go）

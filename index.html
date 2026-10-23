@@ -12,6 +12,11 @@
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)" />
 
+    <!-- ========== 主题配色 ==========
+      后台「主题配色」保存的设计 token 由后端动态生成（浅色 / 深色两套 CSS 变量），
+      放在内联样式之前，保证首屏就用上自定义配色。data-theme-custom 供配色页保存后刷新用。 -->
+    <link rel="stylesheet" href="/theme-custom.css" data-theme-custom />
+
     <!-- ========== 首屏加载动画样式（内联，避免额外请求） ========== -->
     <style>
       #app-loading {
