@@ -12,10 +12,25 @@
     <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#1a1a1a" media="(prefers-color-scheme: dark)" />
 
-    <!-- ========== 主题配色 ==========
-      后台「主题配色」保存的设计 token 由后端动态生成（浅色 / 深色两套 CSS 变量），
-      放在内联样式之前，保证首屏就用上自定义配色。data-theme-custom 供配色页保存后刷新用。 -->
-    <link rel="stylesheet" href="/theme-custom.css" data-theme-custom />
+    <!-- ========== 主题配色（运行时注入） ==========
+      配色通过 /api/theme/active 下发（{ version, css }），由 main.js 注入
+      <style id="theme-runtime">。接口带 no-store，不会像静态 .css 那样被 CDN 强缓存。
+      下面这段同步应用上次缓存的样式，避免自定义配色首屏闪一下默认色。 -->
+    <script>
+      (function () {
+        try {
+          var cached = JSON.parse(localStorage.getItem('inis_theme_css') || 'null')
+          if (cached && cached.css) {
+            var style = document.createElement('style')
+            style.id = 'theme-runtime'
+            style.textContent = cached.css
+            document.head.appendChild(style)
+          }
+        } catch (e) {
+          /* 隐私模式下 localStorage 不可用，交给 main.js 拉取 */
+        }
+      })()
+    </script>
 
     <!-- ========== 首屏加载动画样式（内联，避免额外请求） ========== -->
     <style>

@@ -49,7 +49,7 @@
             :key="item.path"
             :to="item.path"
             class="user-nav-item"
-            :class="{ active: isActive(item.path) }"
+            :class="{ 'is-active': isActive(item.path) }"
           >
             <i :class="item.icon" />
             <span class="user-nav-text">{{ item.name }}</span>
@@ -91,7 +91,7 @@
           <div class="user-menu" ref="userMenuRef">
             <button
               class="user-menu-btn"
-              :class="{ open: userMenuOpen }"
+              :class="{ 'is-open': userMenuOpen }"
               type="button"
               aria-haspopup="menu"
               :aria-expanded="userMenuOpen"
@@ -445,7 +445,7 @@ onUnmounted(() => {
   background: var(--bg-muted);
   color: var(--text);
 }
-.user-nav-item.active {
+.user-nav-item.is-active {
   background: var(--accent-soft);
   color: var(--primary);
   font-weight: 600;
@@ -563,7 +563,7 @@ onUnmounted(() => {
   transition: color 0.18s, border-color 0.18s, background 0.18s;
 }
 .user-menu-btn:hover,
-.user-menu-btn.open {
+.user-menu-btn.is-open {
   color: var(--text);
   border-color: var(--border);
   background: var(--bg-muted);
@@ -573,7 +573,7 @@ onUnmounted(() => {
   color: var(--text-light);
   transition: transform 0.18s;
 }
-.user-menu-btn.open .user-menu-caret {
+.user-menu-btn.is-open .user-menu-caret {
   transform: rotate(180deg);
 }
 .user-menu-panel {

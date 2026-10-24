@@ -40,28 +40,28 @@
       </div>
     </div>
 
-    <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+    <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
     <template v-else>
       <!-- 按类型分区：类型元数据由后端 types 驱动，后台新增类型后自动出现 -->
-      <section v-for="group in groups" :key="group.type" class="deco-section">
+      <section v-for="group in groups" :key="group.type" class="decoration-section">
         <div class="section-head">
           <h3 class="section-name"><i :class="group.icon" aria-hidden="true" /> {{ group.name }}</h3>
           <span class="section-count">{{ group.list.length }} 件</span>
         </div>
 
-        <div v-if="group.list.length" class="deco-grid">
+        <div v-if="group.list.length" class="decoration-grid">
           <div
             v-for="item in group.list"
             :key="item.id"
-            class="deco-card card"
+            class="decoration-card card"
             :class="{ 'is-expired': item.expired || item.off_shelf, 'is-wearing': item.wearing }"
           >
-            <div class="deco-preview" :class="{ 'is-title': item.type === 'title' }">
+            <div class="decoration-preview" :class="{ 'is-title': item.type === 'title' }">
               <img
                 v-if="item.type === 'avatar_frame'"
                 :src="item.preview || item.payload?.image"
-                class="deco-frame"
+                class="decoration-frame"
                 :alt="item.name"
                 loading="lazy"
               />
@@ -72,23 +72,23 @@
               </span>
             </div>
 
-            <div class="deco-body">
-              <div class="deco-name">
-                <span class="deco-name-text">{{ item.name }}</span>
-                <span v-if="item.wearing" class="deco-tag is-wearing">佩戴中</span>
-                <span v-else-if="item.expired" class="deco-tag is-expired">已过期</span>
-                <span v-else-if="item.off_shelf" class="deco-tag is-expired">已下架</span>
-                <span v-else-if="item.is_default" class="deco-tag">默认</span>
+            <div class="decoration-body">
+              <div class="decoration-name">
+                <span class="decoration-name-text">{{ item.name }}</span>
+                <span v-if="item.wearing" class="decoration-tag is-wearing">佩戴中</span>
+                <span v-else-if="item.expired" class="decoration-tag is-expired">已过期</span>
+                <span v-else-if="item.off_shelf" class="decoration-tag is-expired">已下架</span>
+                <span v-else-if="item.is_default" class="decoration-tag">默认</span>
               </div>
 
-              <div class="deco-meta">
-                <span class="deco-duration" :class="{ 'is-urgent': isUrgent(item) }">
+              <div class="decoration-meta">
+                <span class="decoration-duration" :class="{ 'is-urgent': isUrgent(item) }">
                   <i class="bi bi-clock-history" aria-hidden="true" /> {{ durationText(item) }}
                 </span>
-                <span class="deco-source">{{ sourceText(item) }}</span>
+                <span class="decoration-source">{{ sourceText(item) }}</span>
               </div>
 
-              <div class="deco-actions">
+              <div class="decoration-actions">
                 <button
                   v-if="item.wearing"
                   type="button"
@@ -388,7 +388,7 @@ onMounted(loadMine)
 }
 
 /* 分区 */
-.deco-section {
+.decoration-section {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -413,25 +413,25 @@ onMounted(loadMine)
   color: var(--text-muted);
 }
 
-.deco-grid {
+.decoration-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 14px;
 }
-.deco-card {
+.decoration-card {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   padding: 0;
 }
-.deco-card.is-wearing {
+.decoration-card.is-wearing {
   border-color: var(--primary);
   box-shadow: 0 0 0 1px var(--primary-soft);
 }
-.deco-card.is-expired {
+.decoration-card.is-expired {
   opacity: 0.72;
 }
-.deco-preview {
+.decoration-preview {
   position: relative;
   display: flex;
   align-items: center;
@@ -440,7 +440,7 @@ onMounted(loadMine)
   background: var(--bg-muted);
   overflow: hidden;
 }
-.deco-preview.is-title {
+.decoration-preview.is-title {
   padding: 0 10px;
 }
 
@@ -469,25 +469,25 @@ onMounted(loadMine)
   background: var(--gold-soft);
   color: #c7902f;
 }
-.deco-frame {
+.decoration-frame {
   width: 72px;
   height: 72px;
   object-fit: contain;
 }
-.deco-body {
+.decoration-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding: 12px;
   flex: 1;
 }
-.deco-name {
+.decoration-name {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
 }
-.deco-name-text {
+.decoration-name-text {
   flex: 1;
   min-width: 0;
   font-size: 14px;
@@ -496,7 +496,7 @@ onMounted(loadMine)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.deco-tag {
+.decoration-tag {
   flex-shrink: 0;
   padding: 1px 7px;
   font-size: 11px;
@@ -504,15 +504,15 @@ onMounted(loadMine)
   background: var(--bg-muted);
   color: var(--text-muted);
 }
-.deco-tag.is-wearing {
+.decoration-tag.is-wearing {
   background: var(--accent-soft);
   color: var(--primary-deep);
 }
-.deco-tag.is-expired {
+.decoration-tag.is-expired {
   background: rgba(217, 84, 77, 0.12);
   color: var(--danger);
 }
-.deco-meta {
+.decoration-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -520,24 +520,24 @@ onMounted(loadMine)
   font-size: 11px;
   color: var(--text-muted);
 }
-.deco-duration {
+.decoration-duration {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   white-space: nowrap;
 }
-.deco-duration.is-urgent {
+.decoration-duration.is-urgent {
   color: var(--danger);
 }
-.deco-source {
+.decoration-source {
   white-space: nowrap;
 }
-.deco-actions {
+.decoration-actions {
   margin-top: auto;
   padding-top: 2px;
 }
 
-.loading {
+.is-loading {
   padding: 48px;
   text-align: center;
   color: var(--text-muted);

@@ -15,26 +15,26 @@
     </section>
 
     <!-- 分类 -->
-    <div v-if="categories.length" class="cat-tabs">
-      <button type="button" class="cat-tab" :class="{ active: activeCat === null }" @click="activeCat = null">
+    <div v-if="categories.length" class="category-tabs">
+      <button type="button" class="category-tab" :class="{ 'is-active': activeCat === null }" @click="activeCat = null">
         <i class="bi bi-grid-3x3-gap" /> 全部
-        <span class="cat-tab-count">{{ stats.badges || 0 }}</span>
+        <span class="category-tab-count">{{ stats.badges || 0 }}</span>
       </button>
       <button
         v-for="cat in categories"
         :key="cat.id"
         type="button"
-        class="cat-tab"
-        :class="{ active: activeCat === cat.id }"
+        class="category-tab"
+        :class="{ 'is-active': activeCat === cat.id }"
         @click="activeCat = activeCat === cat.id ? null : cat.id"
       >
         <i :class="cat.icon || 'bi bi-collection'" :style="{ color: cat.color || undefined }" />
         {{ cat.name }}
-        <span class="cat-tab-count">{{ cat.total }}</span>
+        <span class="category-tab-count">{{ cat.total }}</span>
       </button>
     </div>
 
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="is-loading">
       <span class="spinner" /> 加载中...
     </div>
 
@@ -189,17 +189,17 @@ onMounted(load)
 }
 
 /* 分类胶囊（与「我的勋章」页保持一致的视觉） */
-.cat-tabs {
+.category-tabs {
   display: flex;
   gap: 8px;
   overflow-x: auto;
   padding-bottom: 2px;
   scrollbar-width: none;
 }
-.cat-tabs::-webkit-scrollbar {
+.category-tabs::-webkit-scrollbar {
   display: none;
 }
-.cat-tab {
+.category-tab {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -213,20 +213,20 @@ onMounted(load)
   cursor: pointer;
   transition: all 0.15s;
 }
-.cat-tab:hover {
+.category-tab:hover {
   color: var(--text);
 }
-.cat-tab.active {
+.category-tab.is-active {
   color: var(--primary-deep);
   background: var(--accent-wash);
   border-color: var(--primary);
 }
-.cat-tab-count {
+.category-tab-count {
   font-size: 11px;
   color: var(--text-light);
   font-variant-numeric: tabular-nums;
 }
-.cat-tab.active .cat-tab-count {
+.category-tab.is-active .category-tab-count {
   color: var(--primary-deep);
 }
 

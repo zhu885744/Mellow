@@ -8,15 +8,15 @@
     <div class="my-main">
       <!-- 资料卡：昵称可进个人主页；右侧签到 -->
       <section class="my-profile">
-        <div class="my-profile__top">
+        <div class="my-profile-top">
           <img class="my-avatar" :src="avatar" :alt="nickname" @error="onAvatarError" loading="lazy" />
-          <div class="my-profile__text">
+          <div class="my-profile-text">
             <RouterLink v-if="uid" :to="`/author/${uid}`" class="my-nickname" title="进入我的主页">
-              <span class="my-nickname__text">{{ nickname }}</span>
+              <span class="my-nickname-text">{{ nickname }}</span>
               <i class="bi bi-chevron-right" aria-hidden="true" />
             </RouterLink>
             <span v-else class="my-nickname">
-              <span class="my-nickname__text">{{ nickname }}</span>
+              <span class="my-nickname-text">{{ nickname }}</span>
             </span>
             <p class="my-sub">{{ subTitle }}</p>
           </div>
@@ -35,27 +35,27 @@
         <!-- 三格概览：金币 / 经验 / 今日任务 -->
         <div class="my-stats">
           <RouterLink to="/user/integral" class="my-stat">
-            <span class="my-stat__label">积分</span>
-            <strong class="my-stat__value">{{ integral }}</strong>
+            <span class="my-stat-label">积分</span>
+            <strong class="my-stat-value">{{ integral }}</strong>
           </RouterLink>
           <RouterLink to="/user/exp" class="my-stat">
-            <span class="my-stat__label">经验</span>
-            <strong class="my-stat__value">{{ exp }}</strong>
+            <span class="my-stat-label">经验</span>
+            <strong class="my-stat-value">{{ exp }}</strong>
           </RouterLink>
           <RouterLink to="/user/integral" class="my-stat">
-            <span class="my-stat__label">今日任务</span>
-            <strong class="my-stat__value">{{ tasks.done_count }}/{{ tasks.total_count }}</strong>
+            <span class="my-stat-label">今日任务</span>
+            <strong class="my-stat-value">{{ tasks.done_count }}/{{ tasks.total_count }}</strong>
           </RouterLink>
         </div>
       </section>
 
       <!-- 未读消息 -->
       <RouterLink to="/user/notifications" class="my-notice">
-        <span class="my-notice__icon">
+        <span class="my-notice-icon">
           <i class="bi bi-bell-fill" aria-hidden="true" />
-          <em v-if="notifCount > 0" class="my-notice__dot" />
+          <em v-if="notifCount > 0" class="my-notice-dot" />
         </span>
-        <span class="my-notice__text">
+        <span class="my-notice-text">
           <template v-if="notifCount > 0">{{ notifCount }} 条未读消息</template>
           <template v-else>暂无未读消息</template>
         </span>
@@ -64,8 +64,8 @@
 
       <!-- 常用入口（可编辑：隐藏 / 恢复，记在本地） -->
       <section class="my-card">
-        <header class="my-card__head">
-          <h3 class="my-card__title">常用</h3>
+        <header class="my-card-head">
+          <h3 class="my-card-title">常用</h3>
           <button type="button" class="my-link" @click="editing = !editing">
             {{ editing ? '完成' : '编辑' }}
           </button>
@@ -76,13 +76,13 @@
             v-for="item in visibleShortcuts"
             :key="item.key"
             type="button"
-            class="my-grid__item"
+            class="my-grid-item"
             :class="{ 'is-editing': editing }"
             @click="onShortcutTap(item)"
           >
-            <span class="my-grid__icon"><i :class="item.icon" aria-hidden="true" /></span>
-            <span class="my-grid__label">{{ item.name }}</span>
-            <span v-if="editing" class="my-grid__badge"><i class="bi bi-dash" /></span>
+            <span class="my-grid-icon"><i :class="item.icon" aria-hidden="true" /></span>
+            <span class="my-grid-label">{{ item.name }}</span>
+            <span v-if="editing" class="my-grid-badge"><i class="bi bi-dash" /></span>
           </button>
         </div>
 
@@ -93,12 +93,12 @@
               v-for="item in hiddenShortcuts"
               :key="item.key"
               type="button"
-              class="my-grid__item is-hidden"
+              class="my-grid-item is-hidden"
               @click="toggleShortcut(item)"
             >
-              <span class="my-grid__icon"><i :class="item.icon" aria-hidden="true" /></span>
-              <span class="my-grid__label">{{ item.name }}</span>
-              <span class="my-grid__badge is-add"><i class="bi bi-plus" /></span>
+              <span class="my-grid-icon"><i :class="item.icon" aria-hidden="true" /></span>
+              <span class="my-grid-label">{{ item.name }}</span>
+              <span class="my-grid-badge is-add"><i class="bi bi-plus" /></span>
             </button>
           </div>
         </template>
@@ -106,10 +106,10 @@
 
       <!-- 最近使用（点过的入口按时间倒序，最多 5 个） -->
       <section v-if="recent.length" class="my-card">
-        <header class="my-card__head">
-          <h3 class="my-card__title">
+        <header class="my-card-head">
+          <h3 class="my-card-title">
             最近使用
-            <small class="my-card__sub">最近打开过的功能</small>
+            <small class="my-card-sub">最近打开过的功能</small>
           </h3>
         </header>
         <div class="my-grid">
@@ -117,11 +117,11 @@
             v-for="item in recent"
             :key="'recent-' + item.key"
             type="button"
-            class="my-grid__item"
+            class="my-grid-item"
             @click="onShortcutTap(item)"
           >
-            <span class="my-grid__icon"><i :class="item.icon" aria-hidden="true" /></span>
-            <span class="my-grid__label">{{ item.name }}</span>
+            <span class="my-grid-icon"><i :class="item.icon" aria-hidden="true" /></span>
+            <span class="my-grid-label">{{ item.name }}</span>
           </button>
         </div>
       </section>
@@ -131,16 +131,16 @@
     <aside class="my-side">
       <div class="my-cards">
         <RouterLink to="/user/exp" class="my-card my-mini">
-          <header class="my-mini__head"><i class="bi bi-stars" /> 等级</header>
-          <strong class="my-mini__value">{{ levelText }}</strong>
+          <header class="my-mini-head"><i class="bi bi-stars" /> 等级</header>
+          <strong class="my-mini-value">{{ levelText }}</strong>
           <div class="my-bar"><span :style="{ width: expPercent + '%' }" /></div>
-          <p class="my-mini__hint">{{ levelHint }}</p>
+          <p class="my-mini-hint">{{ levelHint }}</p>
         </RouterLink>
 
         <RouterLink to="/user/security" class="my-card my-mini">
-          <header class="my-mini__head"><i class="bi bi-shield-lock" /> 账号安全</header>
-          <strong class="my-mini__value">{{ securityValue }}</strong>
-          <p class="my-mini__hint">{{ securityHint }}</p>
+          <header class="my-mini-head"><i class="bi bi-shield-lock" /> 账号安全</header>
+          <strong class="my-mini-value">{{ securityValue }}</strong>
+          <p class="my-mini-hint">{{ securityHint }}</p>
         </RouterLink>
       </div>
     </aside>
@@ -148,18 +148,18 @@
     <!-- 今日任务（取前 3 条，更多进「我的积分」）
          PC 端放在左列第二行（见样式里的栅格定位），手机端保持在列表末尾 -->
     <section v-if="taskList.length" class="my-card my-tail">
-      <header class="my-card__head">
-        <h3 class="my-card__title">
+      <header class="my-card-head">
+        <h3 class="my-card-title">
           今日任务
-          <small class="my-card__sub">已完成 {{ tasks.done_count }}/{{ tasks.total_count }}</small>
+          <small class="my-card-sub">已完成 {{ tasks.done_count }}/{{ tasks.total_count }}</small>
         </h3>
         <RouterLink to="/user/integral" class="my-link">更多</RouterLink>
       </header>
       <ul class="my-tasks">
-        <li v-for="task in taskList.slice(0, 3)" :key="task.type" class="my-task" :class="{ done: task.done }">
+        <li v-for="task in taskList.slice(0, 3)" :key="task.type" class="my-task" :class="{ 'is-done': task.done }">
           <i class="bi" :class="task.done ? 'bi-check-circle-fill' : 'bi-circle'" aria-hidden="true" />
-          <span class="my-task__name">{{ task.name }}</span>
-          <span class="my-task__value">{{ task.done ? '已完成' : task.remain > 0 ? `+${task.remain}` : '可继续' }}</span>
+          <span class="my-task-name">{{ task.name }}</span>
+          <span class="my-task-value">{{ task.done ? '已完成' : task.remain > 0 ? `+${task.remain}` : '可继续' }}</span>
         </li>
       </ul>
     </section>
@@ -170,12 +170,12 @@
     <nav class="my-links" aria-label="用户协议与隐私协议">
       <RouterLink to="/agreement" class="my-link-item">
         <i class="bi bi-file-earmark-text" aria-hidden="true" />
-        <span class="my-link-item__text">用户协议</span>
+        <span class="my-link-item-text">用户协议</span>
         <i class="bi bi-chevron-right my-arrow" aria-hidden="true" />
       </RouterLink>
       <RouterLink to="/privacy" class="my-link-item">
         <i class="bi bi-shield-check" aria-hidden="true" />
-        <span class="my-link-item__text">隐私协议</span>
+        <span class="my-link-item-text">隐私协议</span>
         <i class="bi bi-chevron-right my-arrow" aria-hidden="true" />
       </RouterLink>
     </nav>
@@ -488,7 +488,7 @@ onMounted(() => {
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
-.my-profile__top {
+.my-profile-top {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -501,7 +501,7 @@ onMounted(() => {
   object-fit: cover;
   background: var(--bg-muted);
 }
-.my-profile__text {
+.my-profile-text {
   flex: 1;
   min-width: 0;
 }
@@ -518,7 +518,7 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-light, var(--text-muted));
 }
-.my-nickname__text {
+.my-nickname-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -547,11 +547,11 @@ onMounted(() => {
 .my-stat:last-child {
   border-right: none;
 }
-.my-stat__label {
+.my-stat-label {
   font-size: 12px;
   color: var(--text-muted);
 }
-.my-stat__value {
+.my-stat-value {
   font-size: 18px;
   font-weight: 700;
   color: var(--text);
@@ -572,12 +572,12 @@ onMounted(() => {
 .my-notice:hover {
   border-color: var(--primary);
 }
-.my-notice__icon {
+.my-notice-icon {
   position: relative;
   font-size: 16px;
   color: var(--primary);
 }
-.my-notice__dot {
+.my-notice-dot {
   position: absolute;
   top: -1px;
   right: -3px;
@@ -586,7 +586,7 @@ onMounted(() => {
   border-radius: 50%;
   background: var(--danger);
 }
-.my-notice__text {
+.my-notice-text {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -605,20 +605,20 @@ onMounted(() => {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
 }
-.my-card__head {
+.my-card-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 12px;
 }
-.my-card__title {
+.my-card-title {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
 }
-.my-card__sub {
+.my-card-sub {
   margin-left: 6px;
   font-size: 11px;
   font-weight: 400;
@@ -642,7 +642,7 @@ onMounted(() => {
   grid-template-columns: repeat(4, 1fr);
   gap: 4px 0;
 }
-.my-grid__item {
+.my-grid-item {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -656,7 +656,7 @@ onMounted(() => {
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
-.my-grid__icon {
+.my-grid-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -668,16 +668,16 @@ onMounted(() => {
   font-size: 18px;
   transition: color 0.15s, background 0.15s;
 }
-.my-grid__item:hover .my-grid__icon {
+.my-grid-item:hover .my-grid-icon {
   color: var(--primary);
   background: var(--accent-soft);
 }
-.my-grid__label {
+.my-grid-label {
   font-size: 12px;
   line-height: 1.2;
   text-align: center;
 }
-.my-grid__badge {
+.my-grid-badge {
   position: absolute;
   top: 4px;
   right: calc(50% - 26px);
@@ -692,10 +692,10 @@ onMounted(() => {
   font-size: 11px;
   line-height: 1;
 }
-.my-grid__badge.is-add {
+.my-grid-badge.is-add {
   background: var(--primary);
 }
-.my-grid__item.is-hidden {
+.my-grid-item.is-hidden {
   opacity: 0.55;
 }
 .my-tip {
@@ -715,20 +715,20 @@ onMounted(() => {
   display: block;
   color: var(--text);
 }
-.my-mini__head {
+.my-mini-head {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 12px;
   color: var(--text-muted);
 }
-.my-mini__value {
+.my-mini-value {
   display: block;
   margin-top: 6px;
   font-size: 18px;
   font-weight: 700;
 }
-.my-mini__hint {
+.my-mini-hint {
   margin: 8px 0 0;
   font-size: 12px;
   color: var(--text-muted);
@@ -768,20 +768,20 @@ onMounted(() => {
   font-size: 14px;
   color: var(--text-light, var(--text-muted));
 }
-.my-task.done {
+.my-task.is-done {
   color: var(--text-muted);
 }
-.my-task.done .bi {
+.my-task.is-done .bi {
   color: var(--success, #16a34a);
 }
-.my-task__name {
+.my-task-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.my-task__value {
+.my-task-value {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--primary);
@@ -814,7 +814,7 @@ onMounted(() => {
   font-size: 15px;
   color: var(--primary);
 }
-.my-link-item__text {
+.my-link-item-text {
   flex: 1;
   min-width: 0;
 }
@@ -832,7 +832,7 @@ onMounted(() => {
   .my-profile {
     padding: 14px;
   }
-  .my-grid__icon {
+  .my-grid-icon {
     width: 42px;
     height: 42px;
   }
@@ -892,19 +892,19 @@ onMounted(() => {
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
     gap: 8px 4px;
   }
-  .my-grid__item {
+  .my-grid-item {
     padding: 10px 6px;
     border-radius: 10px;
     transition: background 0.15s;
   }
-  .my-grid__item:hover {
+  .my-grid-item:hover {
     background: var(--bg-muted);
   }
-  .my-grid__item:focus-visible {
+  .my-grid-item:focus-visible {
     outline: 2px solid var(--primary-soft);
     outline-offset: -2px;
   }
-  .my-grid__icon {
+  .my-grid-icon {
     width: 44px;
     height: 44px;
     font-size: 19px;
@@ -927,7 +927,7 @@ onMounted(() => {
   .my-notice {
     padding: 14px 16px;
   }
-  .my-mini__value {
+  .my-mini-value {
     font-size: 20px;
   }
   /* 右栏只有 300px：两张小卡改为上下排列 */

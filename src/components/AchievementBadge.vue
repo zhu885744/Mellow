@@ -1,17 +1,17 @@
 <template>
   <component
     :is="clickable ? 'button' : 'div'"
-    class="ach-badge"
-    :class="[`ach-badge--${size}`, { 'is-held': held, 'is-locked': !held, 'is-clickable': clickable }]"
+    class="achievement-badge"
+    :class="[`achievement-badge-${size}`, { 'is-held': held, 'is-locked': !held, 'is-clickable': clickable }]"
     :type="clickable ? 'button' : undefined"
     :title="titleText"
   >
-    <span class="ach-badge__icon" :style="iconStyle">
+    <span class="achievement-badge-icon" :style="iconStyle">
       <img v-if="badge.image" :src="badge.image" :alt="badge.name" loading="lazy" />
       <i v-else :class="badge.icon || 'bi bi-award'" />
     </span>
-    <span class="ach-badge__name">{{ badge.name || '勋章' }}</span>
-    <span v-if="showCondition && badge.condition_name" class="ach-badge__cond">
+    <span class="achievement-badge-name">{{ badge.name || '勋章' }}</span>
+    <span v-if="showCondition && badge.condition_name" class="achievement-badge-cond">
       {{ conditionText }}
     </span>
   </component>
@@ -67,7 +67,7 @@ const titleText = computed(() => {
 </script>
 
 <style scoped>
-.ach-badge {
+.achievement-badge {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -79,19 +79,19 @@ const titleText = computed(() => {
   color: var(--text);
   max-width: 100%;
 }
-.ach-badge.is-locked {
+.achievement-badge.is-locked {
   opacity: 0.55;
   filter: grayscale(0.6);
 }
-.ach-badge.is-clickable {
+.achievement-badge.is-clickable {
   cursor: pointer;
   transition: border-color var(--dur) var(--ease), transform var(--dur) var(--ease);
 }
-.ach-badge.is-clickable:hover {
+.achievement-badge.is-clickable:hover {
   border-color: var(--accent-soft);
   transform: translateY(-1px);
 }
-.ach-badge__icon {
+.achievement-badge-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -104,25 +104,25 @@ const titleText = computed(() => {
   font-size: 12px;
   overflow: hidden;
 }
-.ach-badge__icon img {
+.achievement-badge-icon img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.ach-badge__name {
+.achievement-badge-name {
   font-weight: 600;
   white-space: nowrap;
 }
-.ach-badge__cond {
+.achievement-badge-cond {
   color: var(--text-muted);
   font-size: 11px;
   white-space: nowrap;
 }
-.ach-badge--sm {
+.achievement-badge-sm {
   padding: 2px 8px 2px 2px;
   font-size: 11px;
 }
-.ach-badge--sm .ach-badge__icon {
+.achievement-badge-sm .achievement-badge-icon {
   width: 18px;
   height: 18px;
   font-size: 10px;

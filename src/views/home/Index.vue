@@ -32,7 +32,7 @@
             v-for="(p, i) in placards"
             :key="p.id"
             class="placard-dot-btn"
-            :class="{ active: i === index }"
+            :class="{ 'is-active': i === index }"
             @click="goTo(i)"
           />
         </div>
@@ -41,18 +41,18 @@
 
     <!-- 发布动态：入口条，点击以弹窗形式编辑发布（未登录时整条即登录入口） -->
     <button v-if="userStore.isLogged" type="button" class="compose" @click="composeOpen = true">
-      <img class="compose__avatar" :src="composeAvatar" :alt="composeName" loading="lazy" />
-      <span class="compose__placeholder">分享此刻的想法…</span>
+      <img class="compose-avatar" :src="composeAvatar" :alt="composeName" loading="lazy" />
+      <span class="compose-placeholder">分享此刻的想法…</span>
       <span class="btn btn-primary btn-sm">发布动态</span>
     </button>
 
     <RouterLink
       v-else
       :to="{ name: 'login', query: { redirect: $route.fullPath } }"
-      class="compose compose--guest"
+      class="compose compose-guest"
     >
-      <i class="bi bi-person-circle compose__guest-icon" aria-hidden="true" />
-      <span class="compose__guest-text">登录后即可发布动态、参与讨论</span>
+      <i class="bi bi-person-circle compose-guest-icon" aria-hidden="true" />
+      <span class="compose-guest-text">登录后即可发布动态、参与讨论</span>
       <span class="btn btn-primary btn-sm">去登录</span>
     </RouterLink>
 
@@ -68,8 +68,8 @@
             :key="item.key"
             type="button"
             role="tab"
-            class="feed-filter__item"
-            :class="{ active: filter === item.key }"
+            class="feed-filter-item"
+            :class="{ 'is-active': filter === item.key }"
             :aria-selected="filter === item.key"
             @click="switchFilter(item.key)"
           >
@@ -84,7 +84,7 @@
     <div class="feed">
       <!-- 首屏骨架 -->
       <template v-if="loading && !items.length">
-        <ArticleSkeleton v-for="i in 3" :key="'sk-' + i" :cover="i % 2 === 1" />
+        <ArticleSkeleton v-for="i in 3" :key="'skeleton-' + i" :cover="i % 2 === 1" />
       </template>
 
       <!-- 混排列表：文章与动态都用动态卡片风格（文章显示正文片段 + 查看更多） -->
@@ -118,7 +118,7 @@
         >
           {{ loading ? '加载中…' : '加载更多' }}
         </button>
-        <span v-else class="feed-foot__end">— 到底啦 —</span>
+        <span v-else class="feed-foot-end">— 到底啦 —</span>
       </div>
     </div>
 
@@ -549,7 +549,7 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: opacity 0.2s, background 0.2s;
 }
-.placard-dot-btn.active {
+.placard-dot-btn.is-active {
   opacity: 1;
   background: var(--primary);
 }
@@ -572,7 +572,7 @@ onBeforeUnmount(() => {
   border-radius: 999px;
   background: var(--bg-muted);
 }
-.feed-filter__item {
+.feed-filter-item {
   padding: 3px 12px;
   border: none;
   border-radius: 999px;
@@ -583,10 +583,10 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: color 0.15s, background 0.15s;
 }
-.feed-filter__item:hover {
+.feed-filter-item:hover {
   color: var(--text);
 }
-.feed-filter__item.active {
+.feed-filter-item.is-active {
   color: #fff;
   background: var(--primary);
 }
@@ -603,7 +603,7 @@ onBeforeUnmount(() => {
 }
 
 /* 骨架屏仍是「通栏列表行」，这里覆盖成卡片，与文章 / 动态卡片对齐 */
-.feed :deep(div.sk-article) {
+.feed :deep(div.skeleton-article) {
   padding: 20px;
   margin-bottom: 16px;
   border-bottom: none;
@@ -623,7 +623,7 @@ onBeforeUnmount(() => {
   justify-content: center;
   padding: 12px 0 4px;
 }
-.feed-foot__end {
+.feed-foot-end {
   font-size: 12px;
   color: var(--text-light, var(--text-muted));
 }
@@ -751,7 +751,7 @@ onBeforeUnmount(() => {
 .compose:hover {
   border-color: var(--primary);
 }
-.compose__avatar {
+.compose-avatar {
   flex-shrink: 0;
   width: 36px;
   height: 36px;
@@ -759,7 +759,7 @@ onBeforeUnmount(() => {
   object-fit: cover;
   background: var(--bg-muted);
 }
-.compose__placeholder {
+.compose-placeholder {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -767,15 +767,15 @@ onBeforeUnmount(() => {
   white-space: nowrap;
 }
 /* 未登录：整条即登录入口 */
-.compose--guest {
+.compose-guest {
   color: var(--text-muted);
   text-decoration: none;
 }
-.compose__guest-icon {
+.compose-guest-icon {
   font-size: 24px;
   color: var(--text-light, var(--text-muted));
 }
-.compose__guest-text {
+.compose-guest-text {
   flex: 1;
   min-width: 0;
 }

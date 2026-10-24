@@ -6,8 +6,8 @@
         <div>
           <h2 class="block-title">主题配色</h2>
           <p class="block-desc">
-            配色由设计 token（CSS 变量）驱动：先选一套内置预设，再逐项微调；
-            浅色 / 深色各一套，保存后立即生效（前台与管理后台同步换肤，无需重启）
+            设计 token 驱动全站：颜色、渐变、圆角、阴影与自定义变量；浅色 / 深色各一套，
+            保存后立即生效（前台与管理后台同步换肤，无需重启）
           </p>
         </div>
         <div class="head-actions">
@@ -32,7 +32,8 @@
 
       <div class="theme-meta">
         <span class="theme-chip">当前预设：{{ activePresetName }}</span>
-        <span class="theme-chip">样式表：<code>/theme-custom.css</code></span>
+        <span class="theme-chip">作用范围：全站（含未登录访客）</span>
+        <span class="theme-chip">下发方式：<code>/api/theme/active</code></span>
         <span class="theme-chip" :class="{ 'is-dirty': dirty }">
           {{ dirty ? '有未保存的修改' : '配置已保存' }}
         </span>
@@ -44,11 +45,11 @@
       <header class="section-head">
         <div>
           <h3 class="section-title">内置预设</h3>
-          <p class="section-desc">点击套用到编辑区（不会自动保存），套用后仍可逐项微调</p>
+          <p class="section-desc">套用整套颜色，圆角 / 阴影 / 渐变与自定义变量保持不变</p>
         </div>
       </header>
 
-      <div v-if="loading && !presets.length" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading && !presets.length" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else class="preset-grid">
         <button
@@ -56,7 +57,7 @@
           :key="preset.key"
           type="button"
           class="preset-card"
-          :class="{ active: form.preset === preset.key }"
+          :class="{ 'is-active': form.preset === preset.key }"
           @click="applyPreset(preset)"
         >
           <span class="preset-swatches" aria-hidden="true">
@@ -81,7 +82,7 @@
               :key="mode.key"
               type="button"
               class="mode-tab"
-              :class="{ active: currentMode === mode.key }"
+              :class="{ 'is-active': currentMode === mode.key }"
               role="tab"
               :aria-selected="currentMode === mode.key"
               @click="currentMode = mode.key"
@@ -89,12 +90,12 @@
               <i :class="mode.icon" /> {{ mode.label }}
             </button>
           </div>
-          <button class="btn btn-ghost btn-sm" :disabled="!canResetMode" @click="resetMode">
+          <button class="btn btn-ghost btn-sm" :disabled="!currentPreset" @click="resetMode">
             <i class="bi bi-arrow-counterclockwise" /> 本模式恢复预设
           </button>
         </div>
 
-        <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+        <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
         <template v-else>
           <div v-for="group in groups" :key="group.key" class="token-group">
@@ -103,51 +104,116 @@
               <p v-if="group.desc">{{ group.desc }}</p>
             </div>
 
+            <!-- 圆角组：批量统一 -->
+            <div v-if="group.key === 'shape'" class="quick-radius">
+              <span class="quick-radius-label">统一圆角</span>
+              <input v-model.number="quickRadius" class="input quick-radius-input" type="number" min="0" max="40" step="1" />
+              <span class="quick-radius-unit">px</span>
+              <button class="btn btn-ghost btn-sm" type="button" @click="applyQuickRadius">应用到全部圆角</button>
+            </div>
+
             <div class="token-grid">
               <div v-for="token in tokensOf(group.key)" :key="token.key" class="token-item">
-                <label class="token-label" :for="`token-${currentMode}-${token.key}`">
+                <label class="token-label">
                   {{ token.label }}
                   <code>--{{ token.key }}</code>
                 </label>
 
-                <div class="token-input">
+                <!-- 纯色 -->
+                <ColorPicker
+                  v-if="token.type === 'color'"
+                  :model-value="form[currentMode][token.key]"
+                  @update:model-value="setToken(token.key, $event)"
+                />
+
+                <!-- 纯色或渐变 -->
+                <GradientEditor
+                  v-else-if="token.type === 'paint'"
+                  :model-value="form[currentMode][token.key]"
+                  @update:model-value="setToken(token.key, $event)"
+                />
+
+                <!-- 阴影 -->
+                <ShadowEditor
+                  v-else-if="token.type === 'shadow'"
+                  :model-value="form[currentMode][token.key]"
+                  @update:model-value="setToken(token.key, $event)"
+                />
+
+                <!-- 长度 -->
+                <div v-else class="length-field">
                   <input
-                    class="token-color"
-                    type="color"
-                    :value="hexOf(form[currentMode][token.key])"
-                    :aria-label="`${token.label} 取色`"
-                    @input="onColorPick(token.key, $event)"
-                  />
-                  <input
-                    :id="`token-${currentMode}-${token.key}`"
-                    v-model="form[currentMode][token.key]"
                     class="input token-text"
-                    :class="{ 'is-invalid': !!form[currentMode][token.key] && !colorValid(form[currentMode][token.key]) }"
+                    :class="{ 'is-invalid': !!form[currentMode][token.key] && !lengthValid(form[currentMode][token.key]) }"
+                    :value="form[currentMode][token.key]"
                     type="text"
+                    placeholder="10px / 0.6rem"
                     spellcheck="false"
-                    autocomplete="off"
+                    @input="setToken(token.key, $event.target.value)"
                   />
+                  <span class="length-unit">{{ token.unit || 'px' }}</span>
                 </div>
 
                 <p v-if="token.desc" class="form-hint">{{ token.desc }}</p>
-                <p
-                  v-else-if="form[currentMode][token.key] && !colorValid(form[currentMode][token.key])"
-                  class="form-hint is-error"
-                >
-                  颜色格式无法识别，保存时会回退到预设值
-                </p>
               </div>
             </div>
+          </div>
+
+          <!-- 自定义变量 -->
+          <div class="token-group">
+            <div class="token-group-head">
+              <h4>自定义变量</h4>
+              <p>任意 CSS 变量（写入 :root），可覆盖动效、间距、控件高度等未列出的项；浅色 / 深色共用</p>
+            </div>
+
+            <div v-if="extraKeys.length" class="extra-list">
+              <div v-for="key in extraKeys" :key="key" class="extra-row">
+                <code class="extra-key">--{{ key }}</code>
+                <input
+                  class="input extra-value"
+                  :value="form.extras[key]"
+                  type="text"
+                  spellcheck="false"
+                  @input="setExtra(key, $event.target.value)"
+                />
+                <button type="button" class="extra-remove" title="删除" @click="removeExtra(key)">
+                  <i class="bi bi-x-lg" />
+                </button>
+              </div>
+            </div>
+
+            <div class="extra-add">
+              <input
+                v-model="extraDraft.key"
+                class="input extra-key-input"
+                type="text"
+                placeholder="变量名，如 dur-fast"
+                spellcheck="false"
+              />
+              <input
+                v-model="extraDraft.value"
+                class="input extra-value"
+                type="text"
+                placeholder="值，如 180ms"
+                spellcheck="false"
+              />
+              <button type="button" class="btn btn-sm" :disabled="!extraDraft.key || !extraDraft.value" @click="addExtra">
+                添加
+              </button>
+            </div>
+            <p class="form-hint">
+              变量名不需要写 <code>--</code>；带 <code>url()</code> 或 <code>; { }</code> 的值会被后端拒绝。
+            </p>
           </div>
         </template>
       </section>
 
-      <!-- 实时预览：两套模式并排，局部覆盖 CSS 变量，不影响后台自身 -->
+      <!-- 实时预览 -->
       <aside class="card card-pad preview-wrap">
         <header class="section-head">
           <div>
             <h3 class="section-title">实时预览</h3>
-            <p class="section-desc">编辑任意颜色，这里立即变化</p>
+            <p class="section-desc">编辑任意项，这里立即变化</p>
           </div>
         </header>
 
@@ -172,6 +238,7 @@
               <span class="preview-warning">警告</span>
             </div>
             <div class="preview-input">输入框占位…</div>
+            <div class="preview-gradient" />
             <span class="preview-link">链接文字</span>
           </div>
         </div>
@@ -197,19 +264,21 @@
  * 主题配色（/admin/theme）
  *
  * 数据来自 /api/theme/config（app/api/controller/theme.go）：
- * - tokens / groups：可编辑的设计 token 与分组
- * - presets：内置预设（浅色 / 深色完整取值）
- * - settings / defaults：当前配色与默认配色
+ * - tokens / groups：带类型的设计 token（color / paint / length / shadow）
+ * - presets：内置预设（颜色取值；圆角 / 阴影 / 渐变由后端默认值补齐）
+ * - settings / defaults：当前配色与默认配色，extras 为自由 CSS 变量
  *
- * 保存后 /theme-custom.css 立即返回新样式表，本页通过给 <link data-theme-custom>
- * 换一个查询串强制浏览器重新拉取，避免还停留在旧配色上。
+ * 保存后由 refreshTheme() 重新拉取 /api/theme/active（no-store），把新 CSS 注入
+ * <style id="theme-runtime">，当前页立即换肤；不再依赖 /theme-custom.css 静态文件。
  */
 import { computed, onMounted, reactive, ref } from 'vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
+import ColorPicker from '@/components/ColorPicker.vue'
+import GradientEditor from '@/components/GradientEditor.vue'
+import ShadowEditor from '@/components/ShadowEditor.vue'
 import { getThemeConfig, resetThemeConfig, saveThemeConfig } from '@/api/theme'
+import { refreshTheme } from '@/utils/theme-runtime'
 import { toast } from '@/utils/toast'
-
-const THEME_LINK_SELECTOR = 'link[data-theme-custom]'
 
 const loading = ref(false)
 const saving = ref(false)
@@ -218,13 +287,15 @@ const loadError = ref('')
 const tokens = ref([])
 const groups = ref([])
 const presets = ref([])
-const defaults = ref({ preset: 'cinnabar', light: {}, dark: {} })
+const defaults = ref({ preset: 'cinnabar', light: {}, dark: {}, extras: {} })
 
-const form = reactive({ preset: 'cinnabar', light: {}, dark: {} })
+const form = reactive({ preset: 'cinnabar', light: {}, dark: {}, extras: {} })
 const currentMode = ref('light')
 const savedSnapshot = ref('')
-// ready：首次加载完成前不算「有未保存的修改」（否则空表单会被判成 dirty）
 const ready = ref(false)
+
+const quickRadius = ref(10)
+const extraDraft = reactive({ key: '', value: '' })
 
 const modes = [
   { key: 'light', label: '浅色模式', icon: 'bi bi-sun' },
@@ -244,18 +315,17 @@ const activePresetName = computed(() => {
   return item?.name || form.preset || '—'
 })
 
-// 当前预设（"本模式恢复预设" 的数据源）
 const currentPreset = computed(() => presets.value.find((preset) => preset.key === form.preset))
 
-const canResetMode = computed(() => Boolean(currentPreset.value))
-
 const dirty = computed(() => ready.value && snapshot() !== savedSnapshot.value)
+
+const extraKeys = computed(() => Object.keys(form.extras || {}))
 
 function tokensOf(group) {
   return tokens.value.filter((token) => token.group === group)
 }
 
-// ---------- 快照：用于判断是否有未保存修改（键排序，避免对象顺序影响比较） ----------
+// ---------- 快照 ----------
 function sorted(source) {
   const result = {}
   Object.keys(source || {})
@@ -270,7 +340,8 @@ function snapshot() {
   return JSON.stringify({
     preset: form.preset,
     light: sorted(form.light),
-    dark: sorted(form.dark)
+    dark: sorted(form.dark),
+    extras: sorted(form.extras)
   })
 }
 
@@ -279,12 +350,16 @@ function applySettings(settings, markSaved = true) {
   form.preset = settings?.preset || defaults.value.preset || 'cinnabar'
   form.light = { ...(settings?.light || {}) }
   form.dark = { ...(settings?.dark || {}) }
+  form.extras = { ...(settings?.extras || {}) }
 
-  // 防御旧数据：缺项的 token 用默认值补齐，避免渲染出空输入框
+  // 防御旧数据：缺项的 token 用默认值补齐
   tokens.value.forEach((token) => {
-    if (!form.light[token.key]) form.light[token.key] = defaults.value.light?.[token.key] || '#000000'
-    if (!form.dark[token.key]) form.dark[token.key] = defaults.value.dark?.[token.key] || '#000000'
+    if (!form.light[token.key]) form.light[token.key] = defaults.value.light?.[token.key] || ''
+    if (!form.dark[token.key]) form.dark[token.key] = defaults.value.dark?.[token.key] || ''
   })
+
+  const base = lengthNumber(form.light.radius) || lengthNumber(form.dark.radius) || 10
+  quickRadius.value = base
 
   ready.value = true
   if (markSaved) savedSnapshot.value = snapshot()
@@ -302,7 +377,7 @@ async function load() {
     tokens.value = Array.isArray(data.tokens) ? data.tokens : []
     groups.value = Array.isArray(data.groups) ? data.groups : []
     presets.value = Array.isArray(data.presets) ? data.presets : []
-    defaults.value = data.defaults || { preset: 'cinnabar', light: {}, dark: {} }
+    defaults.value = data.defaults || { preset: 'cinnabar', light: {}, dark: {}, extras: {} }
 
     applySettings(data.settings || defaults.value)
   } catch (error) {
@@ -313,28 +388,102 @@ async function load() {
 }
 
 // ---------- 编辑 ----------
+function setToken(key, value) {
+  form[currentMode.value][key] = value
+}
+
+// 预设只带颜色；圆角 / 阴影 / 渐变 / 自定义变量是「与配色无关」的编辑，套预设时保留
+function preserveNonColor() {
+  const result = { light: {}, dark: {} }
+  tokens.value.forEach((token) => {
+    if (token.type === 'color') return
+    result.light[token.key] = form.light[token.key]
+    result.dark[token.key] = form.dark[token.key]
+  })
+  return result
+}
+
 function applyPreset(preset) {
+  const keep = preserveNonColor()
   form.preset = preset.key
-  form.light = { ...preset.light }
-  form.dark = { ...preset.dark }
+  form.light = { ...preset.light, ...keep.light }
+  form.dark = { ...preset.dark, ...keep.dark }
 }
 
 function resetMode() {
   if (!currentPreset.value) return
-  form[currentMode.value] = { ...currentPreset.value[currentMode.value] }
+  const mode = currentMode.value
+  const keep = {}
+  tokens.value.forEach((token) => {
+    if (token.type !== 'color') keep[token.key] = form[mode][token.key]
+  })
+  form[mode] = { ...currentPreset.value[mode], ...keep }
 }
 
-function onColorPick(key, event) {
-  form[currentMode.value][key] = event.target.value
+// ---------- 长度 ----------
+function lengthNumber(value) {
+  const match = String(value || '').match(/^(-?[\d.]+)/)
+  return match ? Number(match[1]) : 0
 }
 
-// ---------- 预览：把 token 与派生色写成局部 CSS 变量 ----------
+function lengthValid(value) {
+  return /^(0|-?[\d.]+(px|rem|em|%|vh|vw|vmin|vmax|pt|ch))$/i.test(String(value || '').trim())
+}
+
+function applyQuickRadius() {
+  const base = Math.max(0, Math.round(Number(quickRadius.value) || 0))
+  const values = form[currentMode.value]
+  values['radius-xs'] = `${Math.max(0, base - 4)}px`
+  values['radius-sm'] = `${Math.max(0, base - 2)}px`
+  values['radius'] = `${base}px`
+  values['radius-lg'] = `${base + 4}px`
+  values['radius-xl'] = `${base + 8}px`
+}
+
+// ---------- 自定义变量 ----------
+function addExtra() {
+  const key = String(extraDraft.key || '')
+    .trim()
+    .toLowerCase()
+    .replace(/^--/, '')
+
+  if (!/^[a-z][a-z0-9-]{0,47}$/.test(key)) {
+    toast.error('变量名只能是字母、数字与 -，且以字母开头')
+    return
+  }
+  if (tokens.value.some((token) => token.key === key)) {
+    toast.error('该变量名与内置 token 重名，请直接编辑对应项')
+    return
+  }
+  if (!String(extraDraft.value || '').trim()) {
+    toast.error('请填写变量的值')
+    return
+  }
+
+  form.extras[key] = String(extraDraft.value).trim()
+  extraDraft.key = ''
+  extraDraft.value = ''
+}
+
+function setExtra(key, value) {
+  form.extras[key] = value
+}
+
+function removeExtra(key) {
+  delete form.extras[key]
+}
+
+// ---------- 预览 ----------
 function previewVars(mode) {
   const values = form[mode] || {}
   const vars = {}
 
   Object.keys(values).forEach((key) => {
-    vars[`--${key}`] = values[key]
+    if (values[key]) vars[`--${key}`] = values[key]
+  })
+
+  Object.keys(form.extras || {}).forEach((key) => {
+    if (form.extras[key]) vars[`--${key}`] = form.extras[key]
   })
 
   const accentAlpha = mode === 'dark' ? ['0.1', '0.18', '0.3', '0.45'] : ['0.06', '0.12', '0.2', '0.38']
@@ -347,20 +496,25 @@ function previewVars(mode) {
     vars[`--${name}`] = hexToRgba(values.warning, goldAlpha[index])
   })
 
-  // 语义别名：styles.css 里用 var() 引用基础 token，预览区单独覆盖一次即可
-  vars['--bg'] = values['paper-1']
-  vars['--bg-soft'] = values['paper-1']
-  vars['--bg-alt'] = values['paper-1']
-  vars['--bg-card'] = values['paper-0']
-  vars['--bg-muted'] = values['paper-2']
-  vars['--bg-overlay'] = hexToRgba(mode === 'dark' ? values['paper-1'] : values['paper-0'], '0.86')
+  // 表面类 token 可能是渐变，不能直接塞给 background-color（会失效变成透明）。
+  // 这里拆成「纯色兜底 + 渐变图层」两部分，预览才既能看到底色又能看到渐变。
+  vars['--bg'] = paintColor(values['paper-1'])
+  vars['--bg-soft'] = paintColor(values['paper-1'])
+  vars['--bg-alt'] = paintColor(values['paper-1'])
+  vars['--bg-card'] = paintColor(values['paper-0'])
+  vars['--bg-muted'] = paintColor(values['paper-2'])
+  vars['--bg-overlay'] = hexToRgba(mode === 'dark' ? paintColor(values['paper-1']) : paintColor(values['paper-0']), '0.86')
+
+  const pageImage = paintImage(values['gradient-page'])
+  vars['--preview-page-image'] = pageImage !== 'none' ? pageImage : paintImage(values['paper-1'])
+  vars['--preview-card-image'] = paintImage(values['paper-0'])
 
   vars['--text'] = values['ink-900']
   vars['--text-soft'] = values['ink-700']
   vars['--text-muted'] = values['ink-500']
   vars['--text-light'] = values['ink-300']
 
-  vars['--border'] = values['line']
+  vars['--border'] = values.line
   vars['--border-soft'] = values['line-soft']
 
   vars['--primary'] = values.cinnabar
@@ -383,20 +537,27 @@ function presetSwatches(preset) {
 }
 
 // ---------- 颜色工具 ----------
-const COLOR_PATTERN = /^(#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})|(rgb|rgba|hsl|hsla)\([^;{}<>]*\)|[a-z-]+)$/i
-
-function colorValid(value) {
-  return typeof value === 'string' && COLOR_PATTERN.test(value.trim())
+function isGradient(value) {
+  return /gradient\(/i.test(String(value || ''))
 }
 
-/** 取色器只接受 #rrggbb：非十六进制值（如 rgba）回退到黑色 */
-function hexOf(value) {
+/** 从渐变里取第一个颜色，作为 background-color 兜底（渐变本身进 background-image） */
+function firstStopColor(value) {
+  const match = String(value || '').match(/(#[0-9a-f]{3,8}|rgba?\([^)]*\)|hsla?\([^)]*\))/i)
+  return match ? match[1] : ''
+}
+
+/** 纯色返回原值；渐变返回首个色标颜色（避免 background-color 失效变透明） */
+function paintColor(value) {
   const text = String(value || '').trim()
-  if (/^#[0-9a-f]{6}$/i.test(text)) return text
-  if (/^#[0-9a-f]{3}$/i.test(text)) {
-    return `#${text[1]}${text[1]}${text[2]}${text[2]}${text[3]}${text[3]}`
-  }
-  return '#000000'
+  if (!text) return ''
+  return isGradient(text) ? firstStopColor(text) : text
+}
+
+/** 渐变返回原值，纯色返回 none（用于 background-image） */
+function paintImage(value) {
+  const text = String(value || '').trim()
+  return isGradient(text) ? text : 'none'
 }
 
 function hexToRgba(value, alpha) {
@@ -407,23 +568,18 @@ function hexToRgba(value, alpha) {
   if (!/^[0-9a-f]{6}$/.test(hex)) return `rgba(128, 128, 128, ${alpha})`
 
   const number = parseInt(hex, 16)
-  const red = (number >> 16) & 0xff
-  const green = (number >> 8) & 0xff
-  const blue = number & 0xff
-  return `rgba(${red}, ${green}, ${blue}, ${alpha})`
+  return `rgba(${(number >> 16) & 0xff}, ${(number >> 8) & 0xff}, ${number & 0xff}, ${alpha})`
 }
 
 // ---------- 保存 / 重置 ----------
-function refreshThemeLink() {
-  const link = document.querySelector(THEME_LINK_SELECTOR)
-  if (!link) return
-  try {
-    const url = new URL(link.href, window.location.origin)
-    url.searchParams.set('v', String(Date.now()))
-    link.href = url.pathname + url.search
-  } catch {
-    /* 非标准 URL 时忽略：下次整页加载也会拿到新样式表 */
-  }
+/**
+ * 保存后立刻把新样式注入 <style id="theme-runtime">
+ * （/api/theme/active 是 no-store，不会像 /theme-custom.css 那样被 CDN 缓存住）
+ */
+function refreshThemeStyle() {
+  refreshTheme().catch(() => {
+    /* 失败时保留当前样式，下次整页加载会再校准 */
+  })
 }
 
 async function onSave() {
@@ -434,11 +590,12 @@ async function onSave() {
     const res = await saveThemeConfig({
       preset: form.preset,
       light: form.light,
-      dark: form.dark
+      dark: form.dark,
+      extras: form.extras
     })
 
     applySettings(res?.data?.settings || form)
-    refreshThemeLink()
+    refreshThemeStyle()
     toast.success('主题配色已保存并立即生效')
   } catch {
     /* 响应拦截器已提示错误 */
@@ -449,7 +606,7 @@ async function onSave() {
 
 function askReset() {
   confirm.title = '恢复默认配色'
-  confirm.message = '将丢弃所有自定义颜色，恢复为「朱砂暖纸」默认预设。此操作会立即影响整站。'
+  confirm.message = '将丢弃所有自定义颜色、圆角、阴影、渐变与自定义变量，恢复为「朱砂暖纸」默认预设。'
   confirm.confirmText = '恢复默认'
   confirm.visible = true
 }
@@ -461,7 +618,7 @@ async function runConfirm() {
   try {
     const res = await resetThemeConfig()
     applySettings(res?.data?.settings || defaults.value)
-    refreshThemeLink()
+    refreshThemeStyle()
     confirm.visible = false
     toast.success('已恢复默认配色')
   } catch {
@@ -537,7 +694,7 @@ onMounted(load)
   font-size: 12px;
 }
 
-/* ---------- 小节标题 ---------- */
+/* ---------- 小节 ---------- */
 .section-head {
   margin-bottom: 14px;
 }
@@ -551,8 +708,7 @@ onMounted(load)
   color: var(--text-muted);
   font-size: 12px;
 }
-
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -582,7 +738,7 @@ onMounted(load)
 .preset-card:hover {
   border-color: var(--primary-soft);
 }
-.preset-card.active {
+.preset-card.is-active {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
@@ -625,9 +781,14 @@ onMounted(load)
 /* ---------- 编辑区 ---------- */
 .theme-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 360px;
+  grid-template-columns: minmax(0, 1fr) 340px;
   gap: 16px;
   align-items: start;
+}
+/* grid 子项默认 min-width:auto，内部宽控件（阴影 / 渐变 / 颜色选择器）
+   会把整列撑破，右侧预览被挤到视口外 */
+.theme-layout > * {
+  min-width: 0;
 }
 @media (max-width: 1180px) {
   .theme-layout {
@@ -664,7 +825,7 @@ onMounted(load)
 .mode-tab:hover {
   color: var(--text);
 }
-.mode-tab.active {
+.mode-tab.is-active {
   background: var(--bg-card);
   color: var(--primary);
   font-weight: 600;
@@ -686,8 +847,11 @@ onMounted(load)
 }
 .token-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
+}
+.token-item {
+  min-width: 0;
 }
 .token-label {
   display: flex;
@@ -702,20 +866,9 @@ onMounted(load)
   font-family: var(--font-mono);
   font-size: 11px;
 }
-.token-input {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.token-color {
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  background: var(--bg-muted);
-  cursor: pointer;
+.token-item .form-hint {
+  margin: 6px 0 0;
+  font-size: 11px;
 }
 .token-text {
   height: 38px;
@@ -725,12 +878,107 @@ onMounted(load)
 .token-text.is-invalid {
   border-color: var(--danger);
 }
-.token-item .form-hint {
-  margin: 6px 0 0;
+.length-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.length-field .token-text {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  padding-right: 38px;
+}
+.length-unit {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  color: var(--text-light);
+  font-size: 11px;
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+/* 统一圆角 */
+.quick-radius {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border-soft);
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+}
+.quick-radius-label {
+  color: var(--text-soft);
+  font-size: 12px;
+}
+.quick-radius-input {
+  width: 68px;
+  height: 30px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.quick-radius-unit {
+  color: var(--text-light);
   font-size: 11px;
 }
-.form-hint.is-error {
+
+/* 自定义变量 */
+.extra-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.extra-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.extra-key {
+  flex: 0 0 150px;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.extra-value {
+  flex: 1;
+  height: 32px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.extra-remove {
+  flex: 0 0 26px;
+  height: 26px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-light);
+  font-size: 10px;
+  cursor: pointer;
+}
+.extra-remove:hover {
+  border-color: var(--border);
   color: var(--danger);
+}
+.extra-add {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+.extra-key-input {
+  flex: 0 1 150px;
+  min-width: 120px;
+  height: 32px;
+  font-family: var(--font-mono);
+  font-size: 12px;
 }
 
 /* ---------- 预览 ---------- */
@@ -750,7 +998,9 @@ onMounted(load)
   padding: 14px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  background: var(--bg);
+  background-color: var(--bg);
+  background-image: var(--preview-page-image, none);
+  box-shadow: var(--shadow);
   color: var(--text);
 }
 .preview-mode {
@@ -784,7 +1034,8 @@ onMounted(load)
   font-size: 11px;
 }
 .preview-btn.primary {
-  background: var(--primary);
+  background-color: var(--primary);
+  background-image: var(--gradient-brand);
   color: #fff;
 }
 .preview-btn.ghost {
@@ -806,7 +1057,9 @@ onMounted(load)
   padding: 10px;
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
-  background: var(--bg-card);
+  background-color: var(--bg-card);
+  background-image: var(--preview-card-image, none);
+  box-shadow: var(--shadow-sm);
 }
 .preview-label {
   color: var(--text-muted);
@@ -830,6 +1083,13 @@ onMounted(load)
   background: var(--bg-muted);
   color: var(--text-light);
   font-size: 11px;
+}
+.preview-gradient {
+  height: 22px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-sm);
+  background-color: var(--primary-soft);
+  background-image: var(--gradient-brand);
 }
 .preview-link {
   color: var(--link);

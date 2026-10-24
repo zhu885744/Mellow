@@ -2,7 +2,7 @@
   <div class="tree-node">
     <div
       class="tree-row"
-      :class="{ active: activeId === node.id }"
+      :class="{ 'is-active': activeId === node.id }"
       @click="$emit('select', node)"
     >
       <i class="bi bi-folder2 tree-icon" aria-hidden="true" />
@@ -66,7 +66,7 @@ defineEmits(['select', 'edit', 'remove', 'add-child'])
   background: var(--bg-muted);
   color: var(--text);
 }
-.tree-row.active {
+.tree-row.is-active {
   background: var(--accent-soft);
   color: var(--primary);
   font-weight: 600;
@@ -76,7 +76,7 @@ defineEmits(['select', 'edit', 'remove', 'add-child'])
   font-size: 14px;
   color: var(--text-light);
 }
-.tree-row.active .tree-icon {
+.tree-row.is-active .tree-icon {
   color: var(--primary);
 }
 .tree-name {
@@ -98,7 +98,7 @@ defineEmits(['select', 'edit', 'remove', 'add-child'])
   flex-shrink: 0;
 }
 .tree-row:hover .tree-actions,
-.tree-row.active .tree-actions {
+.tree-row.is-active .tree-actions {
   display: inline-flex;
 }
 .tree-actions button {

@@ -17,7 +17,7 @@
         以下用户因违反社区规范被封禁，昵称已做脱敏处理。若你认为封禁有误，可在登录后提交申诉。
       </p>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else-if="!list.length" class="card card-pad">
         <EmptyState text="目前没有用户被关进小黑屋" />
@@ -27,34 +27,34 @@
       <template v-else>
         <div class="ban-waterfall">
           <article v-for="item in list" :key="item.id" class="ban-card">
-            <header class="ban-card__head">
-              <img class="ban-card__avatar" :src="avatarOf(item)" :alt="nameOf(item)" loading="lazy" />
-              <div class="ban-card__who">
-                <span class="ban-card__name">{{ nameOf(item) }}</span>
-                <span class="ban-card__time">
+            <header class="ban-card-head">
+              <img class="ban-card-avatar" :src="avatarOf(item)" :alt="nameOf(item)" loading="lazy" />
+              <div class="ban-card-who">
+                <span class="ban-card-name">{{ nameOf(item) }}</span>
+                <span class="ban-card-time">
                   <i class="bi bi-clock" /> {{ formatDate(item.ban_time) }}
                 </span>
               </div>
               <span class="ban-state" :class="stateOf(item).tone">{{ stateOf(item).label }}</span>
             </header>
 
-            <div class="ban-card__tags">
+            <div class="ban-card-tags">
               <span v-for="tag in banTags(item)" :key="tag" class="type-tag">{{ tag }}</span>
             </div>
 
-            <div class="ban-card__reason">
-              <span class="ban-card__label">封禁原因</span>
-              <p class="ban-card__text">{{ item.reason || '未说明' }}</p>
+            <div class="ban-card-reason">
+              <span class="ban-card-label">封禁原因</span>
+              <p class="ban-card-text">{{ item.reason || '未说明' }}</p>
             </div>
 
-            <footer class="ban-card__foot">
+            <footer class="ban-card-foot">
               <span class="ban-duration" :class="{ 'is-perm': durationOf(item) === 0 }">
                 {{ durationText(item) }}
               </span>
-              <span v-if="violationOf(item) > 1" class="ban-card__foot-item">
+              <span v-if="violationOf(item) > 1" class="ban-card-foot-item">
                 违规 {{ violationOf(item) }} 次
               </span>
-              <span v-if="expiresOf(item) > 0" class="ban-card__foot-item">
+              <span v-if="expiresOf(item) > 0" class="ban-card-foot-item">
                 到期 {{ formatDate(expiresOf(item)) }}
               </span>
             </footer>
@@ -196,7 +196,7 @@ onMounted(load)
   border-radius: 0 var(--radius) var(--radius) 0;
 }
 
-.loading {
+.is-loading {
   padding: 48px;
   text-align: center;
   color: var(--text-muted);
@@ -235,12 +235,12 @@ onMounted(load)
 }
 
 /* 卡片头：头像 + 昵称/时间 + 状态 */
-.ban-card__head {
+.ban-card-head {
   display: flex;
   align-items: center;
   gap: 10px;
 }
-.ban-card__avatar {
+.ban-card-avatar {
   width: 38px;
   height: 38px;
   border-radius: 50%;
@@ -248,14 +248,14 @@ onMounted(load)
   flex-shrink: 0;
   background: var(--bg-muted);
 }
-.ban-card__who {
+.ban-card-who {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   line-height: 1.4;
 }
-.ban-card__name {
+.ban-card-name {
   font-weight: 600;
   font-size: 14px;
   color: var(--text);
@@ -263,12 +263,12 @@ onMounted(load)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.ban-card__time {
+.ban-card-time {
   font-size: 12px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
-.ban-card__time i {
+.ban-card-time i {
   margin-right: 2px;
 }
 
@@ -299,7 +299,7 @@ onMounted(load)
 }
 
 /* 限制范围标签 */
-.ban-card__tags {
+.ban-card-tags {
   margin-top: 10px;
   display: flex;
   flex-wrap: wrap;
@@ -317,16 +317,16 @@ onMounted(load)
 }
 
 /* 封禁原因 */
-.ban-card__reason {
+.ban-card-reason {
   margin-top: 10px;
 }
-.ban-card__label {
+.ban-card-label {
   display: block;
   margin-bottom: 2px;
   font-size: 11px;
   color: var(--text-muted);
 }
-.ban-card__text {
+.ban-card-text {
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
@@ -335,7 +335,7 @@ onMounted(load)
 }
 
 /* 卡片底：时长 + 违规次数 + 到期时间 */
-.ban-card__foot {
+.ban-card-foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -357,7 +357,7 @@ onMounted(load)
   color: var(--danger);
   background: rgba(199, 72, 42, 0.12);
 }
-.ban-card__foot-item {
+.ban-card-foot-item {
   font-variant-numeric: tabular-nums;
 }
 </style>

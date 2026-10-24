@@ -9,13 +9,13 @@
             :key="tab.key"
             type="button"
             class="status-tab"
-            :class="{ active: !trash && status === tab.key }"
+            :class="{ 'is-active': !trash && status === tab.key }"
             @click="switchTab(tab.key)"
           >{{ tab.label }}</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="toggleTrash"
           >
             <i class="bi bi-trash3" /> 回收站
@@ -101,7 +101,7 @@
       </div>
 
       <!-- 列表 -->
-      <div v-if="loading" class="loading">
+      <div v-if="loading" class="is-loading">
         <span class="spinner" /> 加载中...
       </div>
 
@@ -130,7 +130,7 @@
             v-for="item in list"
             :key="item.id"
             class="moment-row"
-            :class="{ selected: isSelected(item.id) }"
+            :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
               <input type="checkbox" :checked="isSelected(item.id)" @change="toggleSelect(item.id)" />
@@ -226,7 +226,7 @@
                     v-for="opt in AUDIT_OPTIONS"
                     :key="opt.key"
                     class="audit-option"
-                    :class="[`is-${opt.key}`, { active: Number(item.audit) === opt.value, 'is-disabled': busy }]"
+                    :class="[`is-${opt.key}`, { 'is-active': Number(item.audit) === opt.value, 'is-disabled': busy }]"
                     :title="`设为${opt.label}`"
                   >
                     <input
@@ -934,7 +934,7 @@ onMounted(load)
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1017,7 +1017,7 @@ onMounted(load)
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1053,7 +1053,7 @@ onMounted(load)
 .moment-row:last-child {
   border-bottom: none;
 }
-.moment-row.selected {
+.moment-row.is-selected {
   background: var(--accent-wash);
 }
 
@@ -1264,7 +1264,7 @@ onMounted(load)
   opacity: 0;
   pointer-events: none;
 }
-.audit-option:hover:not(.active):not(.is-disabled) {
+.audit-option:hover:not(.is-active):not(.is-disabled) {
   background: var(--bg-card);
   color: var(--primary);
 }
@@ -1276,15 +1276,15 @@ onMounted(load)
   cursor: not-allowed;
   opacity: 0.6;
 }
-.audit-option.active.is-pending {
+.audit-option.is-active.is-pending {
   background: var(--gold-wash);
   color: var(--warning);
 }
-.audit-option.active.is-pass {
+.audit-option.is-active.is-pass {
   background: rgba(108, 154, 77, 0.14);
   color: var(--success);
 }
-.audit-option.active.is-reject {
+.audit-option.is-active.is-reject {
   background: var(--accent-soft);
   color: var(--danger);
 }

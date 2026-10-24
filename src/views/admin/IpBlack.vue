@@ -61,13 +61,13 @@
             :key="tab.key"
             type="button"
             class="status-tab"
-            :class="{ active: !trash && status === tab.key }"
+            :class="{ 'is-active': !trash && status === tab.key }"
             @click="switchStatus(tab.key)"
           >{{ tab.label }}</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="toggleTrash"
           >
             <i class="bi bi-trash3" /> 回收站
@@ -129,7 +129,7 @@
         </button>
       </div>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else-if="!list.length" class="empty-row">
         <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-shield-x'" :text="emptyText" />
@@ -153,17 +153,17 @@
         <table class="ip-table">
           <thead>
             <tr>
-              <th class="td-pick"></th>
+              <th class="cell-pick"></th>
               <th>IP</th>
-              <th class="td-level">等级</th>
-              <th class="td-state">状态</th>
-              <th class="td-count">违规</th>
-              <th class="td-act">操作</th>
+              <th class="cell-level">等级</th>
+              <th class="cell-state">状态</th>
+              <th class="cell-count">违规</th>
+              <th class="cell-act">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in list" :key="item.id" :class="{ selected: isSelected(item.id) }">
-              <td class="td-pick">
+            <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
+              <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
                   <input
                     type="checkbox"
@@ -179,16 +179,16 @@
                 <div class="ip-sub">
                   <span v-if="item.cause" class="meta-text"><i class="bi bi-exclamation-circle" /> {{ item.cause }}</span>
                   <span v-if="item.remark" class="meta-text"><i class="bi bi-sticky" /> {{ item.remark }}</span>
-                  <span v-if="item.agent" class="meta-text ua-text" :title="item.agent">
+                  <span v-if="item.agent" class="meta-text user-agent-text" :title="item.agent">
                     <i class="bi bi-browser-chrome" /> {{ item.agent }}
                   </span>
                   <span class="meta-text"><i class="bi bi-clock" /> {{ timeText(item) }}</span>
                 </div>
               </td>
-              <td class="td-level">
+              <td class="cell-level">
                 <span class="level-chip" :class="`is-${levelKey(item)}`">{{ levelLabel(item) }}</span>
               </td>
-              <td class="td-state">
+              <td class="cell-state">
                 <template v-if="isPermanent(item)">
                   <span class="state-chip is-permanent">永久封禁</span>
                 </template>
@@ -199,8 +199,8 @@
                   <span class="state-chip is-active">{{ fromNow(item.expire_time) }}解封</span>
                 </template>
               </td>
-              <td class="td-count">{{ item.violation_count ?? 0 }} 次</td>
-              <td class="td-act">
+              <td class="cell-count">{{ item.violation_count ?? 0 }} 次</td>
+              <td class="cell-act">
                 <div class="row-actions">
                   <template v-if="trash">
                     <button class="btn btn-ghost btn-sm" title="恢复" aria-label="恢复" :disabled="busy" @click="restore(item)">
@@ -898,7 +898,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -979,7 +979,7 @@ onMounted(() => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1023,23 +1023,23 @@ onMounted(() => {
 .ip-table tbody tr:hover td {
   background: var(--bg-muted);
 }
-.ip-table tbody tr.selected td {
+.ip-table tbody tr.is-selected td {
   background: var(--accent-wash);
 }
 
-.td-pick {
+.cell-pick {
   width: 36px;
 }
-.td-level {
+.cell-level {
   width: 108px;
 }
-.td-state {
+.cell-state {
   width: 130px;
 }
-.td-count {
+.cell-count {
   width: 72px;
 }
-.td-act {
+.cell-act {
   width: 96px;
   text-align: right;
 }
@@ -1079,7 +1079,7 @@ onMounted(() => {
   align-items: center;
   gap: 3px;
 }
-.ua-text {
+.user-agent-text {
   max-width: 240px;
   overflow: hidden;
   text-overflow: ellipsis;

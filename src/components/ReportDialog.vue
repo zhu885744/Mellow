@@ -16,17 +16,17 @@
     </p>
 
     <div class="report-reason">
-      <span class="report-reason__label">
+      <span class="report-reason-label">
         举报原因
-        <em class="report-reason__tag is-required">必填</em>
+        <em class="report-reason-tag is-required">必填</em>
       </span>
-      <div class="report-reason__options">
+      <div class="report-reason-options">
         <button
           v-for="item in REPORT_REASONS"
           :key="item.value"
           type="button"
           class="chip"
-          :class="{ active: reason === item.value }"
+          :class="{ 'is-active': reason === item.value }"
           :aria-pressed="reason === item.value"
           @click="reason = item.value"
         >{{ item.label }}</button>
@@ -34,30 +34,30 @@
     </div>
 
     <label class="report-detail">
-      <span class="report-detail__label">
+      <span class="report-detail-label">
         补充说明
-        <em class="report-detail__tag">选填</em>
+        <em class="report-detail-tag">选填</em>
       </span>
       <textarea
         v-model="detail"
-        class="textarea report-detail__input"
+        class="textarea report-detail-input"
         rows="3"
         maxlength="200"
         placeholder="可补充具体情况（如时间、涉及哪一段内容），有助于我们判断"
       />
-      <span class="report-detail__hint">{{ detail.length }}/200 · 仅管理员可见</span>
+      <span class="report-detail-hint">{{ detail.length }}/200 · 仅管理员可见</span>
     </label>
 
     <!-- 证据图片：截图等直接上传（最多 3 张）。仅管理员可见，不会公开 -->
     <div class="report-images">
-      <span class="report-images__label">
+      <span class="report-images-label">
         证据图片
-        <em class="report-images__tag">选填 · 最多 {{ MAX_IMAGES }} 张</em>
+        <em class="report-images-tag">选填 · 最多 {{ MAX_IMAGES }} 张</em>
       </span>
-      <div class="report-images__list">
+      <div class="report-images-list">
         <div v-for="(img, i) in images" :key="img" class="report-thumb">
           <img :src="img" alt="举报证据" @click="previewImage(i)" loading="lazy" />
-          <span class="report-thumb__del" title="移除" @click="removeImage(i)">×</span>
+          <span class="report-thumb-del" title="移除" @click="removeImage(i)">×</span>
         </div>
         <button
           v-if="images.length < MAX_IMAGES"
@@ -78,7 +78,7 @@
         class="hidden-file"
         @change="onPickImages"
       />
-      <span class="report-images__hint">
+      <span class="report-images-hint">
         仅管理员可见；请上传能说明问题的截图，勿上传与举报无关的图片
       </span>
     </div>
@@ -244,8 +244,8 @@ function onCancel() {
   color: var(--text-soft);
   border-bottom: 1px dashed var(--border);
 }
-.report-reason__label,
-.report-detail__label {
+.report-reason-label,
+.report-detail-label {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -253,8 +253,8 @@ function onCancel() {
   font-weight: 600;
   color: var(--text);
 }
-.report-reason__tag,
-.report-detail__tag {
+.report-reason-tag,
+.report-detail-tag {
   padding: 0 6px;
   font-size: 11px;
   font-style: normal;
@@ -263,11 +263,11 @@ function onCancel() {
   color: var(--text-muted);
   background: var(--bg-muted);
 }
-.report-reason__tag.is-required {
+.report-reason-tag.is-required {
   color: var(--danger);
   background: rgba(217, 84, 77, 0.12);
 }
-.report-reason__options {
+.report-reason-options {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -297,7 +297,7 @@ function onCancel() {
   border-color: var(--primary-soft);
   color: var(--primary);
 }
-.chip.active {
+.chip.is-active {
   background: var(--accent-soft);
   border-color: var(--primary);
   color: var(--primary-deep);
@@ -307,13 +307,13 @@ function onCancel() {
 .report-detail {
   display: block;
 }
-.report-detail__input {
+.report-detail-input {
   margin-top: 8px;
   width: 100%;
   font-size: 13px;
   resize: vertical;
 }
-.report-detail__hint {
+.report-detail-hint {
   display: block;
   margin-top: 6px;
   font-size: 12px;
@@ -324,7 +324,7 @@ function onCancel() {
 .report-images {
   margin-top: 14px;
 }
-.report-images__label {
+.report-images-label {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -332,7 +332,7 @@ function onCancel() {
   font-weight: 600;
   color: var(--text);
 }
-.report-images__tag {
+.report-images-tag {
   padding: 0 6px;
   font-size: 11px;
   font-style: normal;
@@ -341,7 +341,7 @@ function onCancel() {
   color: var(--text-muted);
   background: var(--bg-muted);
 }
-.report-images__list {
+.report-images-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -361,7 +361,7 @@ function onCancel() {
   object-fit: cover;
   cursor: zoom-in;
 }
-.report-thumb__del {
+.report-thumb-del {
   position: absolute;
   top: 2px;
   right: 2px;
@@ -377,7 +377,7 @@ function onCancel() {
   border-radius: 50%;
   cursor: pointer;
 }
-.report-thumb__del:hover {
+.report-thumb-del:hover {
   background: var(--danger);
 }
 .report-add {
@@ -405,7 +405,7 @@ function onCancel() {
   cursor: not-allowed;
   opacity: 0.7;
 }
-.report-images__hint {
+.report-images-hint {
   display: block;
   margin-top: 6px;
   font-size: 12px;

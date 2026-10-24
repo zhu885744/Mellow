@@ -1,10 +1,10 @@
 <template>
   <article class="feed-article">
     <!-- 头部：作者信息（头像 / 昵称 / 等级 / 头衔 / 置顶），与动态卡片保持一致 -->
-    <div class="fa-head">
+    <div class="feed-head">
       <!-- 作者头像 + 装扮头像框（与侧栏 / 作者主页同一套渲染参数） -->
       <AvatarFrame
-        class="fa-avatar"
+        class="feed-avatar"
         :src="author?.avatar || defaultAvatar"
         :frame="author?.json?.frame"
         :frame-hole="frameRender.hole"
@@ -16,24 +16,24 @@
         size="40px"
         @click="goAuthor"
       />
-      <div class="fa-info">
-        <div class="fa-name">
-          <span class="fa-name-link" @click="goAuthor">{{ author?.nickname || '匿名' }}</span>
-          <span v-if="authorLevel" class="c-level">Lv.{{ authorLevel }}</span>
+      <div class="feed-info">
+        <div class="feed-name">
+          <span class="feed-name-link" @click="goAuthor">{{ author?.nickname || '匿名' }}</span>
+          <span v-if="authorLevel" class="level-tag">Lv.{{ authorLevel }}</span>
           <TitleBadge
             v-if="authorTitle || authorTitlePayload"
             :payload="authorTitlePayload || {}"
             :text="authorTitle"
             size="sm"
           />
-          <span v-else-if="authorTitle" :class="['c-title', authorTitleClass]">{{ authorTitle }}</span>
+          <span v-else-if="authorTitle" :class="['title-tag', authorTitleClass]">{{ authorTitle }}</span>
           <!-- 佩戴中的勋章（作者信息带 users.json） -->
           <WearingBadge v-if="author?.json?.wearing_badge" :badge="author.json.wearing_badge" />
-          <span v-if="article.top" class="fa-top">置顶</span>
+          <span v-if="article.top" class="feed-top">置顶</span>
         </div>
-        <div class="fa-time">
+        <div class="feed-time">
           <span>{{ fromNow(article.publish_time || article.create_time) }}</span>
-          <span v-if="groupName" class="fa-group">{{ groupName }}</span>
+          <span v-if="groupName" class="feed-group">{{ groupName }}</span>
           <!-- 当前可见范围：仅未登录访客显示 -->
           <ScopeBadge
             v-if="showScopeNotice"
@@ -47,31 +47,31 @@
     </div>
 
     <!-- 标题：文章比动态多的信息，点击进详情 -->
-    <h3 class="fa-title" @click="goDetail">{{ article.title }}</h3>
+    <h3 class="feed-title" @click="goDetail">{{ article.title }}</h3>
 
     <!-- 正文片段：只展示前面一部分，超出给「查看更多」入口 -->
-    <p v-if="previewText" class="fa-body">
+    <p v-if="previewText" class="feed-body">
       <EmojiText :text="previewText" :size="15" />
     </p>
 
-    <button v-if="hasMore" class="fa-more" type="button" @click="goDetail">
+    <button v-if="hasMore" class="feed-more" type="button" @click="goDetail">
       查看更多
       <i class="bi bi-arrow-right" aria-hidden="true" />
     </button>
 
     <!-- 封面：有图时按动态图片的方式展示（单图） -->
-    <div v-if="cover" class="fa-cover" @click="goDetail">
+    <div v-if="cover" class="feed-cover" @click="goDetail">
       <img :src="cover" :alt="article.title" loading="lazy" decoding="async" />
     </div>
 
     <!-- 底部互动：点赞 / 评论 / 阅读（分享、打赏、举报在右上角三点菜单） -->
-    <div class="fa-actions">
+    <div class="feed-actions">
       <!-- 内容类型标注：首页混排里一眼分清动态和长文 -->
       <span class="kind-tag"><i class="bi bi-file-text" /> 长文</span>
       <button
         ref="likeBtn"
-        class="fa-action like-btn push-right"
-        :class="{ liked }"
+        class="feed-action like-btn push-right"
+        :class="{ 'is-liked': liked }"
         type="button"
         title="点赞"
         @click="toggleLike"
@@ -81,7 +81,7 @@
       </button>
       <button
         v-if="showComment"
-        class="fa-action"
+        class="feed-action"
         type="button"
         title="查看评论"
         @click="goDetail"
@@ -89,7 +89,7 @@
         <i class="bi bi-chat-dots" />
         <span>{{ commentCount }}</span>
       </button>
-      <span class="fa-action is-static" title="阅读量">
+      <span class="feed-action is-static" title="阅读量">
         <i class="bi bi-eye" />
         <span>{{ article.views || 0 }}</span>
       </span>
@@ -379,21 +379,21 @@ onMounted(() => {
   box-shadow: var(--shadow);
 }
 
-.fa-head {
+.feed-head {
   display: flex;
   gap: 10px;
   align-items: flex-start;
 }
 /* 尺寸由 AvatarFrame 的 size 属性控制（inline width/height），这里只管布局与交互 */
-.fa-avatar {
+.feed-avatar {
   flex-shrink: 0;
   cursor: pointer;
 }
-.fa-info {
+.feed-info {
   flex: 1;
   min-width: 0;
 }
-.fa-name {
+.feed-name {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -402,14 +402,14 @@ onMounted(() => {
   font-weight: 600;
   color: var(--text);
 }
-.fa-name-link {
+.feed-name-link {
   cursor: pointer;
 }
-.fa-name-link:hover {
+.feed-name-link:hover {
   color: var(--primary);
 }
 /* 等级 / 头衔：与 MomentItem 完全一致（scoped 样式不会跨组件生效，这里必须复制一份） */
-.c-level {
+.level-tag {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 4px;
@@ -417,7 +417,7 @@ onMounted(() => {
   color: var(--primary-deep);
   flex-shrink: 0;
 }
-.c-title {
+.title-tag {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 4px;
@@ -440,7 +440,7 @@ onMounted(() => {
 .title-xuetu { background: linear-gradient(135deg, #9aa0a6, #6c757d); }
 .title-default { background: #6c757d; }
 
-.fa-top {
+.feed-top {
   padding: 1px 6px;
   font-size: 11px;
   font-weight: 400;
@@ -448,7 +448,7 @@ onMounted(() => {
   background: var(--accent-soft);
   color: var(--accent);
 }
-.fa-time {
+.feed-time {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -457,14 +457,14 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-muted);
 }
-.fa-group {
+.feed-group {
   padding: 0 6px;
   border-radius: 3px;
   background: var(--bg-muted);
   color: var(--text-soft);
 }
 
-.fa-title {
+.feed-title {
   margin: 12px 0 8px;
   font-size: 17px;
   font-weight: 600;
@@ -472,11 +472,11 @@ onMounted(() => {
   color: var(--text);
   cursor: pointer;
 }
-.fa-title:hover {
+.feed-title:hover {
   color: var(--primary);
 }
 
-.fa-body {
+.feed-body {
   margin: 0;
   font-size: 13px;
   line-height: 1.8;
@@ -485,7 +485,7 @@ onMounted(() => {
 }
 
 /* 查看更多：轻量文字按钮，与正文左对齐 */
-.fa-more {
+.feed-more {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -497,14 +497,14 @@ onMounted(() => {
   border: none;
   cursor: pointer;
 }
-.fa-more:hover {
+.feed-more:hover {
   color: var(--primary-deep);
 }
-.fa-more i {
+.feed-more i {
   font-size: 11px;
 }
 
-.fa-cover {
+.feed-cover {
   margin-top: 12px;
   border-radius: var(--radius);
   overflow: hidden;
@@ -512,19 +512,19 @@ onMounted(() => {
   background: var(--bg-muted);
   max-height: 220px;
 }
-.fa-cover img {
+.feed-cover img {
   display: block;
   width: 100%;
   max-height: 220px;
   object-fit: cover;
   transition: transform 0.3s;
 }
-.fa-cover:hover img {
+.feed-cover:hover img {
   transform: scale(1.02);
 }
 
 /* 底部互动栏：点赞 / 评论 / 阅读，图标 + 数字，与动态卡片一致 */
-.fa-actions {
+.feed-actions {
   display: flex;
   align-items: center;
   gap: 18px;
@@ -553,7 +553,7 @@ onMounted(() => {
 .push-right {
   margin-left: auto;
 }
-.fa-action {
+.feed-action {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -565,24 +565,24 @@ onMounted(() => {
   cursor: pointer;
   transition: color var(--dur) var(--ease);
 }
-.fa-action i {
+.feed-action i {
   font-size: 15px;
 }
-.fa-action:hover {
+.feed-action:hover {
   color: var(--primary);
 }
 /* 只读的阅读数：不要 hover 变色，避免看着像可点 */
-.fa-action.is-static {
+.feed-action.is-static {
   cursor: default;
 }
-.fa-action.is-static:hover {
+.feed-action.is-static:hover {
   color: inherit;
 }
 /* 点赞飘心的定位容器 */
 .like-btn {
   position: relative;
 }
-.fa-action.liked {
+.feed-action.is-liked {
   color: var(--accent);
 }
 </style>

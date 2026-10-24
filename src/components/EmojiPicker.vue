@@ -6,7 +6,7 @@
         v-for="cat in allCategories"
         :key="cat.key"
         type="button"
-        :class="['emoji-cat', { active: activeCategory === cat.key }]"
+        :class="['emoji-cat', { 'is-active': activeCategory === cat.key }]"
         @click="activeCategory = cat.key"
       >{{ cat.label }}</button>
     </div>
@@ -232,7 +232,7 @@ onUnmounted(() => {
   white-space: nowrap;
   transition: all 0.2s;
 }
-.emoji-cat.active {
+.emoji-cat.is-active {
   background: var(--primary);
   color: #fff;
 }

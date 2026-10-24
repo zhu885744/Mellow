@@ -123,9 +123,9 @@
         </div>
 
         <div v-for="(day, index) in form.cycle.days" :key="index" class="sub-card">
-          <div class="sub-card__head">
-            <span class="sub-card__title">第 {{ index + 1 }} 天</span>
-            <input v-model="day.label" class="input sub-card__label" type="text" maxlength="16" placeholder="标签（可选）" />
+          <div class="sub-card-head">
+            <span class="sub-card-title">第 {{ index + 1 }} 天</span>
+            <input v-model="day.label" class="input sub-card-label" type="text" maxlength="16" placeholder="标签（可选）" />
             <button class="btn btn-ghost btn-sm" type="button" title="删除该天" @click="removeDay(index)">
               <i class="bi bi-trash" />
             </button>
@@ -154,11 +154,11 @@
       </p>
 
       <div v-for="(item, index) in form.milestones" :key="index" class="sub-card">
-        <div class="sub-card__head">
-          <span class="sub-card__title">连续</span>
-          <input v-model.number="item.day" class="input sub-card__day" type="number" min="1" step="1" />
-          <span class="sub-card__title">天</span>
-          <input v-model="item.label" class="input sub-card__label" type="text" maxlength="16" placeholder="标签（可选）" />
+        <div class="sub-card-head">
+          <span class="sub-card-title">连续</span>
+          <input v-model.number="item.day" class="input sub-card-day" type="number" min="1" step="1" />
+          <span class="sub-card-title">天</span>
+          <input v-model="item.label" class="input sub-card-label" type="text" maxlength="16" placeholder="标签（可选）" />
           <button class="btn btn-ghost btn-sm" type="button" title="删除" @click="removeLadder('milestones', index)">
             <i class="bi bi-trash" />
           </button>
@@ -184,11 +184,11 @@
       </p>
 
       <div v-for="(item, index) in form.monthly" :key="index" class="sub-card">
-        <div class="sub-card__head">
-          <span class="sub-card__title">当月签到满</span>
-          <input v-model.number="item.day" class="input sub-card__day" type="number" min="1" step="1" />
-          <span class="sub-card__title">天</span>
-          <input v-model="item.label" class="input sub-card__label" type="text" maxlength="16" placeholder="标签（可选）" />
+        <div class="sub-card-head">
+          <span class="sub-card-title">当月签到满</span>
+          <input v-model.number="item.day" class="input sub-card-day" type="number" min="1" step="1" />
+          <span class="sub-card-title">天</span>
+          <input v-model="item.label" class="input sub-card-label" type="text" maxlength="16" placeholder="标签（可选）" />
           <button class="btn btn-ghost btn-sm" type="button" title="删除" @click="removeLadder('monthly', index)">
             <i class="bi bi-trash" />
           </button>
@@ -591,23 +591,23 @@ onMounted(load)
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
 }
-.sub-card__head {
+.sub-card-head {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 10px;
 }
-.sub-card__title {
+.sub-card-title {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
 }
-.sub-card__day {
+.sub-card-day {
   width: 90px;
   flex-shrink: 0;
 }
-.sub-card__label {
+.sub-card-label {
   flex: 1;
   min-width: 0;
 }

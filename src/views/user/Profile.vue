@@ -53,7 +53,7 @@
             <button
               v-for="(url, idx) in DEFAULT_AVATARS"
               :key="idx"
-              :class="['frame-item', { selected: form.avatar === url }]"
+              :class="['frame-item', { 'is-selected': form.avatar === url }]"
               @click="selectDefaultAvatar(url)"
             >
               <img :src="url" :alt="`默认头像 ${idx + 1}`" loading="lazy" />
@@ -74,8 +74,8 @@
               v-for="m in COVER_MODES"
               :key="m.key"
               type="button"
-              class="cover-mode__item"
-              :class="{ active: coverMode === m.key }"
+              class="cover-mode-item"
+              :class="{ 'is-active': coverMode === m.key }"
               @click="switchCoverMode(m.key)"
             >
               <i :class="m.icon" aria-hidden="true" /> {{ m.label }}
@@ -133,7 +133,7 @@
                 :key="c"
                 type="button"
                 class="cover-swatch"
-                :class="{ active: (form.coverColor || '').toLowerCase() === c }"
+                :class="{ 'is-active': (form.coverColor || '').toLowerCase() === c }"
                 :style="{ background: c }"
                 :title="c"
                 :aria-label="`使用颜色 ${c}`"
@@ -186,7 +186,7 @@
               <span v-else :class="['current-title', { empty: !form.title }]">
                 {{ form.title || '未设置' }}
               </span>
-              <RouterLink to="/user/decorations" class="deco-link">去我的装扮更换</RouterLink>
+              <RouterLink to="/user/decorations" class="decoration-link">去我的装扮更换</RouterLink>
             </div>
             <p class="hint">头衔与头像框统一在「我的装扮」中佩戴、卸下。</p>
           </div>
@@ -200,8 +200,8 @@
           <div class="form-item">
             <label class="form-label">联系方式</label>
             <div class="contact-readonly">
-              <div class="input disabled"><i class="bi bi-phone" /> {{ userStore.user?.phone || '未设置' }}</div>
-              <div class="input disabled"><i class="bi bi-envelope" /> {{ userStore.user?.email || '未设置' }}</div>
+              <div class="input is-disabled"><i class="bi bi-phone" /> {{ userStore.user?.phone || '未设置' }}</div>
+              <div class="input is-disabled"><i class="bi bi-envelope" /> {{ userStore.user?.email || '未设置' }}</div>
             </div>
             <p class="hint">
               邮箱和手机号是登录凭证，修改入口在
@@ -697,7 +697,7 @@ watch(() => userStore.user, (nu) => {
   border-radius: 999px;
   background: var(--bg-muted);
 }
-.cover-mode__item {
+.cover-mode-item {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -712,10 +712,10 @@ watch(() => userStore.user, (nu) => {
   cursor: pointer;
   transition: all 0.18s;
 }
-.cover-mode__item:hover {
+.cover-mode-item:hover {
   color: var(--primary);
 }
-.cover-mode__item.active {
+.cover-mode-item.is-active {
   background: var(--bg-card);
   color: var(--primary-deep);
   font-weight: 600;
@@ -758,7 +758,7 @@ watch(() => userStore.user, (nu) => {
 .cover-swatch:hover {
   transform: translateY(-1px);
 }
-.cover-swatch.active {
+.cover-swatch.is-active {
   box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 4px var(--primary);
 }
 .frame-grid {
@@ -791,7 +791,7 @@ watch(() => userStore.user, (nu) => {
   border-color: var(--primary);
   transform: translateY(-2px);
 }
-.frame-item.selected {
+.frame-item.is-selected {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
@@ -834,13 +834,13 @@ watch(() => userStore.user, (nu) => {
   font-weight: 400;
 }
 /* 去「我的装扮」的入口 */
-.deco-link {
+.decoration-link {
   margin-left: auto;
   font-size: 12px;
   color: var(--primary);
   text-decoration: none;
 }
-.deco-link:hover {
+.decoration-link:hover {
   text-decoration: underline;
 }
 
@@ -867,7 +867,7 @@ watch(() => userStore.user, (nu) => {
 /* 只读展示：这两格是 <div>，不是 <input>。
    .input 的垂直居中原本依赖 <input> 自身的行内居中，div 只会把这一行按 line-height
    排在盒顶（看起来「偏上」），所以这里手动用 flex 居中。 */
-.input.disabled {
+.input.is-disabled {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -878,7 +878,7 @@ watch(() => userStore.user, (nu) => {
   color: var(--text-muted);
   cursor: not-allowed;
 }
-.input.disabled i {
+.input.is-disabled i {
   flex-shrink: 0;
   color: var(--text-light);
 }

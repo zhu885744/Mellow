@@ -1,3 +1,16 @@
+/* ========== 命名规范（全站统一，新增类名请遵守） ==========
+ * 1. 全小写 kebab-case，多词用 `-` 连接：article-card / comment-avatar。
+ * 2. 组件 scoped 样式一律以「组件语义块名」做前缀，块与元素同样用 `-` 连接，
+ *    不再使用 BEM 的 `__` / `--`：MarkdownEditor → markdown-editor-toolbar，
+ *    ColorPicker → color-picker-swatch，MomentItem → moment-card。
+ * 3. 状态统一 `is-*`（is-active / is-disabled / is-loading / is-liked），
+ *    禁止裸类名 active / loading / selected；尺寸与外观变体用后缀 -sm / -md / -lg / -light。
+ * 4. 缩写一律展开：category / decoration / notification / attachment / config / project /
+ *    password / connection / address，不使用 cat- / deco- / notif- / attach- / cfg- / proj- 等。
+ * 5. 外部约定类名保持原样：Bootstrap Icons 的 bi / bi-*、markdown 渲染容器的 markdown-body，
+ *    以及 utils/markdown.js 生成的 markdown-media / markdown-file 系列。
+ */
+
 /* ========== 设计 Token ==========
  * 主题：暖纸为底、墨色为文、朱砂为印（品牌点睛 ≤10%）、竹青为版块与成功语义。
  * 组件一律引用下方「语义别名」，换色只需改本区块。
@@ -62,6 +75,12 @@
   --success: var(--bamboo);
   --danger: var(--cinnabar);
   --warning: #c08a2e;
+
+  /* ---------- 渐变槽位（主题配色里可换成渐变，默认关闭） ----------
+   * 用 background-image 叠加，none 时不影响下面的 background-color，
+   * 所以默认观感与纯色完全一致。 */
+  --gradient-brand: none;   /* 主按钮等品牌色块 */
+  --gradient-page: none;    /* 整页背景 */
 
   /* ---------- 阴影：单层柔和投影，仅浮层使用 ---------- */
   --shadow-sm: 0 1px 2px rgba(50, 46, 38, 0.04);
@@ -180,6 +199,7 @@ html, body {
   margin: 0;
   padding: 0;
   background: var(--bg);
+  background-image: var(--gradient-page);
   color: var(--text);
   font-family: var(--font-sans);
   font-size: 16px;
@@ -377,12 +397,15 @@ h1, h2, h3 {
 /* ---------- 变体：主色（主要操作） ---------- */
 .btn-primary {
   background: var(--primary);
+  /* 品牌渐变槽位：默认 none，配置后主按钮呈现渐变 */
+  background-image: var(--gradient-brand);
   border-color: var(--primary);
   color: #fff;
   --btn-spinner: #fff;
 }
 .btn-primary:hover {
   background: var(--primary-deep);
+  background-image: var(--gradient-brand);
   border-color: var(--primary-deep);
   color: #fff;
 }
@@ -780,22 +803,22 @@ h1, h2, h3 {
    @[video](url) / @[audio](url) / @[file](url "名称" "大小")
    见 utils/markdown.js 的 media_shortcode 规则：
    用 span 承载块级版式，避免短代码被 <p> 包裹时产生非法嵌套 */
-.md-media {
+.markdown-media {
   display: block;
   margin: 14px 0;
 }
-.md-media video {
+.markdown-media video {
   display: block;
   width: 100%;
   max-height: 70vh;
   border-radius: 10px;
   background: #000;
 }
-.md-media audio {
+.markdown-media audio {
   display: block;
   width: 100%;
 }
-.md-media__caption {
+.markdown-media-caption {
   display: block;
   margin-top: 6px;
   font-size: 12px;
@@ -803,7 +826,7 @@ h1, h2, h3 {
   text-align: center;
 }
 
-.md-file {
+.markdown-file {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -815,12 +838,12 @@ h1, h2, h3 {
   text-decoration: none;
   transition: border-color 0.15s, transform 0.15s;
 }
-.md-file:hover {
+.markdown-file:hover {
   border-color: var(--primary);
   transform: translateY(-1px);
   text-decoration: none;
 }
-.md-file__icon {
+.markdown-file-icon {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -832,25 +855,25 @@ h1, h2, h3 {
   color: var(--primary-deep);
   font-size: 17px;
 }
-.md-file__main {
+.markdown-file-main {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.md-file__name {
+.markdown-file-name {
   font-size: 13px;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.md-file__meta {
+.markdown-file-meta {
   font-size: 11px;
   color: var(--text-light);
 }
-.md-file__action {
+.markdown-file-action {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;

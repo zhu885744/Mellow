@@ -2,7 +2,7 @@
   <div>
     <SectionTitle title="文章归档" />
 
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="is-loading">
       <span class="spinner" /> 加载中...
     </div>
 
@@ -84,7 +84,7 @@ onMounted(load)
 </script>
 
 <style scoped>
-.loading {
+.is-loading {
   padding: 64px;
   text-align: center;
 }

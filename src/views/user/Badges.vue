@@ -12,7 +12,7 @@
         </div>
       </header>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else-if="!list.length" class="empty-row">
         <EmptyState icon="bi bi-award" text="站点还没有配置勋章" />
@@ -20,41 +20,41 @@
 
       <template v-else>
         <!-- 分类切换：全部 / 成长 / 荣誉 / 成就 / 限定（带「已获得/总数」） -->
-        <div v-if="groups.length > 1" class="cat-tabs">
+        <div v-if="groups.length > 1" class="category-tabs">
           <button
             type="button"
-            class="cat-tab"
-            :class="{ active: activeCat === null }"
+            class="category-tab"
+            :class="{ 'is-active': activeCat === null }"
             @click="activeCat = null"
           >
             <i class="bi bi-grid-3x3-gap" /> 全部
-            <span class="cat-tab-count">{{ heldCount }}/{{ list.length }}</span>
+            <span class="category-tab-count">{{ heldCount }}/{{ list.length }}</span>
           </button>
           <button
             v-for="group in groups"
             :key="group.id"
             type="button"
-            class="cat-tab"
-            :class="{ active: activeCat === group.id }"
+            class="category-tab"
+            :class="{ 'is-active': activeCat === group.id }"
             @click="activeCat = activeCat === group.id ? null : group.id"
           >
             <i :class="group.icon || 'bi bi-collection'" :style="{ color: group.color || undefined }" />
             {{ group.name }}
-            <span class="cat-tab-count">{{ group.held }}/{{ group.total }}</span>
+            <span class="category-tab-count">{{ group.held }}/{{ group.total }}</span>
           </button>
         </div>
 
         <!-- 按分类分组：每组先列已获得，再列进行中（含进度） -->
-        <section v-for="group in visibleGroups" :key="group.id" class="cat-group">
-          <header class="cat-head">
-            <span class="cat-icon" :style="groupTint(group)">
+        <section v-for="group in visibleGroups" :key="group.id" class="category-group">
+          <header class="category-head">
+            <span class="category-icon" :style="groupTint(group)">
               <i :class="group.icon || 'bi bi-collection'" />
             </span>
-            <div class="cat-head-main">
-              <h3 class="cat-title">{{ group.name }}</h3>
-              <p v-if="group.description" class="cat-desc">{{ group.description }}</p>
+            <div class="category-head-main">
+              <h3 class="category-title">{{ group.name }}</h3>
+              <p v-if="group.description" class="category-desc">{{ group.description }}</p>
             </div>
-            <span class="cat-progress">{{ group.held }}/{{ group.total }}</span>
+            <span class="category-progress">{{ group.held }}/{{ group.total }}</span>
           </header>
 
           <div v-if="!group.heldList.length" class="wall-hint">这一类还没有点亮的勋章</div>
@@ -82,7 +82,7 @@
                 v-if="!item.expired"
                 type="button"
                 class="wear-btn"
-                :class="{ active: wearingId === item.id }"
+                :class="{ 'is-active': wearingId === item.id }"
                 :disabled="wearingBusy === item.id"
                 :title="wearingId === item.id ? '点击卸下' : '佩戴到昵称旁'"
                 @click="toggleWear(item)"
@@ -353,8 +353,8 @@ onMounted(load)
   flex-direction: column;
   gap: 16px;
 }
-/* .loading / .empty-row 同样是各页面自带（不是全局样式），这里必须补一份 */
-.loading {
+/* .is-loading / .empty-row 同样是各页面自带（不是全局样式），这里必须补一份 */
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -418,7 +418,7 @@ onMounted(load)
   background: var(--accent-wash);
 }
 
-.cat-tabs {
+.category-tabs {
   display: flex;
   gap: 8px;
   margin-bottom: 16px;
@@ -427,10 +427,10 @@ onMounted(load)
   overflow-x: auto;
   scrollbar-width: none;
 }
-.cat-tabs::-webkit-scrollbar {
+.category-tabs::-webkit-scrollbar {
   display: none;
 }
-.cat-tab {
+.category-tab {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -444,34 +444,34 @@ onMounted(load)
   cursor: pointer;
   transition: all 0.15s;
 }
-.cat-tab:hover {
+.category-tab:hover {
   color: var(--text);
 }
-.cat-tab.active {
+.category-tab.is-active {
   color: var(--primary-deep);
   background: var(--accent-wash);
   border-color: var(--primary);
 }
-.cat-tab-count {
+.category-tab-count {
   font-size: 11px;
   color: var(--text-light);
   font-variant-numeric: tabular-nums;
 }
-.cat-tab.active .cat-tab-count {
+.category-tab.is-active .category-tab-count {
   color: var(--primary-deep);
 }
-.cat-group + .cat-group {
+.category-group + .category-group {
   margin-top: 18px;
   padding-top: 16px;
   border-top: 1px dashed var(--border-soft);
 }
-.cat-head {
+.category-head {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
 }
-.cat-icon {
+.category-icon {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -481,17 +481,17 @@ onMounted(load)
   border-radius: 9px;
   font-size: 15px;
 }
-.cat-head-main {
+.category-head-main {
   flex: 1;
   min-width: 0;
 }
-.cat-title {
+.category-title {
   margin: 0;
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
 }
-.cat-desc {
+.category-desc {
   margin: 2px 0 0;
   font-size: 11px;
   color: var(--text-muted);
@@ -499,14 +499,14 @@ onMounted(load)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cat-progress {
+.category-progress {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 /* 组内的「进行中」与上面的已获得留出间距 */
-.cat-group .todo-list {
+.category-group .todo-list {
   margin-top: 10px;
 }
 
@@ -728,7 +728,7 @@ onMounted(load)
   color: var(--primary-deep);
   border-color: var(--primary);
 }
-.wear-btn.active {
+.wear-btn.is-active {
   color: var(--primary-deep);
   background: var(--accent-wash);
   border-color: var(--primary);

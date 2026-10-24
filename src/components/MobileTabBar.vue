@@ -7,7 +7,7 @@
       type="button"
       class="tab-item"
       :class="{
-        active: isActive(tab),
+        'is-active': isActive(tab),
         highlight: tab.highlight,
         'is-open': tab.action === 'publish' && publishOpen
       }"
@@ -39,8 +39,8 @@
         role="menuitem"
         @click="goPublish(item)"
       >
-        <span class="publish-item__icon"><i :class="item.icon" aria-hidden="true" /></span>
-        <span class="publish-item__text">
+        <span class="publish-item-icon"><i :class="item.icon" aria-hidden="true" /></span>
+        <span class="publish-item-text">
           <strong>{{ item.label }}</strong>
           <small>{{ item.desc }}</small>
         </span>
@@ -250,7 +250,7 @@ watch(
   border: 1.5px solid var(--bg-card);
   box-sizing: border-box;
 }
-.tab-item.active {
+.tab-item.is-active {
   color: var(--danger);
 }
 /* 中间「发布」按钮：圆形大按钮（无文字标签，在格子内垂直居中） */
@@ -331,7 +331,7 @@ watch(
 .publish-item:active {
   background: var(--bg-muted);
 }
-.publish-item__icon {
+.publish-item-icon {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
@@ -343,18 +343,18 @@ watch(
   color: var(--primary-deep);
   font-size: 18px;
 }
-.publish-item__text {
+.publish-item-text {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
   min-width: 0;
 }
-.publish-item__text strong {
+.publish-item-text strong {
   font-size: 14px;
   font-weight: 600;
 }
-.publish-item__text small {
+.publish-item-text small {
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -404,7 +404,7 @@ watch(
   .tab-item {
     padding-top: 8px;
   }
-  .tab-item.active::before {
+  .tab-item.is-active::before {
     content: '';
     position: absolute;
     top: 0;

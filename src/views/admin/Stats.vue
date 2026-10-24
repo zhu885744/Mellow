@@ -13,7 +13,7 @@
           </p>
         </div>
         <div class="head-actions">
-          <span class="conn-badge" :class="`is-${connection}`">
+          <span class="connection-badge" :class="`is-${connection}`">
             <i class="bi" :class="connIcon" />
             {{ connText }}
           </span>
@@ -740,7 +740,7 @@ onUnmounted(() => {
   align-items: center;
   gap: 8px;
 }
-.conn-badge {
+.connection-badge {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -751,17 +751,17 @@ onUnmounted(() => {
   color: var(--text-soft);
   background: var(--bg-card);
 }
-.conn-badge.is-open {
+.connection-badge.is-open {
   color: var(--success, #16a34a);
   border-color: var(--success, #16a34a);
 }
-.conn-badge.is-connecting {
+.connection-badge.is-connecting {
   color: var(--warning, #b8860b);
   border-color: var(--warning, #b8860b);
 }
-.conn-badge.is-closed,
-.conn-badge.is-failed,
-.conn-badge.is-kicked {
+.connection-badge.is-closed,
+.connection-badge.is-failed,
+.connection-badge.is-kicked {
   color: var(--danger);
   border-color: var(--danger);
 }

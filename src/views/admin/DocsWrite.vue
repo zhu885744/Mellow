@@ -3,7 +3,7 @@
     <div class="card card-pad">
       <!-- 头部 -->
       <header class="write-head">
-        <div class="write-head__left">
+        <div class="write-head-left">
           <RouterLink :to="`/admin/docs/${slug}`" class="write-back" title="返回文档列表">
             <i class="bi bi-arrow-left" />
           </RouterLink>
@@ -17,7 +17,7 @@
           </div>
         </div>
 
-        <div class="write-head__actions">
+        <div class="write-head-actions">
           <a v-if="isEdit" class="btn btn-sm" :href="viewUrl" target="_blank" rel="noopener">
             <i class="bi bi-box-arrow-up-right" /> 查看前台
           </a>
@@ -28,7 +28,7 @@
         </div>
       </header>
 
-      <div v-if="!ready" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="!ready" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <template v-else>
         <!-- 基本信息 -->
@@ -86,7 +86,7 @@
               <label>SEO 关键词</label>
               <input v-model="form.seo_keywords" class="input" type="text" />
             </div>
-            <div class="form-row form-row--wide">
+            <div class="form-row form-row-wide">
               <label>SEO 描述</label>
               <input v-model="form.seo_description" class="input" type="text" />
             </div>
@@ -309,7 +309,7 @@ onBeforeUnmount(() => {
   margin-bottom: 18px;
   flex-wrap: wrap;
 }
-.write-head__left {
+.write-head-left {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -333,7 +333,7 @@ onBeforeUnmount(() => {
   color: var(--primary);
   background: var(--bg-muted);
 }
-.write-head__actions {
+.write-head-actions {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -370,7 +370,7 @@ onBeforeUnmount(() => {
   gap: 6px;
   margin-bottom: 14px;
 }
-.form-row--wide {
+.form-row-wide {
   grid-column: 1 / -1;
 }
 .form-row label {

@@ -24,7 +24,7 @@
             :key="opt.value"
             type="button"
             class="chip"
-            :class="{ active: status === opt.value }"
+            :class="{ 'is-active': status === opt.value }"
             @click="setStatus(opt.value)"
           >{{ opt.label }}</button>
         </div>
@@ -34,13 +34,13 @@
             :key="opt.value"
             type="button"
             class="chip"
-            :class="{ active: targetType === opt.value }"
+            :class="{ 'is-active': targetType === opt.value }"
             @click="setType(opt.value)"
           >{{ opt.label }}</button>
         </div>
       </div>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <EmptyState v-else-if="!list.length" icon="bi bi-flag" text="没有符合条件的举报" />
 
@@ -149,7 +149,7 @@
       </p>
 
       <label class="dialog-remark">
-        <span class="dialog-remark__label">处理说明<em>选填，会随通知发给举报人</em></span>
+        <span class="dialog-remark-label">处理说明<em>选填，会随通知发给举报人</em></span>
         <textarea
           v-model="dialog.remark"
           class="textarea"
@@ -327,7 +327,7 @@ onMounted(load)
   gap: 8px;
   flex-shrink: 0;
 }
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -358,7 +358,7 @@ onMounted(load)
   border-color: var(--primary-soft);
   color: var(--primary);
 }
-.chip.active {
+.chip.is-active {
   background: var(--accent-soft);
   border-color: var(--primary);
   color: var(--primary-deep);
@@ -505,13 +505,13 @@ onMounted(load)
   font-size: 12px;
   color: var(--text-muted);
 }
-.dialog-remark__label {
+.dialog-remark-label {
   display: block;
   margin-bottom: 6px;
   font-size: 13px;
   font-weight: 600;
 }
-.dialog-remark__label em {
+.dialog-remark-label em {
   margin-left: 6px;
   font-size: 12px;
   font-style: normal;

@@ -1,6 +1,6 @@
 <template>
   <div class="card card-pad">
-    <header class="ov-head">
+    <header class="overview-head">
       <div>
         <h2 class="block-title">创作中心</h2>
         <p class="block-desc">管理你的文章与动态，随时继续未完成的创作</p>
@@ -157,7 +157,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.ov-head {
+.overview-head {
   margin-bottom: 18px;
 }
 .block-title {

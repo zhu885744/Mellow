@@ -24,7 +24,7 @@
         <RouterLink
           to="/docs"
           class="docs-nav-item"
-          :class="{ active: !version }"
+          :class="{ 'is-active': !version }"
           @click="drawerOpen = false"
         >
           <i class="bi bi-collection" aria-hidden="true" />
@@ -35,7 +35,7 @@
           <RouterLink
             :to="`/docs/${version}`"
             class="docs-nav-item"
-            :class="{ active: !route.params.slug }"
+            :class="{ 'is-active': !route.params.slug }"
             @click="drawerOpen = false"
           >
             <i class="bi bi-house" aria-hidden="true" />
@@ -244,12 +244,12 @@ onMounted(loadProjects)
 .docs-nav-item:hover i {
   color: var(--primary);
 }
-.docs-nav-item.active {
+.docs-nav-item.is-active {
   color: var(--primary);
   font-weight: 600;
   background: var(--accent-wash);
 }
-.docs-nav-item.active i {
+.docs-nav-item.is-active i {
   color: var(--primary);
 }
 .docs-nav-text {

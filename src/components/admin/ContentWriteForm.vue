@@ -10,7 +10,7 @@
 
     <!-- 编辑卡片 -->
     <div class="card editor-card">
-      <div v-if="loading" class="loading">
+      <div v-if="loading" class="is-loading">
         <span class="spinner" /> 加载中...
       </div>
 
@@ -24,7 +24,7 @@
             maxlength="50"
             placeholder="输入长文标题"
           />
-          <span class="title-count" :class="{ over: form.title.length >= titleLimit }">
+          <span class="title-count" :class="{ 'is-over': form.title.length >= titleLimit }">
             {{ form.title.length }}/{{ titleLimit }}
           </span>
         </div>
@@ -870,7 +870,7 @@ onBeforeRouteLeave(() => {
   padding: 0;
   overflow: visible;
 }
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -917,7 +917,7 @@ onBeforeRouteLeave(() => {
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
-.title-count.over {
+.title-count.is-over {
   color: var(--danger);
 }
 

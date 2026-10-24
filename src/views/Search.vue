@@ -5,12 +5,12 @@
       <form class="search-form" role="search" @submit.prevent="submit">
         <!-- 图标 / 输入框 / 清空按钮放在同一个相对定位容器里：
              直接挂在 form 上的话，手机端表单换行成两行后绝对定位的元素会垂直错位 -->
-        <div class="search-form__field">
-          <i class="bi bi-search search-form__icon" aria-hidden="true" />
+        <div class="search-form-field">
+          <i class="bi bi-search search-form-icon" aria-hidden="true" />
           <input
             ref="inputRef"
             v-model="keyword"
-            class="search-form__input"
+            class="search-form-input"
             type="search"
             :placeholder="placeholder"
             aria-label="搜索"
@@ -19,11 +19,11 @@
             @keydown.down.prevent="move(1)"
             @keydown.up.prevent="move(-1)"
           />
-          <button v-if="keyword" type="button" class="search-form__clear" aria-label="清空" @click="clearKeyword">
+          <button v-if="keyword" type="button" class="search-form-clear" aria-label="清空" @click="clearKeyword">
             <i class="bi bi-x" />
           </button>
         </div>
-        <button type="submit" class="btn btn-primary search-form__submit">
+        <button type="submit" class="btn btn-primary search-form-submit">
           <i class="bi bi-search" /> 搜索
         </button>
       </form>
@@ -34,7 +34,7 @@
           :key="item.key"
           type="button"
           class="scope-btn"
-          :class="{ active: scope === item.key }"
+          :class="{ 'is-active': scope === item.key }"
           role="tab"
           :aria-selected="scope === item.key"
           @click="changeScope(item.key)"
@@ -63,9 +63,9 @@
           <button type="button" class="link-btn" @click="clearHistory">清除全部</button>
         </header>
         <div class="tag-list">
-          <span v-for="(word, i) in history" :key="i" class="search-tag search-tag--history">
-            <button type="button" class="search-tag__text" @click="useKeyword(word)">{{ word }}</button>
-            <button type="button" class="search-tag__remove" aria-label="删除这条历史" @click="removeHistory(i)">
+          <span v-for="(word, i) in history" :key="i" class="search-tag search-tag-history">
+            <button type="button" class="search-tag-text" @click="useKeyword(word)">{{ word }}</button>
+            <button type="button" class="search-tag-remove" aria-label="删除这条历史" @click="removeHistory(i)">
               <i class="bi bi-x" />
             </button>
           </span>
@@ -108,7 +108,7 @@
               v-for="item in group.items"
               :key="item.id || item._index"
               class="result-item"
-              :class="{ selected: selected === item._index }"
+              :class="{ 'is-selected': selected === item._index }"
               @mouseenter="selected = item._index"
               @click="goResult(item)"
             >
@@ -136,7 +136,7 @@
 
                 <!-- 元信息：话题、地址、位置、阅读量、时间等 -->
                 <div v-if="metaOf(item).length" class="result-meta">
-                  <span v-for="(meta, i) in metaOf(item)" :key="i" class="result-meta__item">
+                  <span v-for="(meta, i) in metaOf(item)" :key="i" class="result-meta-item">
                     <i :class="meta.icon" aria-hidden="true" />
                     <span v-html="safeHtml(meta.text)" />
                   </span>
@@ -632,14 +632,14 @@ onMounted(() => {
   gap: 10px;
 }
 /* 图标与清空按钮的定位基准 */
-.search-form__field {
+.search-form-field {
   position: relative;
   flex: 1;
   min-width: 0;
   display: flex;
   align-items: center;
 }
-.search-form__icon {
+.search-form-icon {
   position: absolute;
   left: 16px;
   top: 50%;
@@ -647,7 +647,7 @@ onMounted(() => {
   color: var(--text-muted);
   pointer-events: none;
 }
-.search-form__input {
+.search-form-input {
   flex: 1;
   width: 100%;
   min-width: 0;
@@ -662,29 +662,29 @@ onMounted(() => {
 }
 /* 隐藏 type=search 的原生清除按钮：否则会和下面自定义的 ❌ 同时出现（两个叉）
    各内核的伪元素都写一遍，避免浏览器差异 */
-.search-form__input::-webkit-search-cancel-button,
-.search-form__input::-webkit-search-decoration,
-.search-form__input::-webkit-search-results-button,
-.search-form__input::-webkit-search-results-decoration {
+.search-form-input::-webkit-search-cancel-button,
+.search-form-input::-webkit-search-decoration,
+.search-form-input::-webkit-search-results-button,
+.search-form-input::-webkit-search-results-decoration {
   -webkit-appearance: none;
   appearance: none;
   display: none;
 }
-.search-form__input::-ms-clear {
+.search-form-input::-ms-clear {
   display: none;
   width: 0;
   height: 0;
 }
-.search-form__input::placeholder {
+.search-form-input::placeholder {
   color: var(--text-light);
 }
-.search-form__input:focus {
+.search-form-input:focus {
   outline: none;
   background: var(--bg-card);
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
-.search-form__clear {
+.search-form-clear {
   position: absolute;
   right: 10px;
   top: 50%;
@@ -698,11 +698,11 @@ onMounted(() => {
   color: var(--text-muted);
   -webkit-tap-highlight-color: transparent;
 }
-.search-form__clear:hover {
+.search-form-clear:hover {
   background: var(--bg-muted);
   color: var(--text);
 }
-.search-form__submit {
+.search-form-submit {
   flex-shrink: 0;
   height: var(--control-h-lg);
 }
@@ -730,7 +730,7 @@ onMounted(() => {
   color: var(--primary);
   border-color: var(--primary);
 }
-.scope-btn.active {
+.scope-btn.is-active {
   color: #fff;
   background: var(--primary);
   border-color: var(--primary);
@@ -791,13 +791,13 @@ onMounted(() => {
   color: var(--primary);
   border-color: var(--primary);
 }
-.search-tag--history {
+.search-tag-history {
   padding-right: 6px;
 }
-.search-tag__text {
+.search-tag-text {
   color: inherit;
 }
-.search-tag__remove {
+.search-tag-remove {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -809,7 +809,7 @@ onMounted(() => {
   line-height: 1;
   color: var(--text-light);
 }
-.search-tag__remove:hover {
+.search-tag-remove:hover {
   color: var(--danger);
 }
 
@@ -859,7 +859,7 @@ onMounted(() => {
   border-top: 1px dashed var(--border-soft, var(--border));
 }
 .result-item:hover,
-.result-item.selected {
+.result-item.is-selected {
   background: var(--bg-muted);
 }
 /* 缩略图：没有图 / 图挂了时展示类型图标 */
@@ -954,7 +954,7 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-light);
 }
-.result-meta__item {
+.result-meta-item {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -963,7 +963,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.result-meta__item i {
+.result-meta-item i {
   color: var(--text-muted);
 }
 .result-arrow {
@@ -993,14 +993,14 @@ onMounted(() => {
     flex-wrap: wrap;
   }
   /* 输入框独占一行（按钮换到下一行），图标 / 清空按钮的定位基准是 __field，不会错位 */
-  .search-form__field {
+  .search-form-field {
     flex: 1 1 100%;
   }
-  .search-form__input {
+  .search-form-input {
     /* 16px 可避免 iOS 聚焦输入框时页面被放大 */
     font-size: 16px;
   }
-  .search-form__submit {
+  .search-form-submit {
     width: 100%;
   }
   .search-scopes {

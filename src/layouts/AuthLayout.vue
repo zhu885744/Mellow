@@ -3,8 +3,8 @@
     <div class="auth-bg"></div>
     <div class="auth-card">
       <!-- 顶部品牌区：配了网站 LOGO 就只显示 LOGO（标题已在图片里，不再重复），否则显示站点标题 -->
-      <router-link to="/" class="auth-logo" :class="{ 'auth-logo--image': site.avatar }">
-        <img v-if="site.avatar" class="auth-logo__img" :src="site.avatar" :alt="site.title" loading="lazy" />
+      <router-link to="/" class="auth-logo" :class="{ 'auth-logo-image': site.avatar }">
+        <img v-if="site.avatar" class="auth-logo-img" :src="site.avatar" :alt="site.title" loading="lazy" />
         <span v-else>{{ site.title }}</span>
       </router-link>
       <router-view />
@@ -76,13 +76,13 @@ onMounted(() => {
   margin-bottom: 32px;
 }
 /* 网站 LOGO：横向 LOGO 自动缩到卡片宽度内，不裁切 */
-.auth-logo__img {
+.auth-logo-img {
   max-width: 100%;
   max-height: 72px;
   object-fit: contain;
 }
 /* 只显示 LOGO 时（标题已隐藏）可以再大一点 */
-.auth-logo--image .auth-logo__img {
+.auth-logo-image .auth-logo-img {
   max-height: 88px;
 }
 .auth-footer {

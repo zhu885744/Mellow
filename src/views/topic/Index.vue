@@ -31,7 +31,7 @@
       </div>
     </section>
 
-    <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+    <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
     <TopicBoard
       v-else
       :items="list"
@@ -106,7 +106,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);

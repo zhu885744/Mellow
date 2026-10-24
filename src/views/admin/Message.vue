@@ -33,7 +33,7 @@
           v-for="s in statCards"
           :key="s.label"
           class="stat-card"
-          :class="{ 'is-link': !!s.click, active: !!s.active }"
+          :class="{ 'is-link': !!s.click, 'is-active': !!s.active }"
           :aria-pressed="s.click ? !!s.active : undefined"
           :title="s.click ? `查看${s.label}` : undefined"
           @click="s.click && s.click()"
@@ -59,7 +59,7 @@
           :key="v.key"
           type="button"
           class="status-tab"
-          :class="{ active: view === v.key }"
+          :class="{ 'is-active': view === v.key }"
           @click="switchView(v.key)"
         >
           <i :class="v.icon" /> {{ v.label }}
@@ -83,13 +83,13 @@
           <button
             type="button"
             class="status-tab"
-            :class="{ active: !trash }"
+            :class="{ 'is-active': !trash }"
             @click="setTrash(false)"
           >{{ currentView.stateNormal }}</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="setTrash(true)"
           >
             <i class="bi bi-trash3" /> {{ currentView.stateTrash }}
@@ -167,7 +167,7 @@
         </div>
       </div>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else-if="!list.length" class="empty-row">
         <EmptyState :icon="emptyIcon" :text="emptyText" />
@@ -189,7 +189,7 @@
         </div>
 
         <ul class="notice-list">
-          <li v-for="item in list" :key="item.id" class="notice-row" :class="{ selected: isSelected(item.id) }">
+          <li v-for="item in list" :key="item.id" class="notice-row" :class="{ 'is-selected': isSelected(item.id) }">
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
               <input
                 type="checkbox"
@@ -1116,11 +1116,11 @@ onMounted(async () => {
   background: var(--bg-card);
   border-color: var(--border);
 }
-.stat-card.is-link.active {
+.stat-card.is-link.is-active {
   background: var(--accent-wash);
   border-color: var(--primary);
 }
-.stat-card.is-link.active .stat-label {
+.stat-card.is-link.is-active .stat-label {
   color: var(--primary-deep);
 }
 .stat-card.is-link:focus-visible {
@@ -1183,7 +1183,7 @@ onMounted(async () => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1290,7 +1290,7 @@ onMounted(async () => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1329,7 +1329,7 @@ onMounted(async () => {
 .notice-row:hover {
   background: var(--bg-muted);
 }
-.notice-row.selected {
+.notice-row.is-selected {
   background: var(--accent-wash);
 }
 

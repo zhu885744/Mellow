@@ -12,7 +12,7 @@
         <RouterLink
           to="/manage"
           class="manage-nav-item"
-          :class="{ active: isOverview }"
+          :class="{ 'is-active': isOverview }"
         >
           <i class="bi bi-grid-1x2" />
           <span class="manage-nav-text">概览</span>
@@ -23,7 +23,7 @@
         <RouterLink
           to="/manage/posts/write"
           class="manage-nav-item"
-          :class="{ active: isWrite }"
+          :class="{ 'is-active': isWrite }"
         >
           <i class="bi bi-pencil-square" />
           <span class="manage-nav-text">写文章</span>
@@ -31,7 +31,7 @@
         <RouterLink
           to="/manage/posts"
           class="manage-nav-item"
-          :class="{ active: isPosts }"
+          :class="{ 'is-active': isPosts }"
         >
           <i class="bi bi-file-earmark-text" />
           <span class="manage-nav-text">我的文章</span>
@@ -39,7 +39,7 @@
         <RouterLink
           to="/manage/moments"
           class="manage-nav-item"
-          :class="{ active: isMoments }"
+          :class="{ 'is-active': isMoments }"
         >
           <i class="bi bi-chat-square-dots" />
           <span class="manage-nav-text">我的动态</span>
@@ -47,7 +47,7 @@
         <RouterLink
           to="/manage/links"
           class="manage-nav-item"
-          :class="{ active: isLinks }"
+          :class="{ 'is-active': isLinks }"
         >
           <i class="bi bi-link-45deg" />
           <span class="manage-nav-text">友链管理</span>
@@ -81,7 +81,7 @@
           <div class="manage-menu" ref="userMenuRef">
             <button
               class="manage-menu-btn"
-              :class="{ open: userMenuOpen }"
+              :class="{ 'is-open': userMenuOpen }"
               type="button"
               aria-haspopup="menu"
               :aria-expanded="userMenuOpen"
@@ -259,7 +259,7 @@ onUnmounted(() => {
   background: var(--bg-muted);
   color: var(--text);
 }
-.manage-nav-item.active {
+.manage-nav-item.is-active {
   background: var(--accent-soft);
   color: var(--primary);
   font-weight: 600;
@@ -337,7 +337,7 @@ onUnmounted(() => {
   transition: color 0.18s, border-color 0.18s, background 0.18s;
 }
 .manage-menu-btn:hover,
-.manage-menu-btn.open {
+.manage-menu-btn.is-open {
   color: var(--text);
   border-color: var(--border);
   background: var(--bg-muted);
@@ -347,7 +347,7 @@ onUnmounted(() => {
   color: var(--text-light);
   transition: transform 0.18s;
 }
-.manage-menu-btn.open .manage-menu-caret {
+.manage-menu-btn.is-open .manage-menu-caret {
   transform: rotate(180deg);
 }
 .manage-menu-panel {

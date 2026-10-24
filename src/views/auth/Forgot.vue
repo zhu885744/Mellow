@@ -5,12 +5,12 @@
 
     <!-- 步骤条 -->
     <div class="steps">
-      <div :class="['step', { active: step >= 1 }]">
+      <div :class="['step', { 'is-active': step >= 1 }]">
         <span class="num">1</span>
         <span class="label">验证身份</span>
       </div>
-      <div class="line" :class="{ active: step >= 2 }"></div>
-      <div :class="['step', { active: step >= 2 }]">
+      <div class="line" :class="{ 'is-active': step >= 2 }"></div>
+      <div :class="['step', { 'is-active': step >= 2 }]">
         <span class="num">2</span>
         <span class="label">设置新密码</span>
       </div>
@@ -195,10 +195,10 @@ onUnmounted(() => clearInterval(timer))
   font-size: 12px;
   transition: all 0.3s;
 }
-.step.active {
+.step.is-active {
   color: var(--primary-deep);
 }
-.step.active .num {
+.step.is-active .num {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
@@ -209,7 +209,7 @@ onUnmounted(() => clearInterval(timer))
   background: var(--border);
   margin: 0 16px;
 }
-.line.active {
+.line.is-active {
   background: var(--primary);
 }
 

@@ -66,13 +66,13 @@
           <button
             type="button"
             class="status-tab"
-            :class="{ active: !trash }"
+            :class="{ 'is-active': !trash }"
             @click="switchTrash(false)"
           >全部附件</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="switchTrash(true)"
           >
             <i class="bi bi-trash3" /> 回收站
@@ -142,7 +142,7 @@
         </button>
       </div>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else-if="!list.length" class="empty-row">
         <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-paperclip'" :text="emptyText" />
@@ -163,8 +163,8 @@
           <span class="list-head-text">本页 {{ list.length }} 个</span>
         </div>
 
-        <ul class="attach-grid">
-          <li v-for="item in list" :key="item.id" class="attach-card" :class="{ selected: isSelected(item.id) }">
+        <ul class="attachment-grid">
+          <li v-for="item in list" :key="item.id" class="attachment-card" :class="{ 'is-selected': isSelected(item.id) }">
             <label class="pick card-pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
               <input
                 type="checkbox"
@@ -177,24 +177,24 @@
 
             <button
               type="button"
-              class="attach-preview"
+              class="attachment-preview"
               :title="`预览 ${item.original_name}`"
               @click="openPreview(item)"
             >
               <img v-if="isPreviewableImage(item)" :src="item.full_url" :alt="item.original_name" loading="lazy" />
-              <span v-else class="attach-filetype">
+              <span v-else class="attachment-filetype">
                 <i :class="attachmentIcon(item)" />
                 <em>{{ extText(item) }}</em>
               </span>
             </button>
 
-            <div class="attach-info">
-              <div class="attach-name" :title="item.original_name">{{ item.original_name || '未命名' }}</div>
-              <div class="attach-meta">
+            <div class="attachment-info">
+              <div class="attachment-name" :title="item.original_name">{{ item.original_name || '未命名' }}</div>
+              <div class="attachment-meta">
                 <span class="meta-text">{{ formatFileSize(item.file_size) }}</span>
                 <span class="meta-text"><i class="bi bi-clock" /> {{ timeText(item) }}</span>
               </div>
-              <div class="attach-meta">
+              <div class="attachment-meta">
                 <span class="meta-text" :title="uploaderTitle(item)">
                   <i class="bi bi-person" /> {{ uploaderName(item) }}
                 </span>
@@ -202,7 +202,7 @@
               </div>
             </div>
 
-            <div class="attach-actions">
+            <div class="attachment-actions">
               <button class="btn btn-ghost btn-sm" title="复制链接" aria-label="复制链接" @click="copyUrl(item)">
                 <i class="bi bi-clipboard" />
               </button>
@@ -949,7 +949,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1030,7 +1030,7 @@ onMounted(() => {
 }
 
 /* ---------- 网格 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1050,13 +1050,13 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
-.attach-grid {
+.attachment-grid {
   display: grid;
   /* 卡片宽度固定区间，窄屏自动减少列数 */
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 12px;
 }
-.attach-card {
+.attachment-card {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1066,10 +1066,10 @@ onMounted(() => {
   border-radius: var(--radius);
   transition: border-color 0.15s, background 0.15s;
 }
-.attach-card:hover {
+.attachment-card:hover {
   border-color: var(--primary);
 }
-.attach-card.selected {
+.attachment-card.is-selected {
   border-color: var(--primary);
   background: var(--accent-wash);
 }
@@ -1095,7 +1095,7 @@ onMounted(() => {
   background: rgba(255, 255, 255, 0.85);
 }
 
-.attach-preview {
+.attachment-preview {
   width: 100%;
   aspect-ratio: 4 / 3;
   display: flex;
@@ -1107,33 +1107,33 @@ onMounted(() => {
   background: var(--bg-muted);
   cursor: pointer;
 }
-.attach-preview img {
+.attachment-preview img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.attach-filetype {
+.attachment-filetype {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   color: var(--text-muted);
 }
-.attach-filetype .bi {
+.attachment-filetype .bi {
   font-size: 32px;
 }
-.attach-filetype em {
+.attachment-filetype em {
   font-size: 11px;
   font-style: normal;
   letter-spacing: 0.04em;
 }
 
-.attach-info {
+.attachment-info {
   margin-top: 8px;
   min-width: 0;
 }
-.attach-name {
+.attachment-name {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
@@ -1141,7 +1141,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.attach-meta {
+.attachment-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -1156,18 +1156,18 @@ onMounted(() => {
   gap: 3px;
 }
 
-.attach-actions {
+.attachment-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 2px;
   margin-top: 6px;
 }
-.attach-actions .danger:hover:not(:disabled) {
+.attachment-actions .danger:hover:not(:disabled) {
   border-color: var(--danger);
   color: var(--danger);
 }
-.attach-actions .btn:disabled {
+.attachment-actions .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1258,7 +1258,7 @@ onMounted(() => {
     width: 100%;
     margin-left: 0;
   }
-  .attach-grid {
+  .attachment-grid {
     grid-template-columns: repeat(2, 1fr);
   }
   .stat-grid {

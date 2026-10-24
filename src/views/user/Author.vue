@@ -139,7 +139,7 @@
       <!-- 封禁提示条：该账号处于封禁中，展示关键信息并提供详情 / 申诉入口 -->
       <div v-if="isBanned" class="author-ban-bar">
         <i class="bi bi-exclamation-octagon" />
-        <div class="author-ban-bar__text">
+        <div class="author-ban-bar-text">
           <strong>{{ banBarTitle }}</strong>
           <span>{{ banSummary }}</span>
         </div>
@@ -182,14 +182,14 @@
     <!-- 内容区 -->
     <div class="card card-pad">
       <div class="tab-bar">
-        <button :class="['tab', tab === 'article' && 'active']" @click="switchTab('article')">TA的文章</button>
-        <button :class="['tab', tab === 'fans' && 'active']" @click="switchTab('fans')">TA的粉丝</button>
-        <button :class="['tab', tab === 'follow' && 'active']" @click="switchTab('follow')">TA的关注</button>
-        <button :class="['tab', tab === 'like' && 'active']" @click="switchTab('like')">TA的点赞</button>
-        <button :class="['tab', tab === 'collect' && 'active']" @click="switchTab('collect')">TA的收藏</button>
+        <button :class="['tab', tab === 'article' && 'is-active']" @click="switchTab('article')">TA的文章</button>
+        <button :class="['tab', tab === 'fans' && 'is-active']" @click="switchTab('fans')">TA的粉丝</button>
+        <button :class="['tab', tab === 'follow' && 'is-active']" @click="switchTab('follow')">TA的关注</button>
+        <button :class="['tab', tab === 'like' && 'is-active']" @click="switchTab('like')">TA的点赞</button>
+        <button :class="['tab', tab === 'collect' && 'is-active']" @click="switchTab('collect')">TA的收藏</button>
       </div>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
       <div v-else-if="denied" class="empty-row">
         <EmptyState :text="deniedText" />
       </div>
@@ -238,7 +238,7 @@
           <button
             v-for="st in currentSubTabs"
             :key="st.key"
-            :class="['sub-tab', subTab === st.key && 'active']"
+            :class="['sub-tab', subTab === st.key && 'is-active']"
             @click="switchSubTab(st.key)"
           >{{ st.label }}</button>
         </div>
@@ -1184,18 +1184,18 @@ watch(() => route.params.id, () => {
   font-size: 18px;
   color: var(--danger);
 }
-.author-ban-bar__text {
+.author-ban-bar-text {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.author-ban-bar__text strong {
+.author-ban-bar-text strong {
   font-size: 14px;
   color: var(--danger);
 }
-.author-ban-bar__text span {
+.author-ban-bar-text span {
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-muted);
@@ -1297,7 +1297,7 @@ watch(() => route.params.id, () => {
 .tab:hover {
   color: var(--primary);
 }
-.tab.active {
+.tab.is-active {
   color: var(--primary-deep);
   border-bottom-color: var(--primary);
   font-weight: 600;
@@ -1323,14 +1323,14 @@ watch(() => route.params.id, () => {
   color: var(--primary);
   border-color: var(--primary);
 }
-.sub-tab.active {
+.sub-tab.is-active {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
   font-weight: 600;
 }
 
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);

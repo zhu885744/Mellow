@@ -34,18 +34,18 @@
       <div class="docs-layout">
         <!-- 目录树 -->
         <aside class="docs-tree">
-          <div class="docs-tree__head">
+          <div class="docs-tree-head">
             <span>目录</span>
             <button type="button" class="btn btn-sm btn-ghost" title="刷新" @click="reload">
               <i class="bi bi-arrow-clockwise" />
             </button>
           </div>
 
-          <div class="docs-tree__body">
+          <div class="docs-tree-body">
             <button
               type="button"
               class="tree-all"
-              :class="{ active: !currentGroup }"
+              :class="{ 'is-active': !currentGroup }"
               @click="selectGroup(null)"
             >全部文档</button>
 
@@ -66,15 +66,15 @@
 
         <!-- 文档列表 -->
         <section class="docs-list">
-          <div class="docs-list__head">
-            <div class="docs-list__tabs">
-              <button type="button" :class="{ active: !trash }" @click="switchTrash(false)">文档</button>
-              <button type="button" class="is-trash" :class="{ active: trash }" @click="switchTrash(true)">
+          <div class="docs-list-head">
+            <div class="docs-list-tabs">
+              <button type="button" :class="{ 'is-active': !trash }" @click="switchTrash(false)">文档</button>
+              <button type="button" class="is-trash" :class="{ 'is-active': trash }" @click="switchTrash(true)">
                 <i class="bi bi-trash3" /> 回收站
               </button>
             </div>
 
-            <span v-if="!trash" class="docs-list__count">{{ docs.length }} 篇</span>
+            <span v-if="!trash" class="docs-list-count">{{ docs.length }} 篇</span>
             <button v-else type="button" class="btn btn-sm" :disabled="busy" @click="askClearRecycle">
               <i class="bi bi-trash3" /> 清空回收站
             </button>
@@ -84,24 +84,24 @@
             <span><i class="bi bi-trash3" /> 回收站里的文档前台不可见，可恢复或彻底删除</span>
           </div>
 
-          <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+          <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
           <div v-else-if="!docs.length" class="empty-row">
             {{ trash ? '回收站是空的' : '这个目录下还没有文档' }}
           </div>
 
           <div v-else class="docs-rows">
             <div v-for="(doc, index) in docs" :key="doc.id" class="docs-row" :class="{ 'is-trashed': trash }">
-              <span v-if="!trash" class="docs-row__sort" :title="`排序 ${doc.sort}`">{{ doc.sort }}</span>
+              <span v-if="!trash" class="docs-row-sort" :title="`排序 ${doc.sort}`">{{ doc.sort }}</span>
 
-              <div class="docs-row__main" :class="{ 'is-static': trash }" @click="!trash && goWrite(doc)">
-                <span class="docs-row__title">{{ doc.title }}</span>
-                <span class="docs-row__slug">/{{ doc.slug }}</span>
+              <div class="docs-row-main" :class="{ 'is-static': trash }" @click="!trash && goWrite(doc)">
+                <span class="docs-row-title">{{ doc.title }}</span>
+                <span class="docs-row-slug">/{{ doc.slug }}</span>
               </div>
 
               <template v-if="trash">
-                <span class="docs-row__time">删除于 {{ formatDate(doc.delete_time) }}</span>
+                <span class="docs-row-time">删除于 {{ formatDate(doc.delete_time) }}</span>
 
-                <div class="docs-row__actions">
+                <div class="docs-row-actions">
                   <button type="button" class="btn btn-sm btn-ghost" title="恢复" :disabled="busy" @click="restoreDoc(doc)">
                     <i class="bi bi-arrow-counterclockwise" />
                   </button>
@@ -119,9 +119,9 @@
 
               <template v-else>
                 <span class="status-pill" :class="`is-${doc.status}`">{{ statusText(doc.status) }}</span>
-                <span class="docs-row__time">{{ formatDate(doc.update_time) }}</span>
+                <span class="docs-row-time">{{ formatDate(doc.update_time) }}</span>
 
-                <div class="docs-row__actions">
+                <div class="docs-row-actions">
                   <button type="button" class="btn btn-sm btn-ghost" title="上移" :disabled="index === 0" @click="moveDoc(index, -1)">
                     <i class="bi bi-arrow-up" />
                   </button>
@@ -168,7 +168,7 @@
             <label>上级目录</label>
             <SelectMenu v-model="groupDialog.form.pid" variant="field" :options="parentGroupOptions" />
           </div>
-          <div class="form-row form-row--half">
+          <div class="form-row form-row-half">
             <div>
               <label>排序</label>
               <input v-model.number="groupDialog.form.sort" class="input" type="number" min="0" />
@@ -203,13 +203,13 @@
         </header>
 
         <div class="modal-body">
-          <div v-if="historyDialog.loading" class="loading"><span class="spinner" /> 加载中...</div>
+          <div v-if="historyDialog.loading" class="is-loading"><span class="spinner" /> 加载中...</div>
           <div v-else-if="!historyDialog.list.length" class="empty-row">暂无历史记录</div>
           <div v-else class="history-list">
             <div v-for="item in historyDialog.list" :key="item.id" class="history-row">
-              <div class="history-row__main">
-                <span class="history-row__summary">{{ item.summary || '保存文档' }}</span>
-                <span class="history-row__time">{{ formatDateTime(item.create_time) }} · #{{ item.id }}</span>
+              <div class="history-row-main">
+                <span class="history-row-summary">{{ item.summary || '保存文档' }}</span>
+                <span class="history-row-time">{{ formatDateTime(item.create_time) }} · #{{ item.id }}</span>
               </div>
               <button type="button" class="btn btn-sm" @click="rollback(item)">回滚</button>
             </div>
@@ -236,7 +236,7 @@
             <div class="import-file">
               <input
                 ref="importFileRef"
-                class="import-file__input"
+                class="import-file-input"
                 type="file"
                 accept=".md,.markdown,.zip"
                 @change="onImportFile"
@@ -244,7 +244,7 @@
               <button type="button" class="btn btn-sm" :disabled="importing" @click="pickImportFile">
                 <i class="bi bi-folder2-open" /> 选择文件
               </button>
-              <span class="import-file__name" :class="{ 'is-empty': !importDialog.file }">
+              <span class="import-file-name" :class="{ 'is-empty': !importDialog.file }">
                 {{ importDialog.file ? importDialog.file.name : '未选择文件' }}
               </span>
             </div>
@@ -255,7 +255,7 @@
             </p>
           </div>
 
-          <div class="form-row form-row--half">
+          <div class="form-row form-row-half">
             <div>
               <label>导入到</label>
               <SelectMenu v-model="importDialog.gid" variant="field" :options="importGroupOptions" />
@@ -267,13 +267,13 @@
           </div>
 
           <div v-if="importDialog.result" class="import-result">
-            <p class="import-result__line">
+            <p class="import-result-line">
               新建 <strong>{{ importDialog.result.created }}</strong> 篇 ·
               更新 <strong>{{ importDialog.result.updated }}</strong> 篇 ·
               跳过 <strong>{{ importDialog.result.skipped }}</strong> 篇 ·
               目录 <strong>{{ importDialog.result.groups }}</strong> 个
             </p>
-            <ul v-if="importDialog.result.errors?.length" class="import-result__errors">
+            <ul v-if="importDialog.result.errors?.length" class="import-result-errors">
               <li v-for="(item, i) in importDialog.result.errors" :key="i">{{ item }}</li>
             </ul>
           </div>
@@ -794,7 +794,7 @@ onMounted(async () => {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
 }
-.docs-tree__head {
+.docs-tree-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -805,7 +805,7 @@ onMounted(async () => {
   letter-spacing: 1px;
   border-bottom: 1px solid var(--border-soft);
 }
-.docs-tree__body {
+.docs-tree-body {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -826,7 +826,7 @@ onMounted(async () => {
 .tree-all:hover {
   background: var(--bg-muted);
 }
-.tree-all.active {
+.tree-all.is-active {
   color: var(--primary);
   background: var(--accent-soft);
   font-weight: 600;
@@ -839,7 +839,7 @@ onMounted(async () => {
   flex-direction: column;
   padding: 4px 4px 4px 0;
 }
-.docs-list__head {
+.docs-list-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -848,12 +848,12 @@ onMounted(async () => {
   border-bottom: 1px solid var(--border-soft);
 }
 /* 文档 / 回收站 视图切换 */
-.docs-list__tabs {
+.docs-list-tabs {
   display: flex;
   align-items: center;
   gap: 4px;
 }
-.docs-list__tabs button {
+.docs-list-tabs button {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -867,11 +867,11 @@ onMounted(async () => {
   white-space: nowrap;
   transition: color 0.15s, background-color 0.15s;
 }
-.docs-list__tabs button:hover {
+.docs-list-tabs button:hover {
   color: var(--text);
   background: var(--bg-muted);
 }
-.docs-list__tabs button.active {
+.docs-list-tabs button.is-active {
   color: var(--primary);
   background: var(--bg-muted);
   font-weight: 600;
@@ -888,12 +888,12 @@ onMounted(async () => {
   border: 1px dashed var(--border);
   border-radius: var(--radius-sm);
 }
-.docs-list__title {
+.docs-list-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
 }
-.docs-list__count {
+.docs-list-count {
   font-size: 12px;
   color: var(--text-light);
 }
@@ -912,14 +912,14 @@ onMounted(async () => {
 .docs-row:last-child {
   border-bottom: none;
 }
-.docs-row__sort {
+.docs-row-sort {
   width: 24px;
   flex-shrink: 0;
   font-size: 11px;
   color: var(--text-light);
   text-align: center;
 }
-.docs-row__main {
+.docs-row-main {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -927,34 +927,34 @@ onMounted(async () => {
   gap: 8px;
   cursor: pointer;
 }
-.docs-row__title {
+.docs-row-title {
   font-weight: 600;
   color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.docs-row__main:hover .docs-row__title {
+.docs-row-main:hover .docs-row-title {
   color: var(--primary);
 }
 /* 回收站的行不可跳转编辑，去掉可点击的暗示 */
-.docs-row__main.is-static {
+.docs-row-main.is-static {
   cursor: default;
 }
-.docs-row__main.is-static:hover .docs-row__title {
+.docs-row-main.is-static:hover .docs-row-title {
   color: inherit;
 }
-.docs-row__slug {
+.docs-row-slug {
   flex-shrink: 0;
   font-size: 11px;
   color: var(--text-light);
 }
-.docs-row__time {
+.docs-row-time {
   flex-shrink: 0;
   font-size: 11px;
   color: var(--text-light);
 }
-.docs-row__actions {
+.docs-row-actions {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -1018,7 +1018,7 @@ onMounted(async () => {
   font-weight: 600;
   color: var(--text);
 }
-.modal-head__actions {
+.modal-head-actions {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1062,11 +1062,11 @@ onMounted(async () => {
   font-size: 12px;
   color: var(--text-muted);
 }
-.form-row--half {
+.form-row-half {
   flex-direction: row;
   gap: 12px;
 }
-.form-row--half > div {
+.form-row-half > div {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -1096,10 +1096,10 @@ onMounted(async () => {
   gap: 10px;
   min-width: 0;
 }
-.import-file__input {
+.import-file-input {
   display: none;
 }
-.import-file__name {
+.import-file-name {
   flex: 1;
   min-width: 0;
   padding: 6px 10px;
@@ -1112,7 +1112,7 @@ onMounted(async () => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.import-file__name.is-empty {
+.import-file-name.is-empty {
   color: var(--text-light);
 }
 
@@ -1124,15 +1124,15 @@ onMounted(async () => {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
 }
-.import-result__line {
+.import-result-line {
   margin: 0;
   font-size: 13px;
   color: var(--text-soft);
 }
-.import-result__line strong {
+.import-result-line strong {
   color: var(--primary);
 }
-.import-result__errors {
+.import-result-errors {
   max-height: 140px;
   margin: 8px 0 0;
   padding-left: 18px;
@@ -1156,18 +1156,18 @@ onMounted(async () => {
 .history-row:last-child {
   border-bottom: none;
 }
-.history-row__main {
+.history-row-main {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
-.history-row__summary {
+.history-row-summary {
   font-size: 13px;
   color: var(--text);
 }
-.history-row__time {
+.history-row-time {
   font-size: 11px;
   color: var(--text-light);
 }
@@ -1176,7 +1176,7 @@ onMounted(async () => {
   .docs-layout {
     grid-template-columns: 1fr;
   }
-  .form-row--half {
+  .form-row-half {
     flex-direction: column;
   }
 }

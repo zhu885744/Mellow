@@ -1,22 +1,22 @@
 <template>
   <Teleport to="body">
-    <Transition name="attach-fade">
-      <div v-if="visible" class="attach-mask" @click.self="close">
-        <div class="attach-panel" role="dialog" aria-modal="true" :aria-label="title">
+    <Transition name="attachment-fade">
+      <div v-if="visible" class="attachment-mask" @click.self="close">
+        <div class="attachment-panel" role="dialog" aria-modal="true" :aria-label="title">
           <!-- 头部 -->
-          <header class="attach-head">
-            <h3 class="attach-title">
+          <header class="attachment-head">
+            <h3 class="attachment-title">
               <i class="bi bi-folder2-open" aria-hidden="true" />
               {{ title }}
             </h3>
-            <button type="button" class="attach-close" title="关闭" @click="close">
+            <button type="button" class="attachment-close" title="关闭" @click="close">
               <i class="bi bi-x-lg" />
             </button>
           </header>
 
           <!-- 说明 + 刷新 -->
-          <div class="attach-toolbar">
-            <span class="attach-tip">
+          <div class="attachment-toolbar">
+            <span class="attachment-tip">
               {{ acceptTip }}
               <template v-if="multiple"> · 最多可选 {{ max }} 个</template>
             </span>
@@ -26,43 +26,43 @@
           </div>
 
           <!-- 列表 -->
-          <div class="attach-body">
-            <div v-if="loading" class="attach-state">
+          <div class="attachment-body">
+            <div v-if="loading" class="attachment-state">
               <span class="spinner" /> 加载中...
             </div>
 
-            <div v-else-if="!filtered.length" class="attach-state">
-              <i class="bi bi-inbox attach-state-icon" />
+            <div v-else-if="!filtered.length" class="attachment-state">
+              <i class="bi bi-inbox attachment-state-icon" />
               <p>{{ items.length ? '当前页没有符合类型要求的附件' : '附件库还是空的，先上传一些吧' }}</p>
               <button v-if="items.length" type="button" class="btn btn-sm" @click="showAllTypes = true">
                 显示全部类型
               </button>
             </div>
 
-            <div v-else class="attach-grid">
+            <div v-else class="attachment-grid">
               <button
                 v-for="item in filtered"
                 :key="item.id"
                 type="button"
-                class="attach-item"
+                class="attachment-item"
                 :class="{ 'is-picked': isPicked(item) }"
                 :title="`${item.original_name}｜${formatSize(item.file_size)}｜${fromNow(item.create_time)}`"
                 @click="toggle(item)"
               >
                 <img v-if="isImage(item)" :src="item.full_url" :alt="item.original_name" loading="lazy" />
-                <span v-else class="attach-file">
+                <span v-else class="attachment-file">
                   <i class="bi bi-file-earmark-text" />
                   <em>{{ extOf(item) || 'file' }}</em>
                 </span>
-                <span class="attach-name">{{ item.original_name }}</span>
-                <span v-if="isPicked(item)" class="attach-check"><i class="bi bi-check-lg" /></span>
+                <span class="attachment-name">{{ item.original_name }}</span>
+                <span v-if="isPicked(item)" class="attachment-check"><i class="bi bi-check-lg" /></span>
               </button>
             </div>
           </div>
 
           <!-- 底部分页 + 操作 -->
-          <footer class="attach-foot">
-            <div class="attach-pager">
+          <footer class="attachment-foot">
+            <div class="attachment-pager">
               <Pagination
                 v-if="total > pageSize"
                 :current="page"
@@ -70,10 +70,10 @@
                 :page-size="pageSize"
                 @update:current="changePage"
               />
-              <span v-else class="attach-total">共 {{ total }} 个附件</span>
+              <span v-else class="attachment-total">共 {{ total }} 个附件</span>
             </div>
-            <div class="attach-actions">
-              <span class="attach-picked">{{ picked.length ? `已选 ${picked.length} 个` : '未选择' }}</span>
+            <div class="attachment-actions">
+              <span class="attachment-picked">{{ picked.length ? `已选 ${picked.length} 个` : '未选择' }}</span>
               <button type="button" class="btn btn-sm" @click="close">取消</button>
               <button
                 type="button"
@@ -251,7 +251,7 @@ function formatSize(bytes) {
 </script>
 
 <style scoped>
-.attach-mask {
+.attachment-mask {
   position: fixed;
   inset: 0;
   /*
@@ -268,7 +268,7 @@ function formatSize(bytes) {
   padding: 16px;
   background: rgba(0, 0, 0, 0.45);
 }
-.attach-panel {
+.attachment-panel {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -282,7 +282,7 @@ function formatSize(bytes) {
 }
 
 /* ---------- 头部 ---------- */
-.attach-head {
+.attachment-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -290,7 +290,7 @@ function formatSize(bytes) {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border-soft);
 }
-.attach-title {
+.attachment-title {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -299,10 +299,10 @@ function formatSize(bytes) {
   font-weight: 600;
   color: var(--text);
 }
-.attach-title .bi {
+.attachment-title .bi {
   color: var(--primary);
 }
-.attach-close {
+.attachment-close {
   width: 28px;
   height: 28px;
   display: inline-flex;
@@ -315,13 +315,13 @@ function formatSize(bytes) {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.attach-close:hover {
+.attachment-close:hover {
   background: var(--bg-muted);
   color: var(--primary);
 }
 
 /* ---------- 工具条 ---------- */
-.attach-toolbar {
+.attachment-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -329,26 +329,26 @@ function formatSize(bytes) {
   padding: 10px 18px;
   border-bottom: 1px solid var(--border-soft);
 }
-.attach-tip {
+.attachment-tip {
   font-size: 12px;
   color: var(--text-muted);
 }
-.attach-toolbar .bi.is-spin {
+.attachment-toolbar .bi.is-spin {
   display: inline-block;
-  animation: attach-spin 0.8s linear infinite;
+  animation: attachment-spin 0.8s linear infinite;
 }
-@keyframes attach-spin {
+@keyframes attachment-spin {
   to { transform: rotate(360deg); }
 }
 
 /* ---------- 内容 ---------- */
-.attach-body {
+.attachment-body {
   flex: 1;
   min-height: 200px;
   overflow-y: auto;
   padding: 14px 18px;
 }
-.attach-state {
+.attachment-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -358,20 +358,20 @@ function formatSize(bytes) {
   font-size: 13px;
   color: var(--text-muted);
 }
-.attach-state p {
+.attachment-state p {
   margin: 0;
 }
-.attach-state-icon {
+.attachment-state-icon {
   font-size: 26px;
   color: var(--text-light);
 }
 
-.attach-grid {
+.attachment-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
   gap: 10px;
 }
-.attach-item {
+.attachment-item {
   position: relative;
   padding: 0;
   aspect-ratio: 1 / 1;
@@ -382,21 +382,21 @@ function formatSize(bytes) {
   cursor: pointer;
   transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
 }
-.attach-item:hover {
+.attachment-item:hover {
   border-color: var(--primary-soft);
   transform: translateY(-1px);
 }
-.attach-item.is-picked {
+.attachment-item.is-picked {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
-.attach-item img {
+.attachment-item img {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
-.attach-file {
+.attachment-file {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -405,16 +405,16 @@ function formatSize(bytes) {
   height: 100%;
   color: var(--text-muted);
 }
-.attach-file .bi {
+.attachment-file .bi {
   font-size: 26px;
 }
-.attach-file em {
+.attachment-file em {
   font-style: normal;
   font-size: 11px;
   text-transform: uppercase;
   color: var(--text-light);
 }
-.attach-name {
+.attachment-name {
   position: absolute;
   left: 0;
   right: 0;
@@ -429,7 +429,7 @@ function formatSize(bytes) {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.attach-check {
+.attachment-check {
   position: absolute;
   top: 6px;
   right: 6px;
@@ -445,7 +445,7 @@ function formatSize(bytes) {
 }
 
 /* ---------- 底部 ---------- */
-.attach-foot {
+.attachment-foot {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -453,57 +453,57 @@ function formatSize(bytes) {
   padding: 12px 18px;
   border-top: 1px solid var(--border-soft);
 }
-.attach-total {
+.attachment-total {
   font-size: 12px;
   color: var(--text-muted);
 }
-.attach-actions {
+.attachment-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.attach-picked {
+.attachment-picked {
   font-size: 12px;
   color: var(--text-muted);
 }
 
 /* ---------- 过渡 ---------- */
-.attach-fade-enter-active,
-.attach-fade-leave-active {
+.attachment-fade-enter-active,
+.attachment-fade-leave-active {
   transition: opacity 0.2s ease;
 }
-.attach-fade-enter-active .attach-panel,
-.attach-fade-leave-active .attach-panel {
+.attachment-fade-enter-active .attachment-panel,
+.attachment-fade-leave-active .attachment-panel {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
-.attach-fade-enter-from,
-.attach-fade-leave-to {
+.attachment-fade-enter-from,
+.attachment-fade-leave-to {
   opacity: 0;
 }
-.attach-fade-enter-from .attach-panel,
-.attach-fade-leave-to .attach-panel {
+.attachment-fade-enter-from .attachment-panel,
+.attachment-fade-leave-to .attachment-panel {
   opacity: 0;
   transform: translateY(-10px) scale(0.98);
 }
 
 @media (max-width: 640px) {
-  .attach-mask {
+  .attachment-mask {
     padding: 0;
     align-items: flex-end;
   }
-  .attach-panel {
+  .attachment-panel {
     max-width: none;
     max-height: 92vh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
-  .attach-foot {
+  .attachment-foot {
     flex-direction: column;
     align-items: stretch;
   }
-  .attach-actions {
+  .attachment-actions {
     justify-content: flex-end;
   }
-  .attach-grid {
+  .attachment-grid {
     grid-template-columns: repeat(auto-fill, minmax(88px, 1fr));
   }
 }

@@ -101,7 +101,7 @@
   </div>
 
   <EmptyState v-else-if="!loading" text="页面不存在" />
-  <div v-else-if="loading" class="loading">
+  <div v-else-if="loading" class="is-loading">
     <span class="spinner" /> 加载中...
   </div>
 </template>
@@ -487,7 +487,7 @@ onMounted(load)
   font-size: 12px;
   color: var(--text-muted);
 }
-.loading {
+.is-loading {
   padding: 64px;
   text-align: center;
   color: var(--text-muted);

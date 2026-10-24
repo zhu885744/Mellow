@@ -1,7 +1,7 @@
 <template>
   <div class="mention-picker" :style="panelStyle" role="listbox" :aria-label="title">
-    <p v-if="isLoading" class="mention-picker__tip">加载中…</p>
-    <p v-else-if="!list.length" class="mention-picker__tip">
+    <p v-if="isLoading" class="mention-picker-tip">加载中…</p>
+    <p v-else-if="!list.length" class="mention-picker-tip">
       {{ keyword ? keywordEmptyText : emptyText }}
     </p>
     <template v-else>
@@ -16,9 +16,9 @@
         @mousedown.prevent="select(item)"
         @mouseenter="active = index"
       >
-        <img v-if="item.avatar" class="mention-item__avatar" :src="fullUrl(item.avatar)" :alt="nameOf(item)" loading="lazy" />
-        <span v-else class="mention-item__avatar mention-item__avatar--text">{{ nameOf(item).slice(0, 1) }}</span>
-        <span class="mention-item__name">{{ nameOf(item) }}</span>
+        <img v-if="item.avatar" class="mention-item-avatar" :src="fullUrl(item.avatar)" :alt="nameOf(item)" loading="lazy" />
+        <span v-else class="mention-item-avatar mention-item-avatar-text">{{ nameOf(item).slice(0, 1) }}</span>
+        <span class="mention-item-name">{{ nameOf(item) }}</span>
       </button>
     </template>
   </div>
@@ -173,7 +173,7 @@ defineExpose({ move, selectActive })
   border-radius: var(--radius);
   box-shadow: var(--shadow-md);
 }
-.mention-picker__tip {
+.mention-picker-tip {
   margin: 0;
   padding: 8px 10px;
   font-size: 12px;
@@ -197,7 +197,7 @@ defineExpose({ move, selectActive })
 .mention-item.is-active {
   background: var(--bg-muted);
 }
-.mention-item__avatar {
+.mention-item-avatar {
   flex-shrink: 0;
   width: 24px;
   height: 24px;
@@ -205,14 +205,14 @@ defineExpose({ move, selectActive })
   object-fit: cover;
   background: var(--bg-muted);
 }
-.mention-item__avatar--text {
+.mention-item-avatar-text {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 12px;
   color: var(--text-muted);
 }
-.mention-item__name {
+.mention-item-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

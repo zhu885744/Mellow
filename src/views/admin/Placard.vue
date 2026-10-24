@@ -23,13 +23,13 @@
           <button
             type="button"
             class="status-tab"
-            :class="{ active: !trash }"
+            :class="{ 'is-active': !trash }"
             @click="switchTab(false)"
           >全部公告</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="switchTab(true)"
           >
             <i class="bi bi-trash3" /> 回收站
@@ -84,7 +84,7 @@
       </div>
 
       <!-- 列表 -->
-      <div v-if="loading" class="loading">
+      <div v-if="loading" class="is-loading">
         <span class="spinner" /> 加载中...
       </div>
 
@@ -113,7 +113,7 @@
             v-for="item in list"
             :key="item.id"
             class="placard-row"
-            :class="{ selected: isSelected(item.id) }"
+            :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
               <input
@@ -690,7 +690,7 @@ onMounted(load)
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -799,7 +799,7 @@ onMounted(load)
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -828,7 +828,7 @@ onMounted(load)
 .placard-row:hover {
   background: var(--bg-muted);
 }
-.placard-row.selected {
+.placard-row.is-selected {
   background: var(--accent-wash);
 }
 

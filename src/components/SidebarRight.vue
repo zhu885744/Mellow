@@ -45,29 +45,29 @@
       <div class="card-title">
         <span class="notify-title">
           消息通知
-          <span v-if="notif.count > 0" class="notif-badge">{{ notif.count > 99 ? '99+' : notif.count }}</span>
+          <span v-if="notif.count > 0" class="notification-badge">{{ notif.count > 99 ? '99+' : notif.count }}</span>
         </span>
         <router-link to="/user/notifications" class="more-link">查看全部 <i class="bi bi-arrow-right" /></router-link>
       </div>
       <button
         v-if="notif.latest"
-        class="notif-preview"
+        class="notification-preview"
         :class="{ unread: !notif.latest.is_read }"
         @click="openLatest"
       >
-        <span class="notif-preview-icon" :class="`type-${notif.latest.type}`">
+        <span class="notification-preview-icon" :class="`type-${notif.latest.type}`">
           <i :class="notifIcon(notif.latest.type)" />
         </span>
-        <span class="notif-preview-body">
-          <span class="notif-preview-content">{{ notif.latest.content || notif.latest.title }}</span>
-          <span class="notif-preview-meta">
+        <span class="notification-preview-body">
+          <span class="notification-preview-content">{{ notif.latest.content || notif.latest.title }}</span>
+          <span class="notification-preview-meta">
             <span>{{ typeLabel(notif.latest.type) }}</span>
             <span>·</span>
             <span>{{ fromNow(notif.latest.create_time) }}</span>
           </span>
         </span>
       </button>
-      <p v-else class="notif-empty">暂无消息</p>
+      <p v-else class="notification-empty">暂无消息</p>
     </div>
 
     <!-- 随机文章 -->
@@ -550,7 +550,7 @@ watch(
 .notify-title {
   position: relative;
 }
-.notif-badge {
+.notification-badge {
   position: absolute;
   top: -8px;
   left: calc(100% + 4px);
@@ -578,7 +578,7 @@ watch(
 .notify-card {
   padding: 14px;
 }
-.notif-preview {
+.notification-preview {
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -592,14 +592,14 @@ watch(
   font-family: inherit;
   transition: border-color 0.15s, background 0.15s;
 }
-.notif-preview:hover {
+.notification-preview:hover {
   border-color: var(--primary);
   background: var(--bg-card);
 }
-.notif-preview.unread {
+.notification-preview.unread {
   background: var(--accent-wash);
 }
-.notif-preview-icon {
+.notification-preview-icon {
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -610,50 +610,50 @@ watch(
   font-size: 14px;
   background: var(--bg-muted);
 }
-.notif-preview-icon.type-comment {
+.notification-preview-icon.type-comment {
   background: var(--accent-soft);
   color: var(--primary-deep);
 }
-.notif-preview-icon.type-like {
+.notification-preview-icon.type-like {
   background: rgba(217, 84, 77, 0.12);
   color: var(--danger);
 }
-.notif-preview-icon.type-follow {
+.notification-preview-icon.type-follow {
   background: rgba(108, 154, 77, 0.12);
   color: var(--success);
 }
-.notif-preview-icon.type-collect {
+.notification-preview-icon.type-collect {
   background: var(--gold-wash);
   color: #c7902f;
 }
-.notif-preview-icon.type-system {
+.notification-preview-icon.type-system {
   background: rgba(74, 144, 226, 0.12);
   color: #4a90e2;
 }
-.notif-preview-body {
+.notification-preview-body {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
-.notif-preview-content {
+.notification-preview-content {
   font-size: 12px;
   color: var(--text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.notif-preview.unread .notif-preview-content {
+.notification-preview.unread .notification-preview-content {
   font-weight: 600;
 }
-.notif-preview-meta {
+.notification-preview-meta {
   display: flex;
   gap: 4px;
   font-size: 11px;
   color: var(--text-muted);
 }
-.notif-empty {
+.notification-empty {
   font-size: 12px;
   color: var(--text-muted);
   padding: 8px 4px;

@@ -10,7 +10,7 @@
         :key="item.value"
         type="button"
         class="login-tab"
-        :class="{ active: mode === item.value }"
+        :class="{ 'is-active': mode === item.value }"
         @click="mode = item.value"
       >
         {{ item.label }}
@@ -257,7 +257,7 @@ onUnmounted(() => clearInterval(timer))
   cursor: pointer;
   transition: color 0.2s, background 0.2s;
 }
-.login-tab.active {
+.login-tab.is-active {
   /* 用卡片色而不是 #fff：深色模式下白底 + 浅色文字会几乎不可读 */
   color: var(--text-strong, var(--text));
   background: var(--bg-card);

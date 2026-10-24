@@ -1,6 +1,6 @@
 <template>
   <div class="topic-page">
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="is-loading">
       <span class="spinner" /> 加载中...
     </div>
 
@@ -56,7 +56,7 @@
             :key="item.key"
             type="button"
             class="topic-tab"
-            :class="{ active: tab === item.key }"
+            :class="{ 'is-active': tab === item.key }"
             @click="switchTab(item.key)"
           >
             {{ item.label }}
@@ -68,7 +68,7 @@
             :key="item.key"
             type="button"
             class="topic-sort-item"
-            :class="{ active: sort === item.key }"
+            :class="{ 'is-active': sort === item.key }"
             @click="switchSort(item.key)"
           >
             {{ item.label }}
@@ -77,7 +77,7 @@
       </div>
 
       <div class="topic-list">
-        <div v-if="listLoading" class="loading"><span class="spinner" /> 加载中...</div>
+        <div v-if="listLoading" class="is-loading"><span class="spinner" /> 加载中...</div>
         <template v-else>
           <div v-for="row in rows" :key="`${row.type}-${row.item.id}`" class="topic-item">
             <!-- 主持人操作条：置顶 / 移出话题 / 删除内容（置顶徽标所有人可见） -->
@@ -514,7 +514,7 @@ onMounted(init)
 </script>
 
 <style scoped>
-.loading {
+.is-loading {
   padding: 48px;
   text-align: center;
   color: var(--text-muted);
@@ -607,7 +607,7 @@ onMounted(init)
   border-color: var(--primary-soft);
   color: var(--text);
 }
-.topic-tab.active {
+.topic-tab.is-active {
   background: var(--accent-soft);
   border-color: var(--primary-soft);
   color: var(--primary);
@@ -631,7 +631,7 @@ onMounted(init)
 .topic-sort-item:hover {
   color: var(--text);
 }
-.topic-sort-item.active {
+.topic-sort-item.is-active {
   color: var(--primary);
   font-weight: 600;
 }

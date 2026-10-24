@@ -1,7 +1,7 @@
 <template>
   <div class="card card-pad">
     <!-- 头部 -->
-    <header class="m-head">
+    <header class="moment-head">
       <div>
         <h2 class="block-title">我的动态</h2>
         <p class="block-desc">管理自己发布的动态与草稿</p>
@@ -12,14 +12,14 @@
     </header>
 
     <!-- 筛选栏 -->
-    <div class="m-filter">
+    <div class="moment-filter">
       <div class="status-tabs">
         <button
           v-for="tab in tabs"
           :key="tab.value"
           type="button"
           class="status-tab"
-          :class="{ active: status === tab.value }"
+          :class="{ 'is-active': status === tab.value }"
           @click="switchTab(tab.value)"
         >{{ tab.label }}</button>
       </div>
@@ -40,7 +40,7 @@
     </p>
 
     <!-- 列表 -->
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="is-loading">
       <span class="spinner" /> 加载中...
     </div>
 
@@ -51,26 +51,26 @@
       </div>
     </div>
 
-    <ul v-else class="m-list">
-      <li v-for="item in list" :key="item.id" class="m-row">
-        <div class="m-main">
+    <ul v-else class="moment-list">
+      <li v-for="item in list" :key="item.id" class="moment-row">
+        <div class="moment-main">
           <!-- 内容：解析 [emoji:url] 为图片（后端已做 HTML 净化，可安全 v-html） -->
-          <p class="m-content" v-html="renderContent(item)"></p>
+          <p class="moment-content" v-html="renderContent(item)"></p>
 
           <!-- 配图 -->
-          <div v-if="imagesOf(item).length" class="m-images">
+          <div v-if="imagesOf(item).length" class="moment-images">
             <img
               v-for="(img, i) in imagesOf(item)"
               :key="img"
               :src="img"
-              class="m-img"
+              class="moment-img"
               alt="配图"
               loading="lazy"
               @click="preview(item, i)"
             />
           </div>
 
-          <div class="m-meta">
+          <div class="moment-meta">
             <span class="post-status" :class="item.status === 1 ? 'is-pub' : 'is-draft'">
               {{ item.status === 1 ? '已发布' : '草稿' }}
             </span>
@@ -90,7 +90,7 @@
           </p>
         </div>
 
-        <div class="m-actions">
+        <div class="moment-actions">
           <button class="btn btn-ghost btn-sm" title="查看" @click="viewMoment(item)">
             <i class="bi bi-eye" />
           </button>
@@ -536,7 +536,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.m-head {
+.moment-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
@@ -554,7 +554,7 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
-.m-filter {
+.moment-filter {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -581,7 +581,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -624,7 +624,7 @@ onMounted(() => {
   border-radius: var(--radius-sm);
 }
 
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -637,25 +637,25 @@ onMounted(() => {
   margin-top: 12px;
 }
 
-.m-list {
+.moment-list {
   display: flex;
   flex-direction: column;
 }
-.m-row {
+.moment-row {
   display: flex;
   align-items: flex-start;
   gap: 14px;
   padding: 16px 0;
   border-bottom: 1px dashed var(--border-soft);
 }
-.m-row:last-child {
+.moment-row:last-child {
   border-bottom: none;
 }
-.m-main {
+.moment-main {
   flex: 1;
   min-width: 0;
 }
-.m-content {
+.moment-content {
   margin: 0 0 8px;
   font-size: 14px;
   line-height: 1.7;
@@ -667,13 +667,13 @@ onMounted(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.m-images {
+.moment-images {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
 }
-.m-img {
+.moment-img {
   width: 64px;
   height: 64px;
   object-fit: cover;
@@ -682,10 +682,10 @@ onMounted(() => {
   cursor: zoom-in;
   transition: transform 0.2s;
 }
-.m-img:hover {
+.moment-img:hover {
   transform: translateY(-2px);
 }
-.m-meta {
+.moment-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -728,13 +728,13 @@ onMounted(() => {
   background: var(--gold-soft);
   color: var(--warning);
 }
-.m-actions {
+.moment-actions {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
 }
-.m-actions .danger:hover {
+.moment-actions .danger:hover {
   border-color: var(--danger);
   color: var(--danger);
 }
@@ -887,17 +887,17 @@ onMounted(() => {
 }
 
 @media (max-width: 640px) {
-  .m-filter {
+  .moment-filter {
     gap: 8px;
   }
   .search-box {
     width: 100%;
     margin-left: 0;
   }
-  .m-row {
+  .moment-row {
     flex-wrap: wrap;
   }
-  .m-actions {
+  .moment-actions {
     width: 100%;
     justify-content: flex-end;
   }

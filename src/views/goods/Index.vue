@@ -57,7 +57,7 @@
       <button
         type="button"
         class="shop-tab"
-        :class="{ active: activeTab === 'goods' }"
+        :class="{ 'is-active': activeTab === 'goods' }"
         @click="activeTab = 'goods'"
       >
         <i class="bi bi-bag" aria-hidden="true" /> 积分商品
@@ -67,7 +67,7 @@
         v-if="decorationVisible"
         type="button"
         class="shop-tab"
-        :class="{ active: activeTab === 'decoration' }"
+        :class="{ 'is-active': activeTab === 'decoration' }"
         @click="switchTab('decoration')"
       >
         <i class="bi bi-palette" aria-hidden="true" /> 装扮
@@ -84,7 +84,7 @@
         :key="c.category || 'all'"
         type="button"
         class="chip"
-        :class="{ active: activeCategory === c.category }"
+        :class="{ 'is-active': activeCategory === c.category }"
         @click="setCategory(c.category)"
       >
         {{ c.name }}
@@ -93,7 +93,7 @@
     </div>
 
     <!-- 商品列表 -->
-    <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+    <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
     <div v-else-if="!goodsList.length" class="card card-pad">
       <EmptyState text="暂无商品" />
     </div>
@@ -161,7 +161,7 @@
     <!-- 我的订单 -->
     <template v-if="userStore.isLogged">
       <h3 class="block-title">我的兑换记录</h3>
-      <div v-if="ordersLoading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="ordersLoading" class="is-loading"><span class="spinner" /> 加载中...</div>
       <div v-else-if="!orders.length" class="card card-pad">
         <EmptyState text="还没有兑换记录" />
       </div>
@@ -848,7 +848,7 @@ onMounted(() => {
 .shop-tab:hover {
   color: var(--primary);
 }
-.shop-tab.active {
+.shop-tab.is-active {
   background: var(--bg-card);
   color: var(--primary-deep);
   font-weight: 600;
@@ -880,7 +880,7 @@ onMounted(() => {
   border-color: var(--primary-soft);
   color: var(--primary);
 }
-.chip.active {
+.chip.is-active {
   background: var(--accent-soft);
   border-color: var(--primary);
   color: var(--primary-deep);
@@ -891,11 +891,11 @@ onMounted(() => {
   font-style: normal;
   color: var(--text-muted);
 }
-.chip.active .chip-count {
+.chip.is-active .chip-count {
   color: var(--primary-deep);
 }
 
-.loading {
+.is-loading {
   padding: 48px;
   text-align: center;
   color: var(--text-muted);

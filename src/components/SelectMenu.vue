@@ -14,7 +14,7 @@
       @click="toggle"
       @keydown="onKeydown"
     >
-      <span class="select-trigger__main">
+      <span class="select-trigger-main">
         <i v-if="icon" :class="icon" class="select-icon" aria-hidden="true" />
         <span class="select-value" :class="{ 'is-placeholder': !selected }">
           {{ selected ? selected.label : placeholder }}
@@ -42,7 +42,7 @@
           @mouseenter="activeIndex = i"
           @click="choose(opt)"
         >
-          <span class="select-option__label">{{ opt.label }}</span>
+          <span class="select-option-label">{{ opt.label }}</span>
           <i v-if="isSelected(opt)" class="bi bi-check2" aria-hidden="true" />
         </button>
         <div v-if="!options.length" class="select-empty">暂无可选项</div>
@@ -263,7 +263,7 @@ onUnmounted(() => {
   opacity: 0.55;
   cursor: not-allowed;
 }
-.select-trigger__main {
+.select-trigger-main {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -376,7 +376,7 @@ onUnmounted(() => {
   cursor: pointer;
   transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
 }
-.select-option__label {
+.select-option-label {
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;

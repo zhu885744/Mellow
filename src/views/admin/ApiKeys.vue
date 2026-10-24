@@ -18,13 +18,13 @@
       </header>
 
       <div class="key-state">
-        <span class="key-state__item">
+        <span class="key-state-item">
           启用校验：
           <strong :class="keyState.enabled === '1' ? 'is-on' : 'is-off'">
             {{ keyState.enabled === '1' ? '开启' : '关闭' }}
           </strong>
         </span>
-        <span class="key-state__item">
+        <span class="key-state-item">
           放行本站请求：
           <strong :class="keyState.local === '1' ? 'is-on' : 'is-off'">
             {{ keyState.local === '1' ? '开启' : '关闭' }}
@@ -96,13 +96,13 @@
           <button
             type="button"
             class="status-tab"
-            :class="{ active: !trash }"
+            :class="{ 'is-active': !trash }"
             @click="switchTrash(false)"
           >全部密钥</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="switchTrash(true)"
           >
             <i class="bi bi-trash3" /> 回收站
@@ -156,7 +156,7 @@
         </button>
       </div>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else-if="!list.length" class="empty-row">
         <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-key'" :text="emptyText" />
@@ -180,15 +180,15 @@
         <table class="key-table">
           <thead>
             <tr>
-              <th class="td-pick"></th>
+              <th class="cell-pick"></th>
               <th>密钥</th>
-              <th class="td-time">创建时间</th>
-              <th class="td-act">操作</th>
+              <th class="cell-time">创建时间</th>
+              <th class="cell-act">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in list" :key="item.id" :class="{ selected: isSelected(item.id) }">
-              <td class="td-pick">
+            <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
+              <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
                   <input
                     type="checkbox"
@@ -226,7 +226,7 @@
                   </template>
                 </div>
               </td>
-              <td class="td-time">
+              <td class="cell-time">
                 <span class="meta-text"><i class="bi bi-clock" /> {{ timeText(item) }}</span>
                 <!-- 用量审计：累计调用次数 + 最后一次使用时间（从未使用时只显示 0 次） -->
                 <span v-if="!trash" class="meta-text">
@@ -236,7 +236,7 @@
                   </template>
                 </span>
               </td>
-              <td class="td-act">
+              <td class="cell-act">
                 <div class="row-actions">
                   <template v-if="trash">
                     <button class="btn btn-ghost btn-sm" title="恢复" aria-label="恢复" :disabled="busy" @click="restore(item)">
@@ -965,7 +965,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1046,7 +1046,7 @@ onMounted(() => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1090,25 +1090,25 @@ onMounted(() => {
 .key-table tbody tr:hover td {
   background: var(--bg-muted);
 }
-.key-table tbody tr.selected td {
+.key-table tbody tr.is-selected td {
   background: var(--accent-wash);
 }
 
-.td-pick {
+.cell-pick {
   width: 36px;
 }
-.td-time {
+.cell-time {
   width: 170px;
 }
 /* 时间列里「创建时间」与「用量」分两行（两个 inline-flex 会挤在同一行） */
-.td-time .meta-text {
+.cell-time .meta-text {
   display: flex;
   margin-top: 2px;
 }
-.td-time .meta-text:first-child {
+.cell-time .meta-text:first-child {
   margin-top: 0;
 }
-.td-act {
+.cell-act {
   width: 132px;
   text-align: right;
 }
@@ -1183,13 +1183,13 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-soft);
 }
-.key-state__item strong {
+.key-state-item strong {
   font-weight: 600;
 }
-.key-state__item strong.is-on {
+.key-state-item strong.is-on {
   color: var(--success);
 }
-.key-state__item strong.is-off {
+.key-state-item strong.is-off {
   color: var(--text-muted);
 }
 .text-light {

@@ -11,8 +11,8 @@
         class="meta-author"
         :class="{ 'is-link': !!authorLink }"
       >
-        <img :src="author?.avatar || defaultAvatar" class="meta-author__avatar" alt="" loading="lazy" />
-        <span class="meta-author__name">{{ author?.nickname || '匿名' }}</span>
+        <img :src="author?.avatar || defaultAvatar" class="meta-author-avatar" alt="" loading="lazy" />
+        <span class="meta-author-name">{{ author?.nickname || '匿名' }}</span>
         <!-- 佩戴中的勋章（作者信息带 users.json） -->
         <WearingBadge v-if="author?.json?.wearing_badge" :badge="author.json.wearing_badge" />
       </component>
@@ -115,27 +115,27 @@
       <component
         :is="prevArticle ? 'router-link' : 'span'"
         :to="prevArticle ? `/archives/${prevArticle.id}` : undefined"
-        class="article-nav__item article-nav__item--prev"
+        class="article-nav-item article-nav-item-prev"
         :class="{ 'is-disabled': !prevArticle }"
       >
-        <span class="article-nav__label">
+        <span class="article-nav-label">
           <i class="bi bi-arrow-left" aria-hidden="true" />
           上一篇
         </span>
-        <span class="article-nav__title">{{ prevArticle?.title || '已经是第一篇了' }}</span>
+        <span class="article-nav-title">{{ prevArticle?.title || '已经是第一篇了' }}</span>
       </component>
 
       <component
         :is="nextArticle ? 'router-link' : 'span'"
         :to="nextArticle ? `/archives/${nextArticle.id}` : undefined"
-        class="article-nav__item article-nav__item--next"
+        class="article-nav-item article-nav-item-next"
         :class="{ 'is-disabled': !nextArticle }"
       >
-        <span class="article-nav__label">
+        <span class="article-nav-label">
           下一篇
           <i class="bi bi-arrow-right" aria-hidden="true" />
         </span>
-        <span class="article-nav__title">{{ nextArticle?.title || '已经是最后一篇了' }}</span>
+        <span class="article-nav-title">{{ nextArticle?.title || '已经是最后一篇了' }}</span>
       </component>
     </nav>
 
@@ -159,7 +159,7 @@
   </div>
 
   <EmptyState v-else-if="!loading" text="文章不存在或已被删除" />
-  <div v-else-if="loading" class="loading">
+  <div v-else-if="loading" class="is-loading">
     <span class="spinner" /> 加载中...
   </div>
 
@@ -477,7 +477,7 @@ onUnmounted(() => {
 .meta-author.is-link:hover {
   color: var(--primary);
 }
-.meta-author__avatar {
+.meta-author-avatar {
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -485,7 +485,7 @@ onUnmounted(() => {
   flex-shrink: 0;
   background: var(--bg-muted);
 }
-.meta-author__name {
+.meta-author-name {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -587,7 +587,7 @@ onUnmounted(() => {
   gap: 12px;
   margin: 28px 0 8px;
 }
-.article-nav__item {
+.article-nav-item {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -601,37 +601,37 @@ onUnmounted(() => {
   -webkit-tap-highlight-color: transparent;
   transition: border-color 0.2s, background-color 0.2s, transform 0.2s;
 }
-.article-nav__item--next {
+.article-nav-item-next {
   text-align: right;
 }
-a.article-nav__item:hover {
+a.article-nav-item:hover {
   border-color: var(--primary-soft);
   background: var(--bg-muted);
   /* 覆盖全局 a:hover 的链接色，标题颜色单独控制 */
   color: var(--text);
 }
-a.article-nav__item:hover .article-nav__title {
+a.article-nav-item:hover .article-nav-title {
   color: var(--primary);
 }
-a.article-nav__item:active {
+a.article-nav-item:active {
   transform: translateY(1px);
 }
 /* 到头了：保留位置与占位文案，避免整块突然只剩一边 */
-.article-nav__item.is-disabled {
+.article-nav-item.is-disabled {
   opacity: 0.55;
   cursor: default;
 }
-.article-nav__label {
+.article-nav-label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   font-size: 12px;
   color: var(--text-light);
 }
-.article-nav__item--next .article-nav__label {
+.article-nav-item-next .article-nav-label {
   justify-content: flex-end;
 }
-.article-nav__title {
+.article-nav-title {
   font-size: 14px;
   line-height: 1.5;
   color: var(--text);
@@ -643,7 +643,7 @@ a.article-nav__item:active {
   overflow: hidden;
   transition: color 0.2s;
 }
-.loading {
+.is-loading {
   padding: 64px;
   text-align: center;
   color: var(--text-muted);
@@ -656,10 +656,10 @@ a.article-nav__item:active {
     gap: 10px;
     margin: 22px 0 8px;
   }
-  .article-nav__item--next {
+  .article-nav-item-next {
     text-align: left;
   }
-  .article-nav__item--next .article-nav__label {
+  .article-nav-item-next .article-nav-label {
     justify-content: flex-start;
   }
 

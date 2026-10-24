@@ -33,7 +33,7 @@
       </button>
     </div>
 
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="is-loading">
       <span class="spinner" /> 加载中...
     </div>
 
@@ -188,8 +188,8 @@ onMounted(load)
 </script>
 
 <style scoped>
-/* 基础样式：.loading 不是全局样式（各页面自带一份，见 views/home/Index.vue） */
-.loading {
+/* 基础样式：.is-loading 不是全局样式（各页面自带一份，见 views/home/Index.vue） */
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);

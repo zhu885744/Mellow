@@ -4,7 +4,7 @@
     <!-- 输入区 + 工具栏放同一个相对定位容器里：
          工具栏的 absolute 锚点必须是「输入区」，不能是整个 .emoji-editor ——
          内联展开表情面板后 .emoji-editor 会包含面板，工具栏就会浮到面板上把表情挡住 -->
-    <div class="emoji-editor__field">
+    <div class="emoji-editor-field">
       <div
         ref="editorRef"
         class="editor-content"
@@ -422,7 +422,7 @@ defineExpose({ clear, focus: () => editorRef.value?.focus(), openEmoji: togglePi
   position: relative;
 }
 /* 工具栏的定位基准：只包住输入区（不含下方的表情/@ 面板） */
-.emoji-editor__field {
+.emoji-editor-field {
   position: relative;
 }
 .editor-content {

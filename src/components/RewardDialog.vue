@@ -24,18 +24,18 @@
           :key="item"
           type="button"
           class="chip"
-          :class="{ active: value === item }"
+          :class="{ 'is-active': value === item }"
           :disabled="item > summary.max"
           @click="value = item"
         >{{ item }}</button>
       </div>
 
       <label class="reward-field">
-        <span class="reward-field__label">打赏积分</span>
+        <span class="reward-field-label">打赏积分</span>
         <input
           v-model.number="value"
           type="number"
-          class="input reward-field__input"
+          class="input reward-field-input"
           :min="summary.min"
           :max="summary.max"
           step="1"
@@ -44,18 +44,18 @@
       </label>
 
       <label class="reward-field">
-        <span class="reward-field__label">
+        <span class="reward-field-label">
           留言
-          <em class="reward-field__tag">选填</em>
+          <em class="reward-field-tag">选填</em>
         </span>
         <textarea
           v-model="message"
-          class="textarea reward-field__textarea"
+          class="textarea reward-field-textarea"
           rows="2"
           :maxlength="summary.message_max"
           :placeholder="`给${toName || '作者'}说点什么…`"
         />
-        <span class="reward-field__hint">{{ message.length }}/{{ summary.message_max }}</span>
+        <span class="reward-field-hint">{{ message.length }}/{{ summary.message_max }}</span>
       </label>
 
       <p class="reward-tip">
@@ -271,7 +271,7 @@ async function onConfirm() {
   border-color: var(--primary-soft);
   color: var(--primary);
 }
-.chip.active {
+.chip.is-active {
   background: var(--accent-soft);
   border-color: var(--primary);
   color: var(--primary-deep);
@@ -286,7 +286,7 @@ async function onConfirm() {
   display: block;
   margin-bottom: 10px;
 }
-.reward-field__label {
+.reward-field-label {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -295,7 +295,7 @@ async function onConfirm() {
   font-weight: 600;
   color: var(--text);
 }
-.reward-field__tag {
+.reward-field-tag {
   padding: 0 6px;
   font-size: 11px;
   font-style: normal;
@@ -304,13 +304,13 @@ async function onConfirm() {
   color: var(--text-muted);
   background: var(--bg-muted);
 }
-.reward-field__input,
-.reward-field__textarea {
+.reward-field-input,
+.reward-field-textarea {
   width: 100%;
   font-size: 13px;
   resize: vertical;
 }
-.reward-field__hint {
+.reward-field-hint {
   display: block;
   margin-top: 4px;
   font-size: 12px;

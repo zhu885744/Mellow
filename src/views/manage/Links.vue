@@ -10,7 +10,7 @@
       </button>
     </header>
 
-    <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+    <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
     <div v-else-if="!list.length" class="empty-row">
       <EmptyState text="还没有申请过友链" />
@@ -275,7 +275,7 @@ onMounted(load)
   color: var(--text-muted);
 }
 
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);

@@ -249,7 +249,7 @@
         </div>
 
         <div v-if="pwdForm.password" class="form-item">
-          <div class="pwd-strength">
+          <div class="password-strength">
             <div class="strength-head">
               <span class="text-muted">密码强度</span>
               <span :class="['strength-text', pwdStrengthClass]">{{ pwdStrengthText }}</span>
@@ -330,7 +330,7 @@
         </div>
 
         <div v-if="resetForm.password" class="form-item">
-          <div class="pwd-strength">
+          <div class="password-strength">
             <div class="strength-head">
               <span class="text-muted">密码强度</span>
               <span :class="['strength-text', passwordStrengthClass]">{{ passwordStrengthText }}</span>
@@ -1252,7 +1252,7 @@ onUnmounted(() => {
   font-size: 12px;
   color: var(--text-muted);
 }
-.pwd-strength {
+.password-strength {
   margin-top: 4px;
 }
 .strength-head {

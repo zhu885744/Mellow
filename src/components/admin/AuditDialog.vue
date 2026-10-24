@@ -14,19 +14,19 @@
     <OwnerInfo v-if="Number(ownerUid) > 0" :uid="ownerUid" :label="ownerLabel" class="audit-owner" />
 
     <label class="audit-reason">
-      <span class="audit-reason__label">
+      <span class="audit-reason-label">
         驳回原因
-        <em v-if="needReason" class="audit-reason__tag is-required">必填</em>
-        <em v-else class="audit-reason__tag">选填</em>
+        <em v-if="needReason" class="audit-reason-tag is-required">必填</em>
+        <em v-else class="audit-reason-tag">选填</em>
       </span>
       <textarea
         v-model="reason"
-        class="textarea audit-reason__input"
+        class="textarea audit-reason-input"
         rows="3"
         maxlength="512"
         :placeholder="needReason ? '说明不通过的原因，作者会在通知与「我的内容」里看到' : '可选：补充说明，作者可见'"
       />
-      <span class="audit-reason__hint">{{ reason.length }}/512 · 原因会随通知一起发给作者</span>
+      <span class="audit-reason-hint">{{ reason.length }}/512 · 原因会随通知一起发给作者</span>
     </label>
   </ConfirmDialog>
 </template>
@@ -126,7 +126,7 @@ function onCancel() {
 .audit-reason {
   display: block;
 }
-.audit-reason__label {
+.audit-reason-label {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -134,7 +134,7 @@ function onCancel() {
   font-weight: 600;
   color: var(--text);
 }
-.audit-reason__tag {
+.audit-reason-tag {
   padding: 0 6px;
   font-size: 11px;
   font-style: normal;
@@ -143,17 +143,17 @@ function onCancel() {
   color: var(--text-muted);
   background: var(--bg-muted);
 }
-.audit-reason__tag.is-required {
+.audit-reason-tag.is-required {
   color: var(--danger);
   background: rgba(217, 84, 77, 0.12);
 }
-.audit-reason__input {
+.audit-reason-input {
   margin-top: 8px;
   width: 100%;
   font-size: 13px;
   resize: vertical;
 }
-.audit-reason__hint {
+.audit-reason-hint {
   display: block;
   margin-top: 6px;
   font-size: 12px;

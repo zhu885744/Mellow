@@ -23,13 +23,13 @@
           :key="tab.key"
           type="button"
           class="status-tab"
-          :class="{ active: !trash && status === tab.key }"
+          :class="{ 'is-active': !trash && status === tab.key }"
           @click="switchTab(tab.key)"
         >{{ tab.label }}</button>
         <button
           type="button"
           class="status-tab trash-tab"
-          :class="{ active: trash }"
+          :class="{ 'is-active': trash }"
           @click="toggleTrash"
         >
           <i class="bi bi-trash3" /> 回收站
@@ -116,7 +116,7 @@
       </button>
     </div>
 
-    <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+    <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
     <div v-else-if="!list.length" class="empty-row">
       <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-link-45deg'" :text="emptyText" />
@@ -138,7 +138,7 @@
       </div>
 
       <ul class="link-list">
-        <li v-for="item in list" :key="item.id" class="link-row" :class="{ selected: isSelected(item.id) }">
+        <li v-for="item in list" :key="item.id" class="link-row" :class="{ 'is-selected': isSelected(item.id) }">
           <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
             <input
               type="checkbox"
@@ -1092,7 +1092,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1173,7 +1173,7 @@ onMounted(() => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1212,7 +1212,7 @@ onMounted(() => {
 .link-row:hover {
   background: var(--bg-muted);
 }
-.link-row.selected {
+.link-row.is-selected {
   background: var(--accent-wash);
 }
 

@@ -1,5 +1,5 @@
 <template>
-  <div class="deco-admin">
+  <div class="decoration-admin">
     <!-- 概览 -->
     <div class="stat-row">
       <div class="stat-card card card-pad">
@@ -45,10 +45,10 @@
 
       <!-- 视图切换：装扮列表 / 发放回收 -->
       <div class="view-tabs">
-        <button type="button" class="view-tab" :class="{ active: view === 'list' }" @click="view = 'list'">
+        <button type="button" class="view-tab" :class="{ 'is-active': view === 'list' }" @click="view = 'list'">
           <i class="bi bi-palette" /> 装扮列表
         </button>
-        <button type="button" class="view-tab" :class="{ active: view === 'grant' }" @click="switchGrantView()">
+        <button type="button" class="view-tab" :class="{ 'is-active': view === 'grant' }" @click="switchGrantView()">
           <i class="bi bi-gift" /> 发放 / 回收
         </button>
       </div>
@@ -62,7 +62,7 @@
               :key="tab.key"
               type="button"
               class="status-tab"
-              :class="{ active: statusFilter === tab.key, 'trash-tab': tab.key === 'trash' }"
+              :class="{ 'is-active': statusFilter === tab.key, 'trash-tab': tab.key === 'trash' }"
               @click="switchStatus(tab.key)"
             >
               <i v-if="tab.key === 'trash'" class="bi bi-trash3" /> {{ tab.label }}
@@ -76,7 +76,7 @@
                 :key="t.type"
                 type="button"
                 class="chip"
-                :class="{ active: typeFilter === t.type }"
+                :class="{ 'is-active': typeFilter === t.type }"
                 @click="switchType(t.type)"
               >
                 <i :class="t.icon" aria-hidden="true" /> {{ t.name }}
@@ -88,8 +88,8 @@
                 v-for="p in PRICE_TABS"
                 :key="p.key || 'all'"
                 type="button"
-                class="price-seg__item"
-                :class="{ active: priceFilter === p.key }"
+                class="price-seg-item"
+                :class="{ 'is-active': priceFilter === p.key }"
                 @click="switchPrice(p.key)"
               >
                 {{ p.label }}
@@ -136,7 +136,7 @@
           </div>
         </div>
 
-        <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+        <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
         <div v-else-if="!list.length" class="empty-row">
           <EmptyState
@@ -159,22 +159,22 @@
             <span class="list-head-text">本页 {{ list.length }} 个 · 共 {{ total }} 个</span>
           </div>
 
-          <div class="deco-grid">
+          <div class="decoration-grid">
             <div
               v-for="item in list"
               :key="item.id"
-              class="deco-card"
-              :class="{ selected: isSelected(item.id), 'is-off': Number(item.status) !== 1 }"
+              class="decoration-card"
+              :class="{ 'is-selected': isSelected(item.id), 'is-off': Number(item.status) !== 1 }"
             >
               <label class="pick card-pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
                 <input type="checkbox" :checked="isSelected(item.id)" @change="toggleSelect(item.id)" />
               </label>
 
-              <div class="deco-preview" :class="{ 'is-title': item.type === 'title' }">
+              <div class="decoration-preview" :class="{ 'is-title': item.type === 'title' }">
                 <img
                   v-if="item.type === 'avatar_frame'"
                   :src="item.preview || item.payload?.image"
-                  class="deco-frame"
+                  class="decoration-frame"
                   :alt="item.name"
                   loading="lazy"
                 />
@@ -187,24 +187,24 @@
                 />
               </div>
 
-              <div class="deco-info">
-                <div class="deco-name">
+              <div class="decoration-info">
+                <div class="decoration-name">
                   {{ item.name }}
-                  <span class="deco-tag">{{ typeName(item.type) }}</span>
-                  <span v-if="Number(item.is_default) === 1" class="deco-tag is-default">系统默认</span>
+                  <span class="decoration-tag">{{ typeName(item.type) }}</span>
+                  <span v-if="Number(item.is_default) === 1" class="decoration-tag is-default">系统默认</span>
                 </div>
-                <div class="deco-desc">{{ item.description || '暂无描述' }}</div>
-                <div class="deco-meta">
-                  <span class="deco-tag" :class="Number(item.status) === 1 ? 'is-on' : 'is-off-tag'">
+                <div class="decoration-desc">{{ item.description || '暂无描述' }}</div>
+                <div class="decoration-meta">
+                  <span class="decoration-tag" :class="Number(item.status) === 1 ? 'is-on' : 'is-off-tag'">
                     {{ Number(item.status) === 1 ? '已上架' : '已下架' }}
                   </span>
-                  <span class="deco-tag">{{ priceText(item) }}</span>
-                  <span class="deco-tag">{{ durationText(item) }}</span>
-                  <span class="deco-tag">售出 {{ Number(item.sold) || 0 }}</span>
+                  <span class="decoration-tag">{{ priceText(item) }}</span>
+                  <span class="decoration-tag">{{ durationText(item) }}</span>
+                  <span class="decoration-tag">售出 {{ Number(item.sold) || 0 }}</span>
                 </div>
               </div>
 
-              <div class="deco-actions">
+              <div class="decoration-actions">
                 <button class="btn btn-sm" :disabled="busy" @click="openEdit(item)">
                   <i class="bi bi-pencil" /> 编辑
                 </button>
@@ -251,7 +251,7 @@
                 @keyup.enter="loadGrantUsers()"
               />
             </div>
-            <div v-if="grant.loading" class="loading small"><span class="spinner" /> 加载中...</div>
+            <div v-if="grant.loading" class="is-loading small"><span class="spinner" /> 加载中...</div>
             <ul v-else class="pick-list">
               <li v-for="user in grant.users" :key="user.id" class="pick-item">
                 <label class="pick">
@@ -281,13 +281,13 @@
                 :key="t.type"
                 type="button"
                 class="chip"
-                :class="{ active: grant.type === t.type }"
+                :class="{ 'is-active': grant.type === t.type }"
                 @click="grant.type = t.type"
               >
                 <i :class="t.icon" aria-hidden="true" /> {{ t.name }}
               </button>
             </div>
-            <div v-if="grant.itemsLoading" class="loading small"><span class="spinner" /> 加载中...</div>
+            <div v-if="grant.itemsLoading" class="is-loading small"><span class="spinner" /> 加载中...</div>
             <ul v-else class="pick-list">
               <li v-for="item in grantDecorations" :key="item.id" class="pick-item">
                 <label class="pick">
@@ -447,8 +447,8 @@
                 洞大小固定贴合头像，装饰自然向外延伸，再用两个偏移修画布留白不对称。
               -->
               <div v-if="form.type === 'avatar_frame'" class="frame-aligner">
-                <div class="frame-aligner__head">
-                  <span class="frame-aligner__title">
+                <div class="frame-aligner-head">
+                  <span class="frame-aligner-title">
                     <i class="bi bi-crosshair" /> 对齐预览
                   </span>
                   <button type="button" class="btn btn-sm btn-ghost" @click="resetFrameAlign">
@@ -456,12 +456,12 @@
                   </button>
                 </div>
 
-                <div class="frame-aligner__body">
-                  <div class="frame-aligner__stage">
-                    <img class="frame-aligner__avatar" :src="alignerAvatar" alt="头像示例" loading="lazy" />
+                <div class="frame-aligner-body">
+                  <div class="frame-aligner-stage">
+                    <img class="frame-aligner-avatar" :src="alignerAvatar" alt="头像示例" loading="lazy" />
                     <img
                       v-if="form.p_image"
-                      class="frame-aligner__overlay"
+                      class="frame-aligner-overlay"
                       :style="alignerStyle"
                       :src="form.p_image"
                       alt=""
@@ -472,24 +472,24 @@
                       @pointercancel="onAlignPointerUp"
                       loading="lazy"
                     />
-                    <p v-else class="frame-aligner__empty">先填上面的素材地址</p>
+                    <p v-else class="frame-aligner-empty">先填上面的素材地址</p>
                   </div>
 
-                  <div class="frame-aligner__controls">
+                  <div class="frame-aligner-controls">
                     <label class="align-row">
-                      <span class="align-row__label">洞大小</span>
+                      <span class="align-row-label">洞大小</span>
                       <input v-model.number="form.p_hole" class="align-range" type="range" min="0.2" max="1.5" step="0.01" />
-                      <span class="align-row__value">{{ Number(form.p_hole).toFixed(2) }}</span>
+                      <span class="align-row-value">{{ Number(form.p_hole).toFixed(2) }}</span>
                     </label>
                     <label class="align-row">
-                      <span class="align-row__label">水平偏移</span>
+                      <span class="align-row-label">水平偏移</span>
                       <input v-model.number="form.p_ox" class="align-range" type="range" min="-0.5" max="0.5" step="0.005" />
-                      <span class="align-row__value">{{ Number(form.p_ox).toFixed(3) }}</span>
+                      <span class="align-row-value">{{ Number(form.p_ox).toFixed(3) }}</span>
                     </label>
                     <label class="align-row">
-                      <span class="align-row__label">垂直偏移</span>
+                      <span class="align-row-label">垂直偏移</span>
                       <input v-model.number="form.p_oy" class="align-range" type="range" min="-0.5" max="0.5" step="0.005" />
-                      <span class="align-row__value">{{ Number(form.p_oy).toFixed(3) }}</span>
+                      <span class="align-row-value">{{ Number(form.p_oy).toFixed(3) }}</span>
                     </label>
 
                     <p class="form-hint">
@@ -1524,7 +1524,7 @@ onMounted(() => {
 </script>
 
 <style scoped>
-.deco-admin {
+.decoration-admin {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -1608,7 +1608,7 @@ onMounted(() => {
 .view-tab:hover {
   color: var(--primary);
 }
-.view-tab.active {
+.view-tab.is-active {
   background: var(--bg-card);
   color: var(--primary-deep);
   font-weight: 600;
@@ -1644,12 +1644,12 @@ onMounted(() => {
   background: var(--bg-muted);
   color: var(--text);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--bg-muted);
   color: var(--primary-deep);
   font-weight: 600;
 }
-.status-tab.trash-tab.active {
+.status-tab.trash-tab.is-active {
   color: #d9534f;
 }
 .filter-right {
@@ -1671,7 +1671,7 @@ onMounted(() => {
   border-radius: 999px;
   background: var(--bg-muted);
 }
-.price-seg__item {
+.price-seg-item {
   padding: 3px 10px;
   border: none;
   border-radius: 999px;
@@ -1683,10 +1683,10 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.18s;
 }
-.price-seg__item:hover {
+.price-seg-item:hover {
   color: var(--primary);
 }
-.price-seg__item.active {
+.price-seg-item.is-active {
   background: var(--bg-card);
   color: var(--primary-deep);
   font-weight: 600;
@@ -1710,7 +1710,7 @@ onMounted(() => {
   border-color: var(--primary-soft);
   color: var(--primary);
 }
-.chip.active {
+.chip.is-active {
   background: var(--accent-soft);
   border-color: var(--primary);
   color: var(--primary-deep);
@@ -1772,7 +1772,7 @@ onMounted(() => {
 }
 
 /* ===== 列表 ===== */
-.loading {
+.is-loading {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1781,7 +1781,7 @@ onMounted(() => {
   color: var(--text-muted);
   font-size: 14px;
 }
-.loading.small {
+.is-loading.small {
   padding: 24px 0;
   font-size: 13px;
 }
@@ -1820,12 +1820,12 @@ onMounted(() => {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
-.deco-grid {
+.decoration-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 12px;
 }
-.deco-card {
+.decoration-card {
   position: relative;
   display: flex;
   flex-direction: column;
@@ -1836,18 +1836,18 @@ onMounted(() => {
   background: var(--bg-card);
   transition: all 0.18s;
 }
-.deco-card:hover {
+.decoration-card:hover {
   border-color: var(--primary-soft);
 }
-.deco-card.selected {
+.decoration-card.is-selected {
   border-color: var(--primary);
   box-shadow: 0 0 0 1px var(--primary) inset;
 }
-.deco-card.is-off {
+.decoration-card.is-off {
   opacity: 0.72;
 }
 
-.deco-preview {
+.decoration-preview {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1857,22 +1857,22 @@ onMounted(() => {
   background: var(--bg-muted);
   overflow: hidden;
 }
-.deco-preview.is-title {
+.decoration-preview.is-title {
   padding: 14px;
 }
-.deco-frame {
+.decoration-frame {
   width: 72px;
   height: 72px;
   object-fit: contain;
 }
 
-.deco-info {
+.decoration-info {
   display: flex;
   flex-direction: column;
   gap: 5px;
   flex: 1;
 }
-.deco-name {
+.decoration-name {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1880,7 +1880,7 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 600;
 }
-.deco-desc {
+.decoration-desc {
   font-size: 12px;
   color: var(--text-muted);
   line-height: 1.5;
@@ -1889,14 +1889,14 @@ onMounted(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.deco-meta {
+.decoration-meta {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-wrap: wrap;
   margin-top: auto;
 }
-.deco-tag {
+.decoration-tag {
   padding: 1px 7px;
   font-size: 11px;
   font-weight: 500;
@@ -1904,19 +1904,19 @@ onMounted(() => {
   background: var(--bg-muted);
   color: var(--text-muted);
 }
-.deco-tag.is-on {
+.decoration-tag.is-on {
   background: rgba(63, 160, 106, 0.14);
   color: #3fa06a;
 }
-.deco-tag.is-off-tag {
+.decoration-tag.is-off-tag {
   background: rgba(217, 83, 79, 0.12);
   color: #c9302c;
 }
-.deco-tag.is-default {
+.decoration-tag.is-default {
   background: var(--accent-soft, rgba(64, 128, 255, 0.14));
   color: var(--primary-deep);
 }
-.deco-actions {
+.decoration-actions {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
@@ -2150,14 +2150,14 @@ onMounted(() => {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
 }
-.frame-aligner__head {
+.frame-aligner-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 10px;
 }
-.frame-aligner__title {
+.frame-aligner-title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -2165,12 +2165,12 @@ onMounted(() => {
   font-weight: 600;
   color: var(--text);
 }
-.frame-aligner__body {
+.frame-aligner-body {
   display: flex;
   align-items: center;
   gap: 16px;
 }
-.frame-aligner__stage {
+.frame-aligner-stage {
   position: relative;
   flex-shrink: 0;
   display: flex;
@@ -2184,13 +2184,13 @@ onMounted(() => {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
 }
-.frame-aligner__avatar {
+.frame-aligner-avatar {
   width: 120px;
   height: 120px;
   object-fit: cover;
   border-radius: 50%;
 }
-.frame-aligner__overlay {
+.frame-aligner-overlay {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -2201,15 +2201,15 @@ onMounted(() => {
   /* 同上：素材宽度会超过舞台，不能被全局 img{max-width:100%} 截断 */
   max-width: none;
 }
-.frame-aligner__overlay:active {
+.frame-aligner-overlay:active {
   cursor: grabbing;
 }
-.frame-aligner__empty {
+.frame-aligner-empty {
   margin: 0;
   font-size: 12px;
   color: var(--text-light);
 }
-.frame-aligner__controls {
+.frame-aligner-controls {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -2221,7 +2221,7 @@ onMounted(() => {
   align-items: center;
   gap: 8px;
 }
-.align-row__label {
+.align-row-label {
   flex-shrink: 0;
   width: 58px;
   font-size: 12px;
@@ -2232,7 +2232,7 @@ onMounted(() => {
   min-width: 0;
   accent-color: var(--primary);
 }
-.align-row__value {
+.align-row-value {
   flex-shrink: 0;
   width: 46px;
   font-size: 12px;
@@ -2242,11 +2242,11 @@ onMounted(() => {
 }
 
 @media (max-width: 900px) {
-  .frame-aligner__body {
+  .frame-aligner-body {
     flex-direction: column;
     align-items: stretch;
   }
-  .frame-aligner__stage {
+  .frame-aligner-stage {
     width: 100%;
     max-width: 200px;
     margin: 0 auto;

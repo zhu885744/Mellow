@@ -6,7 +6,7 @@
       <div class="root-input">
         <div v-if="userStore.isLogged" class="root-meta">
           <span class="root-name" @click="goMe">{{ userStore.user.nickname || '我' }}</span>
-          <span v-if="myLevel" class="c-level">Lv.{{ myLevel }}</span>
+          <span v-if="myLevel" class="level-tag">Lv.{{ myLevel }}</span>
           <!-- 有装扮样式用 TitleBadge 还原后台配色；没有则回退旧色板 -->
           <TitleBadge
             v-if="myTitle || myTitlePayload"
@@ -14,7 +14,7 @@
             :text="myTitle"
             size="sm"
           />
-          <span v-else-if="myTitle" :class="['c-title', myTitleClass]">{{ myTitle }}</span>
+          <span v-else-if="myTitle" :class="['title-tag', myTitleClass]">{{ myTitle }}</span>
         </div>
         <template v-if="userStore.isLogged">
           <EmojiEditor
@@ -732,7 +732,7 @@ defineExpose({ load })
 .root-name:hover {
   color: var(--primary);
 }
-.c-level {
+.level-tag {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: var(--radius-xs);
@@ -740,7 +740,7 @@ defineExpose({ load })
   color: var(--primary-deep);
   flex-shrink: 0;
 }
-.c-title {
+.title-tag {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: var(--radius-xs);

@@ -8,7 +8,7 @@
         <RouterLink v-if="!plain" :to="`/topic/${item.id}`" class="topic-card-link">
           <span v-if="showRank" class="topic-rank" :class="{ hot: index < 3 }">{{ index + 1 }}</span>
           <img v-if="item.avatar" :src="item.avatar" class="topic-card-cover" alt="" @error="onCoverError" loading="lazy" />
-          <span v-else class="topic-card-cover topic-card-cover--empty">#</span>
+          <span v-else class="topic-card-cover topic-card-cover-empty">#</span>
           <span class="topic-card-main">
             <span class="topic-card-name">
               #{{ item.name }}#
@@ -26,7 +26,7 @@
         <div v-else class="topic-card-link">
           <span v-if="showRank" class="topic-rank" :class="{ hot: index < 3 }">{{ index + 1 }}</span>
           <img v-if="item.avatar" :src="item.avatar" class="topic-card-cover" alt="" @error="onCoverError" loading="lazy" />
-          <span v-else class="topic-card-cover topic-card-cover--empty">#</span>
+          <span v-else class="topic-card-cover topic-card-cover-empty">#</span>
           <span class="topic-card-main">
             <span class="topic-card-name">
               #{{ item.name }}#
@@ -43,7 +43,7 @@
         <button
           class="topic-follow"
           type="button"
-          :class="{ active: item.is_following }"
+          :class="{ 'is-active': item.is_following }"
           :disabled="busyId === item.id"
           @click="toggleFollow(item)"
         >
@@ -163,7 +163,7 @@ async function toggleFollow(item) {
   flex-shrink: 0;
   background: var(--bg-muted);
 }
-.topic-card-cover--empty {
+.topic-card-cover-empty {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -222,7 +222,7 @@ async function toggleFollow(item) {
 .topic-follow:hover {
   background: var(--accent-soft);
 }
-.topic-follow.active {
+.topic-follow.is-active {
   border-color: var(--border);
   color: var(--text-muted);
 }

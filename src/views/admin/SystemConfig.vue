@@ -22,15 +22,15 @@
       </p>
     </section>
 
-    <div class="cfg-layout">
+    <div class="config-layout">
       <!-- 模块导航 -->
-      <nav class="cfg-nav" aria-label="配置模块">
+      <nav class="config-nav" aria-label="配置模块">
         <button
           v-for="m in modules"
           :key="m.key"
           type="button"
-          class="cfg-nav-item"
-          :class="{ active: activeGroup.key === m.key }"
+          class="config-nav-item"
+          :class="{ 'is-active': activeGroup.key === m.key }"
           @click="selectGroup(m)"
         >
           <i :class="m.icon" />
@@ -38,18 +38,18 @@
         </button>
       </nav>
 
-      <div class="cfg-body">
-        <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div class="config-body">
+        <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
         <template v-else>
           <!-- 分组内层分页：仅当该分组由多个模块合并而成时显示 -->
-          <div v-if="activeTabs.length > 1" class="cfg-subtabs" role="tablist">
+          <div v-if="activeTabs.length > 1" class="config-subtabs" role="tablist">
             <button
               v-for="item in activeTabs"
               :key="item.key"
               type="button"
-              class="cfg-subtab"
-              :class="{ active: tab === item.key }"
+              class="config-subtab"
+              :class="{ 'is-active': tab === item.key }"
               @click="tab = item.key"
             >
               <i :class="item.icon" /> {{ item.label }}
@@ -59,10 +59,10 @@
           <!-- ============ 安全 ============ -->
           <template v-if="tab === 'security'">
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">API KEY</h3>
-                  <p class="cfg-desc">开启后调用接口需携带有效密钥，密钥在「安全 → 接口密钥」中管理</p>
+                  <h3 class="config-title">API KEY</h3>
+                  <p class="config-desc">开启后调用接口需携带有效密钥，密钥在「安全 → 接口密钥」中管理</p>
                 </div>
               </header>
               <div class="form-item">
@@ -86,7 +86,7 @@
                   不是安全边界；需要强边界时请让后端只监听内网端口，由反代注入 i-api-key
                 </p>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('apiKey')" @click="saveApiKey">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -94,10 +94,10 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">QPS 限流</h3>
-                  <p class="cfg-desc">限制接口访问频率：单接口与全局分别限流，超出阈值的请求会被拒绝</p>
+                  <h3 class="config-title">QPS 限流</h3>
+                  <p class="config-desc">限制接口访问频率：单接口与全局分别限流，超出阈值的请求会被拒绝</p>
                 </div>
               </header>
               <div class="form-grid">
@@ -114,7 +114,7 @@
                   <input v-model="cfg.qps.json.global" class="input" type="number" min="1" step="1" />
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('qps')" @click="saveQps">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -122,10 +122,10 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">自动 IP 黑名单</h3>
-                  <p class="cfg-desc">
+                  <h3 class="config-title">自动 IP 黑名单</h3>
+                  <p class="config-desc">
                     触发 QPS 阈值达到指定次数后，自动把该 IP 加入黑名单；同时用于限制特定 IP 的接口访问频率
                   </p>
                 </div>
@@ -146,7 +146,7 @@
                   <p class="form-hint">窗口内累计达到「触发次数」才封禁，封禁时长按次数自动升级（1 小时 → 24 小时 → 7 天 → 永久）</p>
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('qpsBlock')" @click="saveQpsBlock">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -155,10 +155,10 @@
 
             <!-- 安全验证（滑块）：发送验证码防刷 + 敏感操作人机校验 -->
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">安全验证（滑块）</h3>
-                  <p class="cfg-desc">
+                  <h3 class="config-title">安全验证（滑块）</h3>
+                  <p class="config-desc">
                     给短信 / 邮件验证码与敏感操作加一层人机校验：命中时前台弹出滑块，
                     拖动对齐后自动继续原来的请求，用户不需要重新提交表单
                   </p>
@@ -189,7 +189,7 @@
                 </p>
               </div>
 
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('captcha')" @click="saveCaptcha">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -202,10 +202,10 @@
 
           <!-- ============ 内容配置（文章 / 动态 / 独立页面三份结构相同，组内分页切换）============ -->
           <section v-else-if="CONTENT_KEYS[tab]" class="card card-pad">
-            <header class="cfg-head">
+            <header class="config-head">
               <div>
-                <h3 class="cfg-title">{{ CONTENT_KEYS[tab].title }}</h3>
-                <p class="cfg-desc">
+                <h3 class="config-title">{{ CONTENT_KEYS[tab].title }}</h3>
+                <p class="config-desc">
                   编辑器、审核与评论开关；审核开启后，用户新发布的内容默认进入待审核
                 </p>
               </div>
@@ -252,7 +252,7 @@
                 <p class="form-hint">设为「隐藏」时覆盖内容自身设置，整块不展示</p>
               </div>
             </div>
-            <div class="cfg-foot">
+            <div class="config-foot">
               <button
                 class="btn btn-primary btn-sm"
                 :disabled="isSaving(`content_${tab}`)"
@@ -265,10 +265,10 @@
 
           <!-- ============ 评论配置 ============ -->
           <section v-else-if="tab === 'comment'" class="card card-pad">
-            <header class="cfg-head">
+            <header class="config-head">
               <div>
-                <h3 class="cfg-title">评论配置</h3>
-                <p class="cfg-desc">评论开关、限流、内容校验与敏感词</p>
+                <h3 class="config-title">评论配置</h3>
+                <p class="config-desc">评论开关、限流、内容校验与敏感词</p>
               </div>
             </header>
 
@@ -326,7 +326,7 @@
               <p class="form-hint">命中任意一个词即拒绝该条评论</p>
             </div>
 
-            <div class="cfg-foot">
+            <div class="config-foot">
               <button class="btn btn-primary btn-sm" :disabled="isSaving('comment')" @click="saveComment">
                 <i class="bi bi-check2" /> 保存
               </button>
@@ -335,10 +335,10 @@
 
           <!-- ============ 友链配置（LINKS）============ -->
           <section v-else-if="tab === 'links'" class="card card-pad">
-            <header class="cfg-head">
+            <header class="config-head">
               <div>
-                <h3 class="cfg-title">友链配置</h3>
-                <p class="cfg-desc">前台「申请友链」的审核策略</p>
+                <h3 class="config-title">友链配置</h3>
+                <p class="config-desc">前台「申请友链」的审核策略</p>
               </div>
             </header>
 
@@ -351,7 +351,7 @@
               </p>
             </div>
 
-            <div class="cfg-foot">
+            <div class="config-foot">
               <button class="btn btn-primary btn-sm" :disabled="isSaving('links')" @click="saveLinks">
                 <i class="bi bi-check2" /> 保存
               </button>
@@ -360,10 +360,10 @@
 
           <!-- ============ 装扮（头像框 / 头衔，SYSTEM_DECORATION）============ -->
           <section v-else-if="tab === 'decoration'" class="card card-pad">
-            <header class="cfg-head">
+            <header class="config-head">
               <div>
-                <h3 class="cfg-title">装扮配置</h3>
-                <p class="cfg-desc">
+                <h3 class="config-title">装扮配置</h3>
+                <p class="config-desc">
                   头衔 / 头像框的全局开关；具体装扮的增删改查、价格与样式在「装扮管理」中维护
                 </p>
               </div>
@@ -385,7 +385,7 @@
               </div>
             </div>
 
-            <h4 class="cfg-sub-title">头像框</h4>
+            <h4 class="config-sub-title">头像框</h4>
             <div class="form-grid">
               <div class="form-item">
                 <label class="form-label">启用头像框</label>
@@ -394,7 +394,7 @@
             </div>
             <!-- 缩放/对齐不再走全局默认值：每个头像框在「装扮管理」里用对齐器单独调洞大小与偏移 -->
 
-            <h4 class="cfg-sub-title">头衔</h4>
+            <h4 class="config-sub-title">头衔</h4>
             <div class="form-grid">
               <div class="form-item">
                 <label class="form-label">启用头衔</label>
@@ -414,7 +414,7 @@
               </div>
             </div>
 
-            <div class="cfg-foot">
+            <div class="config-foot">
               <button class="btn btn-primary btn-sm" :disabled="isSaving('decoration')" @click="saveDecoration">
                 <i class="bi bi-check2" /> 保存
               </button>
@@ -423,10 +423,10 @@
 
           <!-- ============ 分页限制 ============ -->
           <section v-else-if="tab === 'page'" class="card card-pad">
-            <header class="cfg-head">
+            <header class="config-head">
               <div>
-                <h3 class="cfg-title">分页限制</h3>
-                <p class="cfg-desc">限制列表接口单次查询的最大条数，避免一次拉取过多数据拖慢接口</p>
+                <h3 class="config-title">分页限制</h3>
+                <p class="config-desc">限制列表接口单次查询的最大条数，避免一次拉取过多数据拖慢接口</p>
               </div>
             </header>
             <div class="form-grid">
@@ -439,7 +439,7 @@
                 <input v-model="cfg.pageLimit.text" class="input" type="number" min="1" step="1" />
               </div>
             </div>
-            <div class="cfg-foot">
+            <div class="config-foot">
               <button class="btn btn-primary btn-sm" :disabled="isSaving('pageLimit')" @click="savePageLimit">
                 <i class="bi bi-check2" /> 保存
               </button>
@@ -448,10 +448,10 @@
 
           <!-- ============ 登录会话 ============ -->
           <section v-else-if="tab === 'session'" class="card card-pad">
-            <header class="cfg-head">
+            <header class="config-head">
               <div>
-                <h3 class="cfg-title">登录会话</h3>
-                <p class="cfg-desc">登录态是服务端会话（缓存里的 session:{sid}），项目已移除 JWT；令牌不携带任何声明，可在退出 / 改密 / 封禁时立即撤销</p>
+                <h3 class="config-title">登录会话</h3>
+                <p class="config-desc">登录态是服务端会话（缓存里的 session:{sid}），项目已移除 JWT；令牌不携带任何声明，可在退出 / 改密 / 封禁时立即撤销</p>
               </div>
             </header>
             <div class="form-grid">
@@ -461,7 +461,7 @@
                 <p class="form-hint">滑动续期（最后活跃时间 + 有效期），默认 15 天；修改后只影响新登录 / 续期的会话，已签发的会话保持原时长</p>
               </div>
             </div>
-            <div class="cfg-foot">
+            <div class="config-foot">
               <button class="btn btn-primary btn-sm" :disabled="isSaving('session')" @click="saveSession">
                 <i class="bi bi-check2" /> 保存
               </button>
@@ -471,10 +471,10 @@
           <!-- ============ 注册 ============ -->
           <template v-else-if="tab === 'register'">
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">开放注册</h3>
-                  <p class="cfg-desc">关闭后仅管理员可创建账号，注册接口会拒绝新用户提交</p>
+                  <h3 class="config-title">开放注册</h3>
+                  <p class="config-desc">关闭后仅管理员可创建账号，注册接口会拒绝新用户提交</p>
                 </div>
               </header>
               <div class="form-item">
@@ -489,10 +489,10 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">邮箱域名限制</h3>
-                  <p class="cfg-desc">用于拦截一次性邮箱或限定内部邮箱注册，仅对邮箱注册方式生效</p>
+                  <h3 class="config-title">邮箱域名限制</h3>
+                  <p class="config-desc">用于拦截一次性邮箱或限定内部邮箱注册，仅对邮箱注册方式生效</p>
                 </div>
               </header>
               <div class="form-item">
@@ -525,10 +525,10 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">注册后发布欢迎消息</h3>
-                  <p class="cfg-desc">两项可同时开启；人工审核模式下管理员通过审核时发送</p>
+                  <h3 class="config-title">注册后发布欢迎消息</h3>
+                  <p class="config-desc">两项可同时开启；人工审核模式下管理员通过审核时发送</p>
                 </div>
               </header>
               <div class="form-grid">
@@ -546,15 +546,15 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">新用户默认权限组</h3>
-                  <p class="cfg-desc">注册成功后自动入组，空选表示不带任何权限组</p>
+                  <h3 class="config-title">新用户默认权限组</h3>
+                  <p class="config-desc">注册成功后自动入组，空选表示不带任何权限组</p>
                 </div>
               </header>
               <div class="form-item">
                 <label class="form-label">默认权限组</label>
-                <div v-if="registerGroups.loading" class="loading is-inline"><span class="spinner" /> 加载权限组...</div>
+                <div v-if="registerGroups.loading" class="is-loading is-inline"><span class="spinner" /> 加载权限组...</div>
                 <p v-else-if="!registerGroups.list.length" class="form-hint">
                   暂无可用权限组：请先到「安全 → 权限组」创建，或确认当前账号有权访问权限组列表。
                 </p>
@@ -576,7 +576,7 @@
             </section>
 
             <section class="card card-pad">
-              <div class="cfg-foot is-plain">
+              <div class="config-foot is-plain">
                 <span class="form-hint is-inline">以上设置同属 ALLOW_REGISTER 一条记录，点保存一次即可全部生效</span>
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('register')" @click="saveRegister">
                   <i class="bi bi-check2" /> 保存注册设置
@@ -588,10 +588,10 @@
           <!-- ============ 账号修改 ============ -->
           <template v-else-if="tab === 'accountRule'">
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">账号修改规则</h3>
-                  <p class="cfg-desc">
+                  <h3 class="config-title">账号修改规则</h3>
+                  <p class="config-desc">
                     账号既是登录凭证又是对外身份标识，改完不可逆、还会占掉他人的登录名，是否开放交给站点决定（默认关闭）
                   </p>
                 </div>
@@ -609,10 +609,10 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">修改前置条件</h3>
-                  <p class="cfg-desc">不满足条件的用户无法修改账号，用于降低账号被盗改的风险</p>
+                  <h3 class="config-title">修改前置条件</h3>
+                  <p class="config-desc">不满足条件的用户无法修改账号，用于降低账号被盗改的风险</p>
                 </div>
               </header>
               <div class="form-grid">
@@ -630,7 +630,7 @@
             </section>
 
             <section class="card card-pad">
-              <div class="cfg-foot is-plain">
+              <div class="config-foot is-plain">
                 <span class="form-hint is-inline">人机校验（滑块）场景在「安全与限流 → 安全验证（滑块）」里勾选「修改账号」</span>
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('accountRule')" @click="saveAccount">
                   <i class="bi bi-check2" /> 保存账号修改设置
@@ -642,10 +642,10 @@
           <!-- ============ 缓存 ============ -->
           <template v-else-if="tab === 'cache'">
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">缓存设置</h3>
-                  <p class="cfg-desc">选择缓存驱动并配置参数；切换驱动后建议执行连通性测试</p>
+                  <h3 class="config-title">缓存设置</h3>
+                  <p class="config-desc">选择缓存驱动并配置参数；切换驱动后建议执行连通性测试</p>
                 </div>
               </header>
               <div class="form-grid">
@@ -658,7 +658,7 @@
                   <SelectMenu v-model="toml.cache.default" variant="field" :options="CACHE_DRIVERS" />
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('cacheDefault')" @click="saveCacheDefault">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -666,10 +666,10 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">Redis</h3>
-                  <p class="cfg-desc">需要 Redis 服务可达</p>
+                  <h3 class="config-title">Redis</h3>
+                  <p class="config-desc">需要 Redis 服务可达</p>
                 </div>
               </header>
               <div class="form-grid">
@@ -698,7 +698,7 @@
                   <input v-model="toml.cache.redis.expire" class="input" type="text" />
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-sm" :disabled="isSaving('testRedis')" @click="testRedis">
                   <i class="bi bi-plug" /> 测试连接
                 </button>
@@ -709,9 +709,9 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">文件缓存</h3>
+                  <h3 class="config-title">文件缓存</h3>
                 </div>
               </header>
               <div class="form-grid">
@@ -728,7 +728,7 @@
                   <input v-model="toml.cache.file.expire" class="input" type="text" />
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('cacheFile')" @click="saveCacheFile">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -736,16 +736,16 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">内存缓存</h3>
+                  <h3 class="config-title">内存缓存</h3>
                 </div>
               </header>
               <div class="form-item">
                 <label class="form-label">有效期（秒，支持表达式）</label>
                 <input v-model="toml.cache.ram.expire" class="input" type="text" />
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('cacheRam')" @click="saveCacheRam">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -756,17 +756,17 @@
           <!-- ============ 存储 ============ -->
           <template v-else-if="tab === 'storage'">
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">默认存储</h3>
-                  <p class="cfg-desc">决定附件上传使用的驱动；切换后会自动重载存储配置</p>
+                  <h3 class="config-title">默认存储</h3>
+                  <p class="config-desc">决定附件上传使用的驱动；切换后会自动重载存储配置</p>
                 </div>
               </header>
               <div class="form-item">
                 <label class="form-label">默认驱动</label>
                 <SelectMenu v-model="toml.storage.default" variant="field" :options="STORAGE_DRIVERS" />
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('storageDefault')" @click="saveStorageDefault">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -774,9 +774,9 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">本地存储</h3>
+                  <h3 class="config-title">本地存储</h3>
                 </div>
               </header>
               <div class="form-grid">
@@ -813,7 +813,7 @@
                   <code>{{ item.token }}</code> {{ item.desc }}
                 </span>
               </p>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('storageLocal')" @click="saveStorageLocal">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -821,9 +821,9 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">腾讯云 COS</h3>
+                  <h3 class="config-title">腾讯云 COS</h3>
                 </div>
               </header>
               <div class="form-grid">
@@ -882,7 +882,7 @@
                   <code>{{ item.token }}</code> {{ item.desc }}
                 </span>
               </p>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-sm" :disabled="isSaving('testCos')" @click="testStorage('cos')">
                   <i class="bi bi-plug" /> 测试连接
                 </button>
@@ -893,9 +893,9 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">附件上传限制</h3>
+                  <h3 class="config-title">附件上传限制</h3>
                 </div>
               </header>
               <div class="form-grid">
@@ -913,7 +913,7 @@
                   <p class="form-hint">同时上传的文件数上限（跨实例用 Redis 计数，Redis 不可用时降级本机计数）</p>
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('storageAttachment')" @click="saveStorageAttachment">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -924,10 +924,10 @@
           <!-- ============ 短信 ============ -->
           <template v-else-if="tab === 'sms'">
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">短信驱动</h3>
-                  <p class="cfg-desc">分别指定「邮件验证码」与「短信验证码」使用的渠道</p>
+                  <h3 class="config-title">短信驱动</h3>
+                  <p class="config-desc">分别指定「邮件验证码」与「短信验证码」使用的渠道</p>
                 </div>
               </header>
               <div class="form-grid">
@@ -944,7 +944,7 @@
                   <SelectMenu v-model="toml.sms.drive.sms" variant="field" :options="SMS_DRIVERS" />
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('smsDrive')" @click="saveSmsDrive">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -952,9 +952,9 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">邮件发送</h3>
+                  <h3 class="config-title">邮件发送</h3>
                 </div>
               </header>
               <div class="form-grid">
@@ -987,7 +987,7 @@
                   <input v-model="test.email" class="input" type="text" placeholder="仅用于测试，不会保存" />
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-sm" :disabled="isSaving('testSmsEmail')" @click="testSmsEmail">
                   <i class="bi bi-envelope" /> 发送测试邮件
                 </button>
@@ -999,10 +999,10 @@
 
             <!-- 发件队列：分批限流 + 失败重试（config/sms.toml 的 [email] 段） -->
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">发件队列</h3>
-                  <p class="cfg-desc">
+                  <h3 class="config-title">发件队列</h3>
+                  <p class="config-desc">
                     通知类邮件统一入队后分批发送（验证码入队即发，不受分批限制），
                     失败按「重试延迟」重新入队，达到「最大尝试次数」后标记失败并丢弃；
                     保存后立即生效，无需重启
@@ -1023,7 +1023,7 @@
                   <p class="form-hint">{{ item.hint }}（{{ item.min }} ~ {{ item.max }}）</p>
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('smsEmailQueue')" @click="saveSmsEmailQueue">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -1031,9 +1031,9 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">阿里云短信</h3>
+                  <h3 class="config-title">阿里云短信</h3>
                 </div>
               </header>
               <div class="form-grid">
@@ -1062,7 +1062,7 @@
                   <input v-model="test.phone" class="input" type="text" placeholder="仅用于测试，不会保存" />
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-sm" :disabled="isSaving('testSmsAliyun')" @click="testSmsAliyun">
                   <i class="bi bi-phone" /> 发送测试短信
                 </button>
@@ -1073,10 +1073,10 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">阿里云号码认证</h3>
-                  <p class="cfg-desc">用于号码认证类验证码，模板参数由服务端填充</p>
+                  <h3 class="config-title">阿里云号码认证</h3>
+                  <p class="config-desc">用于号码认证类验证码，模板参数由服务端填充</p>
                 </div>
               </header>
               <div class="form-grid">
@@ -1101,7 +1101,7 @@
                   <input v-model="toml.sms.aliyunNumberVerify.template_code" class="input" type="text" />
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button
                   class="btn btn-primary btn-sm"
                   :disabled="isSaving('smsAliyunNumberVerify')"
@@ -1113,9 +1113,9 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">腾讯云短信</h3>
+                  <h3 class="config-title">腾讯云短信</h3>
                 </div>
               </header>
               <div class="form-grid">
@@ -1148,7 +1148,7 @@
                   <input v-model="toml.sms.tencent.region" class="input" type="text" />
                 </div>
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-sm" :disabled="isSaving('testSmsTencent')" @click="testSmsTencent">
                   <i class="bi bi-phone" /> 发送测试短信
                 </button>
@@ -1163,10 +1163,10 @@
           <template v-else-if="tab === 'mail'">
             <!-- 总开关 + 管理员收件人 -->
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">邮件通知总开关</h3>
-                  <p class="cfg-desc">
+                  <h3 class="config-title">邮件通知总开关</h3>
+                  <p class="config-desc">
                     关闭后所有场景都不再发邮件（站内消息不受影响）；
                     邮件统一走邮箱队列分批投递，失败会自动延迟重试
                     （分批 / 重试参数见「短信」标签页的「发件队列」）
@@ -1192,7 +1192,7 @@
                 </p>
               </div>
               
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('mail')" @click="saveMail">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -1201,10 +1201,10 @@
 
             <!-- 场景开关：按分组展示，开则正常发送、关则禁用 -->
             <section v-for="group in MAIL_GROUPS" :key="group" class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">{{ group }}</h3>
-                  <p class="cfg-desc">按需开启；关闭后该场景不再发送邮件，站内记录不受影响</p>
+                  <h3 class="config-title">{{ group }}</h3>
+                  <p class="config-desc">按需开启；关闭后该场景不再发送邮件，站内记录不受影响</p>
                 </div>
               </header>
 
@@ -1216,7 +1216,7 @@
                 </div>
               </div>
 
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('mail')" @click="saveMail">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -1227,17 +1227,17 @@
           <!-- ============ 通知与日志 ============ -->
           <template v-else-if="tab === 'notify'">
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">消息保留</h3>
-                  <p class="cfg-desc">超过保留天数的站内消息会被清理</p>
+                  <h3 class="config-title">消息保留</h3>
+                  <p class="config-desc">超过保留天数的站内消息会被清理</p>
                 </div>
               </header>
               <div class="form-item">
                 <label class="form-label">保留天数</label>
                 <input v-model="toml.notification.retention_days" class="input" type="number" min="1" step="1" />
               </div>
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('notification')" @click="saveNotification">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -1245,10 +1245,10 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">日志</h3>
-                  <p class="cfg-desc">后端未提供日志配置的保存接口，此处仅供查看</p>
+                  <h3 class="config-title">日志</h3>
+                  <p class="config-desc">后端未提供日志配置的保存接口，此处仅供查看</p>
                 </div>
               </header>
               <dl class="readonly-list">
@@ -1275,10 +1275,10 @@
           <!-- ============ 默认值设置：默认头像 ============ -->
           <template v-else-if="tab === 'defaults'">
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">默认头像</h3>
-                  <p class="cfg-desc">
+                  <h3 class="config-title">默认头像</h3>
+                  <p class="config-desc">
                     前台「个人资料」页里供用户一键选择的预设头像。可添加 / 删除，支持粘贴图片地址或从附件库选取；
                     留空时前台使用主题内置头像
                   </p>
@@ -1334,7 +1334,7 @@
                 </button>
               </div>
 
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <span class="save-hint">修改后需点击保存才会写入配置，前台立即读取最新值</span>
                 <button
                   class="btn btn-primary btn-sm"
@@ -1354,10 +1354,10 @@
             </section>
 
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">图片上传压缩</h3>
-                  <p class="cfg-desc">
+                  <h3 class="config-title">图片上传压缩</h3>
+                  <p class="config-desc">
                     上传图片附件前在浏览器端压缩并转换为 WebP（不改变分辨率，仅调整编码与质量），可显著减小体积；
                     仅对 jpg / png / webp / bmp / tiff 生效，gif、svg 保持原样
                   </p>
@@ -1373,7 +1373,7 @@
                 </p>
               </div>
 
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button
                   class="btn btn-primary btn-sm"
                   :disabled="isSaving('uploadWebp')"
@@ -1388,10 +1388,10 @@
           <!-- ============ 第三方登录（QQ / GitHub / Gitee，SYSTEM_OAUTH）============ -->
           <template v-else-if="tab === 'oauth'">
             <section class="card card-pad">
-              <header class="cfg-head">
+              <header class="config-head">
                 <div>
-                  <h3 class="cfg-title">第三方登录</h3>
-                  <p class="cfg-desc">
+                  <h3 class="config-title">第三方登录</h3>
+                  <p class="config-desc">
                     配置 QQ / GitHub / Gitee 开放平台应用。AppKey 只保存在服务端（接口不下发到前端）；
                     回调地址必须与第三方后台登记的完全一致，否则换取 token 会失败。
                   </p>
@@ -1422,7 +1422,7 @@
               </div>
 
               <template v-for="item in OAUTH_PLATFORMS" :key="item.key">
-                <h4 class="cfg-sub-title">{{ item.label }}</h4>
+                <h4 class="config-sub-title">{{ item.label }}</h4>
                 <div class="form-grid">
                   <div class="form-item">
                     <label class="form-label">启用</label>
@@ -1446,7 +1446,7 @@
                 </div>
               </template>
 
-              <div class="cfg-foot">
+              <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('oauth')" @click="saveOauth">
                   <i class="bi bi-check2" /> 保存
                 </button>
@@ -3056,13 +3056,13 @@ onMounted(loadAll)
 }
 
 /* ---------- 布局 ---------- */
-.cfg-layout {
+.config-layout {
   display: grid;
   grid-template-columns: 200px 1fr;
   gap: 16px;
   align-items: start;
 }
-.cfg-nav {
+.config-nav {
   position: sticky;
   top: 16px;
   display: flex;
@@ -3073,7 +3073,7 @@ onMounted(loadAll)
   border: 1px solid var(--border);
   border-radius: var(--radius);
 }
-.cfg-nav-item {
+.config-nav-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3087,17 +3087,17 @@ onMounted(loadAll)
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.cfg-nav-item:hover {
+.config-nav-item:hover {
   background: var(--bg-muted);
   color: var(--primary);
 }
-.cfg-nav-item.active {
+.config-nav-item.is-active {
   background: var(--accent-wash);
   color: var(--primary-deep);
   font-weight: 600;
 }
 
-.cfg-body {
+.config-body {
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -3105,14 +3105,14 @@ onMounted(loadAll)
 }
 
 /* 内容配置的内层分页（文章 / 动态 / 独立页面） */
-.cfg-subtabs {
+.config-subtabs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border-soft, var(--border));
 }
-.cfg-subtab {
+.config-subtab {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -3125,31 +3125,31 @@ onMounted(loadAll)
   cursor: pointer;
   transition: all 0.15s;
 }
-.cfg-subtab:hover {
+.config-subtab:hover {
   color: var(--text);
   border-color: var(--primary);
 }
-.cfg-subtab.active {
+.config-subtab.is-active {
   color: var(--primary-deep, var(--primary));
   border-color: var(--primary);
   background: var(--primary-wash, var(--bg-muted));
 }
 
 /* ---------- 卡片 ---------- */
-.cfg-head {
+.config-head {
   margin-bottom: 16px;
 }
-.cfg-title {
+.config-title {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
 }
-.cfg-desc {
+.config-desc {
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--text-muted);
 }
-.cfg-foot {
+.config-foot {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3158,7 +3158,7 @@ onMounted(loadAll)
   border-top: 1px dashed var(--border-soft);
 }
 /* 单独的保存条（注册模块）：无上边框、按钮靠右 */
-.cfg-foot.is-plain {
+.config-foot.is-plain {
   margin-top: 0;
   padding-top: 0;
   border-top: none;
@@ -3175,7 +3175,7 @@ onMounted(loadAll)
   gap: 0 12px;
 }
 /* 同一面板内的小节标题（如装扮页的「头像框 / 头衔」） */
-.cfg-sub-title {
+.config-sub-title {
   margin: 18px 0 10px;
   padding-bottom: 6px;
   font-size: 13px;
@@ -3252,7 +3252,7 @@ onMounted(loadAll)
   background: var(--gold-wash);
   border-radius: 3px;
 }
-.loading.is-inline {
+.is-loading.is-inline {
   padding: 8px 0;
   text-align: left;
   font-size: 13px;
@@ -3282,7 +3282,7 @@ onMounted(loadAll)
   color: var(--text-soft);
 }
 
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -3405,10 +3405,10 @@ onMounted(loadAll)
 }
 
 @media (max-width: 900px) {
-  .cfg-layout {
+  .config-layout {
     grid-template-columns: 1fr;
   }
-  .cfg-nav {
+  .config-nav {
     position: static;
     flex-direction: row;
     flex-wrap: wrap;

@@ -19,7 +19,7 @@
           :key="tab.key"
           type="button"
           class="status-tab"
-          :class="{ active: status === tab.key }"
+          :class="{ 'is-active': status === tab.key }"
           @click="switchTab(tab.key)"
         >
           {{ tab.label }}
@@ -43,7 +43,7 @@
     </p>
 
     <!-- 列表 -->
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="is-loading">
       <span class="spinner" /> 加载中...
     </div>
 
@@ -360,7 +360,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -376,7 +376,7 @@ onMounted(() => {
   background: var(--gold-wash);
   color: var(--warning);
 }
-.status-tab.active .tab-badge {
+.status-tab.is-active .tab-badge {
   background: rgba(255, 255, 255, 0.24);
   color: #fff;
 }
@@ -419,7 +419,7 @@ onMounted(() => {
   border-radius: var(--radius-sm);
 }
 
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);

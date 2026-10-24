@@ -1,8 +1,8 @@
 <template>
   <div class="badge-admin">
     <!-- 左侧分类栏：只影响展示分组，不影响发放条件 -->
-    <aside class="cat-side">
-      <div class="cat-side-head">
+    <aside class="category-side">
+      <div class="category-side-head">
         <span>勋章分类</span>
         <button class="btn btn-ghost btn-sm" title="新建分类" @click="openCategory(null)">
           <i class="bi bi-plus-lg" />
@@ -11,44 +11,44 @@
 
       <button
         type="button"
-        class="cat-item"
-        :class="{ active: catFilter === null }"
+        class="category-item"
+        :class="{ 'is-active': catFilter === null }"
         @click="pickCat(null)"
       >
         <i class="bi bi-grid-3x3-gap" />
-        <span class="cat-name">全部勋章</span>
-        <span class="cat-count">{{ totalAll }}</span>
+        <span class="category-name">全部勋章</span>
+        <span class="category-count">{{ totalAll }}</span>
       </button>
 
       <button
         v-for="cat in categories"
         :key="cat.id"
         type="button"
-        class="cat-item"
-        :class="{ active: catFilter === cat.id, 'is-off': !cat.status }"
+        class="category-item"
+        :class="{ 'is-active': catFilter === cat.id, 'is-off': !cat.status }"
         :title="cat.description || cat.name"
         @click="pickCat(cat.id)"
       >
         <i :class="cat.icon || 'bi bi-collection'" :style="{ color: cat.color || undefined }" />
-        <span class="cat-name">{{ cat.name }}</span>
-        <span class="cat-count">{{ counts[cat.id] || 0 }}</span>
-        <span class="cat-edit" title="编辑分类" @click.stop="openCategory(cat)">
+        <span class="category-name">{{ cat.name }}</span>
+        <span class="category-count">{{ counts[cat.id] || 0 }}</span>
+        <span class="category-edit" title="编辑分类" @click.stop="openCategory(cat)">
           <i class="bi bi-pencil" />
         </span>
       </button>
 
       <button
         type="button"
-        class="cat-item"
-        :class="{ active: catFilter === 0 }"
+        class="category-item"
+        :class="{ 'is-active': catFilter === 0 }"
         @click="pickCat(0)"
       >
         <i class="bi bi-collection" />
-        <span class="cat-name">未分类</span>
-        <span class="cat-count">{{ counts[0] || 0 }}</span>
+        <span class="category-name">未分类</span>
+        <span class="category-count">{{ counts[0] || 0 }}</span>
       </button>
 
-      <p class="cat-hint">分类只决定前台怎么分组展示，不影响获得条件</p>
+      <p class="category-hint">分类只决定前台怎么分组展示，不影响获得条件</p>
     </aside>
 
     <div class="card card-pad">
@@ -83,10 +83,10 @@
 
       <div class="list-filter">
         <div class="status-tabs">
-          <button type="button" class="status-tab" :class="{ active: !trash }" @click="switchTab(false)">
+          <button type="button" class="status-tab" :class="{ 'is-active': !trash }" @click="switchTab(false)">
             全部勋章
           </button>
-          <button type="button" class="status-tab trash-tab" :class="{ active: trash }" @click="switchTab(true)">
+          <button type="button" class="status-tab trash-tab" :class="{ 'is-active': trash }" @click="switchTab(true)">
             <i class="bi bi-trash3" /> 回收站
           </button>
         </div>
@@ -130,7 +130,7 @@
         <button class="btn btn-sm" :disabled="busy" @click="clearSelect">取消选择</button>
       </div>
 
-      <div v-if="loading" class="loading">
+      <div v-if="loading" class="is-loading">
         <span class="spinner" /> 加载中...
       </div>
 
@@ -246,7 +246,7 @@
           <button
             type="button"
             class="pick-chip"
-            :class="{ active: dialog.category_id === 0 }"
+            :class="{ 'is-active': dialog.category_id === 0 }"
             @click="dialog.category_id = 0"
           >
             <i class="bi bi-collection" /> 未分类
@@ -256,7 +256,7 @@
             :key="cat.id"
             type="button"
             class="pick-chip"
-            :class="{ active: dialog.category_id === cat.id }"
+            :class="{ 'is-active': dialog.category_id === cat.id }"
             @click="dialog.category_id = cat.id"
           >
             <i :class="cat.icon || 'bi bi-collection'" /> {{ cat.name }}
@@ -401,7 +401,7 @@
             :key="item.id"
             type="button"
             class="pick-chip"
-            :class="{ active: grant.badgeIds.includes(item.id) }"
+            :class="{ 'is-active': grant.badgeIds.includes(item.id) }"
             @click="toggleBadgePick(item.id)"
           >
             <i :class="item.icon || 'bi bi-award'" /> {{ item.name }}
@@ -442,7 +442,7 @@
         <button class="btn" type="button" @click="records.visible = false">关闭</button>
       </template>
 
-      <div v-if="records.loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="records.loading" class="is-loading"><span class="spinner" /> 加载中...</div>
       <div v-else-if="!records.list.length" class="empty-row">
         <EmptyState icon="bi bi-people" text="还没有用户获得这枚勋章" />
       </div>
@@ -1324,7 +1324,7 @@ onMounted(() => {
   align-items: start;
 }
 
-.cat-side {
+.category-side {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1335,7 +1335,7 @@ onMounted(() => {
   position: sticky;
   top: 12px;
 }
-.cat-side-head {
+.category-side-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1345,7 +1345,7 @@ onMounted(() => {
   color: var(--text-muted);
   letter-spacing: 0.02em;
 }
-.cat-item {
+.category-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1360,38 +1360,38 @@ onMounted(() => {
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.cat-item:hover {
+.category-item:hover {
   background: var(--bg-muted);
   color: var(--text);
 }
-.cat-item.active {
+.category-item.is-active {
   background: var(--primary-soft, rgba(79, 124, 255, 0.12));
   color: var(--primary);
   font-weight: 600;
 }
 /* 停用的分类仍然显示（老勋章要有归属），但视觉上弱化 */
-.cat-item.is-off {
+.category-item.is-off {
   opacity: 0.55;
 }
-.cat-item .bi {
+.category-item .bi {
   flex-shrink: 0;
   font-size: 13px;
 }
-.cat-name {
+.category-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.cat-count {
+.category-count {
   flex-shrink: 0;
   font-size: 11px;
   color: var(--text-light);
   font-variant-numeric: tabular-nums;
 }
 /* 编辑按钮：鼠标悬停才出现，避免侧栏太吵 */
-.cat-edit {
+.category-edit {
   display: none;
   flex-shrink: 0;
   width: 18px;
@@ -1401,14 +1401,14 @@ onMounted(() => {
   border-radius: var(--radius-sm);
   color: var(--text-light);
 }
-.cat-item:hover .cat-edit {
+.category-item:hover .category-edit {
   display: inline-flex;
 }
-.cat-edit:hover {
+.category-edit:hover {
   background: var(--border-soft);
   color: var(--text);
 }
-.cat-hint {
+.category-hint {
   margin: 8px 2px 0;
   padding-top: 8px;
   border-top: 1px dashed var(--border-soft);
@@ -1425,23 +1425,23 @@ onMounted(() => {
     grid-template-columns: minmax(0, 1fr);
   }
   /* 窄屏：分类改成横向滚动的胶囊条 */
-  .cat-side {
+  .category-side {
     position: static;
     flex-direction: row;
     flex-wrap: nowrap;
     overflow-x: auto;
     align-items: center;
   }
-  .cat-side-head,
-  .cat-hint {
+  .category-side-head,
+  .category-hint {
     display: none;
   }
-  .cat-item {
+  .category-item {
     width: auto;
     flex-shrink: 0;
     white-space: nowrap;
   }
-  .cat-edit {
+  .category-edit {
     display: none;
   }
 }
@@ -1504,7 +1504,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1590,7 +1590,7 @@ onMounted(() => {
   background: var(--gold-wash);
   border-radius: var(--radius);
 }
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1797,7 +1797,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all var(--dur) var(--ease);
 }
-.pick-chip.active {
+.pick-chip.is-active {
   color: var(--primary-deep);
   border-color: var(--primary);
   background: var(--accent-wash);

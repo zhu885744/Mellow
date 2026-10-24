@@ -26,7 +26,7 @@
             :key="tab.key"
             type="button"
             class="status-tab"
-            :class="{ active: source === tab.key }"
+            :class="{ 'is-active': source === tab.key }"
             @click="switchSource(tab.key)"
           >
             <i :class="tab.icon" /> {{ tab.label }}
@@ -77,7 +77,7 @@
           :key="item.key"
           type="button"
           class="stat-card"
-          :class="{ 'is-link': item.key !== 'other', active: level === item.key }"
+          :class="{ 'is-link': item.key !== 'other', 'is-active': level === item.key }"
           @click="pickLevel(item.key)"
         >
           <span class="stat-icon" :style="{ color: item.color }"><i :class="item.icon" /></span>
@@ -119,7 +119,7 @@
         </div>
       </header>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 解析中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 解析中...</div>
 
       <EmptyState
         v-else-if="!list.length"
@@ -133,7 +133,7 @@
             v-for="(item, index) in list"
             :key="`${page}-${index}`"
             class="log-item"
-            :class="[`is-${item.level || 'raw'}`, { expanded: expanded === index }]"
+            :class="[`is-${item.level || 'raw'}`, { 'is-expanded': expanded === index }]"
           >
             <div class="log-row" @click="toggle(index)">
               <span class="log-time">{{ item.time || '—' }}</span>
@@ -514,7 +514,7 @@ onMounted(async () => {
   border-color: var(--primary);
   color: var(--text);
 }
-.status-tab.active {
+.status-tab.is-active {
   border-color: var(--primary);
   color: var(--primary-deep);
   background: var(--accent-soft);
@@ -568,7 +568,7 @@ onMounted(async () => {
 .stat-card.is-link:hover {
   border-color: var(--primary);
 }
-.stat-card.active {
+.stat-card.is-active {
   border-color: var(--primary);
   background: var(--accent-soft);
 }
@@ -603,7 +603,7 @@ onMounted(async () => {
 .log-item + .log-item {
   border-top: 1px solid var(--border);
 }
-.log-item.expanded {
+.log-item.is-expanded {
   background: var(--bg-muted);
 }
 .log-row {

@@ -11,7 +11,7 @@
       v-if="hasChildren"
       type="button"
       class="nav-group is-toggle"
-      :class="{ active: isGroupActive, 'is-collapsed': !expanded }"
+      :class="{ 'is-active': isGroupActive, 'is-collapsed': !expanded }"
       :aria-expanded="expanded ? 'true' : 'false'"
       @click="toggle"
     >
@@ -38,8 +38,8 @@
         v-for="doc in node.docs || []"
         :key="`d-${doc.id}`"
         :to="`/docs/${version}/${node.slug || '-'}/${doc.slug}`"
-        class="nav-item nav-item--doc"
-        :class="{ active: isDocActive(doc) }"
+        class="nav-item nav-item-doc"
+        :class="{ 'is-active': isDocActive(doc) }"
       >
         <i class="bi bi-file-earmark-text" aria-hidden="true" />
         <span class="nav-text">{{ doc.title }}</span>
@@ -179,7 +179,7 @@ function isDocActive(doc) {
   color: var(--text-soft);
   background: var(--bg-muted);
 }
-.nav-group.active {
+.nav-group.is-active {
   color: var(--primary);
 }
 .nav-group i {
@@ -221,12 +221,12 @@ function isDocActive(doc) {
 .nav-item:hover i {
   color: var(--primary);
 }
-.nav-item.active {
+.nav-item.is-active {
   color: var(--primary);
   font-weight: 600;
   background: var(--accent-wash);
 }
-.nav-item.active i {
+.nav-item.is-active i {
   color: var(--primary);
 }
 .nav-text {

@@ -39,7 +39,7 @@
           :key="v.key"
           type="button"
           class="status-tab"
-          :class="{ active: view === v.key }"
+          :class="{ 'is-active': view === v.key }"
           @click="switchView(v.key)"
         >
           <i :class="v.icon" /> {{ v.label }}
@@ -70,13 +70,13 @@
               :key="tab.key"
               type="button"
               class="status-tab"
-              :class="{ active: !trash && status === tab.key }"
+              :class="{ 'is-active': !trash && status === tab.key }"
               @click="switchStatus(tab.key)"
             >{{ tab.label }}</button>
             <button
               type="button"
               class="status-tab trash-tab"
-              :class="{ active: trash }"
+              :class="{ 'is-active': trash }"
               @click="toggleTrash"
             >
               <i class="bi bi-trash3" /> 回收站
@@ -138,7 +138,7 @@
           </button>
         </div>
 
-        <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+        <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
         <div v-else-if="!list.length" class="empty-row">
           <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-bag'" :text="emptyText" />
@@ -160,7 +160,7 @@
           </div>
 
           <ul class="goods-list">
-            <li v-for="item in list" :key="item.id" class="goods-row" :class="{ selected: isSelected(item.id) }">
+            <li v-for="item in list" :key="item.id" class="goods-row" :class="{ 'is-selected': isSelected(item.id) }">
               <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
                 <input
                   type="checkbox"
@@ -266,7 +266,7 @@
               :key="tab.value"
               type="button"
               class="status-tab"
-              :class="{ active: orderStatus === tab.value }"
+              :class="{ 'is-active': orderStatus === tab.value }"
               @click="switchOrderStatus(tab.value)"
             >{{ tab.label }}</button>
           </div>
@@ -278,7 +278,7 @@
           </div>
         </div>
 
-        <div v-if="orderLoading" class="loading"><span class="spinner" /> 加载中...</div>
+        <div v-if="orderLoading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
         <div v-else-if="!orders.length" class="empty-row">
           <EmptyState icon="bi bi-receipt" text="暂无兑换订单" />
@@ -307,9 +307,9 @@
               <!-- 收货信息（实物商品下单时填写，后端存 JSON 并在 result.address 解析） -->
               <div v-if="orderAddress(order)" class="order-address">
                 <i class="bi bi-geo-alt" />
-                <span class="addr-name">{{ orderAddress(order).name }}</span>
-                <span class="addr-phone">{{ orderAddress(order).phone }}</span>
-                <span class="addr-detail" :title="orderAddress(order).address">
+                <span class="address-name">{{ orderAddress(order).name }}</span>
+                <span class="address-phone">{{ orderAddress(order).phone }}</span>
+                <span class="address-detail" :title="orderAddress(order).address">
                   {{ orderAddress(order).address }}
                 </span>
                 <button
@@ -1475,7 +1475,7 @@ onMounted(() => {
 .view-tabs .status-tab:hover {
   color: var(--primary);
 }
-.view-tabs .status-tab.active {
+.view-tabs .status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1521,7 +1521,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1602,7 +1602,7 @@ onMounted(() => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1639,7 +1639,7 @@ onMounted(() => {
 .goods-row:last-child {
   border-bottom: none;
 }
-.goods-row.selected {
+.goods-row.is-selected {
   background: var(--accent-wash);
 }
 
@@ -1827,14 +1827,14 @@ onMounted(() => {
 .order-address > .bi {
   color: var(--primary);
 }
-.order-address .addr-name {
+.order-address .address-name {
   font-weight: 500;
   color: var(--text);
 }
-.order-address .addr-phone {
+.order-address .address-phone {
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
-.order-address .addr-detail {
+.order-address .address-detail {
   flex: 1;
   min-width: 0;
   overflow: hidden;

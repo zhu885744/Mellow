@@ -1,13 +1,13 @@
 <template>
   <div class="comment-item" :id="`comment-${comment.id}`" :class="{ 'is-child': isChild, 'comment-highlight': highlightId && String(highlightId) === String(comment.id) }">
-    <div class="c-avatar">
+    <div class="comment-avatar">
       <img :src="author.avatar || defaultAvatar" :alt="author.nickname" @error="onImgError" loading="lazy" />
     </div>
-    <div class="c-body">
-      <div class="c-head">
-        <span v-if="authorLink" class="c-name c-name-link" @click="goAuthor">{{ author.nickname }}</span>
-        <span v-else class="c-name">{{ author.nickname }}</span>
-        <span v-if="author.level" class="c-level">Lv.{{ author.level }}</span>
+    <div class="comment-body">
+      <div class="comment-head">
+        <span v-if="authorLink" class="comment-name comment-name-link" @click="goAuthor">{{ author.nickname }}</span>
+        <span v-else class="comment-name">{{ author.nickname }}</span>
+        <span v-if="author.level" class="level-tag">Lv.{{ author.level }}</span>
         <!-- 有装扮样式用 TitleBadge 还原后台配色；没有则回退旧色板 -->
         <TitleBadge
           v-if="author.title || titlePayload"
@@ -15,23 +15,23 @@
           :text="author.title"
           size="sm"
         />
-        <span v-else-if="author.title" :class="['c-title', titleClass]">{{ author.title }}</span>
+        <span v-else-if="author.title" :class="['title-tag', titleClass]">{{ author.title }}</span>
         <!-- 佩戴中的勋章（作者信息里带 users.json，不需要额外请求） -->
         <WearingBadge v-if="author.json?.wearing_badge" :badge="author.json.wearing_badge" />
-        <span v-if="author.id === authorId" class="c-badge">作者</span>
+        <span v-if="author.id === authorId" class="comment-badge">作者</span>
         <!-- 仅作者可见：评论者 / 内容作者自己看得到正文，用徽标标明这条是私密评论 -->
         <span
           v-if="Number(comment.scope) === 4 && !isAuthorOnly"
-          class="c-scope"
+          class="comment-scope"
           title="仅作者可见：只有内容作者与评论者本人能看到"
         >
           <i class="bi bi-eye-slash" aria-hidden="true" /> 仅作者
         </span>
         <!-- 时间 + 设备：设备取自后端返回的 comment.agent（普通用户为脱敏值），
              解析成「系统 · 浏览器」展示，原始 UA 放在 title 里悬停可见 -->
-        <span class="c-meta">
-          <span class="c-time">{{ formatDate(comment.create_time) }}</span>
-          <span v-if="device.label" class="c-device" :title="agentRaw">
+        <span class="comment-meta">
+          <span class="comment-time">{{ formatDate(comment.create_time) }}</span>
+          <span v-if="device.label" class="comment-device" :title="agentRaw">
             <i :class="device.icon" aria-hidden="true" />
             <span>{{ device.label }}</span>
           </span>
@@ -39,13 +39,13 @@
       </div>
 
       <!-- 可见范围：仅作者可见（评论）——非内容作者/评论者只看到占位提示 -->
-      <div v-if="isAuthorOnly" class="c-author-only">
+      <div v-if="isAuthorOnly" class="comment-author-only">
         <i class="bi bi-eye-slash" aria-hidden="true" /> 该评论仅作者可见
       </div>
       <!-- 可见范围：登录可见的评论（评论不支持付费可见），后端已清空正文 -->
       <ContentLock
         v-else-if="commentLocked"
-        class="c-lock"
+        class="comment-lock"
         :state="comment.scope_state"
         :integral="0"
         bind-type="comment"
@@ -55,18 +55,18 @@
       />
       <div
         v-else
-        class="c-content"
-        :class="{ 'c-content-link': authorLink }"
+        class="comment-content"
+        :class="{ 'comment-content-link': authorLink }"
         v-html="renderedContent"
         @click="goAuthor"
       ></div>
 
       <!-- 评论图片 -->
-      <div v-if="images.length && !commentLocked" class="c-images">
+      <div v-if="images.length && !commentLocked" class="comment-images">
         <img
           v-for="(img, i) in images"
           :key="img"
-          class="c-img"
+          class="comment-img"
           :src="img"
           alt="评论图片"
           loading="lazy"
@@ -75,38 +75,38 @@
         />
       </div>
 
-      <div class="c-actions">
-        <button v-if="!isAuthorOnly" ref="likeBtn" class="c-action like-btn" :class="{ active: comment.liked }" @click="$emit('like', comment)">
-          <span class="c-icon"><i ref="likeIcon" class="bi" :class="comment.liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
+      <div class="comment-actions">
+        <button v-if="!isAuthorOnly" ref="likeBtn" class="comment-action like-btn" :class="{ 'is-active': comment.liked }" @click="$emit('like', comment)">
+          <span class="comment-icon"><i ref="likeIcon" class="bi" :class="comment.liked ? 'bi-heart-fill' : 'bi-heart'" /></span>
           <span>{{ comment.likeCount || 0 }}</span>
         </button>
-        <button v-if="allowComment && !isAuthorOnly" class="c-action" @click="$emit('reply', comment)">
-          <span class="c-icon"><i class="bi bi-chat-dots" /></span> 回复
+        <button v-if="allowComment && !isAuthorOnly" class="comment-action" @click="$emit('reply', comment)">
+          <span class="comment-icon"><i class="bi bi-chat-dots" /></span> 回复
         </button>
         <!-- 打赏：自己的评论不显示；弹窗由父级 CommentTree 统一承载（同举报） -->
         <button
           v-if="canTip && !isAuthorOnly"
-          class="c-action"
+          class="comment-action"
           title="打赏这条评论"
           @click="$emit('tip', comment)"
         >
-          <span class="c-icon"><i class="bi bi-coin" /></span> 打赏
+          <span class="comment-icon"><i class="bi bi-coin" /></span> 打赏
         </button>
-        <button v-if="canDelete" class="c-action c-del" @click="$emit('remove', comment)">删除</button>
+        <button v-if="canDelete" class="comment-action comment-del" @click="$emit('remove', comment)">删除</button>
         <!-- 举报：自己的评论不显示（举报弹窗由父级 CommentTree 统一承载，避免每条评论各挂一个弹窗）；
              看不到正文的「仅作者可见」评论同样不提供举报入口 -->
         <button
           v-if="canReport && !isAuthorOnly"
-          class="c-action"
+          class="comment-action"
           title="举报这条评论"
           @click="$emit('report', comment)"
         >
-          <span class="c-icon"><i class="bi bi-flag" /></span> 举报
+          <span class="comment-icon"><i class="bi bi-flag" /></span> 举报
         </button>
       </div>
 
       <!-- 回复框（禁止评论时不展示） -->
-      <div v-if="allowComment && replyTo && replyTo.id === comment.id" class="c-reply-box">
+      <div v-if="allowComment && replyTo && replyTo.id === comment.id" class="comment-reply-box">
         <EmojiEditor
           v-model="replyText"
           :placeholder="`回复 @${replyTo.name}：`"
@@ -132,7 +132,7 @@
             </button>
           </template>
         </EmojiEditor>
-        <div v-if="replyImages.length" class="c-reply-images">
+        <div v-if="replyImages.length" class="comment-reply-images">
           <div v-for="(img, i) in replyImages" :key="img" class="reply-thumb">
             <img :src="img" alt="" loading="lazy" />
             <span class="img-del" title="移除" @click="removeImage(i)">×</span>
@@ -156,7 +156,7 @@
           :max="9"
           @select="onLibrarySelect"
         />
-        <div class="c-reply-actions">
+        <div class="comment-reply-actions">
           <!-- 回复可见范围：公开 / 登录可见 / 仅作者可见（评论不支持付费可见），用单选框平铺 -->
           <ScopeRadio v-model="replyScope" :options="scopeOptions" class="reply-scope" />
           <span v-if="replyImages.length" class="img-tip">已选 {{ replyImages.length }} 张</span>
@@ -172,7 +172,7 @@
       </div>
 
       <!-- 子评论 -->
-      <div v-if="comment.replies && comment.replies.length" class="c-children">
+      <div v-if="comment.replies && comment.replies.length" class="comment-children">
         <CommentItem
           v-for="child in comment.replies"
           :key="child.id"
@@ -432,18 +432,18 @@ function submitReply() {
 .comment-item:last-child {
   border-bottom: none;
 }
-.c-avatar img {
+.comment-avatar img {
   width: 40px;
   height: 40px;
   border-radius: 50%;
   object-fit: cover;
   background: var(--bg-muted);
 }
-.c-body {
+.comment-body {
   flex: 1;
   min-width: 0;
 }
-.c-head {
+.comment-head {
   display: flex;
   align-items: center;
   /* 横向 8px 保持昵称/等级/头衔之间呼吸感，纵向 2px 收紧昵称与日期两行间距 */
@@ -451,18 +451,18 @@ function submitReply() {
   font-size: 13px;
   flex-wrap: wrap;
 }
-.c-name {
+.comment-name {
   font-weight: 500;
   color: var(--text);
 }
-.c-name-link {
+.comment-name-link {
   cursor: pointer;
   transition: color 0.2s;
 }
-.c-name-link:hover {
+.comment-name-link:hover {
   color: var(--primary);
 }
-.c-level {
+.level-tag {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: var(--radius-xs);
@@ -470,7 +470,7 @@ function submitReply() {
   color: var(--primary-deep);
   flex-shrink: 0;
 }
-.c-title {
+.title-tag {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: var(--radius-xs);
@@ -492,7 +492,7 @@ function submitReply() {
 .title-xiake { background: linear-gradient(135deg, #4a9e6f, #2f7d52); }
 .title-xuetu { background: linear-gradient(135deg, #9aa0a6, #6c757d); }
 .title-default { background: #6c757d; }
-.c-badge {
+.comment-badge {
   font-size: 10px;
   padding: 0 5px;
   border-radius: 3px;
@@ -500,7 +500,7 @@ function submitReply() {
   color: var(--accent);
 }
 /* 可见范围徽标（仅作者可见的私密评论） */
-.c-scope {
+.comment-scope {
   display: inline-flex;
   align-items: center;
   gap: 3px;
@@ -512,14 +512,14 @@ function submitReply() {
   border: 1px dashed var(--border);
 }
 /* 时间 + 设备：独占一行，显示在昵称下面 */
-.c-meta {
+.comment-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 2px 10px;
   flex-basis: 100%;
 }
-.c-time {
+.comment-time {
   color: var(--text-muted);
   font-size: 13px;
   font-weight: 500;
@@ -527,7 +527,7 @@ function submitReply() {
   font-variant-numeric: tabular-nums;
 }
 /* 设备标签：弱化处理，不抢正文注意力；hover 显示原始 UA（title） */
-.c-device {
+.comment-device {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -540,19 +540,19 @@ function submitReply() {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.c-device > i {
+.comment-device > i {
   font-size: 12px;
   flex-shrink: 0;
   color: var(--text-light);
 }
-.c-del {
+.comment-del {
   color: var(--text-muted);
   font-size: 13px;
 }
-.c-del:hover {
+.comment-del:hover {
   color: var(--accent);
 }
-.c-content {
+.comment-content {
   font-size: 15px;
   line-height: 1.7;
   color: var(--text-soft);
@@ -560,7 +560,7 @@ function submitReply() {
   word-break: break-word;
 }
 /* 仅作者可见：非内容作者的占位提示（正文已由后端清空） */
-.c-author-only {
+.comment-author-only {
   display: inline-flex;
   align-items: center;
   gap: 5px;
@@ -573,21 +573,21 @@ function submitReply() {
   border: 1px dashed var(--border);
   border-radius: var(--radius-sm);
 }
-.c-content-link {
+.comment-content-link {
   cursor: pointer;
   transition: color 0.2s;
 }
-.c-content-link:hover {
+.comment-content-link:hover {
   color: var(--primary);
 }
-.c-reply-to {
+.comment-reply-to {
   color: var(--primary);
 }
-.c-actions {
+.comment-actions {
   display: flex;
   gap: 16px;
 }
-.c-action {
+.comment-action {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -601,22 +601,22 @@ function submitReply() {
   padding: 0;
   transition: color var(--dur) var(--ease);
 }
-.c-action:hover {
+.comment-action:hover {
   color: var(--primary);
 }
 .like-btn {
   position: relative;
 }
-.c-action.active {
+.comment-action.is-active {
   color: var(--accent);
 }
-.c-icon {
+.comment-icon {
   font-size: 14px;
 }
-.c-reply-box {
+.comment-reply-box {
   margin-top: 10px;
 }
-.c-reply-actions {
+.comment-reply-actions {
   display: flex;
   align-items: center;
   justify-content: flex-end;
@@ -630,13 +630,13 @@ function submitReply() {
 }
 
 /* ===== 评论图片 ===== */
-.c-images {
+.comment-images {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin: 8px 0;
 }
-.c-img {
+.comment-img {
   width: 88px;
   height: 88px;
   object-fit: cover;
@@ -645,7 +645,7 @@ function submitReply() {
   cursor: zoom-in;
   transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
-.c-img:hover {
+.comment-img:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow);
 }
@@ -659,7 +659,7 @@ function submitReply() {
   color: var(--text-muted);
   margin-right: auto;
 }
-.c-reply-images {
+.comment-reply-images {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -696,7 +696,7 @@ function submitReply() {
 .img-del:hover {
   background: var(--accent);
 }
-.c-children {
+.comment-children {
   margin-top: 12px;
   padding-left: 14px;
   border-left: 2px solid var(--border);
@@ -708,21 +708,21 @@ function submitReply() {
     gap: 10px;
     padding: 14px 0;
   }
-  .c-avatar img {
+  .comment-avatar img {
     width: 36px;
     height: 36px;
   }
-  .c-time {
+  .comment-time {
     font-size: 12px;
   }
-  .c-meta {
+  .comment-meta {
     gap: 2px 8px;
   }
-  .c-device {
+  .comment-device {
     font-size: 11px;
   }
   /* 子评论缩进收紧，更适配窄屏 */
-  .c-children {
+  .comment-children {
     padding-left: 10px;
   }
 }

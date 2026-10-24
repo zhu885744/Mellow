@@ -58,13 +58,13 @@
             :key="tab.key"
             type="button"
             class="status-tab"
-            :class="{ active: !trash && status === tab.key }"
+            :class="{ 'is-active': !trash && status === tab.key }"
             @click="switchStatus(tab.key)"
           >{{ tab.label }}</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="toggleTrash"
           >
             <i class="bi bi-trash3" /> 回收站
@@ -126,7 +126,7 @@
         </button>
       </div>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else-if="!list.length" class="empty-row">
         <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-speedometer2'" :text="emptyText" />
@@ -150,15 +150,15 @@
         <table class="warn-table">
           <thead>
             <tr>
-              <th class="td-pick"></th>
+              <th class="cell-pick"></th>
               <th>IP</th>
               <th>请求</th>
-              <th class="td-act">操作</th>
+              <th class="cell-act">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in list" :key="item.id" :class="{ selected: isSelected(item.id) }">
-              <td class="td-pick">
+            <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
+              <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
                   <input
                     type="checkbox"
@@ -173,7 +173,7 @@
                 <code class="ip-value">{{ item.ip || '—' }}</code>
                 <div class="warn-sub">
                   <span class="meta-text"><i class="bi bi-clock" /> {{ timeText(item) }}</span>
-                  <span v-if="item.agent" class="meta-text ua-text" :title="item.agent">
+                  <span v-if="item.agent" class="meta-text user-agent-text" :title="item.agent">
                     <i class="bi bi-browser-chrome" /> {{ item.agent }}
                   </span>
                 </div>
@@ -182,7 +182,7 @@
                 <span class="method-chip" :class="`is-${methodKey(item)}`">{{ methodLabel(item) }}</span>
                 <code class="warn-path">{{ item.path || '—' }}</code>
               </td>
-              <td class="td-act">
+              <td class="cell-act">
                 <div class="row-actions">
                   <template v-if="trash">
                     <button class="btn btn-ghost btn-sm" title="恢复" aria-label="恢复" :disabled="busy" @click="restore(item)">
@@ -701,7 +701,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -782,7 +782,7 @@ onMounted(() => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -826,14 +826,14 @@ onMounted(() => {
 .warn-table tbody tr:hover td {
   background: var(--bg-muted);
 }
-.warn-table tbody tr.selected td {
+.warn-table tbody tr.is-selected td {
   background: var(--accent-wash);
 }
 
-.td-pick {
+.cell-pick {
   width: 36px;
 }
-.td-act {
+.cell-act {
   width: 96px;
   text-align: right;
 }
@@ -873,7 +873,7 @@ onMounted(() => {
   align-items: center;
   gap: 3px;
 }
-.ua-text {
+.user-agent-text {
   max-width: 260px;
   overflow: hidden;
   text-overflow: ellipsis;

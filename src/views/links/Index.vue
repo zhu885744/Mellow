@@ -9,7 +9,7 @@
       </template>
     </SectionTitle>
 
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="is-loading">
       <span class="spinner" /> 加载中...
     </div>
 
@@ -22,7 +22,7 @@
       <div v-if="groups.length > 1" class="group-filter">
         <button
           class="group-chip"
-          :class="{ active: activeGroupId === null }"
+          :class="{ 'is-active': activeGroupId === null }"
           @click="activeGroupId = null"
         >
           全部<span class="group-chip-count">{{ totalCount }}</span>
@@ -31,7 +31,7 @@
           v-for="g in groups"
           :key="g.id"
           class="group-chip"
-          :class="{ active: activeGroupId === g.id }"
+          :class="{ 'is-active': activeGroupId === g.id }"
           @click="activeGroupId = g.id"
         >
           {{ g.name }}<span class="group-chip-count">{{ g.list.length }}</span>
@@ -444,7 +444,7 @@ onMounted(load)
   border-color: var(--primary);
 }
 
-.group-chip.active {
+.group-chip.is-active {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
@@ -460,7 +460,7 @@ onMounted(load)
   font-variant-numeric: tabular-nums;
 }
 
-.group-chip.active .group-chip-count {
+.group-chip.is-active .group-chip-count {
   background: rgba(255, 255, 255, 0.24);
   color: #fff;
 }
@@ -613,7 +613,7 @@ onMounted(load)
 }
 
 /* --- 加载与空状态 --- */
-.loading {
+.is-loading {
   padding: 48px;
   text-align: center;
   color: var(--text-muted);

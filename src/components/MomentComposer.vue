@@ -1,21 +1,21 @@
 <template>
   <div class="composer">
     <!-- 作者 -->
-    <div class="composer__head">
-      <img v-if="avatar" :src="avatar" class="composer__avatar" alt="" loading="lazy" />
-      <i v-else class="bi bi-person-circle composer__avatar-icon" aria-hidden="true" />
-      <span class="composer__name">{{ nickname }}</span>
+    <div class="composer-head">
+      <img v-if="avatar" :src="avatar" class="composer-avatar" alt="" loading="lazy" />
+      <i v-else class="bi bi-person-circle composer-avatar-icon" aria-hidden="true" />
+      <span class="composer-name">{{ nickname }}</span>
     </div>
 
     <!-- 工具栏：与文章编辑器（MarkdownEditor）同一套视觉 —— 纯图标按钮 + 分隔线。
          按钮都带 @mousedown.prevent，保证点击时不会丢正文选区（表情按光标位置插入）。 -->
-    <div class="composer__toolbar">
-      <button type="button" class="composer__tool" title="插入表情" @mousedown.prevent @click="openEmoji">
+    <div class="composer-toolbar">
+      <button type="button" class="composer-tool" title="插入表情" @mousedown.prevent @click="openEmoji">
         <i class="bi bi-emoji-smile" />
       </button>
       <button
         type="button"
-        class="composer__tool"
+        class="composer-tool"
         title="上传图片"
         :disabled="uploading"
         @mousedown.prevent
@@ -25,7 +25,7 @@
       </button>
       <button
         type="button"
-        class="composer__tool"
+        class="composer-tool"
         title="从附件库选择已有图片"
         :disabled="uploading"
         @mousedown.prevent
@@ -36,7 +36,7 @@
 
       <button
         type="button"
-        class="composer__tool"
+        class="composer-tool"
         title="插入话题（#话题#，发布后自动创建并聚合）"
         @mousedown.prevent
         @click="insertTopicMark"
@@ -44,9 +44,9 @@
         <i class="bi bi-hash" />
       </button>
 
-      <span class="composer__toolbar-split" />
-      <span class="composer__count">{{ images.length }}/{{ MAX_IMAGES }}</span>
-      <span v-if="uploading" class="composer__count">上传中…</span>
+      <span class="composer-toolbar-split" />
+      <span class="composer-count">{{ images.length }}/{{ MAX_IMAGES }}</span>
+      <span v-if="uploading" class="composer-count">上传中…</span>
     </div>
 
     <!-- max-height="none"：输入区随内容长高，滚动交给外层（弹窗 / 页面），
@@ -63,7 +63,7 @@
       hide-toolbar
     />
 
-    <input ref="fileInput" type="file" accept="image/*" multiple class="composer__file" @change="onPick" />
+    <input ref="fileInput" type="file" accept="image/*" multiple class="composer-file" @change="onPick" />
 
     <!-- 附件库（选择已上传图片加入待发布动态） -->
     <AttachmentLibrary
@@ -76,21 +76,21 @@
     />
 
     <!-- 已选图片 -->
-    <div v-if="images.length" class="composer__images">
-      <div v-for="(img, i) in images" :key="img" class="composer__image">
-        <img :src="img" class="composer__image-img" alt="预览" loading="lazy" />
-        <button type="button" class="composer__image-del" title="移除" @click="removeImage(i)">
+    <div v-if="images.length" class="composer-images">
+      <div v-for="(img, i) in images" :key="img" class="composer-image">
+        <img :src="img" class="composer-image-img" alt="预览" loading="lazy" />
+        <button type="button" class="composer-image-del" title="移除" @click="removeImage(i)">
           <i class="bi bi-x-lg" />
         </button>
       </div>
     </div>
 
     <!-- 所在位置（可选） -->
-    <div class="composer__loc">
+    <div class="composer-loc">
       <i class="bi bi-geo-alt" />
       <input
         v-model="location"
-        class="composer__loc-input"
+        class="composer-loc-input"
         type="text"
         maxlength="64"
         placeholder="所在位置（可选）"
@@ -99,8 +99,8 @@
     </div>
 
     <!-- 可见范围：公开 / 登录可见 / 付费可见（积分兑换），用单选框平铺 -->
-    <div class="composer__scope">
-      <span class="composer__scope-label">
+    <div class="composer-scope">
+      <span class="composer-scope-label">
         <i class="bi bi-eye" aria-hidden="true" />
         可见范围
       </span>
@@ -108,7 +108,7 @@
       <input
         v-if="Number(scope) === 3"
         v-model.number="scopeIntegral"
-        class="composer__scope-input"
+        class="composer-scope-input"
         type="number"
         min="1"
         max="999999"
@@ -116,11 +116,11 @@
       />
     </div>
 
-    <div class="composer__actions">
+    <div class="composer-actions">
       <button class="btn btn-primary btn-sm btn-block" :disabled="publishing || uploading" @click="submit">
         {{ publishing ? '发布中...' : '发布' }}
       </button>
-      <span class="composer__tip">
+      <span class="composer-tip">
         「用 <code>#话题#</code> 参与话题（发布后自动创建话题，点击可看该话题下的内容）；若站点开启了内容审核，发布后需管理员审核通过才对外显示」
       </span>
     </div>
@@ -317,35 +317,35 @@ defineExpose({ submit, reset, hasDraft })
 </script>
 
 <style scoped>
-.composer__head {
+.composer-head {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
 }
-.composer__avatar {
+.composer-avatar {
   width: 32px;
   height: 32px;
   border-radius: 50%;
 }
-.composer__avatar-icon {
+.composer-avatar-icon {
   font-size: 30px;
   color: var(--text-light, var(--text-muted));
 }
-.composer__name {
+.composer-name {
   font-size: 13px;
   font-weight: 500;
 }
-.composer__count {
+.composer-count {
   font-size: 12px;
   color: var(--text-muted);
 }
-.composer__file {
+.composer-file {
   display: none;
 }
 
-/* ---------- 工具栏：与 MarkdownEditor 的 .md-toolbar / .md-tool 保持一致 ---------- */
-.composer__toolbar {
+/* ---------- 工具栏：与 MarkdownEditor 的 .markdown-editor-toolbar / .markdown-editor-tool 保持一致 ---------- */
+.composer-toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -354,7 +354,7 @@ defineExpose({ submit, reset, hasDraft })
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border-soft);
 }
-.composer__tool {
+.composer-tool {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -369,28 +369,28 @@ defineExpose({ submit, reset, hasDraft })
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.composer__tool:hover:not(:disabled) {
+.composer-tool:hover:not(:disabled) {
   background: var(--bg-muted);
   color: var(--primary);
 }
-.composer__tool:disabled {
+.composer-tool:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.composer__toolbar-split {
+.composer-toolbar-split {
   width: 1px;
   height: 16px;
   margin: 0 6px;
   background: var(--border);
 }
 
-.composer__images {
+.composer-images {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-top: 10px;
 }
-.composer__image {
+.composer-image {
   position: relative;
   width: 72px;
   height: 72px;
@@ -398,13 +398,13 @@ defineExpose({ submit, reset, hasDraft })
   overflow: hidden;
   border: 1px solid var(--border-soft);
 }
-.composer__image-img {
+.composer-image-img {
   display: block;
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.composer__image-del {
+.composer-image-del {
   position: absolute;
   top: 4px;
   right: 4px;
@@ -422,15 +422,15 @@ defineExpose({ submit, reset, hasDraft })
   cursor: pointer;
   transition: background 0.2s;
 }
-.composer__image-del:hover {
+.composer-image-del:hover {
   background: var(--danger);
 }
 
-.composer__loc {
+.composer-loc {
   position: relative;
   margin-top: 10px;
 }
-.composer__loc .bi {
+.composer-loc .bi {
   position: absolute;
   left: 10px;
   top: 50%;
@@ -439,7 +439,7 @@ defineExpose({ submit, reset, hasDraft })
   color: var(--text-light);
   pointer-events: none;
 }
-.composer__loc-input {
+.composer-loc-input {
   width: 100%;
   /* 与发布器工具栏按钮（.btn-sm）等高 */
   height: var(--control-h-sm);
@@ -452,20 +452,20 @@ defineExpose({ submit, reset, hasDraft })
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-.composer__loc-input:focus {
+.composer-loc-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
 /* 可见范围：标签 + 单选框组 +（付费时的）兑换积分输入 */
-.composer__scope {
+.composer-scope {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px 12px;
   margin-top: 10px;
 }
-.composer__scope-label {
+.composer-scope-label {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -473,7 +473,7 @@ defineExpose({ submit, reset, hasDraft })
   font-size: 12px;
   color: var(--text-muted);
 }
-.composer__scope-input {
+.composer-scope-input {
   width: 160px;
   height: var(--control-h-sm);
   padding: 0 12px;
@@ -485,18 +485,18 @@ defineExpose({ submit, reset, hasDraft })
   outline: none;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-.composer__scope-input:focus {
+.composer-scope-input:focus {
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
 
-.composer__actions {
+.composer-actions {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin-top: 8px;
 }
-.composer__tip {
+.composer-tip {
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-muted);
@@ -504,7 +504,7 @@ defineExpose({ submit, reset, hasDraft })
 
 /* 手机端：位置输入与按钮更紧凑一点 */
 @media (max-width: 640px) {
-  .composer__image {
+  .composer-image {
     width: 64px;
     height: 64px;
   }

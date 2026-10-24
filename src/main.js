@@ -6,12 +6,17 @@ import 'bootstrap-icons/font/bootstrap-icons.css'
 import './assets/styles.css'
 import { useUserStore } from './stores/user'
 import { useThemeStore } from './stores/theme'
+import { initTheme } from './utils/theme-runtime'
 
 const app = createApp(App)
 const pinia = createPinia()
 
 app.use(pinia)
 app.use(router)
+
+// 主题配色：先用 localStorage 缓存同步应用（减少闪烁），再异步拉取 /api/theme/active
+// 校准为服务端最新值。不再依赖 /theme-custom.css，避免 CDN 缓存静态 CSS 导致换肤不生效。
+initTheme()
 
 // 恢复主题设置（index.html 内联脚本已预设，这里同步到 store 并监听系统变化）
 useThemeStore().init()

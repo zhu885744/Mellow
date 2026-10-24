@@ -78,7 +78,7 @@
           <div class="admin-user" ref="userMenuRef">
             <button
               class="admin-user-btn"
-              :class="{ open: userMenuOpen }"
+              :class="{ 'is-open': userMenuOpen }"
               type="button"
               aria-haspopup="menu"
               :aria-expanded="userMenuOpen"
@@ -302,7 +302,7 @@ watch(() => route.path, (path) => {
   background: var(--bg-muted);
   color: var(--text);
 }
-.admin-nav-item.active {
+.admin-nav-item.is-active {
   background: var(--accent-soft);
   color: var(--primary);
   font-weight: 600;
@@ -427,7 +427,7 @@ watch(() => route.path, (path) => {
   transition: color 0.18s, border-color 0.18s, background 0.18s;
 }
 .admin-user-btn:hover,
-.admin-user-btn.open {
+.admin-user-btn.is-open {
   color: var(--text);
   border-color: var(--border);
   background: var(--bg-muted);
@@ -437,7 +437,7 @@ watch(() => route.path, (path) => {
   color: var(--text-light);
   transition: transform 0.18s;
 }
-.admin-user-btn.open .admin-user-caret {
+.admin-user-btn.is-open .admin-user-caret {
   transform: rotate(180deg);
 }
 .admin-user-menu {

@@ -20,13 +20,13 @@
             :key="tab.key"
             type="button"
             class="status-tab"
-            :class="{ active: !trash && status === tab.key }"
+            :class="{ 'is-active': !trash && status === tab.key }"
             @click="switchTab(tab.key)"
           >{{ tab.label }}</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="toggleTrash"
           >
             <i class="bi bi-trash3" /> 回收站
@@ -119,7 +119,7 @@
       </div>
 
       <!-- 列表 -->
-      <div v-if="loading" class="loading">
+      <div v-if="loading" class="is-loading">
         <span class="spinner" /> 加载中...
       </div>
 
@@ -148,7 +148,7 @@
             v-for="item in list"
             :key="item.id"
             class="comment-row"
-            :class="{ selected: isSelected(item.id) }"
+            :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
               <input
@@ -160,11 +160,11 @@
               />
             </label>
 
-            <img class="c-avatar" :src="authorOf(item).avatar || defaultAvatar" :alt="authorOf(item).nickname" loading="lazy" />
+            <img class="comment-avatar" :src="authorOf(item).avatar || defaultAvatar" :alt="authorOf(item).nickname" loading="lazy" />
 
-            <div class="c-main">
-              <div class="c-name-row">
-                <span class="c-name">{{ authorOf(item).nickname || '匿名' }}</span>
+            <div class="comment-main">
+              <div class="comment-name-row">
+                <span class="comment-name">{{ authorOf(item).nickname || '匿名' }}</span>
                 <span v-if="authorOf(item).title" class="flag is-title">{{ authorOf(item).title }}</span>
                 <span class="bind-chip" :class="`is-${item.bind_type}`">
                   <i :class="bindIcon(item)" /> {{ bindLabel(item) }}
@@ -187,16 +187,16 @@
                 >
                   <i :class="auditFlag(item).icon" /> {{ auditFlag(item).text }}
                 </span>
-                <span class="c-time">{{ timeText(item) }}</span>
+                <span class="comment-time">{{ timeText(item) }}</span>
               </div>
 
-              <p class="c-content">
+              <p class="comment-content">
                 <EmojiText v-if="item.content" :text="item.content" :size="17" />
                 <template v-else>（无内容）</template>
               </p>
 
               <!-- 配图缩略图：最多 3 张，超出用 +N 提示（解析结果按页缓存） -->
-              <div v-if="imagesOf(item).length" class="c-thumbs">
+              <div v-if="imagesOf(item).length" class="comment-thumbs">
                 <button
                   v-for="(img, i) in imagesOf(item).slice(0, MAX_THUMBS)"
                   :key="img + i"
@@ -213,7 +213,7 @@
                 </button>
               </div>
 
-              <div class="c-meta">
+              <div class="comment-meta">
                 <span class="meta-text">#{{ item.id }}</span>
                 <router-link
                   v-if="bindLink(item)"
@@ -231,7 +231,7 @@
               </div>
             </div>
 
-            <div class="c-actions">
+            <div class="comment-actions">
               <template v-if="trash">
                 <button class="btn btn-ghost btn-sm" title="恢复" aria-label="恢复" :disabled="busy" @click="restore(item)">
                   <i class="bi bi-arrow-counterclockwise" />
@@ -1075,7 +1075,7 @@ onUnmounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1158,7 +1158,7 @@ onUnmounted(() => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1194,7 +1194,7 @@ onUnmounted(() => {
 .comment-row:last-child {
   border-bottom: none;
 }
-.comment-row.selected {
+.comment-row.is-selected {
   background: var(--accent-wash);
 }
 
@@ -1211,7 +1211,7 @@ onUnmounted(() => {
   cursor: pointer;
 }
 
-.c-avatar {
+.comment-avatar {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
@@ -1222,23 +1222,23 @@ onUnmounted(() => {
   border: 1px solid var(--border);
 }
 
-.c-main {
+.comment-main {
   flex: 1;
   min-width: 0;
 }
-.c-name-row {
+.comment-name-row {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 6px;
 }
-.c-name {
+.comment-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
 }
-.c-time {
+.comment-time {
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -1269,7 +1269,7 @@ onUnmounted(() => {
   background: rgba(217, 84, 77, 0.12);
 }
 /* 「审核通过」按钮用成功色，和「驳回」的红色区分开 */
-.c-actions .ok {
+.comment-actions .ok {
   color: var(--success);
 }
 
@@ -1296,7 +1296,7 @@ onUnmounted(() => {
   background: rgba(245, 158, 11, 0.14);
 }
 
-.c-content {
+.comment-content {
   margin: 0;
   font-size: 14px;
   line-height: 1.7;
@@ -1310,7 +1310,7 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.c-thumbs {
+.comment-thumbs {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -1358,7 +1358,7 @@ onUnmounted(() => {
   pointer-events: none;
 }
 
-.c-meta {
+.comment-meta {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -1393,18 +1393,18 @@ onUnmounted(() => {
   gap: 3px;
 }
 
-.c-actions {
+.comment-actions {
   display: flex;
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
   align-self: center;
 }
-.c-actions .danger:hover:not(:disabled) {
+.comment-actions .danger:hover:not(:disabled) {
   border-color: var(--danger);
   color: var(--danger);
 }
-.c-actions .btn:disabled {
+.comment-actions .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -1451,10 +1451,10 @@ onUnmounted(() => {
   .comment-row {
     flex-wrap: wrap;
   }
-  .c-main {
+  .comment-main {
     flex: 1 1 60%;
   }
-  .c-actions {
+  .comment-actions {
     width: 100%;
     justify-content: flex-end;
   }

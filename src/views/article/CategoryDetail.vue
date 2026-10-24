@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div v-if="loading" class="loading">
+    <div v-if="loading" class="is-loading">
       <span class="spinner" /> 加载中...
     </div>
     <EmptyState v-else-if="error" :text="errorMsg" />
@@ -165,7 +165,7 @@ onMounted(init)
 </script>
 
 <style scoped>
-.loading {
+.is-loading {
   padding: 64px;
   text-align: center;
   color: var(--text-muted);

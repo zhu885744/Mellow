@@ -3,15 +3,15 @@
     <SectionTitle title="拉黑与举报" />
 
     <div class="tab-bar">
-      <button :class="['tab', tab === 'blocks' && 'active']" @click="switchTab('blocks')">
+      <button :class="['tab', tab === 'blocks' && 'is-active']" @click="switchTab('blocks')">
         我的拉黑
       </button>
-      <button :class="['tab', tab === 'reports' && 'active']" @click="switchTab('reports')">
+      <button :class="['tab', tab === 'reports' && 'is-active']" @click="switchTab('reports')">
         我的举报
       </button>
     </div>
 
-    <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+    <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
     <!-- 我的拉黑 -->
     <template v-else-if="tab === 'blocks'">
@@ -176,13 +176,13 @@ onMounted(load)
 </script>
 
 <style scoped>
-/* 基础样式：.loading / .block-title 这类都不是全局样式，各页面自带一份（与其它用户中心页一致） */
+/* 基础样式：.is-loading / .block-title 这类都不是全局样式，各页面自带一份（与其它用户中心页一致） */
 .blocks-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -202,7 +202,7 @@ onMounted(load)
   font-size: 14px;
   cursor: pointer;
 }
-.tab.active {
+.tab.is-active {
   color: var(--primary);
   font-weight: 600;
   border-bottom: 2px solid var(--primary);

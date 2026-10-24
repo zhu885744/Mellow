@@ -8,12 +8,12 @@
         :to="`/docs/${version}/${doc.groupSlug}/${doc.slug}`"
         class="docs-card"
       >
-        <i class="bi bi-file-earmark-text docs-card__icon" aria-hidden="true" />
-        <span class="docs-card__body">
-          <span class="docs-card__title">{{ doc.title }}</span>
-          <span v-if="doc.groupName" class="docs-card__desc">{{ doc.groupName }}</span>
+        <i class="bi bi-file-earmark-text docs-card-icon" aria-hidden="true" />
+        <span class="docs-card-body">
+          <span class="docs-card-title">{{ doc.title }}</span>
+          <span v-if="doc.groupName" class="docs-card-desc">{{ doc.groupName }}</span>
         </span>
-        <i class="bi bi-arrow-right docs-card__arrow" aria-hidden="true" />
+        <i class="bi bi-arrow-right docs-card-arrow" aria-hidden="true" />
       </RouterLink>
     </div>
 
@@ -99,19 +99,19 @@ watch(() => props.version, load, { immediate: true })
   border-color: var(--primary-soft);
   transform: translateY(-2px);
 }
-.docs-card__icon {
+.docs-card-icon {
   flex-shrink: 0;
   font-size: 18px;
   color: var(--primary);
 }
-.docs-card__body {
+.docs-card-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
   flex: 1;
 }
-.docs-card__title {
+.docs-card-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
@@ -119,20 +119,20 @@ watch(() => props.version, load, { immediate: true })
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.docs-card__desc {
+.docs-card-desc {
   font-size: 12px;
   color: var(--text-light);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.docs-card__arrow {
+.docs-card-arrow {
   flex-shrink: 0;
   font-size: 13px;
   color: var(--text-light);
   transition: color 0.2s, transform 0.2s;
 }
-.docs-card:hover .docs-card__arrow {
+.docs-card:hover .docs-card-arrow {
   color: var(--primary);
   transform: translateX(2px);
 }

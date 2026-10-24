@@ -2,8 +2,8 @@
   <article v-if="loading" class="docs-state">加载中…</article>
 
   <article v-else-if="!page" class="docs-state">
-    <h1 class="docs-state__title">文档不存在</h1>
-    <p class="docs-state__desc">这篇文档可能已下线，或需要登录后查看。</p>
+    <h1 class="docs-state-title">文档不存在</h1>
+    <p class="docs-state-desc">这篇文档可能已下线，或需要登录后查看。</p>
   </article>
 
   <article v-else class="docs-page">
@@ -16,11 +16,11 @@
       </template>
     </nav>
 
-    <div class="docs-page__layout">
-      <div class="docs-page__body">
-        <header class="docs-page__head">
-          <h1 class="docs-page__title">{{ page.title }}</h1>
-          <div class="docs-page__meta">
+    <div class="docs-page-layout">
+      <div class="docs-page-body">
+        <header class="docs-page-head">
+          <h1 class="docs-page-title">{{ page.title }}</h1>
+          <div class="docs-page-meta">
             <span>更新于 {{ formatDate(page.update_time || page.publish_time || page.create_time) }}</span>
             <span v-if="page.views">· {{ page.views }} 次阅读</span>
           </div>
@@ -32,7 +32,7 @@
         <!-- 反馈 -->
         <div class="docs-feedback">
           <template v-if="!feedbackDone">
-            <span class="docs-feedback__text">这篇文档有帮助吗？</span>
+            <span class="docs-feedback-text">这篇文档有帮助吗？</span>
             <button type="button" class="btn btn-sm" @click="sendFeedback(1)">
               <i class="bi bi-hand-thumbs-up" aria-hidden="true" /> 有帮助
             </button>
@@ -40,34 +40,34 @@
               <i class="bi bi-hand-thumbs-down" aria-hidden="true" /> 没帮助
             </button>
           </template>
-          <span v-else class="docs-feedback__done">
+          <span v-else class="docs-feedback-done">
             <i class="bi bi-check2-circle" aria-hidden="true" /> 感谢反馈
           </span>
         </div>
 
         <!-- 上一篇 / 下一篇 -->
         <nav v-if="page.prev || page.next" class="docs-pager" aria-label="翻页">
-          <RouterLink v-if="page.prev?.path" :to="page.prev.path" class="docs-pager__item">
-            <span class="docs-pager__label"><i class="bi bi-arrow-left" /> 上一篇</span>
-            <span class="docs-pager__title">{{ page.prev.title }}</span>
+          <RouterLink v-if="page.prev?.path" :to="page.prev.path" class="docs-pager-item">
+            <span class="docs-pager-label"><i class="bi bi-arrow-left" /> 上一篇</span>
+            <span class="docs-pager-title">{{ page.prev.title }}</span>
           </RouterLink>
-          <span v-else class="docs-pager__item is-empty" />
+          <span v-else class="docs-pager-item is-empty" />
 
-          <RouterLink v-if="page.next?.path" :to="page.next.path" class="docs-pager__item is-next">
-            <span class="docs-pager__label">下一篇 <i class="bi bi-arrow-right" /></span>
-            <span class="docs-pager__title">{{ page.next.title }}</span>
+          <RouterLink v-if="page.next?.path" :to="page.next.path" class="docs-pager-item is-next">
+            <span class="docs-pager-label">下一篇 <i class="bi bi-arrow-right" /></span>
+            <span class="docs-pager-title">{{ page.next.title }}</span>
           </RouterLink>
         </nav>
       </div>
 
       <!-- 右侧页内目录 -->
       <aside v-if="toc.length" class="docs-toc">
-        <div class="docs-toc__title">本页目录</div>
+        <div class="docs-toc-title">本页目录</div>
         <a
           v-for="item in toc"
           :key="item.id"
           :href="`#${item.id}`"
-          class="docs-toc__link"
+          class="docs-toc-link"
           :class="`is-lv${item.level}`"
         >{{ item.text }}</a>
       </aside>
@@ -75,11 +75,11 @@
 
     <!-- 评论：由项目设置里的「启用评论」控制，后端返回 comment.{show,allow,count} -->
     <section v-if="commentShow" class="docs-comments">
-      <div class="docs-comments__head">
-        <h2 class="docs-comments__title">
+      <div class="docs-comments-head">
+        <h2 class="docs-comments-title">
           评论
-          <span v-if="commentAllow" class="docs-comments__count">{{ commentsCount }} 条</span>
-          <span v-else class="docs-comments__count">评论已关闭</span>
+          <span v-if="commentAllow" class="docs-comments-count">{{ commentsCount }} 条</span>
+          <span v-else class="docs-comments-count">评论已关闭</span>
         </h2>
       </div>
 
@@ -229,7 +229,7 @@ watch(
   font-size: 10px;
 }
 
-.docs-page__layout {
+.docs-page-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 168px;
   gap: 28px;
@@ -237,15 +237,15 @@ watch(
 }
 
 /* 正文里的第一个 h1 与页面上方的文档标题重复，隐藏掉 */
-.docs-page__body :deep(.markdown-body > h1:first-child) {
+.docs-page-body :deep(.markdown-body > h1:first-child) {
   display: none;
 }
-.docs-page__head {
+.docs-page-head {
   padding-bottom: 18px;
   margin-bottom: 22px;
   border-bottom: 1px solid var(--border-soft);
 }
-.docs-page__title {
+.docs-page-title {
   margin: 0;
   font-family: var(--font-serif);
   font-size: 26px;
@@ -254,7 +254,7 @@ watch(
   color: var(--text);
   letter-spacing: 0.5px;
 }
-.docs-page__meta {
+.docs-page-meta {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -270,14 +270,14 @@ watch(
   padding-left: 14px;
   border-left: 1px solid var(--border-soft);
 }
-.docs-toc__title {
+.docs-toc-title {
   margin-bottom: 10px;
   font-size: 12px;
   font-weight: 600;
   color: var(--text-muted);
   letter-spacing: 1px;
 }
-.docs-toc__link {
+.docs-toc-link {
   display: block;
   padding: 3px 0;
   font-size: 12.5px;
@@ -286,10 +286,10 @@ watch(
   text-decoration: none;
   transition: color 0.2s;
 }
-.docs-toc__link:hover {
+.docs-toc-link:hover {
   color: var(--primary);
 }
-.docs-toc__link.is-lv3 {
+.docs-toc-link.is-lv3 {
   padding-left: 12px;
 }
 
@@ -307,10 +307,10 @@ watch(
   font-size: 13px;
   color: var(--text-muted);
 }
-.docs-feedback__text {
+.docs-feedback-text {
   margin-right: 4px;
 }
-.docs-feedback__done {
+.docs-feedback-done {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -324,7 +324,7 @@ watch(
   gap: 12px;
   margin-top: 28px;
 }
-.docs-pager__item {
+.docs-pager-item {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -334,17 +334,17 @@ watch(
   text-decoration: none;
   transition: border-color 0.2s;
 }
-.docs-pager__item:hover {
+.docs-pager-item:hover {
   border-color: var(--primary-soft);
 }
-.docs-pager__item.is-next {
+.docs-pager-item.is-next {
   text-align: right;
 }
-.docs-pager__label {
+.docs-pager-label {
   font-size: 12px;
   color: var(--text-light);
 }
-.docs-pager__title {
+.docs-pager-title {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
@@ -355,12 +355,12 @@ watch(
   text-align: center;
   color: var(--text-muted);
 }
-.docs-state__title {
+.docs-state-title {
   margin: 0 0 8px;
   font-size: 18px;
   color: var(--text);
 }
-.docs-state__desc {
+.docs-state-desc {
   margin: 0;
   font-size: 13px;
   color: var(--text-light);
@@ -372,7 +372,7 @@ watch(
   margin-top: 26px;
   border-top: 1px solid var(--border-soft);
 }
-.docs-comments__title {
+.docs-comments-title {
   display: flex;
   align-items: baseline;
   gap: 8px;
@@ -381,14 +381,14 @@ watch(
   font-weight: 600;
   color: var(--text);
 }
-.docs-comments__count {
+.docs-comments-count {
   font-size: 12px;
   font-weight: 400;
   color: var(--text-light);
 }
 
 @media (max-width: 1100px) {
-  .docs-page__layout {
+  .docs-page-layout {
     grid-template-columns: 1fr;
   }
   .docs-toc {
@@ -396,10 +396,10 @@ watch(
   }
 }
 @media (max-width: 640px) {
-  .docs-page__title {
+  .docs-page-title {
     font-size: 22px;
   }
-  .docs-page__head {
+  .docs-page-head {
     padding-bottom: 14px;
     margin-bottom: 18px;
   }

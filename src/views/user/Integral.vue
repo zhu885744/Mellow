@@ -62,8 +62,8 @@
 
       <!-- 我的待兑换卡密：签到等活动直接发到账号里的卡密在这里找回 -->
       <div v-if="myCards.length" class="mine-cards">
-        <div class="mine-cards__head">
-          <span class="mine-cards__title">
+        <div class="mine-cards-head">
+          <span class="mine-cards-title">
             <i class="bi bi-ticket-perforated" /> 我的待兑换卡密（{{ myCards.length }}）
           </span>
           <button class="btn btn-sm" type="button" :disabled="redeeming" @click="redeemAll">
@@ -72,10 +72,10 @@
         </div>
 
         <div v-for="item in myCards" :key="item.card_id || item.card" class="mine-card">
-          <code class="mine-card__code">{{ item.card }}</code>
-          <span class="mine-card__face">{{ item.value }} 积分</span>
-          <span v-if="item.source" class="mine-card__from">{{ cardSourceText(item.source) }}</span>
-          <span v-if="item.expired" class="mine-card__expired">已过期</span>
+          <code class="mine-card-code">{{ item.card }}</code>
+          <span class="mine-card-face">{{ item.value }} 积分</span>
+          <span v-if="item.source" class="mine-card-from">{{ cardSourceText(item.source) }}</span>
+          <span v-if="item.expired" class="mine-card-expired">已过期</span>
           <button
             class="btn btn-sm"
             type="button"
@@ -84,7 +84,7 @@
           >兑换</button>
         </div>
 
-        <p class="mine-cards__tip">
+        <p class="mine-cards-tip">
           这些是签到等活动发到账号里的卡密，只有你的账号能兑换，点「兑换」立即到账。
         </p>
       </div>
@@ -100,9 +100,9 @@
           <template v-if="tasks.streak > 0"> · 连签 {{ tasks.streak }} 天</template>
         </span>
       </div>
-      <div v-if="loadingTasks" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loadingTasks" class="is-loading"><span class="spinner" /> 加载中...</div>
       <ul v-else-if="taskList.length" class="task-list">
-        <li v-for="t in taskList" :key="t.type" class="task-item" :class="{ done: t.done }">
+        <li v-for="t in taskList" :key="t.type" class="task-item" :class="{ 'is-done': t.done }">
           <span class="task-icon"><i :class="t.icon || 'bi bi-coin'" /></span>
           <div class="task-main">
             <div class="task-row">
@@ -144,7 +144,7 @@
             :key="opt.value"
             type="button"
             class="chip"
-            :class="{ active: direction === opt.value }"
+            :class="{ 'is-active': direction === opt.value }"
             @click="setDirection(opt.value)"
           >{{ opt.label }}</button>
         </div>
@@ -157,7 +157,7 @@
         />
       </div>
 
-      <div v-if="loadingLogs" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loadingLogs" class="is-loading"><span class="spinner" /> 加载中...</div>
       <div v-else-if="!logs.length" class="empty-text">暂无积分记录</div>
       <table v-else class="data-table">
         <thead>
@@ -169,11 +169,11 @@
         </thead>
         <tbody>
           <tr v-for="l in logs" :key="l.id">
-            <td class="td-desc">{{ l.description || typeName(l.type) }}</td>
-            <td class="td-num" :class="{ minus: Number(l.value) < 0 }">
+            <td class="cell-desc">{{ l.description || typeName(l.type) }}</td>
+            <td class="cell-num" :class="{ minus: Number(l.value) < 0 }">
               {{ Number(l.value) > 0 ? '+' : '' }}{{ l.value }}
             </td>
-            <td class="td-time">{{ formatTime(l.create_time) }}</td>
+            <td class="cell-time">{{ formatTime(l.create_time) }}</td>
           </tr>
         </tbody>
       </table>
@@ -595,14 +595,14 @@ onMounted(() => {
   padding-top: 12px;
   border-top: 1px dashed var(--border);
 }
-.mine-cards__head {
+.mine-cards-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
   margin-bottom: 8px;
 }
-.mine-cards__title {
+.mine-cards-title {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -610,7 +610,7 @@ onMounted(() => {
   font-weight: 600;
   color: var(--text);
 }
-.mine-cards__title i {
+.mine-cards-title i {
   color: var(--primary);
 }
 .mine-card {
@@ -624,7 +624,7 @@ onMounted(() => {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
 }
-.mine-card__code {
+.mine-card-code {
   padding: 3px 8px;
   font-size: 13px;
   font-weight: 700;
@@ -635,23 +635,23 @@ onMounted(() => {
   border-radius: 6px;
   user-select: all;
 }
-.mine-card__face {
+.mine-card-face {
   font-size: 12px;
   color: #d4a148;
   font-weight: 600;
 }
-.mine-card__from {
+.mine-card-from {
   font-size: 12px;
   color: var(--text-muted);
 }
-.mine-card__expired {
+.mine-card-expired {
   font-size: 12px;
   color: var(--danger);
 }
 .mine-card > button {
   margin-left: auto;
 }
-.mine-cards__tip {
+.mine-cards-tip {
   margin: 6px 0 0;
   font-size: 12px;
   line-height: 1.6;
@@ -677,7 +677,7 @@ onMounted(() => {
 .task-item:hover {
   border-color: var(--primary-soft);
 }
-.task-item.done {
+.task-item.is-done {
   background: var(--bg-muted);
 }
 .task-icon {
@@ -780,13 +780,13 @@ onMounted(() => {
   border-color: var(--primary-soft);
   color: var(--primary);
 }
-.chip.active {
+.chip.is-active {
   background: var(--accent-soft);
   border-color: var(--primary);
   color: var(--primary-deep);
   font-weight: 600;
 }
-.loading {
+.is-loading {
   padding: 24px;
   text-align: center;
   color: var(--text-muted);
@@ -827,18 +827,18 @@ onMounted(() => {
 .data-table tbody tr:hover {
   background: var(--bg-muted);
 }
-.data-table .td-num {
+.data-table .cell-num {
   color: #d4a148;
   font-weight: 600;
   white-space: nowrap;
 }
-.data-table .td-num.minus {
+.data-table .cell-num.minus {
   color: var(--danger);
 }
-.data-table .td-desc {
+.data-table .cell-desc {
   color: var(--text-soft);
 }
-.data-table .td-time {
+.data-table .cell-time {
   color: var(--text-muted);
   white-space: nowrap;
 }

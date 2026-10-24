@@ -19,7 +19,7 @@
         <div class="name">
           <span v-if="authorLink" class="name-link" @click="goAuthor">{{ author?.nickname || '匿名' }}</span>
           <span v-else>{{ author?.nickname || '匿名' }}</span>
-          <span v-if="authorLevel" class="c-level">Lv.{{ authorLevel }}</span>
+          <span v-if="authorLevel" class="level-tag">Lv.{{ authorLevel }}</span>
           <!-- 有装扮样式用 TitleBadge 还原后台配色；没有则回退旧色板 -->
           <TitleBadge
             v-if="authorTitle || authorTitlePayload"
@@ -27,7 +27,7 @@
             :text="authorTitle"
             size="sm"
           />
-          <span v-else-if="authorTitle" :class="['c-title', authorTitleClass]">{{ authorTitle }}</span>
+          <span v-else-if="authorTitle" :class="['title-tag', authorTitleClass]">{{ authorTitle }}</span>
           <!-- 佩戴中的勋章（作者信息带 users.json） -->
           <WearingBadge v-if="author?.json?.wearing_badge" :badge="author.json.wearing_badge" />
           <span v-if="moment.top" class="top-tag">置顶</span>
@@ -81,7 +81,7 @@
       <button
         ref="likeBtn"
         class="action-item like-btn push-right"
-        :class="{ liked }"
+        :class="{ 'is-liked': liked }"
         title="点赞"
         @click="toggleLike"
       >
@@ -530,7 +530,7 @@ function onActionMenu(key) {
 .name-link:hover {
   color: var(--primary);
 }
-.c-level {
+.level-tag {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 4px;
@@ -538,7 +538,7 @@ function onActionMenu(key) {
   color: var(--primary-deep);
   flex-shrink: 0;
 }
-.c-title {
+.title-tag {
   font-size: 11px;
   padding: 1px 6px;
   border-radius: 4px;
@@ -700,10 +700,10 @@ function onActionMenu(key) {
   font-size: 15px;
   transition: transform 0.2s;
 }
-.action-item.liked {
+.action-item.is-liked {
   color: var(--accent);
 }
-.action-item.liked .like-heart {
+.action-item.is-liked .like-heart {
   transform: scale(1.2);
 }
 .moment-comments {

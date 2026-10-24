@@ -3,7 +3,7 @@
   <div ref="rootRef" class="card-menu">
     <button
       type="button"
-      class="card-menu__trigger"
+      class="card-menu-trigger"
       :class="{ 'is-open': open }"
       :title="title"
       aria-haspopup="menu"
@@ -14,12 +14,12 @@
     </button>
 
     <Transition name="menu-pop">
-      <div v-if="open" class="card-menu__panel" role="menu">
+      <div v-if="open" class="card-menu-panel" role="menu">
         <button
           v-for="item in items"
           :key="item.key"
           type="button"
-          class="card-menu__item"
+          class="card-menu-item"
           :class="{ 'is-danger': item.danger }"
           role="menuitem"
           @click.stop="choose(item)"
@@ -96,7 +96,7 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
 }
 
-.card-menu__trigger {
+.card-menu-trigger {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -112,13 +112,13 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
-.card-menu__trigger:hover,
-.card-menu__trigger.is-open {
+.card-menu-trigger:hover,
+.card-menu-trigger.is-open {
   color: var(--text);
   background: var(--bg-muted);
 }
 
-.card-menu__panel {
+.card-menu-panel {
   position: absolute;
   top: calc(100% + 4px);
   right: 0;
@@ -132,12 +132,12 @@ onBeforeUnmount(() => {
 }
 /* 右边缘卡片里，菜单不要顶出屏幕 */
 @media (max-width: 640px) {
-  .card-menu__panel {
+  .card-menu-panel {
     right: -4px;
   }
 }
 
-.card-menu__item {
+.card-menu-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -154,18 +154,18 @@ onBeforeUnmount(() => {
   cursor: pointer;
   transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
-.card-menu__item:hover {
+.card-menu-item:hover {
   color: var(--text);
   background: var(--bg-muted);
 }
-.card-menu__item i {
+.card-menu-item i {
   font-size: 14px;
   opacity: 0.9;
 }
-.card-menu__item.is-danger {
+.card-menu-item.is-danger {
   color: var(--danger);
 }
-.card-menu__item.is-danger:hover {
+.card-menu-item.is-danger:hover {
   color: var(--danger);
   background: var(--accent-soft);
 }

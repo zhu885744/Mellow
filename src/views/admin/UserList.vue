@@ -25,13 +25,13 @@
             :key="tab.key"
             type="button"
             class="status-tab"
-            :class="{ active: !trash && status === tab.key }"
+            :class="{ 'is-active': !trash && status === tab.key }"
             @click="switchTab(tab.key)"
           >{{ tab.label }}</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="toggleTrash"
           >
             <i class="bi bi-trash3" /> 回收站
@@ -116,7 +116,7 @@
       </div>
 
       <!-- 列表 -->
-      <div v-if="loading" class="loading">
+      <div v-if="loading" class="is-loading">
         <span class="spinner" /> 加载中...
       </div>
 
@@ -145,7 +145,7 @@
             v-for="item in list"
             :key="item.id"
             class="user-row"
-            :class="{ selected: isSelected(item.id) }"
+            :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isProtected(item) ? protectedText(item) : (isSelected(item.id) ? '取消选择' : '选择')">
               <input
@@ -237,7 +237,7 @@
                     v-for="opt in STATUS_OPTIONS"
                     :key="opt.key"
                     class="status-option"
-                    :class="[`is-${opt.key}`, { active: Number(item.status) === opt.value, 'is-disabled': busy || isProtected(item) }]"
+                    :class="[`is-${opt.key}`, { 'is-active': Number(item.status) === opt.value, 'is-disabled': busy || isProtected(item) }]"
                     :title="isProtected(item) ? protectedText(item) : `设为${opt.label}`"
                   >
                     <input
@@ -472,12 +472,12 @@
         <h4 class="section-title">第三方账号</h4>
         <p v-if="edit.oauthLoading" class="form-hint">加载中…</p>
         <p v-else-if="!edit.oauth.length" class="form-hint">该用户未绑定第三方账号</p>
-        <ul v-else class="uo-list">
-          <li v-for="oa in edit.oauth" :key="oa.platform" class="uo-item">
-            <i class="uo-icon" :class="platformIcon(oa.platform)" />
-            <span class="uo-name">{{ oa.name }}</span>
-            <span class="uo-nick" :title="oa.nickname">{{ oa.nickname || '已绑定' }}</span>
-            <span v-if="oa.create_time" class="uo-time">{{ fromNow(oa.create_time) }}绑定</span>
+        <ul v-else class="user-overview-list">
+          <li v-for="oa in edit.oauth" :key="oa.platform" class="user-overview-item">
+            <i class="user-overview-icon" :class="platformIcon(oa.platform)" />
+            <span class="user-overview-name">{{ oa.name }}</span>
+            <span class="user-overview-nick" :title="oa.nickname">{{ oa.nickname || '已绑定' }}</span>
+            <span v-if="oa.create_time" class="user-overview-time">{{ fromNow(oa.create_time) }}绑定</span>
           </li>
         </ul>
         <p class="form-hint">绑定 / 解绑由用户在「账号安全」里自行操作，后台仅查看</p>
@@ -617,7 +617,7 @@
         为 <strong>{{ groups.nickname || `用户 ${groups.uid}` }}</strong> 指定所属权限组，保存后立即生效（该用户需重新登录刷新权限）。
       </p>
 
-      <div v-if="groups.fetching" class="loading"><span class="spinner" /> 加载权限组...</div>
+      <div v-if="groups.fetching" class="is-loading"><span class="spinner" /> 加载权限组...</div>
 
       <div v-else-if="!groups.all.length" class="dialog-empty">
         暂无可用权限组：请先到「权限组」页面创建，或确认当前账号有权访问权限组列表。
@@ -648,34 +648,34 @@
         发放 / 回收请到「装扮管理」操作。
       </p>
 
-      <div v-if="decos.loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="decos.loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <template v-else>
         <div v-if="!decos.groups.length" class="dialog-empty">该用户暂无任何装扮</div>
 
-        <div v-for="group in decos.groups" :key="group.type" class="deco-group">
-          <div class="deco-group-head">
+        <div v-for="group in decos.groups" :key="group.type" class="decoration-group">
+          <div class="decoration-group-head">
             <span><i :class="group.icon" /> {{ group.name }}</span>
-            <span class="deco-group-count">{{ group.items.length }} 件</span>
+            <span class="decoration-group-count">{{ group.items.length }} 件</span>
           </div>
-          <ul class="deco-item-list">
-            <li v-for="item in group.items" :key="item.id" class="deco-item">
+          <ul class="decoration-item-list">
+            <li v-for="item in group.items" :key="item.id" class="decoration-item">
               <img
                 v-if="item.type === 'avatar_frame'"
                 :src="item.preview || item.payload?.image"
-                class="deco-thumb"
+                class="decoration-thumb"
                 :alt="item.name"
                 loading="lazy"
               />
-              <i v-else class="bi bi-award deco-thumb-icon" />
+              <i v-else class="bi bi-award decoration-thumb-icon" />
 
-              <span class="deco-item-name">{{ item.name }}</span>
-              <span v-if="item.wearing" class="deco-tag is-wearing">佩戴中</span>
-              <span v-else-if="item.expired" class="deco-tag is-expired">已过期</span>
-              <span v-else-if="item.off_shelf" class="deco-tag is-expired">已下架</span>
-              <span v-else-if="item.is_default" class="deco-tag">默认</span>
+              <span class="decoration-item-name">{{ item.name }}</span>
+              <span v-if="item.wearing" class="decoration-tag is-wearing">佩戴中</span>
+              <span v-else-if="item.expired" class="decoration-tag is-expired">已过期</span>
+              <span v-else-if="item.off_shelf" class="decoration-tag is-expired">已下架</span>
+              <span v-else-if="item.is_default" class="decoration-tag">默认</span>
 
-              <span class="deco-item-meta">
+              <span class="decoration-item-meta">
                 {{ decoDuration(item) }}<template v-if="item.source"> · {{ decoSource(item) }}</template>
               </span>
             </li>
@@ -1837,7 +1837,7 @@ onUnmounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1920,7 +1920,7 @@ onUnmounted(() => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1956,7 +1956,7 @@ onUnmounted(() => {
 .user-row:last-child {
   border-bottom: none;
 }
-.user-row.selected {
+.user-row.is-selected {
   background: var(--accent-wash);
 }
 
@@ -2171,7 +2171,7 @@ onUnmounted(() => {
   opacity: 0;
   pointer-events: none;
 }
-.status-option:hover:not(.active):not(.is-disabled) {
+.status-option:hover:not(.is-active):not(.is-disabled) {
   background: var(--bg-card);
   color: var(--primary);
 }
@@ -2183,15 +2183,15 @@ onUnmounted(() => {
   cursor: not-allowed;
   opacity: 0.6;
 }
-.status-option.active.is-normal {
+.status-option.is-active.is-normal {
   background: rgba(108, 154, 77, 0.14);
   color: var(--success);
 }
-.status-option.active.is-audit {
+.status-option.is-active.is-audit {
   background: rgba(14, 165, 233, 0.14);
   color: #0ea5e9;
 }
-.status-option.active.is-frozen {
+.status-option.is-active.is-frozen {
   background: var(--gold-wash);
   color: var(--warning);
 }
@@ -2244,7 +2244,7 @@ onUnmounted(() => {
   color: var(--text-muted);
 }
 /* 编辑弹窗里的「第三方账号」只读列表 */
-.uo-list {
+.user-overview-list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -2252,7 +2252,7 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 8px;
 }
-.uo-item {
+.user-overview-item {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -2262,21 +2262,21 @@ onUnmounted(() => {
   background: var(--bg-muted);
   font-size: 13px;
 }
-.uo-icon {
+.user-overview-icon {
   font-size: 16px;
   color: var(--primary);
 }
-.uo-name {
+.user-overview-name {
   color: var(--text);
   font-weight: 600;
 }
-.uo-nick {
+.user-overview-nick {
   color: var(--text-soft);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.uo-time {
+.user-overview-time {
   margin-left: auto;
   font-size: 12px;
   color: var(--text-light);
@@ -2446,10 +2446,10 @@ onUnmounted(() => {
 }
 
 /* ---------- 查看用户装扮 ---------- */
-.deco-group + .deco-group {
+.decoration-group + .decoration-group {
   margin-top: 14px;
 }
-.deco-group-head {
+.decoration-group-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -2458,12 +2458,12 @@ onUnmounted(() => {
   font-size: 13px;
   font-weight: 600;
 }
-.deco-group-count {
+.decoration-group-count {
   font-size: 12px;
   font-weight: 400;
   color: var(--text-muted);
 }
-.deco-item-list {
+.decoration-item-list {
   margin: 8px 0 0;
   padding: 0;
   list-style: none;
@@ -2471,30 +2471,30 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 6px;
 }
-.deco-item {
+.decoration-item {
   display: flex;
   align-items: center;
   gap: 8px;
   font-size: 13px;
 }
-.deco-thumb {
+.decoration-thumb {
   width: 26px;
   height: 26px;
   object-fit: contain;
   flex-shrink: 0;
 }
-.deco-thumb-icon {
+.decoration-thumb-icon {
   width: 26px;
   text-align: center;
   color: var(--primary);
 }
-.deco-item-name {
+.decoration-item-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.deco-tag {
+.decoration-tag {
   flex-shrink: 0;
   padding: 0 6px;
   font-size: 11px;
@@ -2503,15 +2503,15 @@ onUnmounted(() => {
   background: var(--bg-muted);
   color: var(--text-muted);
 }
-.deco-tag.is-wearing {
+.decoration-tag.is-wearing {
   background: var(--accent-soft);
   color: var(--primary-deep);
 }
-.deco-tag.is-expired {
+.decoration-tag.is-expired {
   background: rgba(217, 84, 77, 0.12);
   color: var(--danger);
 }
-.deco-item-meta {
+.decoration-item-meta {
   margin-left: auto;
   flex-shrink: 0;
   font-size: 12px;

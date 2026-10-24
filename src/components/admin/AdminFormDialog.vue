@@ -1,23 +1,23 @@
 <template>
   <Teleport to="body">
-    <Transition name="ad-fade">
-      <div v-if="visible" class="ad-mask" @click.self="onCancel">
-        <div class="ad-box" :style="{ maxWidth: width }" role="dialog" aria-modal="true" :aria-label="title">
-          <header class="ad-head">
-            <span class="ad-title">
+    <Transition name="admin-form-dialog-fade">
+      <div v-if="visible" class="admin-form-dialog-mask" @click.self="onCancel">
+        <div class="admin-form-dialog-box" :style="{ maxWidth: width }" role="dialog" aria-modal="true" :aria-label="title">
+          <header class="admin-form-dialog-head">
+            <span class="admin-form-dialog-title">
               <i v-if="icon" :class="icon" />
               {{ title }}
             </span>
-            <button class="ad-close" type="button" :disabled="loading" aria-label="关闭" @click="onCancel">
+            <button class="admin-form-dialog-close" type="button" :disabled="loading" aria-label="关闭" @click="onCancel">
               <i class="bi bi-x-lg" />
             </button>
           </header>
 
-          <div class="ad-body">
+          <div class="admin-form-dialog-body">
             <slot />
           </div>
 
-          <footer class="ad-foot">
+          <footer class="admin-form-dialog-foot">
             <slot name="footer">
               <button class="btn" type="button" :disabled="loading" @click="onCancel">
                 {{ cancelText }}
@@ -61,7 +61,7 @@ function onCancel() {
 </script>
 
 <style scoped>
-.ad-mask {
+.admin-form-dialog-mask {
   position: fixed;
   inset: 0;
   z-index: 3000;
@@ -71,7 +71,7 @@ function onCancel() {
   padding: 16px;
   background: rgba(0, 0, 0, 0.45);
 }
-.ad-box {
+.admin-form-dialog-box {
   width: 100%;
   max-height: 88vh;
   display: flex;
@@ -81,7 +81,7 @@ function onCancel() {
   box-shadow: var(--shadow-md);
   overflow: hidden;
 }
-.ad-head {
+.admin-form-dialog-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -89,7 +89,7 @@ function onCancel() {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border-soft);
 }
-.ad-title {
+.admin-form-dialog-title {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -97,11 +97,11 @@ function onCancel() {
   font-weight: 600;
   color: var(--text);
 }
-.ad-title .bi {
+.admin-form-dialog-title .bi {
   font-size: 15px;
   color: var(--primary);
 }
-.ad-close {
+.admin-form-dialog-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -114,21 +114,21 @@ function onCancel() {
   cursor: pointer;
   transition: all 0.15s;
 }
-.ad-close:hover:not(:disabled) {
+.admin-form-dialog-close:hover:not(:disabled) {
   background: var(--bg-muted);
   color: var(--text);
 }
-.ad-close:disabled {
+.admin-form-dialog-close:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.ad-body {
+.admin-form-dialog-body {
   padding: 18px;
   overflow-y: auto;
 }
 
-.ad-foot {
+.admin-form-dialog-foot {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -137,26 +137,26 @@ function onCancel() {
 }
 
 /* 过渡：遮罩淡入，卡片轻微上浮 */
-.ad-fade-enter-active,
-.ad-fade-leave-active {
+.admin-form-dialog-fade-enter-active,
+.admin-form-dialog-fade-leave-active {
   transition: opacity 0.2s ease;
 }
-.ad-fade-enter-active .ad-box,
-.ad-fade-leave-active .ad-box {
+.admin-form-dialog-fade-enter-active .admin-form-dialog-box,
+.admin-form-dialog-fade-leave-active .admin-form-dialog-box {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
-.ad-fade-enter-from,
-.ad-fade-leave-to {
+.admin-form-dialog-fade-enter-from,
+.admin-form-dialog-fade-leave-to {
   opacity: 0;
 }
-.ad-fade-enter-from .ad-box,
-.ad-fade-leave-to .ad-box {
+.admin-form-dialog-fade-enter-from .admin-form-dialog-box,
+.admin-form-dialog-fade-leave-to .admin-form-dialog-box {
   opacity: 0;
   transform: translateY(-10px) scale(0.98);
 }
 
 @media (max-width: 640px) {
-  .ad-box {
+  .admin-form-dialog-box {
     max-width: none;
   }
 }

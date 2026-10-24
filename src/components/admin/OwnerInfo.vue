@@ -1,8 +1,8 @@
 <template>
   <p class="owner-info" :title="title">
     <i class="bi bi-person-badge" aria-hidden="true" />
-    <span class="owner-info__label">{{ label }}</span>
-    <span class="owner-info__name">{{ name }}</span>
+    <span class="owner-info-label">{{ label }}</span>
+    <span class="owner-info-name">{{ name }}</span>
   </p>
 </template>
 
@@ -59,10 +59,10 @@ watch(() => props.uid, ensure)
 .owner-info > i {
   color: var(--text-muted);
 }
-.owner-info__label {
+.owner-info-label {
   color: var(--text-muted);
 }
-.owner-info__name {
+.owner-info-name {
   font-weight: 600;
   color: var(--text);
   word-break: break-all;

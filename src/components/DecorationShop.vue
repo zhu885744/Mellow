@@ -7,21 +7,21 @@
         :key="t.type"
         type="button"
         class="chip"
-        :class="{ active: activeType === t.type }"
+        :class="{ 'is-active': activeType === t.type }"
         @click="switchType(t.type)"
       >
         <i :class="t.icon" aria-hidden="true" /> {{ t.name }}
       </button>
       <!-- 右侧：价格筛选 + 我的装扮 -->
-      <div class="category-bar__right">
+      <div class="category-bar-right">
         <!-- 价格筛选：全部 / 免费 / 付费（分段控件，与左侧类型 chip 区分开） -->
         <div class="price-seg" role="group" aria-label="按价格筛选">
           <button
             v-for="p in PRICE_TABS"
             :key="p.key || 'all'"
             type="button"
-            class="price-seg__item"
-            :class="{ active: activePrice === p.key }"
+            class="price-seg-item"
+            :class="{ 'is-active': activePrice === p.key }"
             @click="switchPrice(p.key)"
           >
             {{ p.label }}
@@ -34,7 +34,7 @@
       </div>
     </div>
 
-    <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+    <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
     <div v-else-if="!list.length" class="card card-pad">
       <!-- 接口失败（无权限 / 未开启等）时显示真实原因，避免看起来像「本来就没有装扮」 -->
       <EmptyState icon="bi bi-palette" :text="loadError || emptyText" />
@@ -325,7 +325,7 @@ defineExpose({ refresh: () => Promise.all([loadShop(), loadMine()]) })
   border-color: var(--primary-soft);
   color: var(--primary);
 }
-.chip.active {
+.chip.is-active {
   background: var(--accent-soft);
   border-color: var(--primary);
   color: var(--primary-deep);
@@ -352,7 +352,7 @@ defineExpose({ refresh: () => Promise.all([loadShop(), loadMine()]) })
 }
 
 /* 分类条右侧组合：价格分段 + 我的装扮入口 */
-.category-bar__right {
+.category-bar-right {
   margin-left: auto;
   display: inline-flex;
   align-items: center;
@@ -367,7 +367,7 @@ defineExpose({ refresh: () => Promise.all([loadShop(), loadMine()]) })
   border-radius: 999px;
   background: var(--bg-muted);
 }
-.price-seg__item {
+.price-seg-item {
   padding: 3px 10px;
   border: none;
   border-radius: 999px;
@@ -379,10 +379,10 @@ defineExpose({ refresh: () => Promise.all([loadShop(), loadMine()]) })
   cursor: pointer;
   transition: all 0.18s;
 }
-.price-seg__item:hover {
+.price-seg-item:hover {
   color: var(--primary);
 }
-.price-seg__item.active {
+.price-seg-item.is-active {
   background: var(--bg-card);
   color: var(--primary-deep);
   font-weight: 600;
@@ -524,7 +524,7 @@ defineExpose({ refresh: () => Promise.all([loadShop(), loadMine()]) })
   color: #c7902f;
 }
 
-.loading {
+.is-loading {
   padding: 48px;
   text-align: center;
   color: var(--text-muted);

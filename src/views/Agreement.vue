@@ -12,10 +12,10 @@
     </section>
 
     <footer class="agreement-foot">
-      <router-link class="agreement-foot__link" :to="otherPath">
+      <router-link class="agreement-foot-link" :to="otherPath">
         <i class="bi bi-file-earmark-text" /> 查看{{ otherTitle }}
       </router-link>
-      <router-link class="agreement-foot__link" to="/">
+      <router-link class="agreement-foot-link" to="/">
         <i class="bi bi-house-door" /> 返回首页
       </router-link>
     </footer>
@@ -126,13 +126,13 @@ onMounted(() => {
   gap: 16px;
   font-size: 13px;
 }
-.agreement-foot__link {
+.agreement-foot-link {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   color: var(--text-muted);
 }
-.agreement-foot__link:hover {
+.agreement-foot-link:hover {
   color: var(--primary);
 }
 

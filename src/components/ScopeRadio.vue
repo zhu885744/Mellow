@@ -3,11 +3,11 @@
     <label
       v-for="opt in options"
       :key="opt.value"
-      class="scope-radio__item"
+      class="scope-radio-item"
       :class="{ 'is-checked': Number(modelValue) === Number(opt.value), 'is-disabled': disabled }"
     >
       <input
-        class="scope-radio__input"
+        class="scope-radio-input"
         type="radio"
         :name="name || undefined"
         :value="opt.value"
@@ -15,8 +15,8 @@
         :disabled="disabled"
         @change="pick(opt.value)"
       />
-      <span class="scope-radio__dot" aria-hidden="true" />
-      <span class="scope-radio__text">{{ opt.label }}</span>
+      <span class="scope-radio-dot" aria-hidden="true" />
+      <span class="scope-radio-text">{{ opt.label }}</span>
     </label>
   </div>
 </template>
@@ -58,7 +58,7 @@ function pick(value) {
   flex-wrap: wrap;
   gap: 6px 16px;
 }
-.scope-radio__item {
+.scope-radio-item {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -68,11 +68,11 @@ function pick(value) {
   cursor: pointer;
   user-select: none;
 }
-.scope-radio__item.is-disabled {
+.scope-radio-item.is-disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
-.scope-radio__input {
+.scope-radio-input {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -84,7 +84,7 @@ function pick(value) {
   border: 0;
 }
 /* 自定义圆点：未选中是空圆，选中是主色圆环 + 实心点 */
-.scope-radio__dot {
+.scope-radio-dot {
   position: relative;
   flex: none;
   width: 14px;
@@ -94,7 +94,7 @@ function pick(value) {
   background: var(--bg);
   transition: border-color 0.15s;
 }
-.scope-radio__dot::after {
+.scope-radio-dot::after {
   content: '';
   position: absolute;
   inset: 3px;
@@ -104,21 +104,21 @@ function pick(value) {
   transform: scale(0.6);
   transition: opacity 0.15s, transform 0.15s;
 }
-.scope-radio__item:hover .scope-radio__dot {
+.scope-radio-item:hover .scope-radio-dot {
   border-color: var(--primary);
 }
-.scope-radio__item.is-checked .scope-radio__dot {
+.scope-radio-item.is-checked .scope-radio-dot {
   border-color: var(--primary);
 }
-.scope-radio__item.is-checked .scope-radio__dot::after {
+.scope-radio-item.is-checked .scope-radio-dot::after {
   opacity: 1;
   transform: scale(1);
 }
-.scope-radio__item.is-checked .scope-radio__text {
+.scope-radio-item.is-checked .scope-radio-text {
   color: var(--text);
   font-weight: 500;
 }
-.scope-radio__input:focus-visible + .scope-radio__dot {
+.scope-radio-input:focus-visible + .scope-radio-dot {
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
 </style>

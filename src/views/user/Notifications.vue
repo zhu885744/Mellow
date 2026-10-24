@@ -1,21 +1,21 @@
 <template>
-  <div class="notif-page">
-    <section class="card notif-card">
+  <div class="notification-page">
+    <section class="card notification-card">
       <!-- 头部：标题 + 概览 + 全部已读 + 清空已读 -->
-      <header class="notif-head">
-        <div class="notif-head-main">
-          <h2 class="notif-heading">
+      <header class="notification-head">
+        <div class="notification-head-main">
+          <h2 class="notification-heading">
             <i class="bi bi-bell-fill" />
             消息通知
           </h2>
-          <p class="notif-summary">
+          <p class="notification-summary">
             共 {{ total }} 条
             <template v-if="unreadCount > 0">
-              · <span class="notif-summary-unread">{{ unreadCount }} 条未读</span>
+              · <span class="notification-summary-unread">{{ unreadCount }} 条未读</span>
             </template>
           </p>
         </div>
-        <div class="notif-head-actions">
+        <div class="notification-head-actions">
           <button
             type="button"
             class="btn btn-sm btn-soft"
@@ -38,14 +38,14 @@
       </header>
 
       <!-- 筛选 -->
-      <div class="notif-filter">
+      <div class="notification-filter">
         <div class="chip-group" aria-label="通知类型">
           <button
             v-for="opt in typeOptions"
             :key="opt.value"
             type="button"
             class="chip"
-            :class="{ active: filter.type === opt.value }"
+            :class="{ 'is-active': filter.type === opt.value }"
             :aria-pressed="filter.type === opt.value"
             @click="setType(opt.value)"
           >
@@ -58,7 +58,7 @@
             :key="opt.value"
             type="button"
             class="chip"
-            :class="{ active: filter.is_read === opt.value }"
+            :class="{ 'is-active': filter.is_read === opt.value }"
             :aria-pressed="filter.is_read === opt.value"
             @click="setRead(opt.value)"
           >
@@ -68,20 +68,20 @@
       </div>
 
       <!-- 加载骨架 -->
-      <div v-if="loading" class="notif-loading">
-        <div v-for="i in 4" :key="i" class="notif-skeleton">
-          <span class="skeleton sk-icon" />
-          <div class="sk-lines">
-            <span class="skeleton sk-line w60" />
-            <span class="skeleton sk-line w90" />
-            <span class="skeleton sk-line w30" />
+      <div v-if="loading" class="notification-loading">
+        <div v-for="i in 4" :key="i" class="notification-skeleton">
+          <span class="skeleton skeleton-icon" />
+          <div class="skeleton-lines">
+            <span class="skeleton skeleton-line w60" />
+            <span class="skeleton skeleton-line w90" />
+            <span class="skeleton skeleton-line w30" />
           </div>
         </div>
       </div>
 
       <EmptyState v-else-if="!items.length" icon="bi bi-bell-slash" text="暂无通知" />
 
-      <ul v-else class="notif-list">
+      <ul v-else class="notification-list">
         <li
           v-for="n in items"
           :key="n.id"
@@ -93,22 +93,22 @@
           @keydown.enter.prevent="onClick(n)"
           @keydown.space.prevent="onClick(n)"
         >
-          <span class="notif-dot" aria-hidden="true" />
-          <span class="notif-icon" :class="`type-${n.type}`">
+          <span class="notification-dot" aria-hidden="true" />
+          <span class="notification-icon" :class="`type-${n.type}`">
             <i :class="iconOf(n.type)" />
           </span>
-          <div class="notif-body">
-            <div class="notif-row">
-              <span class="notif-title">{{ n.title }}</span>
-              <time class="notif-time">{{ fromNow(n.create_time) }}</time>
+          <div class="notification-body">
+            <div class="notification-row">
+              <span class="notification-title">{{ n.title }}</span>
+              <time class="notification-time">{{ fromNow(n.create_time) }}</time>
             </div>
-            <p v-if="n.content" class="notif-content">{{ n.content }}</p>
-            <div class="notif-meta">
-              <span class="notif-tag">{{ typeLabel(n.type) }}</span>
-              <span v-if="!n.is_read" class="notif-unread-text">未读</span>
+            <p v-if="n.content" class="notification-content">{{ n.content }}</p>
+            <div class="notification-meta">
+              <span class="notification-tag">{{ typeLabel(n.type) }}</span>
+              <span v-if="!n.is_read" class="notification-unread-text">未读</span>
             </div>
           </div>
-          <i class="bi bi-chevron-right notif-arrow" aria-hidden="true" />
+          <i class="bi bi-chevron-right notification-arrow" aria-hidden="true" />
         </li>
       </ul>
 
@@ -346,17 +346,17 @@ onMounted(load)
 </script>
 
 <style scoped>
-.notif-page {
+.notification-page {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
-.notif-card {
+.notification-card {
   overflow: hidden;
 }
 
 /* ---------- 头部 ---------- */
-.notif-head {
+.notification-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -364,16 +364,16 @@ onMounted(load)
   gap: 12px;
   padding: 18px 22px 14px;
 }
-.notif-head-main {
+.notification-head-main {
   min-width: 0;
 }
-.notif-head-actions {
+.notification-head-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 8px;
 }
-.notif-heading {
+.notification-heading {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -381,22 +381,22 @@ onMounted(load)
   font-weight: 600;
   color: var(--text);
 }
-.notif-heading i {
+.notification-heading i {
   font-size: 15px;
   color: var(--primary);
 }
-.notif-summary {
+.notification-summary {
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--text-muted);
 }
-.notif-summary-unread {
+.notification-summary-unread {
   color: var(--primary-deep);
   font-weight: 600;
 }
 
 /* ---------- 筛选 ---------- */
-.notif-filter {
+.notification-filter {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -427,7 +427,7 @@ onMounted(load)
   border-color: var(--primary-soft);
   color: var(--primary);
 }
-.chip.active {
+.chip.is-active {
   background: var(--accent-soft);
   border-color: var(--primary);
   color: var(--primary-deep);
@@ -435,7 +435,7 @@ onMounted(load)
 }
 
 /* ---------- 列表 ---------- */
-.notif-list {
+.notification-list {
   display: flex;
   flex-direction: column;
 }
@@ -466,7 +466,7 @@ onMounted(load)
   background: var(--accent-soft);
 }
 
-.notif-dot {
+.notification-dot {
   position: absolute;
   left: 10px;
   top: 30px;
@@ -476,11 +476,11 @@ onMounted(load)
   background: transparent;
   transition: background 0.2s;
 }
-.notif.unread .notif-dot {
+.notif.unread .notification-dot {
   background: var(--primary);
 }
 
-.notif-icon {
+.notification-icon {
   width: 38px;
   height: 38px;
   flex-shrink: 0;
@@ -493,30 +493,30 @@ onMounted(load)
   font-size: 17px;
   transition: transform 0.18s;
 }
-.notif:hover .notif-icon {
+.notif:hover .notification-icon {
   transform: scale(1.06);
 }
-.notif-icon.type-comment { background: var(--accent-soft); color: var(--primary-deep); }
-.notif-icon.type-like { background: rgba(217, 84, 77, 0.12); color: var(--danger); }
-.notif-icon.type-follow { background: rgba(108, 154, 77, 0.12); color: var(--success); }
-.notif-icon.type-collect { background: var(--gold-soft); color: var(--warning); }
-.notif-icon.type-article { background: var(--accent-soft); color: var(--primary-deep); }
-.notif-icon.type-page { background: rgba(138, 138, 130, 0.14); color: #8a8a82; }
-.notif-icon.type-links { background: rgba(106, 168, 79, 0.14); color: #6aa84f; }
-.notif-icon.type-moments { background: rgba(127, 109, 189, 0.12); color: #7f6dbd; }
-.notif-icon.type-system { background: rgba(74, 144, 226, 0.12); color: #4a90e2; }
-.notif-icon.type-badge { background: var(--gold-soft); color: var(--warning); }
+.notification-icon.type-comment { background: var(--accent-soft); color: var(--primary-deep); }
+.notification-icon.type-like { background: rgba(217, 84, 77, 0.12); color: var(--danger); }
+.notification-icon.type-follow { background: rgba(108, 154, 77, 0.12); color: var(--success); }
+.notification-icon.type-collect { background: var(--gold-soft); color: var(--warning); }
+.notification-icon.type-article { background: var(--accent-soft); color: var(--primary-deep); }
+.notification-icon.type-page { background: rgba(138, 138, 130, 0.14); color: #8a8a82; }
+.notification-icon.type-links { background: rgba(106, 168, 79, 0.14); color: #6aa84f; }
+.notification-icon.type-moments { background: rgba(127, 109, 189, 0.12); color: #7f6dbd; }
+.notification-icon.type-system { background: rgba(74, 144, 226, 0.12); color: #4a90e2; }
+.notification-icon.type-badge { background: var(--gold-soft); color: var(--warning); }
 
-.notif-body {
+.notification-body {
   flex: 1;
   min-width: 0;
 }
-.notif-row {
+.notification-row {
   display: flex;
   align-items: baseline;
   gap: 10px;
 }
-.notif-title {
+.notification-title {
   flex: 1;
   min-width: 0;
   font-size: 14px;
@@ -526,16 +526,16 @@ onMounted(load)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.notif.unread .notif-title {
+.notif.unread .notification-title {
   font-weight: 600;
   color: var(--text);
 }
-.notif-time {
+.notification-time {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--text-light);
 }
-.notif-content {
+.notification-content {
   margin: 4px 0 0;
   font-size: 13px;
   line-height: 1.6;
@@ -546,13 +546,13 @@ onMounted(load)
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.notif-meta {
+.notification-meta {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-top: 8px;
 }
-.notif-tag {
+.notification-tag {
   display: inline-block;
   padding: 1px 8px;
   font-size: 11px;
@@ -560,13 +560,13 @@ onMounted(load)
   background: var(--bg-muted);
   color: var(--text-muted);
 }
-.notif-unread-text {
+.notification-unread-text {
   font-size: 11px;
   color: var(--primary);
   font-weight: 600;
 }
 
-.notif-arrow {
+.notification-arrow {
   align-self: center;
   font-size: 12px;
   color: var(--text-light);
@@ -574,32 +574,32 @@ onMounted(load)
   transform: translateX(-4px);
   transition: all 0.18s;
 }
-.notif:hover .notif-arrow {
+.notif:hover .notification-arrow {
   opacity: 1;
   transform: translateX(0);
   color: var(--primary);
 }
 
 /* ---------- 骨架屏 ---------- */
-.notif-skeleton {
+.notification-skeleton {
   display: flex;
   gap: 14px;
   padding: 14px 22px 14px 24px;
 }
-.sk-icon {
+.skeleton-icon {
   width: 38px;
   height: 38px;
   border-radius: 50%;
   flex-shrink: 0;
 }
-.sk-lines {
+.skeleton-lines {
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding-top: 2px;
 }
-.sk-line {
+.skeleton-line {
   display: block;
   height: 11px;
 }
@@ -609,25 +609,25 @@ onMounted(load)
 
 /* ---------- 响应式 ---------- */
 @media (max-width: 640px) {
-  .notif-head {
+  .notification-head {
     padding: 16px 16px 12px;
   }
-  .notif-filter {
+  .notification-filter {
     padding: 0 16px 12px;
   }
   .notif,
-  .notif-skeleton {
+  .notification-skeleton {
     padding-left: 18px;
     padding-right: 16px;
     gap: 12px;
   }
-  .notif-dot {
+  .notification-dot {
     left: 7px;
   }
-  .notif-arrow {
+  .notification-arrow {
     display: none;
   }
-  .notif-heading {
+  .notification-heading {
     font-size: 15px;
   }
 }

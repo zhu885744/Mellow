@@ -10,7 +10,7 @@
     <div class="filter-bar card card-pad-sm">
       <div class="filter-tags">
         <button
-          :class="['filter-tag', !filter.group && 'active']"
+          :class="['filter-tag', !filter.group && 'is-active']"
           @click="setFilter({ group: null, tag: null })"
         >全部</button>
         <span class="filter-divider">|</span>
@@ -150,7 +150,7 @@ onMounted(() => {
   cursor: pointer;
   transition: all 0.15s;
 }
-.filter-tag.active {
+.filter-tag.is-active {
   background: var(--accent-soft);
   color: var(--primary-deep);
 }
@@ -164,7 +164,7 @@ onMounted(() => {
 .article-list {
   padding: 8px 0;
 }
-.loading {
+.is-loading {
   padding: 32px;
   text-align: center;
   color: var(--text-muted);

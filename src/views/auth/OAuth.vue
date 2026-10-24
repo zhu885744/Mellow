@@ -41,7 +41,7 @@
         <button
           type="button"
           class="oauth-choice-item"
-          :class="{ active: mode === 'register' }"
+          :class="{ 'is-active': mode === 'register' }"
           :disabled="!canRegister"
           @click="mode = 'register'"
         >
@@ -51,7 +51,7 @@
         <button
           type="button"
           class="oauth-choice-item"
-          :class="{ active: mode === 'bind' }"
+          :class="{ 'is-active': mode === 'bind' }"
           @click="mode = 'bind'"
         >
           <i class="bi bi-link-45deg" />
@@ -402,7 +402,7 @@ onMounted(() => {
   border-color: var(--primary);
   color: var(--text);
 }
-.oauth-choice-item.active {
+.oauth-choice-item.is-active {
   border-color: var(--primary);
   color: var(--primary-deep, var(--primary));
   background: var(--primary-wash, var(--bg-muted));

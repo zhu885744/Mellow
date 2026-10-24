@@ -1,17 +1,17 @@
 <template>
   <div class="reward-editor">
-    <div v-if="!list.length" class="reward-editor__empty">暂无奖励项，点下方「添加奖励」新增</div>
+    <div v-if="!list.length" class="reward-editor-empty">暂无奖励项，点下方「添加奖励」新增</div>
 
     <div v-for="(item, index) in list" :key="index" class="reward-row-wrap">
       <div class="reward-row">
-        <div class="reward-row__asset" title="奖励类型（可扩展：见 model/reward.go 的资产注册表）">
+        <div class="reward-row-asset" title="奖励类型（可扩展：见 model/reward.go 的资产注册表）">
           <SelectMenu v-model="item.asset" variant="field" :options="assetOptions" />
         </div>
         <!-- 卡密是「纯卡密」：没有面额，所以不显示数值输入；发什么由下方的卡密内容决定 -->
         <input
           v-if="!isCard(item)"
           v-model.number="item.value"
-          class="input reward-row__value"
+          class="input reward-row-value"
           type="number"
           min="0"
           step="1"
@@ -21,7 +21,7 @@
         <input
           v-if="chance"
           v-model.number="item.chance"
-          class="input reward-row__chance"
+          class="input reward-row-chance"
           type="number"
           min="0"
           max="100"
@@ -31,7 +31,7 @@
         />
         <input
           v-model="item.label"
-          class="input reward-row__label"
+          class="input reward-row-label"
           type="text"
           maxlength="16"
           placeholder="备注（可选）"
@@ -45,12 +45,12 @@
       <div v-if="isCard(item)" class="reward-codes">
         <textarea
           v-model="item.codesText"
-          class="input reward-codes__input"
+          class="input reward-codes-input"
           rows="3"
           placeholder="卡密内容：一行一个，例如&#10;SN2026000001&#10;SN2026000002"
           @input="scheduleStock(item)"
         />
-        <p class="reward-codes__hint" :class="{ 'is-warn': !codeCount(item) }">
+        <p class="reward-codes-hint" :class="{ 'is-warn': !codeCount(item) }">
           <i class="bi bi-ticket-perforated" />
           <template v-if="!codeCount(item)">
             还没填卡密：这份奖励不会发卡密（库存为空，发完即失效，不会改发别的奖励）。
@@ -63,15 +63,15 @@
       </div>
     </div>
 
-    <div class="reward-editor__foot">
+    <div class="reward-editor-foot">
       <button class="btn btn-sm" type="button" @click="add">
         <i class="bi bi-plus-lg" /> 添加奖励
       </button>
-      <span v-if="hint" class="reward-editor__hint">{{ hint }}</span>
+      <span v-if="hint" class="reward-editor-hint">{{ hint }}</span>
     </div>
 
     <!-- 选中卡密时给出该资产的说明，避免把「面额」当成张数填 -->
-    <p v-if="cardHint" class="reward-editor__hint reward-editor__hint--full">
+    <p v-if="cardHint" class="reward-editor-hint reward-editor-hint-full">
       <i class="bi bi-ticket-perforated" /> {{ cardHint }}
     </p>
   </div>
@@ -233,67 +233,67 @@ function remove(index) {
 .reward-codes {
   margin-top: 6px;
 }
-.reward-codes__input {
+.reward-codes-input {
   width: 100%;
   resize: vertical;
   font-family: var(--font-mono, monospace);
   font-size: 12px;
   line-height: 1.7;
 }
-.reward-codes__hint {
+.reward-codes-hint {
   margin: 4px 0 0;
   font-size: 12px;
   line-height: 1.7;
   color: var(--text-muted);
 }
-.reward-codes__hint i {
+.reward-codes-hint i {
   color: var(--primary);
 }
 /* 没填卡密时提醒一下：这份奖励不会发卡密 */
-.reward-codes__hint.is-warn {
+.reward-codes-hint.is-warn {
   color: var(--warning);
 }
-.reward-codes__hint.is-warn i {
+.reward-codes-hint.is-warn i {
   color: var(--warning);
 }
-.reward-row__asset {
+.reward-row-asset {
   width: 110px;
   flex-shrink: 0;
 }
-.reward-row__value {
+.reward-row-value {
   width: 96px;
   flex-shrink: 0;
 }
-.reward-row__chance {
+.reward-row-chance {
   width: 96px;
   flex-shrink: 0;
 }
-.reward-row__label {
+.reward-row-label {
   flex: 1;
   min-width: 0;
 }
-.reward-editor__empty {
+.reward-editor-empty {
   margin-bottom: 8px;
   font-size: 12px;
   color: var(--text-muted);
 }
-.reward-editor__foot {
+.reward-editor-foot {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
 }
-.reward-editor__hint {
+.reward-editor-hint {
   font-size: 12px;
   color: var(--text-muted);
 }
-.reward-editor__hint--full {
+.reward-editor-hint-full {
   display: block;
   width: 100%;
   margin: 8px 0 0;
   line-height: 1.7;
 }
-.reward-editor__hint--full i {
+.reward-editor-hint-full i {
   color: var(--primary);
 }
 </style>

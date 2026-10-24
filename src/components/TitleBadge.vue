@@ -2,7 +2,7 @@
   <span
     v-if="hasContent"
     class="title-badge"
-    :class="[`title-badge--${size}`, { 'is-animated': animated, 'is-image': hasImage }]"
+    :class="[`title-badge-${size}`, { 'is-animated': animated, 'is-image': hasImage }]"
     :style="badgeStyle"
   >
     <!-- 图片头衔：纯图展示 —— 有图片时只渲染图片，不叠加任何文字 -->
@@ -99,7 +99,7 @@ const imageStyle = computed(() => {
   vertical-align: middle;
   /*
    * 注意：这里**不要**写 line-height。
-   * 旧的 .c-title / .author-title 都不设行高（继承所在行的行高），
+   * 旧的 .title-tag / .author-title 都不设行高（继承所在行的行高），
    * 写死成 1.4 会让标签比默认头衔矮一截，看起来就是「内边距特别小」。
    * 同理不加默认边框：旧标签只有背景色，多 1px 边框也会让视觉高度不同。
    */
@@ -109,20 +109,20 @@ const imageStyle = computed(() => {
 }
 
 /* 尺寸与旧标签逐项对齐，避免同一位置「装扮头衔」和「默认头衔」看起来不一样大：
-   sm → 列表（.c-title：11px / 1px 6px）
+   sm → 列表（.title-tag：11px / 1px 6px）
    md → 作者主页（.author-title：12px / 2px 8px）
    lg → 装扮商城 / 我的装扮 的大号预览 */
-.title-badge--sm {
+.title-badge-sm {
   padding: 1px 6px;
   font-size: 11px;
 }
 
-.title-badge--md {
+.title-badge-md {
   padding: 2px 8px;
   font-size: 12px;
 }
 
-.title-badge--lg {
+.title-badge-lg {
   padding: 3px 12px;
   font-size: 14px;
 }

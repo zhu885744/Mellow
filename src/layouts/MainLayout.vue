@@ -3,7 +3,7 @@
     <!-- 移动端顶栏（仅手机端显示） -->
     <div class="mobile-topbar">
       <router-link to="/" class="mobile-brand" title="返回首页">
-        <img v-if="site.avatar" class="mobile-brand__logo" :src="site.avatar" :alt="site.title" loading="lazy" />
+        <img v-if="site.avatar" class="mobile-brand-logo" :src="site.avatar" :alt="site.title" loading="lazy" />
         {{ site.title }}
       </router-link>
       <div class="mobile-actions">
@@ -57,15 +57,15 @@
                没配、或地址失效时退回「标题 + 描述」的文字版 -->
           <img
             v-if="site.avatar && !logoFailed"
-            class="site-card__logo"
+            class="site-card-logo"
             :src="site.avatar"
             :alt="site.title"
             loading="eager"
             @error="logoFailed = true"
           />
           <template v-else>
-            <div class="site-card__title">{{ site.title }}</div>
-            <div class="site-card__subtitle">{{ site.description }}</div>
+            <div class="site-card-title">{{ site.title }}</div>
+            <div class="site-card-subtitle">{{ site.description }}</div>
           </template>
         </router-link>
 
@@ -171,8 +171,8 @@
         <!-- 品牌 + 快捷链接 -->
         <div class="footer-top">
           <div class="footer-brand">
-            <span class="footer-brand__name">{{ site.title }}</span>
-            <p v-if="site.description" class="footer-brand__desc">{{ site.description }}</p>
+            <span class="footer-brand-name">{{ site.title }}</span>
+            <p v-if="site.description" class="footer-brand-desc">{{ site.description }}</p>
           </div>
 
           <nav class="footer-links" aria-label="页脚导航">
@@ -224,7 +224,7 @@
               >{{ site.policeCode }}</a>
               <template v-else>{{ site.policeCode }}</template>
             </span>
-            <span class="footer-record footer-record--powered">
+            <span class="footer-record footer-record-powered">
               <i class="bi bi-brush" aria-hidden="true" />
               <span>
                 Powered by
@@ -485,7 +485,7 @@ onMounted(() => {
 }
 /* 网站 LOGO：配了 LOGO 时它就是左栏顶部唯一内容（不再显示标题/描述）
    方形图标按 96px 展示，横向 LOGO 自动缩到栏宽内，不裁切 */
-.site-card__logo {
+.site-card-logo {
   display: block;
   margin: 0 auto;
   max-width: 100%;
@@ -494,7 +494,7 @@ onMounted(() => {
   height: auto;
   object-fit: contain;
 }
-.site-card__title {
+.site-card-title {
   font-family: var(--font-serif);
   font-size: 26px;
   font-weight: 600;
@@ -502,7 +502,7 @@ onMounted(() => {
   letter-spacing: 2px;
   margin-bottom: 6px;
 }
-.site-card__subtitle {
+.site-card-subtitle {
   font-size: 12px;
   color: var(--text-muted);
   letter-spacing: 1px;
@@ -538,7 +538,7 @@ onMounted(() => {
   color: var(--primary);
   background: var(--bg-muted);
 }
-.nav-item.active {
+.nav-item.is-active {
   color: var(--primary);
   font-weight: 600;
   background: var(--accent-soft);
@@ -547,7 +547,7 @@ onMounted(() => {
 .nav-item .bi {
   margin-right: 6px;
 }
-.nav-item.active::before {
+.nav-item.is-active::before {
   content: '';
   position: absolute;
   left: 0;
@@ -607,7 +607,7 @@ onMounted(() => {
 .footer-brand {
   min-width: 0;
 }
-.footer-brand__name {
+.footer-brand-name {
   display: inline-block;
   font-family: var(--font-serif);
   font-size: 15px;
@@ -615,7 +615,7 @@ onMounted(() => {
   letter-spacing: 0.5px;
   color: var(--text);
 }
-.footer-brand__desc {
+.footer-brand-desc {
   margin: 5px 0 0;
   max-width: 46ch;
   font-size: 12px;
@@ -711,7 +711,7 @@ onMounted(() => {
     align-items: center;
     text-align: center;
   }
-  .footer-brand__desc {
+  .footer-brand-desc {
     max-width: none;
   }
   .footer-links {
@@ -765,7 +765,7 @@ onMounted(() => {
     text-decoration: none;
   }
   /* 网站 LOGO：移动端顶栏只留一个小图标 */
-  .mobile-brand__logo {
+  .mobile-brand-logo {
     width: 24px;
     height: 24px;
     flex-shrink: 0;
@@ -787,7 +787,7 @@ onMounted(() => {
   .footer-top,
   .footer-divider,
   .footer-copy,
-  .footer-record--powered {
+  .footer-record-powered {
     display: none;
   }
   .footer-bottom {
@@ -810,7 +810,7 @@ onMounted(() => {
     padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
   }
   /* 底部 Tab Bar 的定位样式已随组件移到 components/MobileTabBar.vue */
-  .nav-item.active::before {
+  .nav-item.is-active::before {
     display: none;
   }
 }

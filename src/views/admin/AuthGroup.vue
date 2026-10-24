@@ -53,13 +53,13 @@
           <button
             type="button"
             class="status-tab"
-            :class="{ active: !trash }"
+            :class="{ 'is-active': !trash }"
             @click="switchTrash(false)"
           >全部分组</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="switchTrash(true)"
           >
             <i class="bi bi-trash3" /> 回收站
@@ -113,7 +113,7 @@
         </button>
       </div>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else-if="!list.length" class="empty-row">
         <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-shield-lock'" :text="emptyText" />
@@ -137,17 +137,17 @@
         <table class="group-table">
           <thead>
             <tr>
-              <th class="td-pick"></th>
+              <th class="cell-pick"></th>
               <th>分组</th>
-              <th class="td-members">成员</th>
-              <th class="td-count">权限规则</th>
-              <th class="td-count">后台页面</th>
-              <th class="td-act">操作</th>
+              <th class="cell-members">成员</th>
+              <th class="cell-count">权限规则</th>
+              <th class="cell-count">后台页面</th>
+              <th class="cell-act">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in list" :key="item.id" :class="{ selected: isSelected(item.id) }">
-              <td class="td-pick">
+            <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
+              <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
                   <input
                     type="checkbox"
@@ -170,7 +170,7 @@
                   <span v-if="item.remark" class="meta-text"><i class="bi bi-sticky" /> {{ item.remark }}</span>
                 </div>
               </td>
-              <td class="td-members">
+              <td class="cell-members">
                 <div class="member-stack">
                   <span
                     v-for="member in groupMembers(item).slice(0, 3)"
@@ -184,17 +184,17 @@
                   <span class="member-count">{{ memberCount(item) }} 人</span>
                 </div>
               </td>
-              <td class="td-count">
+              <td class="cell-count">
                 <span class="count-chip" :class="{ 'is-all': rulesOf(item).all }">
                   {{ rulesOf(item).all ? '全部规则' : `${rulesOf(item).list.length} 条` }}
                 </span>
               </td>
-              <td class="td-count">
+              <td class="cell-count">
                 <span class="count-chip" :class="{ 'is-all': pagesOf(item).all }">
                   {{ pagesOf(item).all ? '全部页面' : `${pagesOf(item).list.length} 个` }}
                 </span>
               </td>
-              <td class="td-act">
+              <td class="cell-act">
                 <div class="row-actions">
                   <template v-if="trash">
                     <button class="btn btn-ghost btn-sm" title="恢复" aria-label="恢复" :disabled="busy" @click="restore(item)">
@@ -306,7 +306,7 @@
             </button>
           </div>
 
-          <label class="check-line check-line--inline">
+          <label class="check-line check-line-inline">
             <input v-model="showUselessRules" type="checkbox" />
             <span>显示无需授权的规则（免登录 / 需登录，默认隐藏）</span>
           </label>
@@ -315,7 +315,7 @@
           <div v-else-if="!ruleGroups.length" class="pick-empty">没有匹配的规则</div>
           <div v-else class="group-cards">
             <section v-for="group in ruleGroups" :key="group.key" class="group-card">
-              <header class="group-card__head">
+              <header class="group-card-head">
                 <label class="pick" :title="group.allChecked ? '取消本模块' : '勾选本模块全部规则'">
                   <input
                     type="checkbox"
@@ -326,23 +326,23 @@
                 </label>
                 <button
                   type="button"
-                  class="group-card__title"
+                  class="group-card-title"
                   @click="toggleGroupOpen(group.key)"
                 >
-                  <i :class="group.icon" class="group-card__icon" />
-                  <span class="group-card__name">{{ group.label }}</span>
-                  <code class="group-card__route">/api/{{ group.key }}</code>
-                  <span class="group-card__count" :class="{ 'is-on': group.selectedCount > 0 }">
+                  <i :class="group.icon" class="group-card-icon" />
+                  <span class="group-card-name">{{ group.label }}</span>
+                  <code class="group-card-route">/api/{{ group.key }}</code>
+                  <span class="group-card-count" :class="{ 'is-on': group.selectedCount > 0 }">
                     {{ group.selectedCount }}/{{ group.items.length }}
                   </span>
                   <i
-                    class="bi group-card__caret"
+                    class="bi group-card-caret"
                     :class="isGroupOpen(group.key) ? 'bi-chevron-up' : 'bi-chevron-down'"
                   />
                 </button>
               </header>
 
-              <ul v-if="isGroupOpen(group.key)" class="pick-list pick-list--nested">
+              <ul v-if="isGroupOpen(group.key)" class="pick-list pick-list-nested">
                 <li v-for="rule in group.items" :key="rule.hash">
                   <label class="pick-item">
                     <input v-model="edit.rules" type="checkbox" :value="rule.hash" />
@@ -1184,7 +1184,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1265,7 +1265,7 @@ onMounted(() => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1309,20 +1309,20 @@ onMounted(() => {
 .group-table tbody tr:hover td {
   background: var(--bg-muted);
 }
-.group-table tbody tr.selected td {
+.group-table tbody tr.is-selected td {
   background: var(--accent-wash);
 }
 
-.td-pick {
+.cell-pick {
   width: 36px;
 }
-.td-members {
+.cell-members {
   width: 160px;
 }
-.td-count {
+.cell-count {
   width: 108px;
 }
-.td-act {
+.cell-act {
   width: 96px;
   text-align: right;
 }
@@ -1515,7 +1515,7 @@ onMounted(() => {
   border-radius: var(--radius);
 }
 /* 模块卡片里的规则列表：卡片自带边框，内层不再重复描边 */
-.pick-list--nested {
+.pick-list-nested {
   max-height: 300px;
   border: none;
   border-top: 1px dashed var(--border-soft);
@@ -1556,7 +1556,7 @@ onMounted(() => {
   border-color: var(--primary);
 }
 
-.check-line--inline {
+.check-line-inline {
   padding: 0 0 8px;
   font-size: 12px;
   color: var(--text-muted);
@@ -1580,14 +1580,14 @@ onMounted(() => {
   border-radius: var(--radius);
   overflow: hidden;
 }
-.group-card__head {
+.group-card-head {
   display: flex;
   align-items: center;
   gap: 8px;
   padding: 6px 10px 6px 8px;
   background: var(--bg-muted);
 }
-.group-card__title {
+.group-card-title {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -1601,15 +1601,15 @@ onMounted(() => {
   cursor: pointer;
   text-align: left;
 }
-.group-card__icon {
+.group-card-icon {
   flex-shrink: 0;
   color: var(--primary);
 }
-.group-card__name {
+.group-card-name {
   flex-shrink: 0;
   font-weight: 600;
 }
-.group-card__route {
+.group-card-route {
   min-width: 0;
   font-size: 11px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -1618,7 +1618,7 @@ onMounted(() => {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.group-card__count {
+.group-card-count {
   flex-shrink: 0;
   margin-left: auto;
   padding: 1px 8px;
@@ -1627,11 +1627,11 @@ onMounted(() => {
   background: var(--bg-card);
   border-radius: 999px;
 }
-.group-card__count.is-on {
+.group-card-count.is-on {
   color: var(--primary-deep);
   background: var(--accent-soft);
 }
-.group-card__caret {
+.group-card-caret {
   flex-shrink: 0;
   font-size: 11px;
   color: var(--text-light);

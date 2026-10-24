@@ -53,13 +53,13 @@
           <button
             type="button"
             class="status-tab"
-            :class="{ active: !trash }"
+            :class="{ 'is-active': !trash }"
             @click="switchTrash(false)"
           >全部页面</button>
           <button
             type="button"
             class="status-tab trash-tab"
-            :class="{ active: trash }"
+            :class="{ 'is-active': trash }"
             @click="switchTrash(true)"
           >
             <i class="bi bi-trash3" /> 回收站
@@ -113,7 +113,7 @@
         </button>
       </div>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else-if="!list.length" class="empty-row">
         <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-window-stack'" :text="emptyText" />
@@ -137,16 +137,16 @@
         <table class="page-table">
           <thead>
             <tr>
-              <th class="td-pick"></th>
+              <th class="cell-pick"></th>
               <th>名称</th>
               <th>路径</th>
-              <th class="td-icon">图标</th>
-              <th class="td-act">操作</th>
+              <th class="cell-icon">图标</th>
+              <th class="cell-act">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="item in list" :key="item.id" :class="{ selected: isSelected(item.id) }">
-              <td class="td-pick">
+            <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
+              <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
                   <input
                     type="checkbox"
@@ -166,7 +166,7 @@
                 </div>
               </td>
               <td><code class="page-path">{{ item.path }}</code></td>
-              <td class="td-icon">
+              <td class="cell-icon">
                 <span v-if="item.svg" class="page-icon" v-html="item.svg" />
                 <i
                   v-else-if="biIcon(item.icon)"
@@ -176,7 +176,7 @@
                 />
                 <span v-else class="icon-chip">{{ item.icon || '—' }}</span>
               </td>
-              <td class="td-act">
+              <td class="cell-act">
                 <div class="row-actions">
                   <template v-if="trash">
                     <button class="btn btn-ghost btn-sm" title="恢复" aria-label="恢复" :disabled="busy" @click="restore(item)">
@@ -763,7 +763,7 @@ onMounted(() => {
 .status-tab:hover {
   color: var(--primary);
 }
-.status-tab.active {
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -844,7 +844,7 @@ onMounted(() => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -888,18 +888,18 @@ onMounted(() => {
 .page-table tbody tr:hover td {
   background: var(--bg-muted);
 }
-.page-table tbody tr.selected td {
+.page-table tbody tr.is-selected td {
   background: var(--accent-wash);
 }
 
-.td-pick {
+.cell-pick {
   width: 36px;
 }
-.td-icon {
+.cell-icon {
   width: 72px;
   text-align: center;
 }
-.td-act {
+.cell-act {
   width: 96px;
   text-align: right;
 }

@@ -3,7 +3,7 @@
     <div class="install-box">
       <header class="install-head">
         <span class="install-logo">INIS</span>
-        <div class="install-head__text">
+        <div class="install-head-text">
           <h1 class="install-title">安装向导</h1>
           <p class="install-sub">Mellow 主题 · 按提示完成初始化即可开始使用</p>
         </div>
@@ -11,16 +11,16 @@
 
       <!-- 已安装 / 刚装完：只给出入口 -->
       <div v-if="finished" class="card card-pad install-done">
-        <i class="bi bi-check-circle-fill install-done__icon" />
-        <p class="install-done__title">{{ installed ? '系统已完成安装' : '安装完成，可以开始使用了' }}</p>
-        <p class="install-done__hint">
+        <i class="bi bi-check-circle-fill install-done-icon" />
+        <p class="install-done-title">{{ installed ? '系统已完成安装' : '安装完成，可以开始使用了' }}</p>
+        <p class="install-done-hint">
           {{
             installed
               ? '如需重新安装，请删除程序根目录下的 install.lock 后重启服务。'
               : '默认管理员账号 admin / admin123456，请登录后立即修改密码。'
           }}
         </p>
-        <div class="install-done__actions">
+        <div class="install-done-actions">
           <a class="btn btn-primary" href="/">进入首页</a>
           <a class="btn" href="/auth/login">登录后台</a>
         </div>
@@ -32,14 +32,14 @@
           <li
             v-for="item in steps"
             :key="item.step"
-            class="install-steps__item"
+            class="install-steps-item"
             :class="{ 'is-done': current > item.step, 'is-active': current === item.step }"
           >
-            <span class="install-steps__dot">
+            <span class="install-steps-dot">
               <i v-if="current > item.step" class="bi bi-check-lg" />
               <template v-else>{{ item.step }}</template>
             </span>
-            <span class="install-steps__label">{{ item.label }}</span>
+            <span class="install-steps-label">{{ item.label }}</span>
           </li>
         </ol>
 
@@ -52,8 +52,8 @@
 
             <ul class="install-env">
               <li v-for="item in envList" :key="item.label">
-                <span class="install-env__label">{{ item.label }}</span>
-                <b class="install-env__value">{{ item.value }}</b>
+                <span class="install-env-label">{{ item.label }}</span>
+                <b class="install-env-value">{{ item.value }}</b>
               </li>
             </ul>
 
@@ -423,7 +423,7 @@ onMounted(() => {
   align-items: center;
   gap: 6px;
 }
-.install-steps__item {
+.install-steps-item {
   flex: 1;
   display: flex;
   align-items: center;
@@ -432,7 +432,7 @@ onMounted(() => {
   color: var(--text-muted);
   font-size: 12px;
 }
-.install-steps__dot {
+.install-steps-dot {
   flex-shrink: 0;
   width: 24px;
   height: 24px;
@@ -446,20 +446,20 @@ onMounted(() => {
   font-weight: 600;
   transition: color 0.2s, background-color 0.2s, border-color 0.2s;
 }
-.install-steps__label {
+.install-steps-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.install-steps__item.is-active {
+.install-steps-item.is-active {
   color: var(--primary-deep);
 }
-.install-steps__item.is-active .install-steps__dot {
+.install-steps-item.is-active .install-steps-dot {
   border-color: var(--primary);
   background: var(--primary);
   color: #fff;
 }
-.install-steps__item.is-done .install-steps__dot {
+.install-steps-item.is-done .install-steps-dot {
   border-color: var(--primary-soft);
   background: var(--accent-soft);
   color: var(--primary-deep);
@@ -527,11 +527,11 @@ onMounted(() => {
   background: var(--bg-muted);
   min-width: 0;
 }
-.install-env__label {
+.install-env-label {
   font-size: 12px;
   color: var(--text-muted);
 }
-.install-env__value {
+.install-env-value {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
@@ -602,23 +602,23 @@ onMounted(() => {
   text-align: center;
   gap: 10px;
 }
-.install-done__icon {
+.install-done-icon {
   font-size: 40px;
   color: var(--success);
 }
-.install-done__title {
+.install-done-title {
   margin: 0;
   font-size: 17px;
   font-weight: 600;
   color: var(--text);
 }
-.install-done__hint {
+.install-done-hint {
   margin: 0;
   font-size: 13px;
   line-height: 1.7;
   color: var(--text-muted);
 }
-.install-done__actions {
+.install-done-actions {
   display: flex;
   gap: 10px;
   margin-top: 6px;
@@ -629,10 +629,10 @@ onMounted(() => {
   .install-form {
     grid-template-columns: 1fr;
   }
-  .install-steps__label {
+  .install-steps-label {
     display: none;
   }
-  .install-steps__item {
+  .install-steps-item {
     justify-content: center;
   }
 }

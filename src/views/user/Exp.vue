@@ -23,7 +23,7 @@
     <!-- 经验获取途径 -->
     <div class="card card-pad">
       <h3 class="block-title">经验获取途径</h3>
-      <div v-if="loadingRules" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loadingRules" class="is-loading"><span class="spinner" /> 加载中...</div>
       <table v-else-if="rules.length" class="data-table">
         <thead>
           <tr>
@@ -35,7 +35,7 @@
         <tbody>
           <tr v-for="r in rules" :key="r.type">
             <td>{{ r.name }}</td>
-            <td class="td-num">+{{ r.value }}</td>
+            <td class="cell-num">+{{ r.value }}</td>
             <td>{{ r.daily_limit > 0 ? `${r.daily_limit} 次` : '不限' }}</td>
           </tr>
         </tbody>
@@ -46,7 +46,7 @@
     <!-- 等级体系 -->
     <div class="card card-pad">
       <h3 class="block-title">等级体系</h3>
-      <div v-if="loadingLevels" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loadingLevels" class="is-loading"><span class="spinner" /> 加载中...</div>
       <table v-else-if="levels.length" class="data-table">
         <thead>
           <tr>
@@ -60,8 +60,8 @@
           <tr v-for="lv in levels" :key="lv.id" :class="{ 'row-current': lv.value === levelValue }">
             <td>{{ lv.name }}</td>
             <td>Lv.{{ lv.value }}</td>
-            <td class="td-num">{{ lv.exp }}</td>
-            <td class="td-desc">{{ lv.description || '—' }}</td>
+            <td class="cell-num">{{ lv.exp }}</td>
+            <td class="cell-desc">{{ lv.description || '—' }}</td>
           </tr>
         </tbody>
       </table>
@@ -71,7 +71,7 @@
     <!-- 经验明细 -->
     <div class="card card-pad">
       <h3 class="block-title">经验明细</h3>
-      <div v-if="loadingLogs" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loadingLogs" class="is-loading"><span class="spinner" /> 加载中...</div>
       <div v-else-if="!logs.length" class="empty-text">暂无经验记录</div>
       <template v-else>
         <table class="data-table">
@@ -84,14 +84,14 @@
           </thead>
           <tbody>
             <tr v-for="l in logs" :key="l.id">
-              <td class="td-desc">
+              <td class="cell-desc">
                 <span>{{ l.description || typeName(l.type) }}</span>
                 <span v-if="logExtra(l)" class="log-extra">{{ logExtra(l) }}</span>
               </td>
-              <td class="td-num" :class="{ minus: Number(l.value) < 0 }">
+              <td class="cell-num" :class="{ minus: Number(l.value) < 0 }">
                 {{ Number(l.value) > 0 ? '+' : '' }}{{ l.value }}
               </td>
-              <td class="td-time">{{ formatTime(l.create_time) }}</td>
+              <td class="cell-time">{{ formatTime(l.create_time) }}</td>
             </tr>
           </tbody>
         </table>
@@ -357,7 +357,7 @@ watch(() => user.value?.id, (id) => {
 }
 
 /* 数据表格 */
-.loading {
+.is-loading {
   padding: 24px;
   text-align: center;
   color: var(--text-muted);
@@ -398,18 +398,18 @@ watch(() => user.value?.id, (id) => {
 .data-table tbody tr:hover {
   background: var(--bg-muted);
 }
-.data-table .td-num {
+.data-table .cell-num {
   color: var(--primary-deep);
   font-weight: 600;
   white-space: nowrap;
 }
-.data-table .td-num.minus {
+.data-table .cell-num.minus {
   color: var(--danger);
 }
-.data-table .td-desc {
+.data-table .cell-desc {
   color: var(--text-muted);
 }
-.data-table .td-time {
+.data-table .cell-time {
   color: var(--text-muted);
   white-space: nowrap;
 }

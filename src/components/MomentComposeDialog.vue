@@ -1,21 +1,21 @@
 <template>
   <Teleport to="body">
-    <Transition name="mc-fade">
-      <div v-if="visible" class="mc-mask" @click.self="onClose">
-        <div class="mc-box" role="dialog" aria-modal="true" aria-label="发布动态">
-          <header class="mc-head">
-            <span class="mc-title">
+    <Transition name="moment-compose-fade">
+      <div v-if="visible" class="moment-compose-mask" @click.self="onClose">
+        <div class="moment-compose-box" role="dialog" aria-modal="true" aria-label="发布动态">
+          <header class="moment-compose-head">
+            <span class="moment-compose-title">
               <i class="bi bi-chat-square-dots" aria-hidden="true" />
               发布动态
             </span>
-            <button class="mc-close" type="button" aria-label="关闭" @click="onClose">
+            <button class="moment-compose-close" type="button" aria-label="关闭" @click="onClose">
               <i class="bi bi-x-lg" />
             </button>
           </header>
 
           <!-- 表单本体在 components/MomentComposer.vue：
                正文 / 图片 / 附件库 / 位置 / 发布都在那边，这里只负责弹窗外壳 -->
-          <div class="mc-body">
+          <div class="moment-compose-body">
             <MomentComposer ref="composerRef" inline-picker @published="onPublished" />
           </div>
         </div>
@@ -60,7 +60,7 @@ function onPublished() {
 </script>
 
 <style scoped>
-.mc-mask {
+.moment-compose-mask {
   position: fixed;
   inset: 0;
   /* 与附件库同一层级：低于确认弹窗（3000），高于全屏编辑器（2000） */
@@ -71,13 +71,13 @@ function onPublished() {
   padding: 16px;
   background: rgba(0, 0, 0, 0.45);
 }
-.mc-box {
+.moment-compose-box {
   display: flex;
   flex-direction: column;
   width: 100%;
   max-width: 560px;
   /* 展开表情面板后内容会明显变高：用满视口（只留遮罩的 16px 内边距），
-     让弹窗尽量跟着内容长高（真的要超出视口时才由 .mc-body 滚动） */
+     让弹窗尽量跟着内容长高（真的要超出视口时才由 .moment-compose-body 滚动） */
   max-height: calc(100vh - 32px);
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -86,7 +86,7 @@ function onPublished() {
   overflow: hidden;
 }
 
-.mc-head {
+.moment-compose-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -94,7 +94,7 @@ function onPublished() {
   padding: 14px 18px;
   border-bottom: 1px solid var(--border-soft);
 }
-.mc-title {
+.moment-compose-title {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -102,7 +102,7 @@ function onPublished() {
   font-weight: 600;
   color: var(--text);
 }
-.mc-close {
+.moment-compose-close {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -115,14 +115,14 @@ function onPublished() {
   cursor: pointer;
   transition: background-color 0.15s, color 0.15s;
 }
-.mc-close:hover {
+.moment-compose-close:hover {
   background: var(--bg-muted);
   color: var(--text);
 }
 
-.mc-body {
+.moment-compose-body {
   /* 按内容自然高度：flex: 0 1 auto（不用 flex: 1，那会把它拉到容器的最大高度）。
-     内容少 → 弹窗就矮；内容多 → 长到 .mc-box 的 max-height 之后由这里滚动。 */
+     内容少 → 弹窗就矮；内容多 → 长到 .moment-compose-box 的 max-height 之后由这里滚动。 */
   flex: 0 1 auto;
   min-height: 0;
   overflow-y: auto;
@@ -130,39 +130,39 @@ function onPublished() {
 }
 
 /* 过渡：与附件库 / 管理端弹窗一致 */
-.mc-fade-enter-active,
-.mc-fade-leave-active {
+.moment-compose-fade-enter-active,
+.moment-compose-fade-leave-active {
   transition: opacity 0.2s ease;
 }
-.mc-fade-enter-active .mc-box,
-.mc-fade-leave-active .mc-box {
+.moment-compose-fade-enter-active .moment-compose-box,
+.moment-compose-fade-leave-active .moment-compose-box {
   transition: opacity 0.2s ease, transform 0.2s ease;
 }
-.mc-fade-enter-from,
-.mc-fade-leave-to {
+.moment-compose-fade-enter-from,
+.moment-compose-fade-leave-to {
   opacity: 0;
 }
-.mc-fade-enter-from .mc-box,
-.mc-fade-leave-to .mc-box {
+.moment-compose-fade-enter-from .moment-compose-box,
+.moment-compose-fade-leave-to .moment-compose-box {
   opacity: 0;
   transform: translateY(-10px) scale(0.98);
 }
 
 /* 手机端：贴底弹出，接近系统输入面板的体感 */
 @media (max-width: 640px) {
-  .mc-mask {
+  .moment-compose-mask {
     padding: 0;
     align-items: flex-end;
   }
-  .mc-box {
+  .moment-compose-box {
     max-width: none;
     max-height: 92vh;
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
   }
-  .mc-head {
+  .moment-compose-head {
     padding: 12px 14px;
   }
-  .mc-body {
+  .moment-compose-body {
     padding: 12px;
   }
 }

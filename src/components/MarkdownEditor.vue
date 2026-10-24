@@ -1,18 +1,18 @@
 <template>
-  <div class="md-editor" :class="{ 'is-fullscreen': fullscreen }">
+  <div class="markdown-editor" :class="{ 'is-fullscreen': fullscreen }">
     <!-- 工具栏 -->
-    <div class="md-toolbar">
+    <div class="markdown-editor-toolbar">
       <!-- 表情 -->
-      <div class="md-emoji-wrap">
-        <button type="button" class="md-tool" title="插入表情" @mousedown.prevent @click="toggleEmoji">
+      <div class="markdown-editor-emoji-wrap">
+        <button type="button" class="markdown-editor-tool" title="插入表情" @mousedown.prevent @click="toggleEmoji">
           <i class="bi bi-emoji-smile" />
         </button>
         <EmojiPicker v-if="showEmoji" v-model="showEmoji" @select="insertEmoji" />
       </div>
 
       <!-- @ 提及：候选只含「我关注的人」，插入纯文本 @昵称；保存时后端解析成链接并发通知 -->
-      <div class="md-mention-wrap" style="position: relative">
-        <button type="button" class="md-tool" title="@ 提及" @mousedown.prevent @click="toggleMention">
+      <div class="markdown-editor-mention-wrap" style="position: relative">
+        <button type="button" class="markdown-editor-tool" title="@ 提及" @mousedown.prevent @click="toggleMention">
           <i class="bi bi-at" />
         </button>
         <MentionPicker
@@ -27,19 +27,19 @@
       <!-- 上传图片 -->
       <button
         type="button"
-        class="md-tool"
+        class="markdown-editor-tool"
         title="上传图片"
         :disabled="uploading"
         @mousedown.prevent
         @click="pickImage"
       >
-        <i :class="uploading ? 'bi bi-arrow-repeat md-spin' : 'bi bi-image'" />
+        <i :class="uploading ? 'bi bi-arrow-repeat markdown-editor-spin' : 'bi bi-image'" />
       </button>
 
       <!-- 从附件库插入图片 -->
       <button
         type="button"
-        class="md-tool"
+        class="markdown-editor-tool"
         title="从附件库插入图片"
         @mousedown.prevent
         @click="showLibrary = true"
@@ -50,7 +50,7 @@
       <!-- 视频 / 音频 / 附件：从附件库选择，插入 @[video] / @[audio] / @[file] 短代码 -->
       <button
         type="button"
-        class="md-tool"
+        class="markdown-editor-tool"
         title="插入视频"
         @mousedown.prevent
         @click="openMediaLibrary('video')"
@@ -60,7 +60,7 @@
 
       <button
         type="button"
-        class="md-tool"
+        class="markdown-editor-tool"
         title="插入音频"
         @mousedown.prevent
         @click="openMediaLibrary('audio')"
@@ -70,7 +70,7 @@
 
       <button
         type="button"
-        class="md-tool"
+        class="markdown-editor-tool"
         title="插入附件"
         @mousedown.prevent
         @click="openMediaLibrary('file')"
@@ -81,36 +81,36 @@
       <!-- 上传视频 / 音频 / 附件（按扩展名自动生成对应短代码） -->
       <button
         type="button"
-        class="md-tool"
+        class="markdown-editor-tool"
         title="上传视频 / 音频 / 附件"
         :disabled="mediaUploading"
         @mousedown.prevent
         @click="pickMedia"
       >
-        <i :class="mediaUploading ? 'bi bi-arrow-repeat md-spin' : 'bi bi-cloud-arrow-up'" />
+        <i :class="mediaUploading ? 'bi bi-arrow-repeat markdown-editor-spin' : 'bi bi-cloud-arrow-up'" />
       </button>
 
-      <span class="md-toolbar__split" />
+      <span class="markdown-editor-toolbar-split" />
 
       <button
         v-for="tool in tools"
         :key="tool.key"
         type="button"
-        class="md-tool"
+        class="markdown-editor-tool"
         :title="tool.title"
         @mousedown.prevent
         @click="runTool(tool.apply)"
       >
         <i v-if="tool.icon" :class="tool.icon" />
-        <span v-else class="md-tool__text">{{ tool.text }}</span>
+        <span v-else class="markdown-editor-tool-text">{{ tool.text }}</span>
       </button>
 
-      <span class="md-toolbar__flex" />
+      <span class="markdown-editor-toolbar-flex" />
 
       <!-- 全屏编辑 -->
       <button
         type="button"
-        class="md-tool"
+        class="markdown-editor-tool"
         :class="{ 'is-active': fullscreen }"
         :title="fullscreen ? '退出全屏 (Esc)' : '全屏编辑'"
         @mousedown.prevent
@@ -123,7 +123,7 @@
       <button
         v-if="fullscreen"
         type="button"
-        class="md-tool"
+        class="markdown-editor-tool"
         :class="{ 'is-active': splitView }"
         :title="splitView ? '退出分屏，单栏编辑' : '分屏预览（左写右预览）'"
         @mousedown.prevent
@@ -135,7 +135,7 @@
       <!-- 预览 / 继续编辑 -->
       <button
         type="button"
-        class="md-tool"
+        class="markdown-editor-tool"
         :class="{ 'is-active': mode === 'preview' && !splitView }"
         :title="mode === 'preview' && !splitView ? '继续编辑' : splitView ? '只看预览' : '预览'"
         @click="toggleMode"
@@ -145,12 +145,12 @@
     </div>
 
     <!-- 正文 -->
-    <div class="md-body" :class="{ 'is-split': splitView }">
+    <div class="markdown-editor-body" :class="{ 'is-split': splitView }">
       <!-- 源码编辑：只有 [emoji:url] 渲染成表情图，图片 markdown 与 @[video] 等短代码保持文本 -->
       <div
         v-show="showEditor"
         ref="editorRef"
-        class="md-content"
+        class="markdown-editor-content"
         :class="{ 'is-empty': !modelValue }"
         contenteditable="true"
         spellcheck="false"
@@ -165,20 +165,20 @@
 
       <div
         v-show="showPreview"
-        class="md-preview markdown-body"
+        class="markdown-editor-preview markdown-body"
         :style="{ minHeight: fullscreen ? '0px' : minHeight }"
         v-html="html"
       />
 
       <!-- 字数（右下角，与参考设计一致） -->
-      <span class="md-count" :class="{ over: count > maxLength }">
+      <span class="markdown-editor-count" :class="{ 'is-over': count > maxLength }">
         {{ count }}<em>/{{ maxLength }}</em>
       </span>
     </div>
 
     <!-- 全屏底部状态条（全屏时父级操作栏被遮住，这里留出退出口） -->
-    <div v-if="fullscreen" class="md-fullscreen-foot">
-      <span class="md-fullscreen-tip">
+    <div v-if="fullscreen" class="markdown-editor-fullscreen-foot">
+      <span class="markdown-editor-fullscreen-tip">
         <i class="bi bi-keyboard" aria-hidden="true" />
         Ctrl + S 保存 · Esc 退出全屏
       </span>
@@ -842,13 +842,13 @@ defineExpose({ focus: () => editorRef.value?.focus() })
 </script>
 
 <style scoped>
-.md-editor {
+.markdown-editor {
   background: transparent;
   overflow: hidden;
 }
 
 /* ---------- 工具栏 ---------- */
-.md-toolbar {
+.markdown-editor-toolbar {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
@@ -857,11 +857,11 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   border-top: 1px solid var(--border-soft);
   border-bottom: 1px solid var(--border-soft);
 }
-.md-emoji-wrap {
+.markdown-editor-emoji-wrap {
   position: relative;
   display: inline-flex;
 }
-.md-tool {
+.markdown-editor-tool {
   min-width: 30px;
   height: 30px;
   padding: 0 6px;
@@ -876,39 +876,39 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   cursor: pointer;
   transition: background 0.15s, color 0.15s;
 }
-.md-tool:hover:not(:disabled) {
+.markdown-editor-tool:hover:not(:disabled) {
   background: var(--bg-muted);
   color: var(--primary);
 }
-.md-tool:disabled {
+.markdown-editor-tool:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-.md-tool.is-active {
+.markdown-editor-tool.is-active {
   background: var(--accent-soft);
   color: var(--primary-deep);
 }
-.md-tool__text {
+.markdown-editor-tool-text {
   font-size: 12px;
   font-weight: 600;
   letter-spacing: -0.2px;
 }
-.md-toolbar__split {
+.markdown-editor-toolbar-split {
   width: 1px;
   height: 16px;
   margin: 0 4px;
   background: var(--border);
 }
-.md-toolbar__flex {
+.markdown-editor-toolbar-flex {
   flex: 1;
   min-width: 8px;
 }
 
 /* ---------- 正文 ---------- */
-.md-body {
+.markdown-editor-body {
   position: relative;
 }
-.md-content {
+.markdown-editor-content {
   display: block;
   width: 100%;
   padding: 16px 18px 40px;
@@ -924,12 +924,12 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   overflow-wrap: anywhere;
   cursor: text;
 }
-.md-content.is-empty::before {
+.markdown-editor-content.is-empty::before {
   content: attr(data-placeholder);
   color: var(--text-light);
   pointer-events: none;
 }
-.md-preview {
+.markdown-editor-preview {
   padding: 16px 18px 40px;
   overflow-y: auto;
   max-height: 620px;
@@ -939,7 +939,7 @@ defineExpose({ focus: () => editorRef.value?.focus() })
 }
 
 /* ---------- 行内表情（innerHTML 注入，需 deep） ---------- */
-.md-content :deep(.editor-emoji) {
+.markdown-editor-content :deep(.editor-emoji) {
   width: 24px;
   height: 24px;
   vertical-align: middle;
@@ -950,7 +950,7 @@ defineExpose({ focus: () => editorRef.value?.focus() })
 }
 
 /* 右下角字数统计 */
-.md-count {
+.markdown-editor-count {
   position: absolute;
   right: 14px;
   bottom: 10px;
@@ -960,19 +960,19 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   pointer-events: none;
   user-select: none;
 }
-.md-count em {
+.markdown-editor-count em {
   font-style: normal;
   color: var(--text-light);
 }
-.md-count.over {
+.markdown-editor-count.is-over {
   color: var(--danger);
 }
-.md-count.over em {
+.markdown-editor-count.is-over em {
   color: var(--danger);
 }
 
 /* ---------- 全屏编辑 ---------- */
-.md-editor.is-fullscreen {
+.markdown-editor.is-fullscreen {
   position: fixed;
   inset: 0;
   /* 盖住页面布局（200）与悬浮按钮（999）、搜索（1060），低于各类弹窗（3000+） */
@@ -982,20 +982,20 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   background: var(--bg);
   animation: mdFullscreenIn var(--dur) var(--ease);
 }
-.md-editor.is-fullscreen .md-toolbar {
+.markdown-editor.is-fullscreen .markdown-editor-toolbar {
   flex: 0 0 auto;
   padding: 8px 18px;
   background: var(--bg-card);
   border-top: none;
 }
-.md-editor.is-fullscreen .md-body {
+.markdown-editor.is-fullscreen .markdown-editor-body {
   flex: 1 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
 }
-.md-editor.is-fullscreen .md-content,
-.md-editor.is-fullscreen .md-preview {
+.markdown-editor.is-fullscreen .markdown-editor-content,
+.markdown-editor.is-fullscreen .markdown-editor-preview {
   flex: 1 1 auto;
   min-height: 0;
   max-height: none;
@@ -1006,27 +1006,27 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   padding: 24px 24px 72px;
 }
 /* 全屏分屏：左写右预览，两栏各自滚动 */
-.md-editor.is-fullscreen .md-body.is-split {
+.markdown-editor.is-fullscreen .markdown-editor-body.is-split {
   flex-direction: row;
   align-items: stretch;
 }
-.md-editor.is-fullscreen .md-body.is-split .md-content,
-.md-editor.is-fullscreen .md-body.is-split .md-preview {
+.markdown-editor.is-fullscreen .markdown-editor-body.is-split .markdown-editor-content,
+.markdown-editor.is-fullscreen .markdown-editor-body.is-split .markdown-editor-preview {
   flex: 1 1 50%;
   min-width: 0;
   max-width: none;
   margin: 0;
   padding: 22px 20px 64px;
 }
-.md-editor.is-fullscreen .md-body.is-split .md-preview {
+.markdown-editor.is-fullscreen .markdown-editor-body.is-split .markdown-editor-preview {
   border-left: 1px solid var(--border-soft);
   background: var(--bg-card);
 }
-.md-editor.is-fullscreen .md-count {
+.markdown-editor.is-fullscreen .markdown-editor-count {
   right: 20px;
   bottom: 14px;
 }
-.md-fullscreen-foot {
+.markdown-editor-fullscreen-foot {
   flex: 0 0 auto;
   display: flex;
   align-items: center;
@@ -1036,7 +1036,7 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   background: var(--bg-card);
   border-top: 1px solid var(--border-soft);
 }
-.md-fullscreen-tip {
+.markdown-editor-fullscreen-tip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -1055,7 +1055,7 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   }
 }
 
-.md-spin {
+.markdown-editor-spin {
   display: inline-block;
   animation: mdSpin 0.8s linear infinite;
 }
@@ -1066,37 +1066,37 @@ defineExpose({ focus: () => editorRef.value?.focus() })
 }
 
 @media (max-width: 768px) {
-  .md-toolbar {
+  .markdown-editor-toolbar {
     flex-wrap: nowrap;
     overflow-x: auto;
     scrollbar-width: none;
   }
-  .md-toolbar::-webkit-scrollbar {
+  .markdown-editor-toolbar::-webkit-scrollbar {
     display: none;
   }
-  .md-tool,
-  .md-toolbar__split {
+  .markdown-editor-tool,
+  .markdown-editor-toolbar-split {
     flex-shrink: 0;
   }
-  .md-toolbar__flex {
+  .markdown-editor-toolbar-flex {
     display: none;
   }
-  .md-content,
-  .md-preview {
+  .markdown-editor-content,
+  .markdown-editor-preview {
     font-size: 14px;
     padding-left: 14px;
     padding-right: 14px;
   }
   /* 窄屏放不下左右两栏：分屏改成上下两半（上写下看） */
-  .md-editor.is-fullscreen .md-body.is-split {
+  .markdown-editor.is-fullscreen .markdown-editor-body.is-split {
     flex-direction: column;
   }
-  .md-editor.is-fullscreen .md-body.is-split .md-content,
-  .md-editor.is-fullscreen .md-body.is-split .md-preview {
+  .markdown-editor.is-fullscreen .markdown-editor-body.is-split .markdown-editor-content,
+  .markdown-editor.is-fullscreen .markdown-editor-body.is-split .markdown-editor-preview {
     flex: 1 1 50%;
     padding: 16px 14px 40px;
   }
-  .md-editor.is-fullscreen .md-body.is-split .md-preview {
+  .markdown-editor.is-fullscreen .markdown-editor-body.is-split .markdown-editor-preview {
     border-left: none;
     border-top: 1px solid var(--border-soft);
   }

@@ -2,31 +2,31 @@
   <div class="checkin-page">
     <!-- 未登录：引导登录后回到本页（/auth/login?redirect=/checkin） -->
     <section v-if="!isLogged" class="card card-pad login-tip">
-      <div class="login-tip__icon"><i class="bi bi-calendar-check" /></div>
-      <h2 class="login-tip__title">登录后即可签到</h2>
-      <p class="login-tip__desc">签到可得经验、积分等奖励，连续签到与周期签到还有额外加成。</p>
+      <div class="login-tip-icon"><i class="bi bi-calendar-check" /></div>
+      <h2 class="login-tip-title">登录后即可签到</h2>
+      <p class="login-tip-desc">签到可得经验、积分等奖励，连续签到与周期签到还有额外加成。</p>
       <router-link to="/auth/login?redirect=/checkin" class="btn btn-primary btn-lg">去登录</router-link>
     </section>
 
     <template v-else>
       <!-- 功能未开启 -->
       <section v-if="!status.enabled" class="card card-pad login-tip">
-        <div class="login-tip__icon"><i class="bi bi-calendar-x" /></div>
-        <h2 class="login-tip__title">签到暂未开放</h2>
-        <p class="login-tip__desc">站点当前关闭了每日签到，稍后再来看看吧。</p>
+        <div class="login-tip-icon"><i class="bi bi-calendar-x" /></div>
+        <h2 class="login-tip-title">签到暂未开放</h2>
+        <p class="login-tip-desc">站点当前关闭了每日签到，稍后再来看看吧。</p>
       </section>
 
       <template v-else>
         <!-- 签到主卡 -->
         <section class="checkin-hero card card-pad" :class="{ 'is-checked': status.checked }">
-          <div class="checkin-hero__icon">
+          <div class="checkin-hero-icon">
             <i class="bi" :class="status.checked ? 'bi-check-lg' : 'bi-calendar-check'" />
           </div>
-          <div class="checkin-hero__info">
-            <h2 class="checkin-hero__title">
+          <div class="checkin-hero-info">
+            <h2 class="checkin-hero-title">
               {{ status.checked ? '今日已签到' : `今日还未签到 · 连续第 ${status.preview_days || 1} 天` }}
             </h2>
-            <p class="checkin-hero__desc">
+            <p class="checkin-hero-desc">
               <template v-if="status.checked">{{ status.tips || '签到成功' }}</template>
               <template v-else>
                 签到可得基础奖励
@@ -41,18 +41,18 @@
               </template>
             </p>
           </div>
-          <div class="checkin-hero__actions">
+          <div class="checkin-hero-actions">
             <button
-              class="btn btn-primary btn-lg checkin-hero__btn"
+              class="btn btn-primary btn-lg checkin-hero-btn"
               :disabled="loading || status.checked"
               @click="doSign"
             >
-              <span v-if="loading" class="spinner spinner--light" />
+              <span v-if="loading" class="spinner spinner-light" />
               {{ loading ? '签到中...' : status.checked ? '今日已签到' : '立即签到' }}
             </button>
             <button
               v-if="makeup.enabled"
-              class="btn btn-ghost checkin-hero__ghost"
+              class="btn btn-ghost checkin-hero-ghost"
               type="button"
               @click="scrollToMakeup"
             >
@@ -64,22 +64,22 @@
         <!-- 数据小卡 -->
         <div class="stat-grid">
           <div class="stat-card">
-            <span class="stat-card__num">{{ status.streak }}</span>
-            <span class="stat-card__label">连续签到（天）</span>
+            <span class="stat-card-num">{{ status.streak }}</span>
+            <span class="stat-card-label">连续签到（天）</span>
           </div>
           <div class="stat-card">
-            <span class="stat-card__num">{{ status.month_days }}</span>
-            <span class="stat-card__label">本月签到（天）</span>
+            <span class="stat-card-num">{{ status.month_days }}</span>
+            <span class="stat-card-label">本月签到（天）</span>
           </div>
           <div class="stat-card">
-            <span class="stat-card__num">
+            <span class="stat-card-num">
               {{ cycleDays.length ? `${status.cycle_day}/${cycleDays.length}` : '—' }}
             </span>
-            <span class="stat-card__label">周期进度（天）</span>
+            <span class="stat-card-label">周期进度（天）</span>
           </div>
           <div class="stat-card">
-            <span class="stat-card__num">{{ nextMilestone ? nextMilestone.day : '—' }}</span>
-            <span class="stat-card__label">下个里程碑（天）</span>
+            <span class="stat-card-num">{{ nextMilestone ? nextMilestone.day : '—' }}</span>
+            <span class="stat-card-label">下个里程碑（天）</span>
           </div>
         </div>
 
@@ -91,16 +91,16 @@
           </header>
 
           <div v-for="group in rewardGroups" :key="group.key" class="reward-group">
-            <div class="reward-group__head">
-              <span class="reward-group__title">{{ group.label }}</span>
-              <span v-if="group.hint" class="reward-group__hint">{{ group.hint }}</span>
+            <div class="reward-group-head">
+              <span class="reward-group-title">{{ group.label }}</span>
+              <span v-if="group.hint" class="reward-group-hint">{{ group.hint }}</span>
             </div>
             <div class="reward-items">
               <span v-for="(item, index) in group.items" :key="index" class="reward-chip">
                 <i class="bi" :class="item.icon" />
                 {{ chipText(item) }}
-                <em v-if="item.chance" class="reward-chip__chance">{{ item.chance }}% 概率</em>
-                <em v-else-if="item.label" class="reward-chip__label">{{ item.label }}</em>
+                <em v-if="item.chance" class="reward-chip-chance">{{ item.chance }}% 概率</em>
+                <em v-else-if="item.label" class="reward-chip-label">{{ item.label }}</em>
               </span>
             </div>
           </div>
@@ -139,16 +139,16 @@
               v-for="item in cycleDays"
               :key="item.day"
               class="cycle-cell"
-              :class="{ current: item.day === status.cycle_day, done: item.day < status.cycle_day }"
+              :class="{ 'is-current': item.day === status.cycle_day, 'is-done': item.day < status.cycle_day }"
             >
-              <span class="cycle-cell__day">第 {{ item.day }} 天</span>
-              <span v-if="item.rewards.length" class="cycle-cell__reward">
+              <span class="cycle-cell-day">第 {{ item.day }} 天</span>
+              <span v-if="item.rewards.length" class="cycle-cell-reward">
                 <template v-for="(reward, index) in item.rewards" :key="index">
                   +{{ reward.value }} {{ reward.unit }}
                 </template>
               </span>
-              <span v-else class="cycle-cell__reward is-plain">基础奖励</span>
-              <span class="cycle-cell__label">{{ item.label || ' ' }}</span>
+              <span v-else class="cycle-cell-reward is-plain">基础奖励</span>
+              <span class="cycle-cell-label">{{ item.label || ' ' }}</span>
             </div>
           </div>
         </section>
@@ -169,22 +169,22 @@
               class="milestone-row"
               :class="{ reached: item.reached }"
             >
-              <span class="milestone-row__badge">
+              <span class="milestone-row-badge">
                 <i class="bi" :class="item.reached ? 'bi-check-circle-fill' : item.icon" />
               </span>
-              <div class="milestone-row__info">
-                <span class="milestone-row__title">
+              <div class="milestone-row-info">
+                <span class="milestone-row-title">
                   {{ item.scope }} {{ item.day }} 天
                   <em v-if="item.label">{{ item.label }}</em>
                 </span>
-                <span class="milestone-row__rewards">
+                <span class="milestone-row-rewards">
                   <template v-for="(reward, index) in item.rewards" :key="index">
                     <i class="bi" :class="reward.icon" /> {{ reward.value }} {{ reward.unit }}
                   </template>
                   <span v-if="!item.rewards.length">—</span>
                 </span>
               </div>
-              <span class="milestone-row__state">
+              <span class="milestone-row-state">
                 {{ item.reached ? '已达成' : `还差 ${item.days_left} 天` }}
               </span>
             </div>
@@ -202,14 +202,14 @@
             <span class="block-count">本月已签到 {{ calendar.total }} 天</span>
           </header>
           <div class="calendar-grid">
-            <span v-for="week in WEEK_LABELS" :key="week" class="calendar-cell calendar-cell--week">{{ week }}</span>
-            <span v-for="i in calendarBlank" :key="`blank-${i}`" class="calendar-cell calendar-cell--blank" />
+            <span v-for="week in WEEK_LABELS" :key="week" class="calendar-cell calendar-cell-week">{{ week }}</span>
+            <span v-for="i in calendarBlank" :key="`blank-${i}`" class="calendar-cell calendar-cell-blank" />
             <span
               v-for="day in calendar.days"
               :key="day.day"
-              class="calendar-cell calendar-cell--day"
+              class="calendar-cell calendar-cell-day"
               :class="{
-                checked: day.checked,
+                'is-checked': day.checked,
                 makeup: day.checked && day.source === 2,
                 today: day.day === calendar.today
               }"
@@ -246,7 +246,7 @@
                 :key="item.date"
                 type="button"
                 class="makeup-date"
-                :class="{ active: selectedMakeup === item.date }"
+                :class="{ 'is-active': selectedMakeup === item.date }"
                 @click="selectedMakeup = selectedMakeup === item.date ? 0 : item.date"
               >
                 {{ item.text }}
@@ -259,7 +259,7 @@
                 :disabled="!selectedMakeup || makeupLoading"
                 @click="doMakeup"
               >
-                <span v-if="makeupLoading" class="spinner spinner--light" />
+                <span v-if="makeupLoading" class="spinner spinner-light" />
                 {{ makeupLoading ? '补签中...' : `确认补签（-${makeup.cost} ${makeup.unit}）` }}
               </button>
             </div>
@@ -276,7 +276,7 @@
                 :key="item.key"
                 type="button"
                 class="range-tab"
-                :class="{ active: timeRange === item.key }"
+                :class="{ 'is-active': timeRange === item.key }"
                 @click="changeRange(item.key)"
               >
                 {{ item.label }}
@@ -284,7 +284,7 @@
             </div>
           </header>
 
-          <div v-if="rankLoading" class="loading"><span class="spinner" /> 加载中...</div>
+          <div v-if="rankLoading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
           <EmptyState v-else-if="!rankList.length" icon="bi bi-trophy" text="暂无排行数据" />
 
@@ -814,7 +814,7 @@ watch(isLogged, (logged) => {
   padding: 48px 24px;
   text-align: center;
 }
-.login-tip__icon {
+.login-tip-icon {
   width: 64px;
   height: 64px;
   display: flex;
@@ -825,13 +825,13 @@ watch(isLogged, (logged) => {
   color: var(--primary);
   background: var(--accent-soft);
 }
-.login-tip__title {
+.login-tip-title {
   margin: 0;
   font-family: var(--font-serif);
   font-size: 18px;
   font-weight: 700;
 }
-.login-tip__desc {
+.login-tip-desc {
   margin: 0 0 6px;
   font-size: 13px;
   color: var(--text-muted);
@@ -848,7 +848,7 @@ watch(isLogged, (logged) => {
 .checkin-hero.is-checked {
   border-color: var(--border-soft);
 }
-.checkin-hero__icon {
+.checkin-hero-icon {
   width: 56px;
   height: 56px;
   flex-shrink: 0;
@@ -860,21 +860,21 @@ watch(isLogged, (logged) => {
   color: #fff;
   background: linear-gradient(135deg, var(--primary), var(--primary-deep));
 }
-.checkin-hero.is-checked .checkin-hero__icon {
+.checkin-hero.is-checked .checkin-hero-icon {
   background: linear-gradient(135deg, var(--success), #5a8a3a);
 }
-.checkin-hero__info {
+.checkin-hero-info {
   flex: 1;
   min-width: 0;
 }
-.checkin-hero__title {
+.checkin-hero-title {
   margin: 0 0 4px;
   font-family: var(--font-serif);
   font-size: 18px;
   font-weight: 700;
   color: var(--text);
 }
-.checkin-hero__desc {
+.checkin-hero-desc {
   margin: 0;
   font-size: 13px;
   color: var(--text-muted);
@@ -897,25 +897,25 @@ watch(isLogged, (logged) => {
 .hero-variable i {
   color: #d4a148;
 }
-.checkin-hero__actions {
+.checkin-hero-actions {
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-.checkin-hero__btn {
+.checkin-hero-btn {
   /* 保留渐变作为签到按钮的专属视觉标识 */
   background: linear-gradient(135deg, var(--primary), var(--primary-deep));
 }
-.checkin-hero__btn:hover:not(:disabled) {
+.checkin-hero-btn:hover:not(:disabled) {
   filter: brightness(1.05);
 }
-.checkin-hero__ghost {
+.checkin-hero-ghost {
   font-size: 12px;
   color: var(--text-muted);
 }
 /* 主色按钮上的转圈：白边，避免深色底看不清 */
-.spinner--light {
+.spinner-light {
   width: 16px;
   height: 16px;
   border-color: rgba(255, 255, 255, 0.4);
@@ -937,7 +937,7 @@ watch(isLogged, (logged) => {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
 }
-.stat-card__num {
+.stat-card-num {
   font-family: var(--font-serif);
   font-size: 22px;
   font-weight: 700;
@@ -945,7 +945,7 @@ watch(isLogged, (logged) => {
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
 }
-.stat-card__label {
+.stat-card-label {
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -978,18 +978,18 @@ watch(isLogged, (logged) => {
 .reward-group + .reward-group {
   margin-top: 12px;
 }
-.reward-group__head {
+.reward-group-head {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 6px;
 }
-.reward-group__title {
+.reward-group-title {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
 }
-.reward-group__hint {
+.reward-group-hint {
   font-size: 12px;
   color: #d4a148;
 }
@@ -1017,7 +1017,7 @@ watch(isLogged, (logged) => {
   font-size: 11px;
   color: var(--text-muted);
 }
-.reward-chip__chance {
+.reward-chip-chance {
   color: #d4a148;
 }
 
@@ -1074,28 +1074,28 @@ watch(isLogged, (logged) => {
   border: 1px solid var(--border-soft);
   border-radius: var(--radius-sm);
 }
-.cycle-cell.done {
+.cycle-cell.is-done {
   opacity: 0.6;
 }
-.cycle-cell.current {
+.cycle-cell.is-current {
   background: linear-gradient(135deg, var(--accent-soft), var(--accent-wash));
   border-color: var(--gold-line);
 }
-.cycle-cell__day {
+.cycle-cell-day {
   font-size: 12px;
   color: var(--text-muted);
 }
-.cycle-cell__reward {
+.cycle-cell-reward {
   font-size: 13px;
   font-weight: 600;
   color: var(--primary-deep);
 }
-.cycle-cell__reward.is-plain {
+.cycle-cell-reward.is-plain {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
 }
-.cycle-cell__label {
+.cycle-cell-label {
   min-height: 14px;
   font-size: 11px;
   color: var(--text-muted);
@@ -1120,43 +1120,43 @@ watch(isLogged, (logged) => {
   background: linear-gradient(135deg, var(--gold-wash), var(--accent-wash));
   border-color: var(--gold-line);
 }
-.milestone-row__badge {
+.milestone-row-badge {
   font-size: 16px;
   color: var(--text-muted);
 }
-.milestone-row.reached .milestone-row__badge {
+.milestone-row.reached .milestone-row-badge {
   color: var(--success);
 }
-.milestone-row__info {
+.milestone-row-info {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.milestone-row__title {
+.milestone-row-title {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
 }
-.milestone-row__title em {
+.milestone-row-title em {
   margin-left: 6px;
   font-style: normal;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
 }
-.milestone-row__rewards {
+.milestone-row-rewards {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 10px;
   font-size: 12px;
   color: var(--text-muted);
 }
-.milestone-row__rewards i {
+.milestone-row-rewards i {
   color: #d4a148;
 }
-.milestone-row__state {
+.milestone-row-state {
   flex-shrink: 0;
   font-size: 12px;
   color: var(--text-muted);
@@ -1190,36 +1190,36 @@ watch(isLogged, (logged) => {
   border-radius: 8px;
   font-variant-numeric: tabular-nums;
 }
-.calendar-cell--week {
+.calendar-cell-week {
   color: var(--text-muted);
   font-weight: 500;
 }
-.calendar-cell--blank {
+.calendar-cell-blank {
   visibility: hidden;
 }
-.calendar-cell--day {
+.calendar-cell-day {
   background: var(--bg-muted);
   border: 1px solid var(--border-soft);
   color: var(--text-muted);
 }
-.calendar-cell--day.checked {
+.calendar-cell-day.is-checked {
   background: linear-gradient(135deg, var(--primary), var(--primary-deep));
   border-color: transparent;
   color: #fff;
   font-weight: 600;
 }
 /* 补签：虚框 + 斜纹，和正常签到区分 */
-.calendar-cell--day.makeup {
+.calendar-cell-day.makeup {
   background: repeating-linear-gradient(45deg, var(--accent-soft), var(--accent-soft) 4px, var(--bg-card) 4px, var(--bg-card) 8px);
   border-color: var(--primary);
   color: var(--primary);
 }
-.calendar-cell--day.today {
+.calendar-cell-day.today {
   border-color: var(--primary);
   color: var(--primary);
   font-weight: 700;
 }
-.calendar-cell--day.today.checked {
+.calendar-cell-day.today.is-checked {
   color: #fff;
 }
 
@@ -1248,7 +1248,7 @@ watch(isLogged, (logged) => {
   border-color: var(--primary);
   color: var(--primary);
 }
-.makeup-date.active {
+.makeup-date.is-active {
   color: #fff;
   background: linear-gradient(135deg, var(--primary), var(--primary-deep));
   border-color: transparent;
@@ -1272,7 +1272,7 @@ watch(isLogged, (logged) => {
   color: var(--text-muted);
   transition: all 0.2s;
 }
-.range-tab.active {
+.range-tab.is-active {
   color: var(--primary);
   font-weight: 600;
   background: var(--bg-card);
@@ -1352,7 +1352,7 @@ watch(isLogged, (logged) => {
   color: var(--text-muted);
 }
 
-.loading {
+.is-loading {
   padding: 32px;
   text-align: center;
   color: var(--text-muted);
@@ -1363,20 +1363,20 @@ watch(isLogged, (logged) => {
     flex-wrap: wrap;
     gap: 12px;
   }
-  .checkin-hero__icon {
+  .checkin-hero-icon {
     width: 46px;
     height: 46px;
     font-size: 21px;
   }
-  .checkin-hero__title {
+  .checkin-hero-title {
     font-size: 16px;
   }
-  .checkin-hero__actions {
+  .checkin-hero-actions {
     width: 100%;
     flex-direction: row;
     align-items: center;
   }
-  .checkin-hero__btn {
+  .checkin-hero-btn {
     flex: 1;
   }
   .stat-grid {

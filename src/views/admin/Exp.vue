@@ -39,7 +39,7 @@
           :key="v.key"
           type="button"
           class="status-tab"
-          :class="{ active: view === v.key }"
+          :class="{ 'is-active': view === v.key }"
           @click="switchView(v.key)"
         >
           <i :class="v.icon" /> {{ v.label }}
@@ -65,7 +65,7 @@
               :key="tab.key"
               type="button"
               class="status-tab"
-              :class="{ active: userFilter === tab.key }"
+              :class="{ 'is-active': userFilter === tab.key }"
               @click="switchUserFilter(tab.key)"
             >{{ tab.label }}</button>
           </div>
@@ -115,7 +115,7 @@
           </div>
         </div>
 
-        <div v-if="userLoading" class="loading"><span class="spinner" /> 加载中...</div>
+        <div v-if="userLoading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
         <div v-else-if="!users.length" class="empty-row">
           <EmptyState icon="bi bi-people" :text="userEmptyText" />
@@ -137,7 +137,7 @@
           </div>
 
           <ul class="user-list">
-            <li v-for="item in users" :key="item.id" class="user-row" :class="{ selected: isUserSelected(item.id) }">
+            <li v-for="item in users" :key="item.id" class="user-row" :class="{ 'is-selected': isUserSelected(item.id) }">
               <label class="pick" :title="isUserSelected(item.id) ? '取消选择' : '选择'">
                 <input
                   type="checkbox"
@@ -200,13 +200,13 @@
             <button
               type="button"
               class="status-tab"
-              :class="{ active: !trash }"
+              :class="{ 'is-active': !trash }"
               @click="switchTab(false)"
             >全部记录</button>
             <button
               type="button"
               class="status-tab trash-tab"
-              :class="{ active: trash }"
+              :class="{ 'is-active': trash }"
               @click="switchTab(true)"
             >
               <i class="bi bi-trash3" /> 回收站
@@ -257,7 +257,7 @@
           </button>
         </div>
 
-        <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+        <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
         <div v-else-if="!list.length" class="empty-row">
           <EmptyState :icon="trash ? 'bi bi-trash3' : 'bi bi-star'" :text="logEmptyText" />
@@ -318,7 +318,7 @@
           </div>
         </header>
 
-        <div v-if="loadingRules" class="loading"><span class="spinner" /> 加载中...</div>
+        <div v-if="loadingRules" class="is-loading"><span class="spinner" /> 加载中...</div>
 
         <div v-else-if="!rules.length" class="empty-row">
           <EmptyState icon="bi bi-star" text="暂无经验规则" />
@@ -329,18 +329,18 @@
             <tr>
               <th>类型</th>
               <th>名称</th>
-              <th class="td-num">单次经验</th>
-              <th class="td-num">每日上限</th>
-              <th class="td-act">操作</th>
+              <th class="cell-num">单次经验</th>
+              <th class="cell-num">每日上限</th>
+              <th class="cell-act">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="r in rules" :key="r.type">
               <td><code class="rule-type">{{ r.type }}</code></td>
               <td>{{ r.name || '—' }}</td>
-              <td class="td-num">{{ r.value }}</td>
-              <td class="td-num">{{ limitText(r) }}</td>
-              <td class="td-act">
+              <td class="cell-num">{{ r.value }}</td>
+              <td class="cell-num">{{ limitText(r) }}</td>
+              <td class="cell-act">
                 <button class="btn btn-ghost btn-sm" title="编辑规则" aria-label="编辑规则" @click="openRuleEdit(r)">
                   <i class="bi bi-pencil" />
                 </button>
@@ -1262,8 +1262,8 @@ onMounted(async () => {
 .status-tab:hover {
   color: var(--primary);
 }
-.view-tabs .status-tab.active,
-.status-tab.active {
+.view-tabs .status-tab.is-active,
+.status-tab.is-active {
   background: var(--primary);
   color: #fff;
 }
@@ -1360,7 +1360,7 @@ onMounted(async () => {
 }
 
 /* ---------- 列表 ---------- */
-.loading {
+.is-loading {
   padding: 40px;
   text-align: center;
   color: var(--text-muted);
@@ -1396,7 +1396,7 @@ onMounted(async () => {
 .user-row:last-child {
   border-bottom: none;
 }
-.user-row.selected {
+.user-row.is-selected {
   background: var(--accent-wash);
 }
 
@@ -1636,11 +1636,11 @@ onMounted(async () => {
   background: var(--accent-soft);
   border-radius: 3px;
 }
-.td-num {
+.cell-num {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
-.td-act {
+.cell-act {
   width: 64px;
   text-align: right;
 }

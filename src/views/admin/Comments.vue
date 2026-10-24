@@ -34,7 +34,7 @@
           :key="s.key"
           type="button"
           class="stat-card"
-          :class="{ active: s.key === activeKey, 'is-error': !!s.error }"
+          :class="{ 'is-active': s.key === activeKey, 'is-error': !!s.error }"
           :aria-pressed="s.key === activeKey"
           @click="pick(s.key)"
         >
@@ -229,7 +229,7 @@ onUnmounted(() => {
 .stat-card:hover {
   border-color: var(--primary);
 }
-.stat-card.active {
+.stat-card.is-active {
   border-color: var(--primary);
   background: var(--accent-wash);
 }

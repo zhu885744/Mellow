@@ -24,10 +24,10 @@
 
       <!-- 视图切换：项目列表 / 回收站 -->
       <div class="view-tabs">
-        <button type="button" :class="{ active: !trash }" @click="switchTrash(false)">
+        <button type="button" :class="{ 'is-active': !trash }" @click="switchTrash(false)">
           <i class="bi bi-collection" /> 全部项目
         </button>
-        <button type="button" class="view-tabs__trash" :class="{ active: trash }" @click="switchTrash(true)">
+        <button type="button" class="view-tabs-trash" :class="{ 'is-active': trash }" @click="switchTrash(true)">
           <i class="bi bi-trash3" /> 回收站
         </button>
       </div>
@@ -36,7 +36,7 @@
         <span><i class="bi bi-trash3" /> 回收站里的项目不会出现在前台，可恢复或彻底删除</span>
       </div>
 
-      <div v-if="loading" class="loading"><span class="spinner" /> 加载中...</div>
+      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <EmptyState
         v-else-if="!projects.length"
@@ -44,21 +44,21 @@
         :text="trash ? '回收站是空的' : '还没有文档项目，点右上角新建一个'"
       />
 
-      <div v-else class="proj-grid">
-        <article v-for="item in projects" :key="item.id" class="proj-card" :class="{ 'is-trashed': trash }">
-          <div class="proj-card__head">
-            <span class="proj-card__icon" aria-hidden="true">
+      <div v-else class="project-grid">
+        <article v-for="item in projects" :key="item.id" class="project-card" :class="{ 'is-trashed': trash }">
+          <div class="project-card-head">
+            <span class="project-card-icon" aria-hidden="true">
               <i :class="iconOf(item)" />
             </span>
-            <div class="proj-card__title">
-              <span class="proj-card__name">{{ item.name }}</span>
-              <span v-if="!item.status" class="proj-card__badge">已禁用</span>
+            <div class="project-card-title">
+              <span class="project-card-name">{{ item.name }}</span>
+              <span v-if="!item.status" class="project-card-badge">已禁用</span>
             </div>
           </div>
 
-          <p class="proj-card__desc">{{ item.description || '暂无描述' }}</p>
+          <p class="project-card-desc">{{ item.description || '暂无描述' }}</p>
 
-          <div class="proj-card__meta">
+          <div class="project-card-meta">
             <template v-if="trash">
               <span>删除于 {{ formatDate(item.delete_time) }}</span>
             </template>
@@ -68,7 +68,7 @@
             <code>/docs/{{ item.slug }}</code>
           </div>
 
-          <div v-if="trash" class="proj-card__foot">
+          <div v-if="trash" class="project-card-foot">
             <button type="button" class="btn btn-sm" :disabled="busy" @click="restore(item)">
               <i class="bi bi-arrow-counterclockwise" /> 恢复
             </button>
@@ -77,17 +77,17 @@
             </button>
           </div>
 
-          <div v-else class="proj-card__foot">
+          <div v-else class="project-card-foot">
             <a class="btn btn-sm" :href="`/docs/${item.slug}`" target="_blank" rel="noopener">访问</a>
             <RouterLink class="btn btn-sm" :to="`/admin/docs/${item.slug}`">编辑</RouterLink>
             <button type="button" class="btn btn-sm" @click="openDialog(item)">设置</button>
-            <button type="button" class="btn btn-sm btn-ghost is-danger proj-card__del" title="删除项目" @click="askRemove(item)">
+            <button type="button" class="btn btn-sm btn-ghost is-danger project-card-del" title="删除项目" @click="askRemove(item)">
               <i class="bi bi-trash" />
             </button>
           </div>
         </article>
 
-        <button v-if="!trash" type="button" class="proj-card proj-card--new" @click="openDialog(null)">
+        <button v-if="!trash" type="button" class="project-card project-card-new" @click="openDialog(null)">
           <i class="bi bi-plus-circle" aria-hidden="true" />
           <span>新建项目</span>
         </button>
@@ -129,7 +129,7 @@
           <div class="form-row">
             <label>图标</label>
             <div class="icon-field">
-              <span class="icon-field__preview" aria-hidden="true"><i :class="iconOf(dialog.form)" /></span>
+              <span class="icon-field-preview" aria-hidden="true"><i :class="iconOf(dialog.form)" /></span>
               <input v-model="dialog.form.icon" class="input" type="text" placeholder="bi bi-file-earmark-lock" />
             </div>
             <p class="form-hint">填Bootstrap Icons 类名，如 bi bi-file-earmark-lock；留空使用默认图标。</p>
@@ -143,7 +143,7 @@
             </span>
           </label>
 
-          <div class="form-row form-row--half">
+          <div class="form-row form-row-half">
             <div>
               <label>状态</label>
               <SelectMenu v-model="dialog.form.status" variant="field" :options="STATUS_OPTIONS" />
@@ -488,7 +488,7 @@ onMounted(load)
 .view-tabs button:hover {
   color: var(--text);
 }
-.view-tabs button.active {
+.view-tabs button.is-active {
   color: var(--primary);
   background: var(--bg-card);
   box-shadow: var(--shadow-sm);
@@ -507,16 +507,16 @@ onMounted(load)
 }
 
 /* ---------- 项目卡片 ---------- */
-.proj-grid {
+.project-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
 }
-.proj-card.is-trashed {
+.project-card.is-trashed {
   opacity: 0.9;
   border-style: dashed;
 }
-.proj-card {
+.project-card {
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -526,13 +526,13 @@ onMounted(load)
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
 }
-.proj-card__head {
+.project-card-head {
   display: flex;
   align-items: center;
   gap: 10px;
   min-width: 0;
 }
-.proj-card__icon {
+.project-card-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -544,13 +544,13 @@ onMounted(load)
   background: var(--accent-wash);
   border-radius: var(--radius-sm);
 }
-.proj-card__title {
+.project-card-title {
   display: flex;
   align-items: center;
   gap: 6px;
   min-width: 0;
 }
-.proj-card__name {
+.project-card-name {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
@@ -558,7 +558,7 @@ onMounted(load)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.proj-card__badge {
+.project-card-badge {
   flex-shrink: 0;
   padding: 1px 6px;
   font-size: 10.5px;
@@ -566,7 +566,7 @@ onMounted(load)
   background: var(--bg-muted);
   border-radius: 999px;
 }
-.proj-card__desc {
+.project-card-desc {
   margin: 0;
   min-height: 38px;
   font-size: 12.5px;
@@ -578,7 +578,7 @@ onMounted(load)
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.proj-card__meta {
+.project-card-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -586,12 +586,12 @@ onMounted(load)
   font-size: 11.5px;
   color: var(--text-light);
 }
-.proj-card__meta code {
+.project-card-meta code {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.proj-card__foot {
+.project-card-foot {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -599,12 +599,12 @@ onMounted(load)
   margin-top: auto;
   border-top: 1px solid var(--border-soft);
 }
-.proj-card__del {
+.project-card-del {
   margin-left: auto;
 }
 
 /* 新建卡片：虚线占位 */
-.proj-card--new {
+.project-card-new {
   align-items: center;
   justify-content: center;
   gap: 8px;
@@ -614,14 +614,14 @@ onMounted(load)
   border-style: dashed;
   cursor: pointer;
 }
-.proj-card--new:hover {
+.project-card-new:hover {
   color: var(--primary);
   border-color: var(--primary-soft);
 }
-.proj-card--new i {
+.project-card-new i {
   font-size: 22px;
 }
-.proj-card--new span {
+.project-card-new span {
   font-size: 13px;
 }
 
@@ -700,11 +700,11 @@ onMounted(load)
   font-size: 12px;
   color: var(--text-muted);
 }
-.form-row--half {
+.form-row-half {
   flex-direction: row;
   gap: 12px;
 }
-.form-row--half > div {
+.form-row-half > div {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -730,7 +730,7 @@ onMounted(load)
   align-items: center;
   gap: 8px;
 }
-.icon-field__preview {
+.icon-field-preview {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -777,7 +777,7 @@ onMounted(load)
 }
 
 @media (max-width: 900px) {
-  .form-row--half {
+  .form-row-half {
     flex-direction: column;
   }
 }

@@ -10,20 +10,20 @@
         :to="item.path"
         class="docs-card"
       >
-        <span class="docs-card__icon" aria-hidden="true">
+        <span class="docs-card-icon" aria-hidden="true">
           <i :class="iconOf(item)" />
         </span>
 
-        <span class="docs-card__body">
-          <span class="docs-card__title">{{ item.name }}</span>
-          <span v-if="item.description" class="docs-card__desc">{{ item.description }}</span>
-          <span class="docs-card__meta">
+        <span class="docs-card-body">
+          <span class="docs-card-title">{{ item.name }}</span>
+          <span v-if="item.description" class="docs-card-desc">{{ item.description }}</span>
+          <span class="docs-card-meta">
             共 {{ item.docs_count || 0 }} 篇文档
             <template v-if="!item.comment_enabled"> · 评论已关闭</template>
           </span>
         </span>
 
-        <i class="bi bi-arrow-right docs-card__arrow" aria-hidden="true" />
+        <i class="bi bi-arrow-right docs-card-arrow" aria-hidden="true" />
       </RouterLink>
     </div>
 
@@ -98,7 +98,7 @@ onMounted(load)
   border-color: var(--primary-soft);
   transform: translateY(-2px);
 }
-.docs-card__icon {
+.docs-card-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -110,14 +110,14 @@ onMounted(load)
   background: var(--accent-wash);
   border-radius: var(--radius-sm);
 }
-.docs-card__body {
+.docs-card-body {
   display: flex;
   flex-direction: column;
   gap: 4px;
   min-width: 0;
   flex: 1;
 }
-.docs-card__title {
+.docs-card-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
@@ -125,7 +125,7 @@ onMounted(load)
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.docs-card__desc {
+.docs-card-desc {
   font-size: 12.5px;
   line-height: 1.7;
   color: var(--text-light);
@@ -135,19 +135,19 @@ onMounted(load)
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.docs-card__meta {
+.docs-card-meta {
   margin-top: 2px;
   font-size: 11.5px;
   color: var(--text-light);
 }
-.docs-card__arrow {
+.docs-card-arrow {
   flex-shrink: 0;
   margin-top: 8px;
   font-size: 13px;
   color: var(--text-light);
   transition: color 0.2s, transform 0.2s;
 }
-.docs-card:hover .docs-card__arrow {
+.docs-card:hover .docs-card-arrow {
   color: var(--primary);
   transform: translateX(2px);
 }

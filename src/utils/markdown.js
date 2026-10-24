@@ -209,17 +209,17 @@ function renderMedia(kind, url, caption, meta) {
 
   const src = md.utils.escapeHtml(getFullUrl(raw))
   const title = caption
-    ? `<span class="md-media__caption">${md.utils.escapeHtml(caption)}</span>`
+    ? `<span class="markdown-media-caption">${md.utils.escapeHtml(caption)}</span>`
     : ''
 
   if (kind === 'video') {
     // 同音频：浏览器里走自绘播放器，不支持自定义元素时退回原生 controls
     if (typeof window !== 'undefined' && window.customElements) {
       const captionAttr = caption ? ` caption="${md.utils.escapeHtml(caption)}"` : ''
-      return `<mellow-video class="md-video" src="${src}"${captionAttr}></mellow-video>`
+      return `<mellow-video class="markdown-video" src="${src}"${captionAttr}></mellow-video>`
     }
     return (
-      `<span class="md-media md-video">` +
+      `<span class="markdown-media markdown-video">` +
       `<video src="${src}" controls preload="metadata" playsinline></video>` +
       title +
       `</span>`
@@ -231,10 +231,10 @@ function renderMedia(kind, url, caption, meta) {
     // 极端环境（无自定义元素支持）退回原生 <audio controls>
     if (typeof window !== 'undefined' && window.customElements) {
       const captionAttr = caption ? ` caption="${md.utils.escapeHtml(caption)}"` : ''
-      return `<mellow-audio class="md-audio" src="${src}"${captionAttr}></mellow-audio>`
+      return `<mellow-audio class="markdown-audio" src="${src}"${captionAttr}></mellow-audio>`
     }
     return (
-      `<span class="md-media md-audio">` +
+      `<span class="markdown-media markdown-audio">` +
       `<audio src="${src}" controls preload="metadata"></audio>` +
       title +
       `</span>`
@@ -248,13 +248,13 @@ function renderMedia(kind, url, caption, meta) {
   const metaText = [meta, ext].filter(Boolean).join(' · ')
 
   return (
-    `<a class="md-file" href="${src}" target="_blank" rel="noopener noreferrer" download>` +
-    `<span class="md-file__icon"><i class="bi bi-file-earmark-arrow-down"></i></span>` +
-    `<span class="md-file__main">` +
-    `<span class="md-file__name">${md.utils.escapeHtml(fileName)}</span>` +
-    `<span class="md-file__meta">${md.utils.escapeHtml(metaText)}</span>` +
+    `<a class="markdown-file" href="${src}" target="_blank" rel="noopener noreferrer" download>` +
+    `<span class="markdown-file-icon"><i class="bi bi-file-earmark-arrow-down"></i></span>` +
+    `<span class="markdown-file-main">` +
+    `<span class="markdown-file-name">${md.utils.escapeHtml(fileName)}</span>` +
+    `<span class="markdown-file-meta">${md.utils.escapeHtml(metaText)}</span>` +
     `</span>` +
-    `<span class="md-file__action"><i class="bi bi-download"></i> 下载</span>` +
+    `<span class="markdown-file-action"><i class="bi bi-download"></i> 下载</span>` +
     `</a>`
   )
 }

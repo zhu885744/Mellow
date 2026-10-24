@@ -10,10 +10,10 @@
 
     <!-- 网站基本信息 -->
     <section class="card card-pad">
-      <header class="cfg-head">
+      <header class="config-head">
         <div>
-          <h3 class="cfg-title">网站基本信息</h3>
-          <p class="cfg-desc">标题、描述、LOGO、图标与建站日期，前台头部与浏览器标签均取用这里的值</p>
+          <h3 class="config-title">网站基本信息</h3>
+          <p class="config-desc">标题、描述、LOGO、图标与建站日期，前台头部与浏览器标签均取用这里的值</p>
         </div>
       </header>
 
@@ -72,10 +72,10 @@
 
     <!-- 自定义菜单 -->
     <section class="card card-pad">
-      <header class="cfg-head">
+      <header class="config-head">
         <div>
-          <h3 class="cfg-title">自定义菜单</h3>
-          <p class="cfg-desc">
+          <h3 class="config-title">自定义菜单</h3>
+          <p class="config-desc">
             自定义前台左栏导航。不设置时显示默认导航；添加菜单项后，前台只显示这里配置的菜单（「管理」入口始终保留）
           </p>
         </div>
@@ -172,10 +172,10 @@
 
     <!-- 备案信息 -->
     <section class="card card-pad">
-      <header class="cfg-head">
+      <header class="config-head">
         <div>
-          <h3 class="cfg-title">备案信息</h3>
-          <p class="cfg-desc">页脚展示的 ICP 与公安联网备案信息</p>
+          <h3 class="config-title">备案信息</h3>
+          <p class="config-desc">页脚展示的 ICP 与公安联网备案信息</p>
         </div>
       </header>
       <div class="form-grid">
@@ -200,10 +200,10 @@
 
     <!-- 登录协议 -->
     <section class="card card-pad">
-      <header class="cfg-head">
+      <header class="config-head">
         <div>
-          <h3 class="cfg-title">登录协议提示配置</h3>
-          <p class="cfg-desc">登录 / 注册 / 找回密码弹窗中的协议勾选提示</p>
+          <h3 class="config-title">登录协议提示配置</h3>
+          <p class="config-desc">登录 / 注册 / 找回密码弹窗中的协议勾选提示</p>
         </div>
       </header>
       <div class="switch-row">
@@ -230,10 +230,10 @@
 
     <!-- 右侧悬浮按钮 -->
     <section class="card card-pad">
-      <header class="cfg-head">
+      <header class="config-head">
         <div>
-          <h3 class="cfg-title">右侧悬浮按钮设置</h3>
-          <p class="cfg-desc">前台右侧的快捷入口，可自行增删与排序</p>
+          <h3 class="config-title">右侧悬浮按钮设置</h3>
+          <p class="config-desc">前台右侧的快捷入口，可自行增删与排序</p>
         </div>
       </header>
 
@@ -370,7 +370,7 @@
 
     <!-- 保存 -->
     <section class="card card-pad">
-      <div class="cfg-foot">
+      <div class="config-foot">
         <span class="save-hint">修改后需点击保存才会写入配置，前台会立即读取最新值</span>
         <button class="btn" :disabled="saving" @click="resetGlobalConfig">重置</button>
         <button class="btn btn-primary" :disabled="saving" @click="saveGlobalConfig">
@@ -674,20 +674,20 @@ onMounted(getGlobalConfig)
 }
 
 /* 卡片头（与 /admin/system 其它模块保持一致） */
-.cfg-head {
+.config-head {
   margin-bottom: 16px;
 }
-.cfg-title {
+.config-title {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
 }
-.cfg-desc {
+.config-desc {
   margin: 4px 0 0;
   font-size: 12px;
   color: var(--text-muted);
 }
-.cfg-foot {
+.config-foot {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -906,7 +906,7 @@ onMounted(getGlobalConfig)
   .form-grid {
     grid-template-columns: 1fr;
   }
-  .cfg-foot {
+  .config-foot {
     flex-wrap: wrap;
   }
   .save-hint {
