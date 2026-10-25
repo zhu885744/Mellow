@@ -25,7 +25,14 @@
 
     <!-- 选项浮层（主题内置样式，替代无法定制样式的原生 select 下拉） -->
     <Transition name="select-pop">
-      <div v-if="open" class="select-panel" role="listbox">
+      <div
+        v-if="open"
+        ref="panelRef"
+        class="select-panel"
+        :class="{ 'is-floating': floating }"
+        :style="panelStyle"
+        role="listbox"
+      >
         <button
           v-for="(opt, i) in options"
           :key="`${opt.value}-${i}`"
@@ -64,6 +71,10 @@
  *   - 筛选栏 / 工具条：默认 pill 形态  <SelectMenu v-model="x" :options="list" icon="bi bi-funnel" />
  *   - 表单内部：variant="field"        <SelectMenu v-model="x" variant="field" :options="list" />
  *   options 为 [{ value, label, disabled? }]；值比较统一走 String()，数字 / 字符串都能对上。
+ *
+ * 浮层定位：默认贴着触发器绝对定位；当下拉处在滚动容器（弹窗 .modal-body、表格滚动区等）
+ * 里、浮层会被 overflow 裁掉时，自动切成 position: fixed 按视口坐标绘制，
+ * 避免「点了没反应」（其实浮层被裁在容器外了）。需要强制关闭该行为时传 floating="never"。
  */
 import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue'
 
@@ -77,15 +88,21 @@ const props = defineProps({
   variant: { type: String, default: 'pill' },
   disabled: { type: Boolean, default: false },
   // 浮层方向：auto（默认，空间不足自动向上）/ bottom / top
-  placement: { type: String, default: 'auto' }
+  placement: { type: String, default: 'auto' },
+  // 被滚动容器裁剪时是否改为 fixed 定位：auto（默认）/ never
+  floating: { type: String, default: 'auto' }
 })
 
 const emit = defineEmits(['update:modelValue', 'change'])
 
 const rootRef = ref(null)
+const panelRef = ref(null)
 const open = ref(false)
 const openUp = ref(false)
 const activeIndex = ref(-1)
+// 浮层脱离裁剪容器时改用 fixed 定位（见文件头注释）
+const floating = ref(false)
+const panelStyle = ref({})
 
 const selectedIndex = computed(() =>
   props.options.findIndex((opt) => String(opt.value) === String(props.modelValue ?? ''))
@@ -101,11 +118,15 @@ function toggle() {
 
 function openPanel() {
   if (props.disabled) return
+  floating.value = false
+  panelStyle.value = {}
   open.value = true
   activeIndex.value = selectedIndex.value > -1 ? selectedIndex.value : firstEnabledIndex()
   nextTick(() => {
     updatePlacement()
     scrollActiveIntoView()
+    // 浮层渲染完再按真实高度算一次（首次只能按选项数估算）
+    nextTick(updatePlacement)
   })
 }
 
@@ -177,23 +198,77 @@ function onKeydown(e) {
   }
 }
 
-/** 空间不足时向上展开（编辑器底部操作栏场景） */
+/** 空间不足时向上展开（编辑器底部操作栏场景）；被滚动容器裁剪时改用 fixed 定位 */
 function updatePlacement() {
-  if (props.placement !== 'auto') {
-    openUp.value = props.placement === 'top'
+  const root = rootRef.value
+  if (!root) return
+
+  const rect = root.getBoundingClientRect()
+  const panelH = panelRef.value
+    ? panelRef.value.offsetHeight
+    : Math.min(props.options.length * 36 + 8, 280)
+  const gap = 6
+  const spaceBelow = window.innerHeight - rect.bottom - gap
+  const spaceAbove = rect.top - gap
+
+  let up = props.placement === 'top'
+  if (props.placement === 'auto') up = spaceBelow < panelH && spaceAbove > spaceBelow
+  openUp.value = up
+
+  if (!clippedByAncestor(rect, panelH, up)) {
+    floating.value = false
+    panelStyle.value = {}
     return
   }
-  if (!rootRef.value) return
-  const rect = rootRef.value.getBoundingClientRect()
-  const spaceBelow = window.innerHeight - rect.bottom
-  const spaceAbove = rect.top
-  openUp.value = spaceBelow < 300 && spaceAbove > spaceBelow
+
+  // 祖先有 overflow 裁剪：浮层用 fixed 按视口坐标绘制，直接脱离滚动容器
+  floating.value = true
+  panelStyle.value = {
+    position: 'fixed',
+    left: `${Math.round(rect.left)}px`,
+    minWidth: `${Math.round(rect.width)}px`,
+    top: up ? 'auto' : `${Math.round(rect.bottom + gap)}px`,
+    bottom: up ? `${Math.round(window.innerHeight - rect.top + gap)}px` : 'auto'
+  }
+}
+
+/** 浮层按当前方向展开后，是否会被某个 overflow 容器切掉 */
+function clippedByAncestor(rect, panelH, up) {
+  if (props.floating === 'never' || !rootRef.value) return false
+
+  const panelTop = up ? rect.top - 6 - panelH : rect.bottom + 6
+  const panelBottom = panelTop + panelH
+
+  let el = rootRef.value.parentElement
+  while (el && el !== document.body && el !== document.documentElement) {
+    const cs = getComputedStyle(el)
+    const clipsY = cs.overflowY !== 'visible'
+    const clipsX = cs.overflowX !== 'visible'
+
+    if (clipsY || clipsX) {
+      const box = el.getBoundingClientRect()
+      if (clipsY && (panelBottom > box.bottom - 1 || panelTop < box.top + 1)) return true
+      if (clipsX && (rect.right > box.right - 1 || rect.left < box.left + 1)) return true
+    }
+
+    el = el.parentElement
+  }
+
+  return false
 }
 
 function scrollActiveIntoView() {
   nextTick(() => {
-    const el = rootRef.value?.querySelectorAll('.select-option')[activeIndex.value]
-    el?.scrollIntoView({ block: 'nearest' })
+    const panel = panelRef.value
+    const el = panel?.querySelectorAll('.select-option')[activeIndex.value]
+    if (!panel || !el) return
+
+    // 只滚浮层自身：scrollIntoView 会连带滚动弹窗 / 页面，触发「滚动即关闭」，
+    // 表现就是「点了没反应」
+    const top = el.offsetTop
+    const bottom = top + el.offsetHeight
+    if (top < panel.scrollTop) panel.scrollTop = top
+    else if (bottom > panel.scrollTop + panel.clientHeight) panel.scrollTop = bottom - panel.clientHeight
   })
 }
 

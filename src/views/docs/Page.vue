@@ -27,7 +27,7 @@
         </header>
 
         <!-- 始终用 Markdown 原文 + 前端渲染器（服务端不认单换行，会出现「内容不换行」） -->
-        <div ref="contentRef" class="markdown-body" v-html="contentHtml" />
+        <div ref="contentRef" class="markdown-body" v-html="contentHtml" @click="onContentClick" />
 
         <!-- 反馈 -->
         <div class="docs-feedback">
@@ -101,6 +101,7 @@ import { useRoute } from 'vue-router'
 import { call } from '@/api/request'
 import CommentTree from '@/components/CommentTree.vue'
 import { renderMarkdown } from '@/utils/markdown'
+import { openLightbox } from '@/utils/lightbox'
 import { formatDate } from '@/utils/time'
 
 const props = defineProps({
@@ -153,6 +154,23 @@ async function afterRender() {
     link.target = '_blank'
     link.rel = 'noopener noreferrer'
   })
+}
+
+/**
+ * 点击正文里的图片打开灯箱
+ *
+ * 用事件委托：正文是 v-html 渲染的，没法给每个 img 单独绑事件。
+ * 图片列表取正文内全部 img，灯箱里可以左右翻（与文章详情页 / 独立页面同一套交互）。
+ */
+function onContentClick(e) {
+  const img = e.target.closest('img')
+  if (!img || !img.src) return
+
+  const srcs = Array.from(contentRef.value?.querySelectorAll('img') || [])
+    .map((el) => el.src)
+    .filter(Boolean)
+  const index = srcs.indexOf(img.src)
+  openLightbox(srcs, index < 0 ? 0 : index)
 }
 
 async function load() {

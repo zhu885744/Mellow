@@ -74,8 +74,7 @@
               </button>
             </div>
 
-            <span v-if="!trash" class="docs-list-count">{{ docs.length }} 篇</span>
-            <button v-else type="button" class="btn btn-sm" :disabled="busy" @click="askClearRecycle">
+            <button v-if="trash" type="button" class="btn btn-sm" :disabled="busy" @click="askClearRecycle">
               <i class="bi bi-trash3" /> 清空回收站
             </button>
           </div>
@@ -84,63 +83,114 @@
             <span><i class="bi bi-trash3" /> 回收站里的文档前台不可见，可恢复或彻底删除</span>
           </div>
 
+          <!-- 批量操作栏（选中后出现） -->
+          <div v-if="selectedIds.length" class="batch-bar">
+            <span class="batch-count">已选 <strong>{{ selectedIds.length }}</strong> 篇</span>
+            <div class="batch-actions">
+              <template v-if="trash">
+                <button type="button" class="btn btn-sm" :disabled="busy" @click="batchRestore">
+                  <i class="bi bi-arrow-counterclockwise" /> 批量恢复
+                </button>
+                <button type="button" class="btn btn-sm btn-danger" :disabled="busy" @click="askBatchForceDelete">
+                  <i class="bi bi-x-octagon" /> 批量彻底删除
+                </button>
+              </template>
+              <template v-else>
+                <button type="button" class="btn btn-sm btn-danger" :disabled="busy" @click="askBatchRemove">
+                  <i class="bi bi-trash" /> 批量删除
+                </button>
+              </template>
+              <button type="button" class="btn btn-sm btn-ghost" :disabled="busy" @click="clearSelection">
+                取消选择
+              </button>
+            </div>
+          </div>
+
           <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
           <div v-else-if="!docs.length" class="empty-row">
             {{ trash ? '回收站是空的' : '这个目录下还没有文档' }}
           </div>
 
-          <div v-else class="docs-rows">
-            <div v-for="(doc, index) in docs" :key="doc.id" class="docs-row" :class="{ 'is-trashed': trash }">
-              <span v-if="!trash" class="docs-row-sort" :title="`排序 ${doc.sort}`">{{ doc.sort }}</span>
-
-              <div class="docs-row-main" :class="{ 'is-static': trash }" @click="!trash && goWrite(doc)">
-                <span class="docs-row-title">{{ doc.title }}</span>
-                <span class="docs-row-slug">/{{ doc.slug }}</span>
-              </div>
-
-              <template v-if="trash">
-                <span class="docs-row-time">删除于 {{ formatDate(doc.delete_time) }}</span>
-
-                <div class="docs-row-actions">
-                  <button type="button" class="btn btn-sm btn-ghost" title="恢复" :disabled="busy" @click="restoreDoc(doc)">
-                    <i class="bi bi-arrow-counterclockwise" />
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-ghost is-danger"
-                    title="彻底删除"
-                    :disabled="busy"
-                    @click="askForceDeleteDoc(doc)"
-                  >
-                    <i class="bi bi-x-circle" />
-                  </button>
-                </div>
-              </template>
-
-              <template v-else>
-                <span class="status-pill" :class="`is-${doc.status}`">{{ statusText(doc.status) }}</span>
-                <span class="docs-row-time">{{ formatDate(doc.update_time) }}</span>
-
-                <div class="docs-row-actions">
-                  <button type="button" class="btn btn-sm btn-ghost" title="上移" :disabled="index === 0" @click="moveDoc(index, -1)">
-                    <i class="bi bi-arrow-up" />
-                  </button>
-                  <button type="button" class="btn btn-sm btn-ghost" title="下移" :disabled="index === docs.length - 1" @click="moveDoc(index, 1)">
-                    <i class="bi bi-arrow-down" />
-                  </button>
-                  <button type="button" class="btn btn-sm btn-ghost" title="历史" @click="openHistory(doc)">
-                    <i class="bi bi-clock-history" />
-                  </button>
-                  <button type="button" class="btn btn-sm btn-ghost" title="编辑" @click="goWrite(doc)">
-                    <i class="bi bi-pencil" />
-                  </button>
-                  <button type="button" class="btn btn-sm btn-ghost is-danger" title="删除" @click="askRemoveDoc(doc)">
-                    <i class="bi bi-trash" />
-                  </button>
-                </div>
-              </template>
+          <template v-else>
+            <div class="list-head-row">
+              <label class="pick" title="全选本页">
+                <input
+                  ref="selectAllRef"
+                  type="checkbox"
+                  :checked="allSelected"
+                  :disabled="busy || !docs.length"
+                  aria-label="全选本页"
+                  @change="toggleSelectAll"
+                />
+              </label>
+              <span class="list-head-text">
+                本页 {{ docs.length }} 篇
+                <template v-if="selectedIds.length"> · 已选 {{ selectedIds.length }} 篇</template>
+              </span>
             </div>
-          </div>
+
+            <div class="docs-rows">
+              <div
+                v-for="(doc, index) in docs"
+                :key="doc.id"
+                class="docs-row"
+                :class="{ 'is-trashed': trash, 'is-selected': isSelected(doc.id) }"
+              >
+                <label class="pick" :title="isSelected(doc.id) ? '取消选择' : '选择'">
+                  <input type="checkbox" :checked="isSelected(doc.id)" @change="toggleSelect(doc.id)" />
+                </label>
+
+                <span v-if="!trash" class="docs-row-sort" :title="`排序 ${doc.sort}`">{{ doc.sort }}</span>
+
+                <div class="docs-row-main" :class="{ 'is-static': trash }" @click="!trash && goWrite(doc)">
+                  <span class="docs-row-title">{{ doc.title }}</span>
+                  <span class="docs-row-slug">/{{ doc.slug }}</span>
+                </div>
+
+                <template v-if="trash">
+                  <span class="docs-row-time">删除于 {{ formatDate(doc.delete_time) }}</span>
+
+                  <div class="docs-row-actions">
+                    <button type="button" class="btn btn-sm btn-ghost" title="恢复" :disabled="busy" @click="restoreDoc(doc)">
+                      <i class="bi bi-arrow-counterclockwise" />
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-ghost is-danger"
+                      title="彻底删除"
+                      :disabled="busy"
+                      @click="askForceDeleteDoc(doc)"
+                    >
+                      <i class="bi bi-x-circle" />
+                    </button>
+                  </div>
+                </template>
+
+                <template v-else>
+                  <span class="status-pill" :class="`is-${doc.status}`">{{ statusText(doc.status) }}</span>
+                  <span class="docs-row-time">{{ formatDate(doc.update_time) }}</span>
+
+                  <div class="docs-row-actions">
+                    <button type="button" class="btn btn-sm btn-ghost" title="上移" :disabled="index === 0" @click="moveDoc(index, -1)">
+                      <i class="bi bi-arrow-up" />
+                    </button>
+                    <button type="button" class="btn btn-sm btn-ghost" title="下移" :disabled="index === docs.length - 1" @click="moveDoc(index, 1)">
+                      <i class="bi bi-arrow-down" />
+                    </button>
+                    <button type="button" class="btn btn-sm btn-ghost" title="历史" @click="openHistory(doc)">
+                      <i class="bi bi-clock-history" />
+                    </button>
+                    <button type="button" class="btn btn-sm btn-ghost" title="编辑" @click="goWrite(doc)">
+                      <i class="bi bi-pencil" />
+                    </button>
+                    <button type="button" class="btn btn-sm btn-ghost is-danger" title="删除" @click="askRemoveDoc(doc)">
+                      <i class="bi bi-trash" />
+                    </button>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </template>
         </section>
       </div>
     </div>
@@ -300,7 +350,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, watch, onMounted } from 'vue'
+import { ref, reactive, computed, watch, watchEffect, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SelectMenu from '@/components/SelectMenu.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -333,6 +383,40 @@ const allDocsCount = ref(0)
 // 回收站视图：与「文档」视图共用同一个列表，只换查询参数
 const trash = ref(false)
 const busy = ref(false)
+
+// ===== 多选（批量操作）=====
+// 以当前列表为范围：切换目录 / 视图或刷新时会清空
+const selectedIds = ref([])
+const selectedSet = computed(() => new Set(selectedIds.value))
+const allSelected = computed(
+  () => docs.value.length > 0 && docs.value.every((doc) => selectedSet.value.has(doc.id))
+)
+const someSelected = computed(() => selectedIds.value.length > 0 && !allSelected.value)
+const selectAllRef = ref(null)
+
+// 半选态只能用 DOM 属性设置，绑不上模板
+watchEffect(() => {
+  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+})
+
+function isSelected(id) {
+  return selectedSet.value.has(id)
+}
+
+function toggleSelect(id) {
+  const next = new Set(selectedIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedIds.value = [...next]
+}
+
+function toggleSelectAll() {
+  selectedIds.value = allSelected.value ? [] : docs.value.map((doc) => doc.id)
+}
+
+function clearSelection() {
+  selectedIds.value = []
+}
 
 // 确认弹窗（删除 / 彻底删除 / 清空 都走它，替代原生 confirm）
 const confirmDialog = reactive({ open: false, title: '', message: '', text: '确定', danger: false, run: null })
@@ -420,6 +504,8 @@ async function reload() {
   if (!slug.value) return
 
   loading.value = true
+  // 列表内容变了，之前勾选的 id 可能已不在本页，直接清空
+  selectedIds.value = []
   try {
     const [treeRes, docRes] = await Promise.all([
       docsGroupTree({ version: slug.value }),
@@ -532,6 +618,81 @@ function askRemoveDoc(doc) {
       }
       toast.success('已移入回收站')
       await reload()
+    }
+  })
+}
+
+// ===== 批量操作 =====
+
+function askBatchRemove() {
+  const ids = [...selectedIds.value]
+  if (!ids.length) return
+
+  askConfirm({
+    title: '批量删除文档',
+    message: `确定删除选中的 ${ids.length} 篇文档吗？删除后可在回收站恢复。`,
+    text: '删除',
+    danger: true,
+    run: async () => {
+      busy.value = true
+      try {
+        const res = await removeDocs(ids)
+        if (res?.code !== 200) {
+          toast.error(res?.msg || '批量删除失败')
+          return
+        }
+        toast.success(`已删除 ${ids.length} 篇文档`)
+        selectedIds.value = []
+        await reload()
+      } finally {
+        busy.value = false
+      }
+    }
+  })
+}
+
+async function batchRestore() {
+  const ids = [...selectedIds.value]
+  if (!ids.length) return
+
+  busy.value = true
+  try {
+    const res = await restoreDocs(ids)
+    if (res?.code !== 200) {
+      toast.error(res?.msg || '批量恢复失败')
+      return
+    }
+    toast.success(`已恢复 ${ids.length} 篇文档`)
+    selectedIds.value = []
+    await reload()
+  } finally {
+    busy.value = false
+  }
+}
+
+function askBatchForceDelete() {
+  const ids = [...selectedIds.value]
+  if (!ids.length) return
+
+  askConfirm({
+    title: '批量彻底删除文档',
+    message: `确定彻底删除选中的 ${ids.length} 篇文档吗？它们的历史记录会一并清除，不可恢复！`,
+    text: '彻底删除',
+    danger: true,
+    run: async () => {
+      busy.value = true
+      try {
+        const res = await deleteDocs(ids)
+        if (res?.code !== 200) {
+          toast.error(res?.msg || '批量彻底删除失败')
+          return
+        }
+        toast.success(`已彻底删除 ${ids.length} 篇文档`)
+        selectedIds.value = []
+        await reload()
+      } finally {
+        busy.value = false
+      }
     }
   })
 }
@@ -888,14 +1049,65 @@ onMounted(async () => {
   border: 1px dashed var(--border);
   border-radius: var(--radius-sm);
 }
+/* 批量操作栏（选中后出现） */
+.batch-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 8px 10px;
+  background: var(--accent-wash);
+  border: 1px solid var(--accent-soft);
+  border-radius: var(--radius-sm);
+}
+.batch-count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.batch-count strong {
+  color: var(--primary);
+}
+.batch-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* 列表表头（全选） */
+.list-head-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 4px 2px;
+}
+.list-head-text {
+  font-size: 12px;
+  color: var(--text-light);
+}
+.pick {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.pick input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.docs-row.is-selected {
+  background: var(--accent-wash);
+}
+
 .docs-list-title {
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
-}
-.docs-list-count {
-  font-size: 12px;
-  color: var(--text-light);
 }
 .docs-rows {
   display: flex;
