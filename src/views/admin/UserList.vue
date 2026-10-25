@@ -2339,7 +2339,8 @@ onUnmounted(() => {
   height: 64px;
   flex-shrink: 0;
   border-radius: 50%;
-  overflow: hidden;
+  /* 不能加 overflow: hidden：圆形裁剪会把右上角的「移除」按钮一起切掉，
+     表现为按钮「被挡住」。圆角改由图片自己承担（见 .avatar-box img） */
   border: 1px solid var(--border);
   background: var(--bg-muted);
 }
@@ -2348,6 +2349,7 @@ onUnmounted(() => {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
 }
 .avatar-empty {
   width: 100%;
@@ -2361,16 +2363,23 @@ onUnmounted(() => {
   color: var(--text-light);
   cursor: pointer;
   transition: color 0.2s;
+  border-radius: 50%;
 }
 .avatar-empty:hover {
   color: var(--primary);
 }
+/* 移除按钮：浮在圆形头像的右上角外侧，需要能超出容器，且盖在图片之上 */
 .avatar-del {
   position: absolute;
-  right: 0;
-  top: 0;
+  right: -4px;
+  top: -4px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   width: 18px;
   height: 18px;
+  padding: 0;
   border: none;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.55);
@@ -2378,6 +2387,9 @@ onUnmounted(() => {
   font-size: 11px;
   line-height: 1;
   cursor: pointer;
+}
+.avatar-del:hover {
+  background: rgba(0, 0, 0, 0.75);
 }
 .avatar-fields {
   flex: 1;

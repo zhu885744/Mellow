@@ -1,6 +1,6 @@
 <template>
   <div>
-    <SectionTitle :title="type === 'topics' ? '话题榜' : '关注流'">
+    <SectionTitle :title="pageTitle">
       <template #extra>
         <span class="text-muted">{{ currentTab.hint }}</span>
       </template>
@@ -49,6 +49,8 @@
         v-for="item in list"
         :key="item.id"
         :moment="item"
+        :like-state="momentLikeStates[item.id]"
+        :comment-total="momentCommentCounts[item.id]"
         @delete="reload"
         @refresh="reload"
       />
@@ -83,7 +85,7 @@
  * - 分页大小固定 15（后端上限 20）、页码不得超过后端 feedMaxPage，
  *   以避免「深翻页批量抓取」——需要更多内容请用搜索页，不要在这里放大 limit
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
 import MomentItem from '@/components/MomentItem.vue'
@@ -92,6 +94,8 @@ import Pagination from '@/components/Pagination.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { getFeed } from '@/api/feed'
 import { listTopics } from '@/api/topics'
+import { likeStates } from '@/api/tags'
+import { countCommentsBatch } from '@/api/comment'
 
 const TABS = [
   { key: 'follow', name: '关注', icon: 'bi bi-people', hint: '只看我关注的人发布的动态' },
@@ -118,7 +122,52 @@ const loading = ref(false)
 const page = ref(1)
 const pageSize = 15
 
+/* ---------------- 列表互动状态（批量） ----------------
+ * 与首页同一套做法：拿到一页动态后批量查一次，再通过 props 下发。
+ * 否则每张卡片挂载后各发「是否已赞 + 评论数」两个请求，一页 15 条就是 30 个。
+ */
+const momentLikeStates = reactive({})
+const momentCommentCounts = reactive({})
+
+async function loadLikeStates(rows) {
+  if (!rows.length) return
+  try {
+    const res = await likeStates('moment', rows.map((it) => Number(it.id)).filter(Boolean))
+    Object.entries(res?.data?.states || {}).forEach(([id, state]) => {
+      momentLikeStates[id] = state
+    })
+  } catch {
+    // 批量失败不阻塞列表：卡片会退化成自己查一次（见 MomentItem 的 onMounted 兜底）
+  }
+}
+
+async function loadCommentCounts(rows) {
+  if (!rows.length) return
+  // 先统一置 0：后端 comment/counts 只返回 count>0 的项，
+  // 缺项会让卡片误以为没有批量数据，再各发一次 comment/count
+  rows.forEach((it) => {
+    momentCommentCounts[it.id] = 0
+  })
+  try {
+    const res = await countCommentsBatch('moments', rows.map((it) => Number(it.id)).filter(Boolean))
+    Object.entries(res?.data?.counts || {}).forEach(([id, count]) => {
+      momentCommentCounts[id] = Number(count) || 0
+    })
+  } catch {
+    /* 同上，卡片自行兜底 */
+  }
+}
+
+// 必须在把 list 交给渲染之前完成：卡片一旦挂载再补数据，就已经白发了一轮单条请求
+async function loadInteractionStates(rows) {
+  if (!rows.length) return
+  await Promise.allSettled([loadLikeStates(rows), loadCommentCounts(rows)])
+}
+
 const currentTab = computed(() => TABS.find((tab) => tab.key === type.value) || TABS[0])
+
+// 标题跟当前 tab 走（此前 recommend / hot 也显示「关注流」）
+const pageTitle = computed(() => (type.value === 'topics' ? '话题榜' : `${currentTab.value.name}流`))
 
 const emptyState = computed(() => {
   // 关注流为空时，先引导去关注人；有内容源却没有动态，才是真的空
@@ -154,7 +203,10 @@ async function load() {
 
   try {
     const res = await getFeed(type.value, { page: page.value, limit: pageSize })
-    list.value = res.data?.data || []
+    const rows = res.data?.data || []
+    // 先批量取互动状态再赋值，卡片才不会再各自单查一次
+    await loadInteractionStates(rows)
+    list.value = rows
     total.value = Number(res.data?.count) || 0
   } catch {
     // 拦截器已提示（401 会引导登录）；这里给空态而不是让页面卡住

@@ -50,6 +50,22 @@ export const listComments = (params = {}) =>
 export const countComments = (params = {}) =>
   call('comment', 'count', { method: 'GET', params })
 
+/**
+ * 批量评论数（列表页专用）
+ *
+ * 一次拿到整页内容的评论数，替代「每条动态各调一次 comment/count」。
+ * 口径与 count 一致：只统计审核通过的评论（含二级及更深的回复）。
+ *
+ * 返回：{ data: { counts: { [bind_id]: n } } }
+ */
+export const countCommentsBatch = (bind_type, bind_ids) => {
+  const ids = Array.isArray(bind_ids) ? bind_ids : [bind_ids]
+  return call('comment', 'counts', {
+    method: 'GET',
+    params: { bind_type, bind_ids: ids.join(',') }
+  })
+}
+
 // 更新评论：管理员可改任意评论的 content / images，普通用户仅限自己的
 export const updateComment = (data) =>
   call('comment', 'update', { method: 'PUT', data })

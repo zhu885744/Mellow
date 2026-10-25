@@ -88,7 +88,7 @@
         </div>
         <div class="shortcut-search">
           <i class="bi bi-search" />
-          <input v-model="keyword" type="search" placeholder="搜索功能，如：评论 / 友链 / 系统" />
+          <input v-model="keyword" type="search" placeholder="搜索功能" />
           <button v-if="keyword" type="button" title="清空" @click="keyword = ''">
             <i class="bi bi-x-lg" />
           </button>
@@ -135,16 +135,14 @@
       </header>
       <div class="stat-grid">
         <div v-for="s in group.items" :key="s.key" class="stat-card">
-          <div class="stat-icon" :style="{ color: s.color }">
+          <div class="stat-label">
             <i :class="s.icon" />
+            <span :title="s.label">{{ s.label }}</span>
           </div>
-          <div class="stat-body">
-            <div class="stat-value">
-              <span v-if="s.loading">···</span>
-              <span v-else-if="s.error" class="stat-error" :title="s.error">—</span>
-              <span v-else>{{ format(s.value) }}</span>
-            </div>
-            <div class="stat-label">{{ s.label }}</div>
+          <div class="stat-value">
+            <span v-if="s.loading">···</span>
+            <span v-else-if="s.error" class="stat-error" :title="s.error">—</span>
+            <span v-else>{{ format(s.value) }}</span>
           </div>
         </div>
       </div>
@@ -928,7 +926,7 @@ onMounted(async () => {
 
 /* ---------- 快捷跳转 ---------- */
 .shortcut {
-  padding: 18px 22px 20px;
+  padding: 16px 18px 18px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -938,18 +936,18 @@ onMounted(async () => {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 12px;
 }
 .shortcut-title {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 16px;
+  gap: 6px;
+  font-size: 14px;
   font-weight: 600;
 }
 .shortcut-title .bi {
-  color: var(--primary);
+  color: var(--text-light);
 }
 .shortcut-hint {
   font-size: 12px;
@@ -959,15 +957,17 @@ onMounted(async () => {
 .shortcut-search {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 34px;
-  min-width: 240px;
-  padding: 0 10px;
+  gap: 6px;
+  flex-shrink: 0;
+  height: 30px;
+  width: 200px;
+  max-width: 100%;
+  padding: 0 9px;
   background: var(--bg-muted);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   color: var(--text-light);
-  font-size: 13px;
+  font-size: 12px;
   transition: border-color 0.18s;
 }
 .shortcut-search:focus-within {
@@ -1033,70 +1033,55 @@ onMounted(async () => {
   color: var(--primary);
 }
 .recent-chip .shortcut-icon {
-  width: 16px;
-  height: 16px;
-  background: transparent;
-  border-radius: 0;
   font-size: 12px;
 }
 .shortcut-groups {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 .shortcut-group-label {
-  margin-bottom: 8px;
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-light);
 }
 .shortcut-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 10px;
+  /* 纯文字入口，列可以更窄：一行能放下更多，不用翻着找 */
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 6px;
 }
 .shortcut-item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  background: var(--bg-muted);
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  gap: 6px;
+  padding: 7px 9px;
+  border-radius: 6px;
   color: var(--text-soft);
   font-size: 13px;
   text-decoration: none;
-  transition: background 0.18s, border-color 0.18s, color 0.18s, transform 0.18s, box-shadow 0.18s;
+  transition: background 0.18s, color 0.18s;
 }
 .shortcut-item:hover {
-  background: var(--bg-card);
-  border-color: var(--primary-soft);
+  background: var(--bg-muted);
   color: var(--primary);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-sm);
 }
-.shortcut-item:active {
-  transform: translateY(0);
-}
+/* 入口不再配彩色图标块：13px 小图标，hover 时点亮 */
 .shortcut-icon {
-  width: 30px;
-  height: 30px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-card);
-  border-radius: 8px;
-  color: var(--primary);
-  font-size: 15px;
+  color: var(--text-light);
+  font-size: 13px;
+  transition: color 0.18s;
 }
 .shortcut-icon :deep(svg) {
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
 }
 .shortcut-item:hover .shortcut-icon {
-  background: var(--accent-soft);
+  color: var(--primary);
 }
 .shortcut-name {
   min-width: 0;
@@ -1134,43 +1119,57 @@ onMounted(async () => {
 }
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 16px;
+  /* 小卡片自适应列数：窄屏也能一排放两三个，不用一路往下滚 */
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 10px;
 }
 .stat-card {
   display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px 14px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  transition: border-color 0.2s;
 }
-.stat-icon {
-  width: 46px;
-  height: 46px;
-  flex-shrink: 0;
+.stat-card:hover {
+  border-color: var(--primary);
+}
+.stat-label {
   display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: 12px;
-  background: var(--bg-muted);
-  font-size: 22px;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.stat-label i {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-light);
+  transition: color 0.2s;
+}
+.stat-card:hover .stat-label i {
+  color: var(--primary);
+}
+.stat-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .stat-value {
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.2;
-  min-height: 28px;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  min-height: 26px;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 .stat-error {
   color: var(--text-muted);
   font-weight: 400;
   cursor: help;
-}
-.stat-label {
-  font-size: 13px;
-  color: var(--text-muted);
 }
 
 /* ---------- 说明面板 ---------- */
@@ -1210,14 +1209,10 @@ onMounted(async () => {
   font-size: 12px;
 }
 
-@media (max-width: 1100px) {
+@media (max-width: 640px) {
+  /* 手机上固定两列，卡片本来就小，一列会滚很长 */
   .stat-grid {
     grid-template-columns: repeat(2, 1fr);
-  }
-}
-@media (max-width: 640px) {
-  .stat-grid {
-    grid-template-columns: 1fr;
   }
   .hero-actions {
     width: 100%;

@@ -4,7 +4,7 @@
       <!-- 作者头像 + 装扮头像框（与侧栏 / 作者主页同一套渲染参数） -->
       <AvatarFrame
         class="avatar"
-        :src="author?.avatar || defaultAvatar"
+        :src="author?.avatar"
         :frame="author?.json?.frame"
         :frame-hole="frameRender.hole"
         :frame-offset-x="frameRender.offsetX"
@@ -57,20 +57,31 @@
     />
     <div v-else class="moment-content" v-html="renderedContent"></div>
     <div
-      v-if="imageList.length"
+      v-if="shownImages.length"
       class="moment-images"
-      :class="'img-grid-' + getGridType(imageList.length)"
+      :class="'img-grid-' + getGridType(shownImages.length)"
     >
-      <img
-        v-for="(img, i) in imageList"
-        :key="i"
-        :src="img"
-        class="moment-img"
-        loading="lazy"
-        decoding="async"
-        @click="previewImage(i)"
-      />
+      <div v-for="(img, i) in shownImages" :key="i" class="moment-img-wrap">
+        <img
+          :src="thumbUrl(img, previewThumbWidth)"
+          class="moment-img"
+          loading="lazy"
+          decoding="async"
+          @click="previewImage(i)"
+        />
+        <!-- 超出预览数量的图片：最后一张压一层「+N」，点击进详情看全部 -->
+        <span
+          v-if="hiddenImageCount && i === shownImages.length - 1"
+          class="moment-img-more"
+          @click="goDetail"
+        >+{{ hiddenImageCount }}</span>
+      </div>
     </div>
+    <!-- 列表卡片只展示一部分：正文被截断 / 还有图没展示时给入口 -->
+    <button v-if="contentTruncated || hiddenImageCount" type="button" class="moment-more" @click="goDetail">
+      查看更多
+      <i class="bi bi-arrow-right" aria-hidden="true" />
+    </button>
     <div v-if="moment.location" class="moment-loc">
       <i class="bi bi-geo-alt" /> {{ moment.location }}
     </div>
@@ -138,7 +149,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { fromNow } from '@/utils/time'
 import {
   isAdmin as helperIsAdmin,
@@ -165,13 +176,29 @@ import { createReport } from '@/api/report'
 import { call } from '@/api/request'
 import { like, unlike, isLiked, likesCount } from '@/api/tags'
 import { openLightbox } from '@/utils/lightbox'
+import { thumbUrl } from '@/utils/image'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import { useRouter } from 'vue-router'
 
 const props = defineProps({
   moment: { type: Object, required: true },
   highlightId: { type: [String, Number], default: null },
-  forceOpen: { type: Boolean, default: false }
+  forceOpen: { type: Boolean, default: false },
+  /**
+   * 列表页批量下发的互动状态（见 views/home/Index.vue）
+   *
+   * 有值时不再自己请求 is-liked / counts / comment/count ——
+   * 否则每条动态 2~3 个请求，滚动几屏就是上百个。
+   * 不传（详情页等单独使用场景）时保持原有单条查询。
+   */
+  likeState: { type: Object, default: null },
+  commentTotal: { type: Number, default: undefined },
+  /**
+   * 列表卡片模式：正文按可见字符截断、图片只展示前几张，其余走「查看更多」进详情页
+   *
+   * 详情页（views/moments/Detail.vue）不传，保持全文 + 全部图片。
+   */
+  compact: { type: Boolean, default: false }
 })
 const emit = defineEmits(['delete', 'refresh'])
 
@@ -223,6 +250,17 @@ const likeHeart = ref(null)
 // 点赞状态（参考 Cardify MomentCard：is-liked + counts 初始化，乐观更新）
 const liked = ref(false)
 const likeCount = ref(0)
+
+/**
+ * 应用列表批量下发的点赞状态
+ * @returns {boolean} 是否真的应用了（false 表示没有带来状态，调用方应自行查询）
+ */
+function applyLikeState(state) {
+  if (!state || typeof state !== 'object') return false
+  liked.value = !!state.is_liked
+  likeCount.value = Number(state.count) || 0
+  return true
+}
 
 async function loadLikeState() {
   try {
@@ -285,7 +323,9 @@ async function toggleLike() {
 // 用 comment/count 统计全部评论（含二级及更深的回复），但注意：
 // 该接口的 bind_id/bind_type 快捷参数实测无效（会返回全站评论总数），
 // 必须走 where 条件过滤，与 countArticlesByAuthor 等先例一致
-const commentCount = ref(props.moment.comment_count || 0)
+const commentCount = ref(
+  typeof props.commentTotal === 'number' ? props.commentTotal : Number(props.moment.comment_count || 0)
+)
 async function loadCommentCount() {
   try {
     const res = await call('comment', 'count', {
@@ -299,8 +339,22 @@ async function loadCommentCount() {
     /* 保持现有值 */
   }
 }
-loadCommentCount()
-loadLikeState()
+
+// 列表页已经批量下发时不再单条查询（首页一页十几条动态，逐个查就是十几个请求）
+if (!applyLikeState(props.likeState)) loadLikeState()
+if (typeof props.commentTotal !== 'number') loadCommentCount()
+
+// 批量结果晚于卡片挂载时补上（不会触发重复请求，只是覆盖显示）
+watch(
+  () => props.likeState,
+  (state) => applyLikeState(state)
+)
+watch(
+  () => props.commentTotal,
+  (total) => {
+    if (typeof total === 'number') commentCount.value = total
+  }
+)
 
 const author = computed(() => props.moment.result?.author || props.moment.user)
 // 作者信息：等级/头衔 + 跳转作者主页（与评论一致）
@@ -374,7 +428,64 @@ function parseImages(field) {
     .filter(Boolean)
 }
 const imageList = computed(() => parseImages(props.moment.images))
-const renderedContent = computed(() => renderEmojiWithBreaks(props.moment.content))
+
+/* ---------------- 列表卡片：正文 / 图片只展示一部分 ---------------- */
+// 正文预览的可见字符数（一个表情 / @提及 / #话题# 都算 1 个）
+const PREVIEW_TEXT_LIMIT = 180
+// 最多展示几张图，其余压成「+N」
+const PREVIEW_IMAGE_LIMIT = 3
+
+// 正文里的非文本标记：截断时要整体跳过，不能切成半截源码
+const CONTENT_MARKER_RE = /^(?:\[emoji:[^\]]*\]|@\[[^\]]*\]\(\/author\/\d+\)|#\[[^\]]*\]\(\/topic\/\d+\))/
+
+/**
+ * 按「可见字符」截断正文
+ *
+ * 直接 slice 会把 [emoji:xx] / @[昵称](/author/1) 这类标记切成两半，
+ * v-html 之后会漏出 `[emoji:/assets/e` 这种半截源码，所以遇到标记整体跳过、只计 1 个字符。
+ */
+function clipContent(text, limit) {
+  let out = ''
+  let visible = 0
+  let i = 0
+  while (i < text.length && visible < limit) {
+    const ch = text[i]
+    if (ch === '[' || ch === '@' || ch === '#') {
+      const marker = CONTENT_MARKER_RE.exec(text.slice(i))
+      if (marker) {
+        out += marker[0]
+        i += marker[0].length
+        visible += 1
+        continue
+      }
+    }
+    out += ch
+    i += 1
+    visible += 1
+  }
+  return { text: out, truncated: i < text.length }
+}
+
+const contentPreview = computed(() => clipContent(String(props.moment.content || ''), PREVIEW_TEXT_LIMIT))
+const contentTruncated = computed(() => props.compact && contentPreview.value.truncated)
+const renderedContent = computed(() =>
+  renderEmojiWithBreaks(props.compact ? contentPreview.value.text : props.moment.content)
+)
+
+// 列表里只放前几张图，剩下的用「+N」引导进详情
+const shownImages = computed(() =>
+  props.compact ? imageList.value.slice(0, PREVIEW_IMAGE_LIMIT) : imageList.value
+)
+const hiddenImageCount = computed(() => imageList.value.length - shownImages.value.length)
+
+// 列表里图片最大显示 320px（单图）/ 136px（九宫格），按 2 倍图取缩略图；
+// 点开灯箱时仍用原图（见 previewImage）
+const previewThumbWidth = computed(() => (getGridType(shownImages.value.length) === '1' ? 640 : 320))
+
+// 「查看更多」/「+N」：进动态详情页（全文 + 全部图片 + 完整评论）
+function goDetail() {
+  router.push(`/moments/${props.moment.id}`)
+}
 
 // 多图网格类型：1 单图大图 / 2-3 三列 / 4 两列 / 5-9 九宫格
 function getGridType(count) {
@@ -608,6 +719,11 @@ function onActionMenu(key) {
   grid-template-columns: repeat(3, 1fr);
   max-width: 420px;
 }
+/* 图片格子的包裹层：承载「+N」遮罩，同时作为 grid item 参与布局 */
+.moment-img-wrap {
+  position: relative;
+  min-width: 0;
+}
 .moment-img {
   width: 100%;
   aspect-ratio: 1;
@@ -616,17 +732,54 @@ function onActionMenu(key) {
   cursor: pointer;
   transition: transform 0.2s;
   background: var(--bg-muted);
+  display: block;
+}
+.img-grid-1 .moment-img-wrap {
+  justify-self: center;
 }
 .img-grid-1 .moment-img {
   width: auto;
   max-height: 260px;
   aspect-ratio: auto;
   object-fit: contain;
-  justify-self: center;
   background: none;
 }
 .moment-img:hover {
   transform: scale(1.02);
+}
+/* 超出预览数量的图片：最后一张压一层「+N」 */
+.moment-img-more {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: rgba(0, 0, 0, 0.45);
+  color: #fff;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+}
+/* 「查看更多」：正文被截断 / 还有图没展示时出现 */
+.moment-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: -4px 0 12px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--primary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.moment-more:hover {
+  color: var(--primary-deep);
+}
+.moment-more i {
+  font-size: 11px;
 }
 .moment-loc {
   font-size: 12px;

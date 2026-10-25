@@ -1,7 +1,7 @@
 <template>
   <div class="comment-item" :id="`comment-${comment.id}`" :class="{ 'is-child': isChild, 'comment-highlight': highlightId && String(highlightId) === String(comment.id) }">
     <div class="comment-avatar">
-      <img :src="author.avatar || defaultAvatar" :alt="author.nickname" @error="onImgError" loading="lazy" />
+      <img :src="thumbUrl(author.avatar || defaultAvatar, 80)" :alt="author.nickname" @error="onImgError" loading="lazy" />
     </div>
     <div class="comment-body">
       <div class="comment-head">
@@ -204,6 +204,7 @@ import { isAdmin, pickCommentAuthor, getTitleColorClass, pickUserTitlePayload } 
 import TitleBadge from './TitleBadge.vue'
 import WearingBadge from './WearingBadge.vue'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
+import { thumbUrl } from '@/utils/image'
 import { parseUserAgent } from '@/utils/ua'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import EmojiEditor from './EmojiEditor.vue'

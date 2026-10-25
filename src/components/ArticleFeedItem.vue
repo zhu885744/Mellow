@@ -5,7 +5,7 @@
       <!-- 作者头像 + 装扮头像框（与侧栏 / 作者主页同一套渲染参数） -->
       <AvatarFrame
         class="feed-avatar"
-        :src="author?.avatar || defaultAvatar"
+        :src="author?.avatar"
         :frame="author?.json?.frame"
         :frame-hole="frameRender.hole"
         :frame-offset-x="frameRender.offsetX"
@@ -33,7 +33,6 @@
         </div>
         <div class="feed-time">
           <span>{{ fromNow(article.publish_time || article.create_time) }}</span>
-          <span v-if="groupName" class="feed-group">{{ groupName }}</span>
           <!-- 当前可见范围：仅未登录访客显示 -->
           <ScopeBadge
             v-if="showScopeNotice"
@@ -59,40 +58,42 @@
       <i class="bi bi-arrow-right" aria-hidden="true" />
     </button>
 
-    <!-- 封面：有图时按动态图片的方式展示（单图） -->
-    <div v-if="cover" class="feed-cover" @click="goDetail">
-      <img :src="cover" :alt="article.title" loading="lazy" decoding="async" />
-    </div>
+    <!-- 首页不展示封面图：列表里只保留标题 + 正文片段，图片全部交给动态卡片 -->
 
-    <!-- 底部互动：点赞 / 评论 / 阅读（分享、打赏、举报在右上角三点菜单） -->
+    <!-- 底部互动：左侧「类型 + 分类」，右侧点赞 / 评论 / 阅读
+         （分享、打赏、举报在右上角三点菜单）。分组是为了窄屏换行时仍然左标签右按钮，不会错位 -->
     <div class="feed-actions">
-      <!-- 内容类型标注：首页混排里一眼分清动态和长文 -->
-      <span class="kind-tag"><i class="bi bi-file-text" /> 长文</span>
-      <button
-        ref="likeBtn"
-        class="feed-action like-btn push-right"
-        :class="{ 'is-liked': liked }"
-        type="button"
-        title="点赞"
-        @click="toggleLike"
-      >
-        <i ref="likeIcon" class="bi" :class="liked ? 'bi-heart-fill' : 'bi-heart'" />
-        <span>{{ likeCount }}</span>
-      </button>
-      <button
-        v-if="showComment"
-        class="feed-action"
-        type="button"
-        title="查看评论"
-        @click="goDetail"
-      >
-        <i class="bi bi-chat-dots" />
-        <span>{{ commentCount }}</span>
-      </button>
-      <span class="feed-action is-static" title="阅读量">
-        <i class="bi bi-eye" />
-        <span>{{ article.views || 0 }}</span>
-      </span>
+      <div class="action-tags">
+        <span class="kind-tag"><i class="bi bi-file-text" /> 长文</span>
+        <span v-if="groupName" class="kind-group" :title="groupName">{{ groupName }}</span>
+      </div>
+      <div class="action-btns">
+        <button
+          ref="likeBtn"
+          class="feed-action like-btn"
+          :class="{ 'is-liked': liked }"
+          type="button"
+          title="点赞"
+          @click="toggleLike"
+        >
+          <i ref="likeIcon" class="bi" :class="liked ? 'bi-heart-fill' : 'bi-heart'" />
+          <span>{{ likeCount }}</span>
+        </button>
+        <button
+          v-if="showComment"
+          class="feed-action"
+          type="button"
+          title="查看评论"
+          @click="goDetail"
+        >
+          <i class="bi bi-chat-dots" />
+          <span>{{ commentCount }}</span>
+        </button>
+        <span class="feed-action is-static" title="阅读量">
+          <i class="bi bi-eye" />
+          <span>{{ article.views || 0 }}</span>
+        </span>
+      </div>
     </div>
 
     <ReportDialog
@@ -124,7 +125,7 @@
  * 纯文本片段，超出部分用「查看更多」引导到详情页，整体观感与 MomentItem 对齐。
  * 只在首页使用，列表页 / 搜索页仍用 ArticleCard。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { fromNow } from '@/utils/time'
 import {
@@ -135,8 +136,6 @@ import {
   pickUserTitlePayload,
   getTitleColorClass
 } from '@/utils/helper'
-import { isRichTextEditor } from '@/utils/html'
-import { renderMarkdown } from '@/utils/markdown'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
 import TitleBadge from './TitleBadge.vue'
@@ -155,7 +154,14 @@ import { resolveFrameRender } from '@/utils/frameRender'
 const props = defineProps({
   article: { type: Object, required: true },
   // 正文片段的最大字符数（超出显示「查看更多」）
-  textLimit: { type: Number, default: 240 }
+  textLimit: { type: Number, default: 240 },
+  /**
+   * 列表页批量带下来的点赞状态：{ is_liked, count }
+   *
+   * 有值时不再自己请求 is-liked / counts —— 首页一页十几张卡片各查一次，
+   * 滚动几屏就是上百个请求。不传（其它页面单独使用本组件）时保持原有单条查询。
+   */
+  likeState: { type: Object, default: null }
 })
 
 const router = useRouter()
@@ -178,13 +184,6 @@ const authorTitlePayload = computed(() => pickUserTitlePayload(author.value))
 // 头像框渲染参数（洞大小 / 偏移 / 动效）：以装扮 payload 为准，users.json 副本兜底
 const frameRender = computed(() => resolveFrameRender(author.value?.json))
 
-const cover = computed(() => {
-  const c = props.article.covers
-  if (!c) return ''
-  if (Array.isArray(c)) return c[0] || ''
-  return String(c).split(',')[0] || ''
-})
-
 const groupName = computed(() => {
   const g = props.article.result?.group
   if (!g) return ''
@@ -205,23 +204,41 @@ const showScopeNotice = computed(
 )
 
 /**
- * 正文转纯文本：富文本直接取 HTML 文本，Markdown 先渲染再去标签，
- * 这样首页不会漏出 **加粗** / # 标题 之类的源码记号。
+ * 正文转纯文本（列表摘要用）
+ *
+ * 只做轻量清洗，**不走 markdown-it**：之前为了 240 字摘要把整篇正文交给
+ * markdown-it + highlight.js 渲染，等于让首页无条件加载这两个 chunk
+ * （生产 gzip 约 88KB）并对每篇文章跑一遍解析，实测 6 张卡就吃掉主线程 100ms+。
+ * 后端返回的 abstract 本身就是截好的纯文本摘要，优先用它。
  */
-const plainText = computed(() => {
-  const raw = String(props.article.content || '').trim()
-  const fallback = String(props.article.abstract || props.article.text || '').trim()
-  if (!raw) return fallback
+function toPlainText(text) {
+  return String(text || '')
+    .replace(/```[\s\S]*?```/g, ' ') // 代码块整体丢掉
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ') // 图片
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // 链接 → 只留文字
+    .replace(/<[^>]*>/g, ' ') // 富文本残留标签
+    .replace(/^[>#*+\-\s]{1,6}/gm, '') // 行首标题 / 引用 / 列表记号
+    .replace(/[*_~`]+/g, '') // 强调符号
+    .replace(/\s+/g, ' ')
+    .trim()
+}
 
-  const html = isRichTextEditor(props.article.editor) ? raw : renderMarkdown(raw)
-  const el = document.createElement('div')
-  el.innerHTML = html
-  return (el.textContent || '').replace(/\s+/g, ' ').trim() || fallback
+const plainText = computed(() => {
+  const raw = toPlainText(props.article.abstract || props.article.text || props.article.content || '')
+  const title = String(props.article.title || '').trim()
+  // 摘要通常从正文第一行（也就是标题）开始，和卡片上方的大标题重复，去掉
+  if (!title || !raw.startsWith(title)) return raw
+  return raw.slice(title.length).replace(/^[\s，。、,.：:·\-—]+/, '')
 })
 
 // truncate 会自动去掉残留标签并补 "..."
 const previewText = computed(() => truncate(plainText.value, props.textLimit))
-const hasMore = computed(() => plainText.value.length > props.textLimit || scopeLocked.value)
+const hasMore = computed(
+  () =>
+    scopeLocked.value ||
+    plainText.value.length > props.textLimit ||
+    String(props.article.content || '').length > props.textLimit
+)
 
 function goDetail() {
   router.push(`/archives/${props.article.id}`)
@@ -247,6 +264,17 @@ const likeIcon = ref(null)
 const liked = ref(false)
 // 先用列表里自带的点赞数组兜个数，避免首帧显示 0 再跳变
 const likeCount = ref(Number(props.article.result?.like?.length || props.article.likes || 0))
+
+/**
+ * 应用列表批量下发的点赞状态
+ * @returns {boolean} 是否真的应用了（false 表示没有带来状态，调用方应自行查询）
+ */
+function applyLikeState(state) {
+  if (!state || typeof state !== 'object') return false
+  liked.value = !!state.is_liked
+  likeCount.value = Number(state.count) || 0
+  return true
+}
 
 async function loadLikeState() {
   try {
@@ -361,8 +389,17 @@ function onActionMenu(key) {
 }
 
 onMounted(() => {
-  loadLikeState()
+  // 列表页已经批量下发状态时不要再单独查一次（否则优化就白做了）
+  if (!applyLikeState(props.likeState)) loadLikeState()
 })
+
+// 批量结果可能比卡片晚到（例如首屏先渲染、接口稍后返回）
+watch(
+  () => props.likeState,
+  (state) => {
+    applyLikeState(state)
+  }
+)
 </script>
 
 <style scoped>
@@ -457,11 +494,18 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-muted);
 }
-.feed-group {
-  padding: 0 6px;
-  border-radius: 3px;
-  background: var(--bg-muted);
+/* 文章分类（分组名）：与「长文」同为胶囊，放在底部同行，过长省略 */
+.kind-group {
+  padding: 2px 8px;
+  max-width: 8em;
+  font-size: 11px;
+  line-height: 1.6;
   color: var(--text-soft);
+  background: var(--bg-muted);
+  border-radius: 999px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .feed-title {
@@ -504,35 +548,38 @@ onMounted(() => {
   font-size: 11px;
 }
 
-.feed-cover {
-  margin-top: 12px;
-  border-radius: var(--radius);
-  overflow: hidden;
-  cursor: pointer;
-  background: var(--bg-muted);
-  max-height: 220px;
-}
-.feed-cover img {
-  display: block;
-  width: 100%;
-  max-height: 220px;
-  object-fit: cover;
-  transition: transform 0.3s;
-}
-.feed-cover:hover img {
-  transform: scale(1.02);
-}
-
 /* 底部互动栏：点赞 / 评论 / 阅读，图标 + 数字，与动态卡片一致 */
 .feed-actions {
   display: flex;
   align-items: center;
-  gap: 18px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 8px;
   margin-top: 12px;
   padding-top: 10px;
   border-top: 1px dashed var(--border);
   font-size: 13px;
   color: var(--text-muted);
+}
+/* 左侧：类型 + 分类；右侧：互动。两组各自不换行，整体放不下时按钮组整体落到下一行 */
+.action-tags,
+.action-btns {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+.action-tags {
+  gap: 6px;
+}
+.action-btns {
+  gap: 18px;
+  margin-left: auto;
+}
+@media (max-width: 480px) {
+  .action-btns {
+    gap: 14px;
+  }
 }
 /* 内容类型标注（动态 / 长文）：低对比度胶囊，靠左；互动按钮靠右 */
 .kind-tag {

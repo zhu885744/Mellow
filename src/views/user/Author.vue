@@ -5,6 +5,7 @@
       <div class="author-head">
         <AvatarFrame
           :src="profile.avatar"
+          :name="profile.nickname"
           :frame="frame"
           :animated="frameRender.animated"
           :fallback="defaultAvatar"

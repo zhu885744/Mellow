@@ -179,7 +179,7 @@ import {
   removeComment,
   uploadCommentImages
 } from '@/api/comment'
-import { likesCount, isLiked, like, unlike } from '@/api/tags'
+import { likesCount, likeStates, isLiked, like, unlike } from '@/api/tags'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
 import {
@@ -302,8 +302,8 @@ const total = ref(0)
 const replyTo = ref(null)
 
 // 拉取点赞数与已点赞状态（递归处理嵌套树里的所有评论，含子评论）
-//  - 已登录：逐项 is-liked，返回里同时带 count（用 count 填点赞数）
-//  - 未登录：批量 counts（target_ids 数组）
+// 统一走 user-likes/states 批量接口：一次请求返回整棵树的 { is_liked, count }
+// （此前是每条评论各调一次 is-liked，15 条根评论带回复能到几十个请求）
 function flattenTree(list) {
   const result = []
   const walk = (arr) => {
@@ -333,22 +333,44 @@ function countAllComments(list) {
 async function loadLikes(list) {
   const flat = flattenTree(list)
   if (!flat.length) return
-  if (userStore.isLogged) {
-    await Promise.all(
-      flat.map(async (c) => {
-        const r = await isLiked('comment', c.id).catch(() => null)
-        c.liked = !!r?.data?.is_liked
-        if (r?.data?.count !== undefined) c.likeCount = r.data.count
-      })
-    )
-  } else {
-    const ids = flat.map((c) => c.id)
-    const countsRes = await likesCount('comment', ids).catch(() => null)
-    const countMap = countsRes?.data?.counts || {}
-    flat.forEach((c) => {
-      c.likeCount = countMap[c.id] ?? countMap[String(c.id)] ?? 0
+  const ids = flat.map((c) => c.id)
+
+  // 批量查状态 + 数量：未登录时后端 is_liked 一律 false、count 照常返回，
+  // 所以登录与否都走这一个接口，不需要再分两条路径。
+  // 后端 states 单次最多接受 200 个 id（超出会被截断），评论树常大于这个量，按 200 分组并发。
+  const CHUNK = 200
+  const chunks = []
+  for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK))
+
+  const states = {}
+  let complete = true
+  await Promise.all(
+    chunks.map(async (part) => {
+      const res = await likeStates('comment', part).catch(() => null)
+      if (!res?.data?.states) {
+        complete = false
+        return
+      }
+      Object.assign(states, res.data.states)
     })
+  )
+
+  if (complete) {
+    flat.forEach((c) => {
+      const s = states[c.id] ?? states[String(c.id)]
+      if (!s) return
+      c.liked = !!s.is_liked
+      c.likeCount = Number(s.count) || 0
+    })
+    return
   }
+
+  // 兜底：states 不可用时退回批量计数，只补数量（状态保持默认未赞）
+  const countsRes = await likesCount('comment', ids).catch(() => null)
+  const countMap = countsRes?.data?.counts || {}
+  flat.forEach((c) => {
+    c.likeCount = countMap[c.id] ?? countMap[String(c.id)] ?? 0
+  })
 }
 
 async function load() {

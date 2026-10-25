@@ -5,6 +5,7 @@
       <template v-if="userStore.isLogged">
         <AvatarFrame
           :src="user?.avatar"
+          :name="user?.nickname"
           :frame="user?.json?.frame"
           :animated="frameRender.animated"
           :fallback="defaultAvatar"
@@ -92,7 +93,7 @@
           <router-link :to="commentLink(c)" class="comment-mini-link">
             <img
               v-if="c._avatar"
-              :src="c._avatar"
+              :src="thumbUrl(c._avatar, 44)"
               class="comment-mini-avatar"
               :alt="c._nickname"
               loading="lazy"
@@ -207,6 +208,7 @@ import { notificationLink, contentLink } from '@/utils/notification'
 import { pickCommentAuthor } from '@/utils/helper'
 import { resolveFrameRender } from '@/utils/frameRender'
 import { renderEmoji } from '@/utils/emoji'
+import { thumbUrl } from '@/utils/image'
 
 import { useRouter } from 'vue-router'
 import AvatarFrame from '@/components/AvatarFrame.vue'

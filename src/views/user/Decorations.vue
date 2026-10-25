@@ -12,6 +12,7 @@
     <div class="card card-pad wearing-card">
       <AvatarFrame
         :src="user?.avatar"
+        :name="user?.nickname"
         :frame="wearingFrame"
         :animated="wearingFrameAnimated"
         :fallback="defaultAvatar"

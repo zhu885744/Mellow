@@ -10,6 +10,7 @@
           <div class="avatar-preview">
             <AvatarFrame
               :src="form.avatar"
+              :name="form.nickname"
               :frame="form.frame"
               :animated="frameRender.animated"
               :fallback="defaultAvatar"

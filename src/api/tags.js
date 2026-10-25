@@ -75,6 +75,22 @@ export const unlike = (target_type, target_id) =>
 export const isLiked = (target_type, target_id) =>
   call('user-likes', 'is-liked', { method: 'GET', params: { target_type, target_id } })
 
+/**
+ * 批量查询点赞状态 + 数量（列表页专用）
+ *
+ * 一次拿到整页内容的 { is_liked, count }，替代「每张卡片各调一次 is-liked」。
+ * 未登录时 is_liked 全为 false，count 照常返回。
+ *
+ * 返回：{ data: { states: { [id]: { is_liked, count } } } }
+ */
+export const likeStates = (target_type, target_ids) => {
+  const ids = Array.isArray(target_ids) ? target_ids : [target_ids]
+  return call('user-likes', 'states', {
+    method: 'GET',
+    params: { target_type, target_ids: ids.join(',') }
+  })
+}
+
 // 批量查询点赞数（参考 i-comment.vue：user-likes/counts 用 target_ids 数组）
 export const likesCount = (target_type, target_ids) => {
   const ids = Array.isArray(target_ids) ? target_ids : [target_ids]

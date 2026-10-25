@@ -13,6 +13,9 @@
       <button type="button" class="composer-tool" title="插入表情" @mousedown.prevent @click="openEmoji">
         <i class="bi bi-emoji-smile" />
       </button>
+      <button type="button" class="composer-tool" title="@ 提及用户" @mousedown.prevent @click="openMention">
+        <i class="bi bi-at" />
+      </button>
       <button
         type="button"
         class="composer-tool"
@@ -183,6 +186,12 @@ const editorRef = ref(null)
 // 自画工具栏用：开关编辑器的表情面板
 function openEmoji() {
   editorRef.value?.openEmoji()
+}
+
+// 自画工具栏用：打开 @ 提及候选（直接选人插入「@昵称」，不用手打 @）
+// 带上事件：编辑器里还没落光标时，面板以这个按钮为锚点，避免定位到视口左上角
+function openMention(event) {
+  editorRef.value?.openMention(event)
 }
 
 // 自画工具栏用：插入话题标记「##」（光标落在两个 # 之间，接着输入话题名即可）

@@ -1,7 +1,8 @@
 <template>
   <span class="avatar-frame" :style="{ width: size, height: size }">
-    <!-- 底层圆形用户头像 -->
+    <!-- 底层圆形用户头像：没有头像地址时不渲染 <img>，改用昵称首字占位 -->
     <img
+      v-if="currentSrc"
       :src="currentSrc"
       :alt="alt"
       class="avatar-frame-img"
@@ -9,10 +10,11 @@
       decoding="async"
       @error="onError"
     />
+    <span v-else class="avatar-frame-text" :style="textStyle" aria-hidden="true">{{ initial }}</span>
     <!-- 顶层头像框：按「洞」定位，装饰可自由向外延伸 -->
     <img
       v-if="frame && !frameFailed"
-      :src="frame"
+      :src="frameSrc"
       class="avatar-frame-overlay"
       :class="{ 'is-animated': animated }"
       :style="frameStyle"
@@ -26,6 +28,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { thumbUrl } from '@/utils/image'
 
 // 与后端 app/model/decoration.go 的 frameHoleMin / frameHoleMax / frameOffsetLimit 保持一致
 const HOLE_MIN = 0.2
@@ -36,6 +39,13 @@ const props = defineProps({
   src: { type: String, default: '' },
   frame: { type: String, default: '' },
   alt: { type: String, default: '头像' },
+  /**
+   * 占位文字来源（昵称）：头像为空时取其首字，比如「云溪」→「云」
+   *
+   * 与 alt 分开是因为 alt 常常是「用户头像」「头像预览」这类描述性文案，
+   * 直接取首字会变成「用」「头」。不传时回退 alt，并过滤掉含「头像」的文案。
+   */
+  name: { type: String, default: '' },
   size: { type: String, default: '80px' },
   /**
    * 头像框「洞」的大小：洞直径 ÷ 素材宽度
@@ -69,24 +79,57 @@ function clampOffset(value) {
   return Math.min(OFFSET_LIMIT, Math.max(-OFFSET_LIMIT, num))
 }
 
-// 用 CSS 变量传参，避免在模板里拼一长串 transform
-const frameStyle = computed(() => {
+// 洞大小（素材宽度 ÷ 头像直径的倒数），范围与后端一致
+const hole = computed(() => {
   const raw = Number(props.frameHole)
-  const hole = Number.isFinite(raw) && raw > 0
-    ? Math.min(HOLE_MAX, Math.max(HOLE_MIN, raw))
-    : 1
-
-  return {
-    '--frame-hole': hole,
-    '--frame-offset-x': clampOffset(props.frameOffsetX),
-    '--frame-offset-y': clampOffset(props.frameOffsetY)
-  }
+  return Number.isFinite(raw) && raw > 0 ? Math.min(HOLE_MAX, Math.max(HOLE_MIN, raw)) : 1
 })
 
-// 头像为空或加载失败时回退到 fallback
-const currentSrc = computed(() => {
-  if (!props.src || failed.value) return props.fallback || props.src
-  return props.src
+// 用 CSS 变量传参，避免在模板里拼一长串 transform
+const frameStyle = computed(() => ({
+  '--frame-hole': hole.value,
+  '--frame-offset-x': clampOffset(props.frameOffsetX),
+  '--frame-offset-y': clampOffset(props.frameOffsetY)
+}))
+
+// 头像的实际显示宽度（size 形如 "44px"）：取 2 倍图，高 DPI 屏也清晰
+const displayWidth = computed(() => {
+  const px = parseFloat(String(props.size))
+  return Number.isFinite(px) && px > 0 ? px : 80
+})
+
+/**
+ * 实际渲染的头像地址：
+ *   加载失败 → fallback（灰底圆形占位图）
+ *   没有地址 → 空字符串，交给模板渲染「昵称首字」
+ *
+ * 为什么区分这两种空：公开页面里作者头像是空的，并不一定是图挂了 ——
+ * 由 QQ 邮箱推导出来的 qlogo 头像会在脱敏时被置空（见 app/model/privacy.go
+ * 的 hideDerivedAvatar）。这种情况显示首字比显示灰圆更像「有头像」，也不泄露 QQ 号。
+ *
+ * 统一按显示尺寸取缩略图：头像位只有 20~90px，原来拉的是 1500~2000px 的原图
+ * （单张 1.2~1.5MB），是首屏流量与解码耗时的大头，见 utils/image.js。
+ */
+const currentSrc = computed(() => thumbUrl(failed.value ? props.fallback : props.src, displayWidth.value * 2))
+
+// 头像框素材会被放大（洞越小放大越多），按放大后的尺寸取图，上限 800px
+const frameSrc = computed(() =>
+  thumbUrl(props.frame, Math.min(800, Math.ceil((displayWidth.value * 2) / hole.value)))
+)
+
+// 占位首字：优先昵称，其次 alt；alt 是「用户头像」「头像预览」这类描述文案时不用
+const initial = computed(() => {
+  const nickname = String(props.name || '').trim()
+  const altText = String(props.alt || '').trim()
+  const source = nickname || (/头像/.test(altText) ? '' : altText)
+  return source ? [...source][0].toUpperCase() : '用'
+})
+
+// 占位字号跟随头像尺寸（size 形如 "40px"）：40px → 17px，75px → 32px
+const textStyle = computed(() => {
+  const px = parseFloat(String(props.size))
+  const fontSize = Number.isFinite(px) && px > 0 ? Math.max(12, Math.round(px * 0.42)) : 18
+  return { fontSize: `${fontSize}px` }
 })
 
 function onError() {
@@ -111,6 +154,22 @@ function onError() {
   object-fit: cover;
   border-radius: 50%;
   display: block;
+  z-index: 1;
+}
+
+/* 昵称首字占位：与旧灰圆占位同底色，但带上可辨识的文字 */
+.avatar-frame-text {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #e8e6dd;
+  color: #8a8a82;
+  font-weight: 600;
+  line-height: 1;
+  user-select: none;
   z-index: 1;
 }
 

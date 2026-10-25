@@ -13,8 +13,6 @@
       >
         <img :src="author?.avatar || defaultAvatar" class="meta-author-avatar" alt="" loading="lazy" />
         <span class="meta-author-name">{{ author?.nickname || '匿名' }}</span>
-        <!-- 佩戴中的勋章（作者信息带 users.json） -->
-        <WearingBadge v-if="author?.json?.wearing_badge" :badge="author.json.wearing_badge" />
       </component>
       <span class="dot">·</span>
       <span>{{ formatDate(article.create_time) }}</span>

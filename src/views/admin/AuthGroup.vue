@@ -689,7 +689,8 @@ async function loadRulesOnce() {
   if (allRules.value.length || loadingRules.value) return
   loadingRules.value = true
   try {
-    const res = await listAuthRules({ page: 1, limit: 1000, order: 'id asc', field: AUTH_RULE_FIELD })
+    // 一次性拉全量规则：目前约 700 条且随功能增长，留足余量避免被静默截断
+    const res = await listAuthRules({ page: 1, limit: 2000, order: 'id asc', field: AUTH_RULE_FIELD })
     allRules.value = res.data?.data || []
   } catch {
     allRules.value = []
@@ -903,6 +904,11 @@ async function openEdit(item) {
   pageKeyword.value = ''
   edit.visible = true
   await Promise.all([loadRulesOnce(), loadPagesOnce()])
+
+  // 自动展开已有授权的模块：打开弹窗就能看清这个组到底给了哪些模块的权限
+  openGroups.value = ruleGroups.value
+    .filter((group) => group.items.some((rule) => edit.rules.includes(rule.hash)))
+    .map((group) => group.key)
 }
 
 async function save() {

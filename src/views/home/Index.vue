@@ -88,38 +88,42 @@
       </template>
 
       <!-- 混排列表：文章与动态都用动态卡片风格（文章显示正文片段 + 查看更多） -->
-      <template v-for="item in items" :key="item.key">
+      <template v-for="item in pageItems" :key="item.key">
         <ArticleFeedItem
           v-if="item.type === 'article'"
           :article="item.data"
+          :like-state="articleLikeStates[item.data.id]"
         />
         <MomentItem
           v-else
           :moment="item.data"
+          compact
+          :like-state="momentLikeStates[item.data.id]"
+          :comment-total="momentCommentCounts[item.data.id]"
           @delete="onMomentDelete"
           @refresh="reload"
         />
       </template>
 
       <EmptyState
-        v-if="!loading && !items.length"
+        v-if="!loading && !pageItems.length"
         icon="🔍"
         :text="emptyText"
       />
 
-      <!-- 触底自动加载的哨兵（列表为空时不渲染） -->
-      <div v-if="items.length" ref="sentinel" class="feed-foot">
-        <button
-          v-if="hasMore"
-          type="button"
-          class="btn btn-sm"
-          :disabled="loading"
-          @click="loadMore"
-        >
-          {{ loading ? '加载中…' : '加载更多' }}
-        </button>
-        <span v-else class="feed-foot-end">— 到底啦 —</span>
+      <!-- 翻页中：旧内容先留着，给个轻提示 -->
+      <div v-if="loading && items.length" class="feed-loading">
+        <span class="spinner" /> 加载中…
       </div>
+
+      <!-- 分页：每页 10 条，页码跟着 URL 无关，数据池按需向后补页 -->
+      <Pagination
+        v-if="total > PAGE_SIZE"
+        :current="page"
+        :total="total"
+        :page-size="PAGE_SIZE"
+        @update:current="goPage"
+      />
     </div>
 
     <!-- 公告详情弹窗 -->
@@ -164,10 +168,13 @@ import ArticleFeedItem from '@/components/ArticleFeedItem.vue'
 import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
 import MomentItem from '@/components/MomentItem.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import Pagination from '@/components/Pagination.vue'
 import MomentComposeDialog from '@/components/MomentComposeDialog.vue'
 import { useUserStore } from '@/stores/user'
 import { listArticles } from '@/api/article'
 import { listMoments, removeMoment } from '@/api/moments'
+import { likeStates } from '@/api/tags'
+import { countCommentsBatch } from '@/api/comment'
 import { getFullUrl } from '@/utils/runtimeConfig'
 import { call } from '@/api/request'
 import { placardTypeLabel, placardTypeColor, placardTypeStyle } from '@/utils/placard'
@@ -194,17 +201,85 @@ const FILTERS = [
   { key: 'article', label: '文章' },
   { key: 'moment', label: '动态' }
 ]
-// 每次向每个来源各取一页，合并后按时间重排（博客这个量级足够，也不用后端改接口）
-const PAGE_SIZE = 6
+// 每页展示条数（混排后按页切片，见 pageItems）
+const PAGE_SIZE = 10
+// 每次向单个来源补页时取的条数（取满一页即可，多余的留给后面的页）
+const SOURCE_PAGE = 10
 
 const filter = ref('all')
-// 扁平化的混排列表：{ key, type, data, time, top }
+// 扁平化的混排池：{ key, type, data, time, top }
+// 说明：分页只切这个池子，池子不够长时再按来源向后补页（见 ensureItems）
 const items = ref([])
-const hasMore = ref(false)
+const page = ref(1)
 const totals = reactive({ article: 0, moment: 0 })
 // 两个来源各自的下一页页码
 const cursors = reactive({ article: 1, moment: 1 })
-const sentinel = ref(null)
+// 某个来源是否已经取尽：取尽后不再重复请求空页
+const exhausted = reactive({ article: false, moment: false })
+
+const total = computed(() => {
+  if (filter.value === 'article') return totals.article
+  if (filter.value === 'moment') return totals.moment
+  return totals.article + totals.moment
+})
+// 当前页要渲染的条目：混排池按页切片
+const pageItems = computed(() => items.value.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+
+/* ---------------- 列表互动状态（批量） ----------------
+ * 之前每张卡片挂载后各自请求「是否已赞 / 点赞数 / 评论数」，
+ * 一页十几张卡片就是几十个请求。
+ * 现在由首页在拿到一批数据后批量查一次，再通过 props 下发给卡片：
+ *   - 点赞状态：GET /api/user-likes/states（article / moment 各一次）
+ *   - 评论数：  GET /api/comment/counts（moment 一次）
+ */
+const articleLikeStates = reactive({})
+const momentLikeStates = reactive({})
+const momentCommentCounts = reactive({})
+
+async function loadLikeStates(type, ids, target) {
+  if (!ids.length) return
+  try {
+    const res = await likeStates(type, ids)
+    const states = res?.data?.states || {}
+    Object.entries(states).forEach(([id, state]) => {
+      target[id] = state
+    })
+  } catch {
+    // 批量失败不阻塞列表：卡片会退化成自己查一次（见各组件的 onMounted）
+  }
+}
+
+async function loadMomentCommentCounts(ids) {
+  if (!ids.length) return
+  // 先统一置 0：后端 comment/counts 只返回 count>0 的项，缺项会被卡片当成
+  // 「没有批量数据」再各发一次 comment/count（实测 6 条动态里 3 条零评论 → 3 个多余请求）
+  ids.forEach((id) => {
+    momentCommentCounts[id] = 0
+  })
+  try {
+    const res = await countCommentsBatch('moments', ids)
+    const counts = res?.data?.counts || {}
+    Object.entries(counts).forEach(([id, count]) => {
+      momentCommentCounts[id] = Number(count) || 0
+    })
+  } catch {
+    /* 同上，卡片自行兜底 */
+  }
+}
+
+// 必须在列表渲染前完成：卡片一旦挂载再补数据，就已经白发了一轮单条请求
+async function loadInteractionStates(rows) {
+  const articleIds = rows.filter((it) => it.type === 'article').map((it) => Number(it.data.id)).filter(Boolean)
+  const momentIds = rows.filter((it) => it.type === 'moment').map((it) => Number(it.data.id)).filter(Boolean)
+
+  await Promise.allSettled([
+    loadLikeStates('article', articleIds, articleLikeStates),
+    loadLikeStates('moment', momentIds, momentLikeStates),
+    loadMomentCommentCounts(momentIds)
+  ])
+}
+
+
 
 const current = computed(() => placards.value[index.value] || {})
 
@@ -313,54 +388,65 @@ function activeSources() {
 }
 
 // 拉取某一类的一页（两类接口的返回结构一致：data.data 列表 + data.count 总数）
-async function fetchSource(type, page) {
+async function fetchSource(type, p) {
   if (type === 'article') {
     const res = await listArticles({
-      page,
-      limit: PAGE_SIZE,
+      page: p,
+      limit: SOURCE_PAGE,
       where: { audit: 1, status: 1 },
       order: 'top desc, publish_time desc'
     })
     return { list: res.data?.data || [], count: Number(res.data?.count) || 0 }
   }
 
-  const res = await listMoments({ page, limit: PAGE_SIZE })
+  const res = await listMoments({ page: p, limit: SOURCE_PAGE })
   return { list: res.data?.data || [], count: Number(res.data?.count) || 0 }
 }
 
+// 清空混排池与游标（首屏重载 / 切换筛选时用）
+function resetPool() {
+  page.value = 1
+  cursors.article = 1
+  cursors.moment = 1
+  exhausted.article = false
+  exhausted.moment = false
+  totals.article = 0
+  totals.moment = 0
+  items.value = []
+  // 互动状态跟着列表一起清，避免上一轮筛选的残留数据被复用
+  Object.keys(articleLikeStates).forEach((key) => delete articleLikeStates[key])
+  Object.keys(momentLikeStates).forEach((key) => delete momentLikeStates[key])
+  Object.keys(momentCommentCounts).forEach((key) => delete momentCommentCounts[key])
+}
+
 /**
- * 加载混排数据
- * reset=true 用于首屏与切换筛选（重置两个来源的游标与列表）
+ * 保证混排池里至少有 count 条
+ *
+ * 分页只切池子，池子不够长才向后补页：每个未取尽的来源各拉一页（SOURCE_PAGE 条），
+ * 合并进池后按「置顶优先 + 时间倒序」重排。补到够用或两个来源都取尽为止。
  */
-async function load({ reset = false } = {}) {
-  if (loading.value) return
-  loading.value = true
-
-  try {
-    if (reset) {
-      cursors.article = 1
-      cursors.moment = 1
-      totals.article = 0
-      totals.moment = 0
-      items.value = []
-    }
-
-    // 只继续拉「还没拉完」的来源，避免某一类取空后每次都白发一次请求
-    const sources = activeSources().filter((type) => {
-      const loaded = items.value.filter((it) => it.type === type).length
-      return !totals[type] || loaded < totals[type]
-    })
+async function ensureItems(count) {
+  // 兜底循环上限：服务端 count 与实际条数不一致时不至于转死
+  for (let guard = 0; guard < 20 && items.value.length < count; guard++) {
+    const sources = activeSources().filter((type) => !exhausted[type])
+    if (!sources.length) return
 
     const results = await Promise.all(
       sources.map(async (type) => {
-        const page = cursors[type]
+        const loadedForType = items.value.filter((it) => it.type === type).length
+        const p = cursors[type]
         try {
-          const data = await fetchSource(type, page)
-          cursors[type] = page + 1
+          const data = await fetchSource(type, p)
+          cursors[type] = p + 1
           totals[type] = data.count
+          // 返回不足一页，或已拿满该来源的总数 → 视为取尽，后面不再请求
+          if (data.list.length < SOURCE_PAGE || loadedForType + data.list.length >= data.count) {
+            exhausted[type] = true
+          }
           return { type, list: data.list }
         } catch {
-          // 单个来源失败不影响另一类展示
+          // 单个来源失败不影响另一类展示，且不再重试（避免同一页反复请求）
+          exhausted[type] = true
           return { type, list: [] }
         }
       })
@@ -386,29 +472,44 @@ async function load({ reset = false } = {}) {
       })
     })
 
-    items.value = items.value.concat(incoming).sort((a, b) => b.top - a.top || b.time - a.time)
+    // 一条新的都没有：说明服务端没有更多了，直接收尾
+    if (!incoming.length) return
 
-    // 还有没有更多：任一来源「已加载数量 < 总数」；本批一条新的都没有就直接收尾，
-    // 避免服务端 count 与实际数据不一致时无限触底
-    if (!incoming.length) {
-      hasMore.value = false
-    } else {
-      hasMore.value = activeSources().some((type) => {
-        const loaded = items.value.filter((it) => it.type === type).length
-        return loaded < totals[type]
-      })
+    // 先把这一批的点赞 / 评论数批量取回来：卡片挂载时 props 已就绪，
+    // 就不会再各自发一次单条请求（挂载后再补会白发一轮）
+    await loadInteractionStates(incoming)
+
+    items.value = items.value.concat(incoming).sort((a, b) => b.top - a.top || b.time - a.time)
+  }
+}
+
+/**
+ * 切到第 target 页
+ * 先把池子补到 target * PAGE_SIZE 条，再切页码；目标页无内容时回退到最后有数据的页
+ */
+async function loadPage(target = 1) {
+  if (loading.value) return
+  loading.value = true
+  try {
+    await ensureItems(target * PAGE_SIZE)
+    page.value = target
+    if (!pageItems.value.length && target > 1) {
+      page.value = Math.max(1, Math.ceil(items.value.length / PAGE_SIZE))
     }
   } finally {
     loading.value = false
   }
 }
 
-function loadMore() {
-  if (hasMore.value) load()
+function goPage(target) {
+  if (target === page.value) return
+  window.scrollTo({ top: 0, behavior: 'smooth' })
+  loadPage(target)
 }
 
 function reload() {
-  load({ reset: true })
+  resetPool()
+  loadPage(1)
 }
 
 function switchFilter(key) {
@@ -426,16 +527,12 @@ async function onMomentDelete(m) {
     // 本地移除即可，不整页重排；总数同步减一
     items.value = items.value.filter((it) => !(it.type === 'moment' && it.data.id === m.id))
     totals.moment = Math.max(0, totals.moment - 1)
+    // 删掉的是当前页最后一条时回退一页，避免停在空白页
+    if (!pageItems.value.length && page.value > 1) {
+      page.value = Math.max(1, Math.ceil(items.value.length / PAGE_SIZE))
+    }
   } catch {}
 }
-
-// 触底自动加载：哨兵元素会随列表清空而重建，所以跟着 watch 重新 observe
-let observer = null
-watch(sentinel, (el) => {
-  if (!observer) return
-  observer.disconnect()
-  if (el) observer.observe(el)
-})
 
 // 参数可能来自「已在本页时再点一次发布入口」，所以除了首屏还要跟着 watch
 watch(() => route.query.compose, openComposeFromQuery)
@@ -444,21 +541,10 @@ onMounted(() => {
   loadPlacards()
   reload()
   openComposeFromQuery()
-
-  if (typeof IntersectionObserver !== 'undefined') {
-    observer = new IntersectionObserver(
-      (entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) loadMore()
-      },
-      { rootMargin: '240px 0px' }
-    )
-  }
 })
 
 onBeforeUnmount(() => {
   stop()
-  if (observer) observer.disconnect()
-  observer = null
 })
 </script>
 
@@ -617,15 +703,15 @@ onBeforeUnmount(() => {
   box-shadow: var(--shadow-sm);
 }
 
-.feed-foot {
+/* 翻页时的轻提示：分页后旧内容会留到新数据回来为止，给个反馈避免「点了没反应」 */
+.feed-loading {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 12px 0 4px;
-}
-.feed-foot-end {
-  font-size: 12px;
-  color: var(--text-light, var(--text-muted));
+  gap: 8px;
+  padding: 12px 0;
+  font-size: 13px;
+  color: var(--text-muted);
 }
 
 /* 公告详情弹窗 */

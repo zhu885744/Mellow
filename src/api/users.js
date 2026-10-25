@@ -4,6 +4,16 @@ import { uploadAttachments } from './attachment'
 export const getUser = (id, field = '') =>
   call('users', 'one', { method: 'GET', params: { id, field } })
 
+/**
+ * 批量获取用户（一次最多 50 个）
+ *
+ * 列表里要多个用户信息时用它，不要对 getUser 循环 —— 每次 one 都要跑一遍
+ * 权限组 / 等级 / 封禁查询，N 次就是 N 倍开销。
+ * 返回顺序与传入 ids 一致，查不到的 id 直接缺席。
+ */
+export const getUsersBatch = (ids = [], field = '') =>
+  call('users', 'batch', { method: 'GET', params: { ids: ids.join(','), field } })
+
 export const updateUser = (data) =>
   call('users', 'update', { method: 'PUT', data })
 
