@@ -28,6 +28,17 @@
           <i class="bi bi-box-seam" /> INIS
           <b>{{ version.inis || '—' }}</b>
           <em v-if="release.status === 'update'" class="meta-update">可更新 {{ release.tag_name }}</em>
+          <button
+            type="button"
+            class="meta-refresh"
+            :class="{ 'is-loading': release.status === 'loading' }"
+            :disabled="release.status === 'loading' || !version.inis"
+            :title="release.status === 'error' ? '上次检测失败，点击重试' : '检查更新'"
+            aria-label="检查更新"
+            @click="checkUpdate(true)"
+          >
+            <i class="bi bi-arrow-clockwise" />
+          </button>
         </span>
         <span class="meta-item" title="当前主题版本">
           <i class="bi bi-palette" /> Mellow
@@ -168,8 +179,9 @@
  * - goods/orders-all 返回 { data: { data: [...], count, page } }，数量取 count；
  * - integral/card-stats 返回 { data: { total, unused, used, expired, ... } }；
  * - 版本信息走 dev 类接口 /dev/info/version（公开，返回 { go, inis, text }）；
- * - 版本更新检测走 GitHub Releases API（公开、跨域，用原生 fetch），拿 tag_name 与本地
+ * - 版本更新检测走 GitHub Releases API（公开、跨域，用原生 fetch + 8s 超时），拿 tag_name 与本地
  *   INIS 版本比对，仅提示并跳转 Release 页面，不做在线更新；远端结果缓存 1 小时。
+ *   页面加载时自动检测（走缓存、失败静默），版本号后的刷新按钮可手动重检（跳过缓存、toast 反馈）。
  * 统计口径差异：article/comment/goods/users 的 count 支持 where 过滤，
  * 因此「待审核」「今日新增」用 where 传 JSON 字符串（后端 IWhere 支持字符串 JSON）。
  */
@@ -181,6 +193,7 @@ import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
 import { useAuthPagesStore } from '@/stores/auth-pages'
 import { ADMIN_PINNED, buildAdminMenus, buildAdminPinnedItems, getRecentAdminPaths } from '@/utils/admin-menu'
+import { toast } from '@/utils/toast'
 import pkg from '../../../package.json'
 
 const userStore = useUserStore()
@@ -296,6 +309,8 @@ function normalizeVersion(value) {
 
 function parseVersion(value) {
   return normalizeVersion(value)
+    // 兼容 1.0.4+build.7 / 1.0.4-rc1：只比主版本段（/releases/latest 不返回预发布）
+    .split(/[-+]/)[0]
     .split('.')
     .map((item) => {
       const num = parseInt(item, 10)
@@ -338,28 +353,52 @@ function writeReleaseCache(data) {
   }
 }
 
+// GitHub 在部分网络环境下会长时间挂起，超时直接放弃（静默降级为不提示）
+const RELEASE_TIMEOUT = 8000
+
 // 用原生 fetch：GitHub API 返回的是裸 JSON，不能走项目 axios 那套 { code, msg, data } 拦截器
 async function fetchRelease() {
-  const res = await fetch(GITHUB_RELEASE_API, {
-    headers: { Accept: 'application/vnd.github+json' }
-  })
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  const data = await res.json()
-  return {
-    tag_name: data?.tag_name || '',
-    body: data?.body || '',
-    published_at: data?.published_at || '',
-    html_url: data?.html_url || ''
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), RELEASE_TIMEOUT)
+  try {
+    const res = await fetch(GITHUB_RELEASE_API, {
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28'
+      },
+      signal: controller.signal
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    return {
+      tag_name: data?.tag_name || '',
+      body: data?.body || '',
+      published_at: data?.published_at || '',
+      html_url: data?.html_url || ''
+    }
+  } finally {
+    clearTimeout(timer)
   }
 }
 
-async function checkUpdate() {
-  // 本地版本未知时无从比对，保持 idle（不提示、不打扰）
-  if (!version.inis) return
+// 并发去重：手动刷新时自动检测可能还没回来，避免重复打 GitHub
+let checking = false
 
+/**
+ * 检测更新。
+ * 自动检测（页面加载）走 1 小时缓存、出错静默；
+ * 手动检测（点版本号后的刷新按钮）跳过缓存，并用 toast 给出结果，避免「点了没反应」。
+ */
+async function checkUpdate(manual = false) {
+  // 本地版本未知时无从比对，保持 idle（不提示、不打扰）
+  if (!version.inis || checking) return
+
+  const prevStatus = release.status
+  checking = true
   release.status = 'loading'
+
   try {
-    const cached = readReleaseCache()
+    const cached = manual ? null : readReleaseCache()
     const data = cached || (await fetchRelease())
     // 只缓存新鲜拉到的结果，避免把已有缓存的时间戳一直往后推
     if (!cached && data) writeReleaseCache(data)
@@ -370,10 +409,19 @@ async function checkUpdate() {
     release.html_url = data.html_url
 
     const remote = normalizeVersion(data.tag_name)
-    release.status = remote && isNewer(remote, version.inis) ? 'update' : 'latest'
+    const newer = !!remote && isNewer(remote, version.inis)
+    release.status = newer ? 'update' : 'latest'
+
+    if (manual) {
+      if (newer) toast.success(`发现新版本 ${data.tag_name}`)
+      else toast.success('当前已是最新版本')
+    }
   } catch {
-    // 网络不可达 / 触发 GitHub 限流等：静默降级为不提示
-    release.status = 'error'
+    // 失败不回退已有结论：之前已确认有更新就继续显示横幅，只是本次刷新失败
+    release.status = prevStatus === 'update' ? 'update' : 'error'
+    if (manual) toast.error('检查更新失败，GitHub 暂时无法访问')
+  } finally {
+    checking = false
   }
 }
 
@@ -729,6 +777,38 @@ onMounted(async () => {
   border: 1px solid var(--gold-line);
   color: var(--warning);
   white-space: nowrap;
+}
+/* 版本号后的「检查更新」小按钮：点击强制拉取远端 Release（跳过 1 小时缓存） */
+.meta-refresh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: -2px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-light);
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+.meta-refresh:hover:not(:disabled) {
+  color: var(--primary);
+  background: var(--bg-muted);
+}
+.meta-refresh:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+.meta-refresh.is-loading i {
+  animation: meta-refresh-spin 0.9s linear infinite;
+}
+@keyframes meta-refresh-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* ---------- 版本更新横幅 ---------- */
