@@ -37,7 +37,7 @@
           title="@ 提及用户"
           @mousedown.prevent
           @click="openMention"
-        ><i class="bi bi-at" /></button>
+        ><i class="bi bi-at" />提及用户</button>
         <slot name="extra" />
       </div>
     </div>

@@ -30,8 +30,6 @@
         <div class="article-foot">
           <span v-if="author" class="meta-stat">
             <router-link :to="`/author/${author.id}`">{{ author.nickname }}</router-link>
-            <!-- 佩戴中的勋章（作者信息带 users.json） -->
-            <WearingBadge v-if="author.json?.wearing_badge" :badge="author.json.wearing_badge" />
           </span>
           <span class="meta-stat">{{ article.views || 0 }} 次阅读</span>
           <span v-if="showComment" class="meta-stat">{{ commentCount }} 评论</span>

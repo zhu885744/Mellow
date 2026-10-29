@@ -2,41 +2,40 @@
   <div class="integral-page">
     <!-- 积分概览 -->
     <div class="card card-pad">
-      <div class="balance-hero">
-        <div class="balance-icon"><i class="bi bi-coin" /></div>
+      <div class="balance">
         <div class="balance-main">
-          <div class="balance-label">当前积分余额</div>
-          <div class="balance-num">{{ summary.integral }} <span>积分</span></div>
-          <router-link to="/goods" class="balance-link"><i class="bi bi-gift" /> 去积分商城兑换</router-link>
+          <span class="balance-label">当前积分</span>
+          <strong class="balance-num">{{ summary.integral }}</strong>
         </div>
+        <router-link to="/goods" class="balance-link">
+          积分商城 <i class="bi bi-arrow-right" aria-hidden="true" />
+        </router-link>
       </div>
 
-      <div class="overview-grid">
-        <div class="overview-item">
-          <span class="overview-label">今日获得</span>
-          <strong class="overview-value plus">+{{ summary.today_income }}</strong>
+      <dl class="balance-stats">
+        <div class="balance-stat">
+          <dt>今日获得</dt>
+          <dd class="plus">+{{ summary.today_income }}</dd>
         </div>
-        <div class="overview-item">
-          <span class="overview-label">今日消耗</span>
-          <strong class="overview-value minus">-{{ summary.today_expense }}</strong>
+        <div class="balance-stat">
+          <dt>今日消耗</dt>
+          <dd class="minus">-{{ summary.today_expense }}</dd>
         </div>
-        <div class="overview-item">
-          <span class="overview-label">累计获得</span>
-          <strong class="overview-value">{{ summary.total_income }}</strong>
+        <div class="balance-stat">
+          <dt>累计获得</dt>
+          <dd>{{ summary.total_income }}</dd>
         </div>
-        <div class="overview-item">
-          <span class="overview-label">累计消耗</span>
-          <strong class="overview-value">{{ summary.total_expense }}</strong>
+        <div class="balance-stat">
+          <dt>累计消耗</dt>
+          <dd>{{ summary.total_expense }}</dd>
         </div>
-      </div>
+      </dl>
     </div>
 
     <!-- 卡密兑换 -->
     <div v-if="isLogged" class="card card-pad">
-      <div class="block-head">
-        <h3 class="block-title">卡密兑换</h3>
-        <span class="block-extra">输入卡密即可兑换积分，兑换后立即到账</span>
-      </div>
+      <h3 class="section-title">卡密兑换</h3>
+
       <div class="redeem-row">
         <input
           v-model="cardCode"
@@ -51,24 +50,18 @@
         />
         <button
           type="button"
-          class="btn btn-primary redeem-btn"
+          class="btn btn-primary"
           :disabled="redeeming || !cardCode.trim()"
           @click="redeem"
         >{{ redeeming ? '兑换中...' : '立即兑换' }}</button>
       </div>
-      <p class="redeem-tip">
-        <i class="bi bi-shield-check" /> 卡密不区分大小写，空格与连字符会被自动忽略；请勿向他人泄露你的卡密。
-      </p>
+      <p class="hint">不区分大小写，空格与连字符会被忽略；请勿向他人泄露卡密。</p>
 
       <!-- 我的待兑换卡密：签到等活动直接发到账号里的卡密在这里找回 -->
       <div v-if="myCards.length" class="mine-cards">
         <div class="mine-cards-head">
-          <span class="mine-cards-title">
-            <i class="bi bi-ticket-perforated" /> 我的待兑换卡密（{{ myCards.length }}）
-          </span>
-          <button class="btn btn-sm" type="button" :disabled="redeeming" @click="redeemAll">
-            <i class="bi bi-lightning-charge" /> 全部兑换
-          </button>
+          <span>我的待兑换卡密 {{ myCards.length }}</span>
+          <button class="text-btn" type="button" :disabled="redeeming" @click="redeemAll">全部兑换</button>
         </div>
 
         <div v-for="item in myCards" :key="item.card_id || item.card" class="mine-card">
@@ -77,50 +70,40 @@
           <span v-if="item.source" class="mine-card-from">{{ cardSourceText(item.source) }}</span>
           <span v-if="item.expired" class="mine-card-expired">已过期</span>
           <button
-            class="btn btn-sm"
+            class="text-btn"
             type="button"
             :disabled="redeeming || item.expired"
             @click="redeemCard(item)"
           >兑换</button>
         </div>
-
-        <p class="mine-cards-tip">
-          这些是签到等活动发到账号里的卡密，只有你的账号能兑换，点「兑换」立即到账。
-        </p>
       </div>
     </div>
 
     <!-- 今日任务进度 -->
     <div v-if="isLogged" class="card card-pad">
-      <div class="block-head">
-        <h3 class="block-title">今日任务</h3>
-        <span class="block-extra">
+      <div class="section-head">
+        <h3 class="section-title">今日任务</h3>
+        <span class="section-extra">
           已完成 {{ tasks.done_count }}/{{ tasks.total_count }}
-          · 今日已赚 <strong>{{ tasks.today_income }}</strong> 积分
+          · 今日 +{{ tasks.today_income }}
           <template v-if="tasks.streak > 0"> · 连签 {{ tasks.streak }} 天</template>
         </span>
       </div>
       <div v-if="loadingTasks" class="is-loading"><span class="spinner" /> 加载中...</div>
       <ul v-else-if="taskList.length" class="task-list">
         <li v-for="t in taskList" :key="t.type" class="task-item" :class="{ 'is-done': t.done }">
-          <span class="task-icon"><i :class="t.icon || 'bi bi-coin'" /></span>
-          <div class="task-main">
-            <div class="task-row">
-              <span class="task-name">
-                {{ t.name }}
-                <span class="task-state" :class="{ ok: t.done }">
-                  「{{ t.done ? '已完成' : (t.remain > 0 ? `还可 +${t.remain} 积分` : '可继续') }}」
-                </span>
-              </span>
-            </div>
-            <div class="task-progress">
-              <div class="task-bar"><span class="task-fill" :style="{ width: t.progress + '%' }" /></div>
-              <span class="task-count">
-                {{ t.today_count }}/{{ Number(t.daily_limit) > 0 ? t.daily_limit : '不限' }}
-              </span>
-            </div>
+          <div class="task-row">
+            <span class="task-name">{{ t.name }}</span>
+            <span class="task-state">
+              {{ t.done ? '已完成' : (t.remain > 0 ? `+${t.remain} 积分` : '可继续') }}
+            </span>
           </div>
-          
+          <div class="task-progress">
+            <span class="task-bar"><span class="task-fill" :style="{ width: t.progress + '%' }" /></span>
+            <span class="task-count">
+              {{ t.today_count }}/{{ Number(t.daily_limit) > 0 ? t.daily_limit : '不限' }}
+            </span>
+          </div>
         </li>
       </ul>
       <p v-else class="empty-text">暂无任务</p>
@@ -128,11 +111,11 @@
 
     <!-- 积分明细 -->
     <div v-if="isLogged" class="card card-pad">
-      <div class="block-head">
-        <h3 class="block-title">积分明细</h3>
-        <span v-if="logSummary" class="block-extra">
-          收入 <strong class="plus">{{ logSummary.income }}</strong>
-          · 支出 <strong class="minus">{{ logSummary.expense }}</strong>
+      <div class="section-head">
+        <h3 class="section-title">积分明细</h3>
+        <span v-if="logSummary" class="section-extra">
+          收入 <span class="plus">{{ logSummary.income }}</span>
+          · 支出 <span class="minus">{{ logSummary.expense }}</span>
         </span>
       </div>
 
@@ -158,21 +141,21 @@
 
       <div v-if="loadingLogs" class="is-loading"><span class="spinner" /> 加载中...</div>
       <div v-else-if="!logs.length" class="empty-text">暂无积分记录</div>
-      <table v-else class="data-table">
+      <table v-else class="log-table">
         <thead>
           <tr>
             <th>说明</th>
-            <th>变动</th>
-            <th>时间</th>
+            <th class="log-num">变动</th>
+            <th class="log-time">时间</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="l in logs" :key="l.id">
-            <td class="cell-desc">{{ l.description || typeName(l.type) }}</td>
-            <td class="cell-num" :class="{ minus: Number(l.value) < 0 }">
+            <td class="log-desc">{{ l.description || typeName(l.type) }}</td>
+            <td class="log-num" :class="{ 'is-minus': Number(l.value) < 0 }">
               {{ Number(l.value) > 0 ? '+' : '' }}{{ l.value }}
             </td>
-            <td class="cell-time">{{ formatTime(l.create_time) }}</td>
+            <td class="log-time">{{ formatTime(l.create_time) }}</td>
           </tr>
         </tbody>
       </table>
@@ -424,36 +407,31 @@ onMounted(() => {
 .integral-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 12px;
 }
-.block-head {
+
+/* ---------- 通用小节 ---------- */
+.section-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 14px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-soft);
+  margin-bottom: 12px;
 }
-.block-head .block-title {
-  margin: 0;
-  padding: 0;
-  border: none;
-}
-.block-title {
-  font-size: 15px;
+.section-title {
+  margin: 0 0 10px;
+  font-size: 14px;
   font-weight: 600;
-  margin: 0 0 14px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--border-soft);
+  color: var(--text);
 }
-.block-extra {
+.section-head .section-title {
+  margin: 0;
+}
+.section-extra {
   font-size: 12px;
   color: var(--text-muted);
-}
-.block-extra strong {
-  color: #d4a148;
+  font-variant-numeric: tabular-nums;
 }
 .plus {
   color: var(--success);
@@ -461,78 +439,89 @@ onMounted(() => {
 .minus {
   color: var(--danger);
 }
-
-/* ---------- 概览 ---------- */
-.balance-hero {
-  display: flex;
-  align-items: center;
-  gap: 16px;
+.hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-light);
 }
-.balance-icon {
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #d4a148, var(--cinnabar));
-  color: #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  flex-shrink: 0;
-}
-.balance-main {
-  flex: 1;
-  min-width: 0;
-}
-.balance-label {
-  font-size: 13px;
-  color: var(--text-muted);
-}
-.balance-num {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--primary-deep);
-  line-height: 1.3;
-  font-variant-numeric: tabular-nums;
-}
-.balance-num span {
-  font-size: 14px;
+/* 文字按钮：列表行里的次级操作，不加边框和底色 */
+.text-btn {
+  padding: 0;
+  font-size: 12px;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--primary);
+  background: none;
+  border: none;
+  cursor: pointer;
 }
-.balance-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  margin-top: 4px;
-  font-size: 13px;
-  color: #d4a148;
-  text-decoration: none;
-}
-.balance-link:hover {
+.text-btn:hover {
   text-decoration: underline;
 }
-.overview-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 12px;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px dashed var(--border-soft);
+.text-btn:disabled {
+  color: var(--text-light);
+  cursor: not-allowed;
+  text-decoration: none;
 }
-.overview-item {
+
+/* ---------- 概览 ---------- */
+.balance {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+.balance-main {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
-.overview-label {
+.balance-label {
   font-size: 12px;
   color: var(--text-muted);
 }
-.overview-value {
-  font-size: 16px;
+.balance-num {
+  font-size: 30px;
   font-weight: 600;
+  line-height: 1.1;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.balance-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.balance-link:hover {
+  color: var(--primary);
+}
+.balance-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.balance-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.balance-stat dt {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.balance-stat dd {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
@@ -540,27 +529,26 @@ onMounted(() => {
 /* ---------- 卡密兑换 ---------- */
 .redeem-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
 }
 .redeem-input {
   flex: 1;
   min-width: 0;
   /* 与同排的兑换按钮等高 */
   height: var(--control-h);
-  padding: 0 14px;
-  font-size: 14px;
+  padding: 0 12px;
+  font-size: 13px;
   font-family: inherit;
   letter-spacing: 1px;
   color: var(--text);
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: var(--radius-sm);
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s;
 }
 .redeem-input:focus {
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .redeem-input::placeholder {
   letter-spacing: normal;
@@ -570,151 +558,102 @@ onMounted(() => {
   opacity: 0.7;
   cursor: not-allowed;
 }
-.redeem-btn {
-  flex-shrink: 0;
-  white-space: nowrap;
-}
-.redeem-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-.redeem-tip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 10px 0 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--text-muted);
-}
 
 /* ---------- 我的待兑换卡密（活动发放） ---------- */
 .mine-cards {
   margin-top: 14px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--border);
+  padding-top: 10px;
+  border-top: 1px solid var(--border-soft);
 }
 .mine-cards-head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
 }
-.mine-cards-title {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
-}
-.mine-cards-title i {
-  color: var(--primary);
-}
+/* 行式列表：靠分隔线分区，不再给每行加卡片底色和边框 */
 .mine-card {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  padding: 8px 10px;
-  margin-bottom: 6px;
-  background: var(--bg-muted);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-sm);
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--border-soft);
+}
+.mine-card:last-child {
+  border-bottom: none;
 }
 .mine-card-code {
-  padding: 3px 8px;
-  font-size: 13px;
-  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
   letter-spacing: 1px;
-  color: var(--primary-deep);
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+  color: var(--text);
   user-select: all;
 }
 .mine-card-face {
   font-size: 12px;
-  color: #d4a148;
-  font-weight: 600;
+  color: var(--text-muted);
 }
 .mine-card-from {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-light);
 }
 .mine-card-expired {
   font-size: 12px;
   color: var(--danger);
 }
-.mine-card > button {
+.mine-card > .text-btn {
   margin-left: auto;
-}
-.mine-cards-tip {
-  margin: 6px 0 0;
-  font-size: 12px;
-  line-height: 1.6;
-  color: var(--text-muted);
 }
 
 /* ---------- 今日任务 ---------- */
 .task-list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
 }
+/* 行式列表：只靠分隔线分区，不再一行一个卡片 */
 .task-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius);
-  background: var(--bg-card);
-  transition: border-color 0.18s, background 0.18s;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
 }
-.task-item:hover {
-  border-color: var(--primary-soft);
-}
-.task-item.is-done {
-  background: var(--bg-muted);
-}
-.task-icon {
-  width: 34px;
-  height: 34px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  background: var(--gold-soft);
-  color: #c7902f;
-  font-size: 16px;
-}
-.task-main {
-  flex: 1;
-  min-width: 0;
+.task-item:last-child {
+  border-bottom: none;
 }
 .task-row {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 8px;
+  gap: 10px;
 }
 .task-name {
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13px;
   color: var(--text);
+}
+.task-item.is-done .task-name {
+  color: var(--text-muted);
+}
+.task-state {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+}
+.task-item.is-done .task-state {
+  color: var(--success);
 }
 .task-progress {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 6px;
+  margin-top: 8px;
 }
+/* 3px 细线进度，单色，避免和任务文字抢视觉 */
 .task-bar {
   flex: 1;
-  height: 5px;
+  height: 3px;
   border-radius: 999px;
   background: var(--bg-muted);
   overflow: hidden;
@@ -723,23 +662,14 @@ onMounted(() => {
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: linear-gradient(90deg, #d4a148, var(--primary));
+  background: var(--primary);
   transition: width 0.3s;
 }
 .task-count {
   flex-shrink: 0;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-light);
   font-variant-numeric: tabular-nums;
-}
-.task-state {
-  flex-shrink: 0;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.task-state.ok {
-  color: var(--success);
-  font-weight: 600;
 }
 
 /* ---------- 明细 ---------- */
@@ -749,40 +679,40 @@ onMounted(() => {
   justify-content: space-between;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .chip-group {
   display: flex;
-  gap: 6px;
+  gap: 4px;
 }
 .chip {
-  /* 与同排的类型下拉 / 其它筛选控件等高 */
+  /* 与同排的类型下拉等高 */
   display: inline-flex;
   align-items: center;
   height: var(--control-h-sm);
   padding: 0 12px;
-  border: 1px solid var(--border);
+  border: none;
   border-radius: 999px;
-  background: var(--bg-card);
-  color: var(--text-soft);
+  background: none;
+  color: var(--text-muted);
   font-size: 12px;
   line-height: 1.5;
   cursor: pointer;
-  transition: all 0.18s;
+  transition: color 0.18s, background 0.18s;
 }
 .chip:hover {
-  border-color: var(--primary-soft);
-  color: var(--primary);
+  color: var(--text);
+  background: var(--bg-muted);
 }
 .chip.is-active {
-  background: var(--accent-soft);
-  border-color: var(--primary);
-  color: var(--primary-deep);
+  background: var(--bg-muted);
+  color: var(--text);
   font-weight: 600;
 }
 .is-loading {
-  padding: 24px;
+  padding: 20px;
   text-align: center;
+  font-size: 13px;
   color: var(--text-muted);
 }
 .empty-text {
@@ -791,66 +721,59 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-muted);
 }
-.data-table {
+/* 明细表：去掉表头底色和整行 hover，只留细线，读起来更安静 */
+.log-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
-.data-table th,
-.data-table td {
-  padding: 10px 12px;
+.log-table th,
+.log-table td {
+  padding: 9px 0;
   text-align: left;
   border-bottom: 1px solid var(--border-soft);
 }
-.data-table thead th {
+.log-table thead th {
   font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  background: var(--bg-muted);
-  white-space: nowrap;
+  font-weight: 500;
+  color: var(--text-light);
+  border-bottom-color: var(--border);
 }
-.data-table thead th:first-child {
-  border-top-left-radius: var(--radius-sm);
-}
-.data-table thead th:last-child {
-  border-top-right-radius: var(--radius-sm);
-}
-.data-table tbody tr:last-child td {
+.log-table tbody tr:last-child td {
   border-bottom: none;
 }
-.data-table tbody tr:hover {
-  background: var(--bg-muted);
-}
-.data-table .cell-num {
-  color: #d4a148;
-  font-weight: 600;
-  white-space: nowrap;
-}
-.data-table .cell-num.minus {
-  color: var(--danger);
-}
-.data-table .cell-desc {
+.log-table .log-desc {
+  padding-right: 12px;
   color: var(--text-soft);
 }
-.data-table .cell-time {
-  color: var(--text-muted);
+.log-table .log-num {
+  color: var(--success);
+  font-weight: 500;
   white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.log-table .log-num.is-minus {
+  color: var(--danger);
+}
+.log-table .log-time {
+  color: var(--text-light);
+  white-space: nowrap;
+  text-align: right;
+}
+.log-table thead .log-time {
+  text-align: right;
 }
 
 @media (max-width: 640px) {
-  .overview-grid {
+  .balance-stats {
     grid-template-columns: repeat(2, 1fr);
     gap: 10px 12px;
   }
   .balance-num {
-    font-size: 24px;
+    font-size: 26px;
   }
-  .task-item {
-    padding: 10px;
-    gap: 10px;
-  }
-  .task-state {
-    display: none;
+  .log-table .log-time {
+    font-size: 12px;
   }
 }
 </style>

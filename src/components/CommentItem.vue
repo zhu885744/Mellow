@@ -124,11 +124,11 @@
               type="button"
               class="btn btn-secondary btn-sm"
               :class="{ 'is-loading': uploading }"
-              title="插入图片"
+              title="上传图片"
               @click="fileInput?.click()"
             >
               <i class="bi bi-image" />
-              {{ uploading ? '上传中…' : '图片' }}
+              {{ uploading ? '上传中…' : '上传图片' }}
             </button>
             <button
               type="button"

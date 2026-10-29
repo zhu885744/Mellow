@@ -192,7 +192,6 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import SectionTitle from '@/components/SectionTitle.vue'
 import ArticleCard from '@/components/ArticleCard.vue'
 import MomentItem from '@/components/MomentItem.vue'
 import Pagination from '@/components/Pagination.vue'

@@ -22,9 +22,14 @@ export const oauthSignIn = (platform, code, state = '') =>
 /**
  * 未绑定时：用票据创建新账号并登录（回调页「创建新账号」）
  * 受两个开关约束：站点注册总开关 + 后台「允许第三方账号创建新账号」。
+ * 建号必须带邮箱与密码：邮箱要验证码验过（发码走 comm/register），密码按注册规则校验强度。
  */
-export const oauthRegisterByTicket = (key) =>
-  call('oauth', 'register', { method: 'POST', data: { key }, config: { dedupe: false } })
+export const oauthRegisterByTicket = ({ key, email, code, password }) =>
+  call('oauth', 'register', {
+    method: 'POST',
+    data: { key, email, code, password },
+    config: { dedupe: false }
+  })
 
 /**
  * 未绑定时：用「已有账号 + 密码」绑定该第三方账号并登录（回调页「绑定已有账号」）

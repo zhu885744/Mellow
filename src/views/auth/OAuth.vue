@@ -64,15 +64,55 @@
         <router-link to="/auth/register">注册</router-link>。
       </p>
 
-      <!-- 创建新账号：用第三方昵称/头像建号，建号即绑定 -->
-      <div v-if="mode === 'register'" class="oauth-form">
+      <!--
+        创建新账号：昵称头像沿用第三方，但邮箱与密码必须自己填。
+        邮箱用来登录 / 找回密码，必须通过验证码验证；密码按注册规则校验强度。
+      -->
+      <form v-if="mode === 'register'" class="oauth-form" @submit.prevent="doRegister">
         <p class="oauth-note">
-          将使用 {{ platformName }} 的昵称与头像创建新账号（账号密码可稍后在「账号安全」中设置）。
+          将使用 {{ platformName }} 的昵称与头像建号，邮箱与密码需自行设置（用于登录与找回密码）。
         </p>
-        <button class="btn btn-primary btn-block" :disabled="submitting" @click="doRegister">
+        <input
+          v-model="registerForm.email"
+          class="input"
+          type="email"
+          autocomplete="email"
+          placeholder="邮箱"
+        />
+        <div class="oauth-code-row">
+          <input
+            v-model="registerForm.code"
+            class="input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            placeholder="邮箱验证码"
+          />
+          <button
+            type="button"
+            class="btn"
+            :disabled="sendingCode || codeCountdown > 0 || submitting"
+            @click="sendEmailCode"
+          >{{ codeCountdown > 0 ? `${codeCountdown}s` : '获取验证码' }}</button>
+        </div>
+        <input
+          v-model="registerForm.password"
+          class="input"
+          type="password"
+          autocomplete="new-password"
+          placeholder="设置密码（至少 6 位，不能是纯数字）"
+        />
+        <input
+          v-model="registerForm.password2"
+          class="input"
+          type="password"
+          autocomplete="new-password"
+          placeholder="确认密码"
+        />
+        <button class="btn btn-primary btn-block" type="submit" :disabled="submitting">
           {{ submitting ? '处理中…' : '创建并登录' }}
         </button>
-      </div>
+      </form>
 
       <!-- 绑定已有账号：账号 + 密码校验通过后绑定并登录 -->
       <form v-else class="oauth-form" @submit.prevent="doBindAccount">
@@ -114,9 +154,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { oauthBindAccount, oauthRegisterByTicket, oauthSignIn } from '@/api/oauth'
+// 邮箱验证码复用常规注册的发码接口（后端缓存键同为 [register][email=xxx]）
+import { registerSendCode } from '@/api/comm'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
 import {
@@ -194,14 +236,74 @@ function applyAuthResult(data) {
   fail('第三方登录未完成，请重新发起登录')
 }
 
+// 建号表单：邮箱 + 验证码 + 密码（后端会再校验一遍，前端只做即时提示）
+const registerForm = ref({ email: '', code: '', password: '', password2: '' })
+const sendingCode = ref(false)
+const codeCountdown = ref(0)
+let codeTimer = null
+
+const EMAIL_RE = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/
+
+async function sendEmailCode() {
+  if (sendingCode.value || codeCountdown.value > 0) return
+  const email = registerForm.value.email.trim()
+  if (!EMAIL_RE.test(email)) {
+    toast.warning('请先填写正确的邮箱')
+    return
+  }
+
+  sendingCode.value = true
+  try {
+    await registerSendCode(email)
+    toast.success('验证码已发送，请注意查收')
+    codeCountdown.value = 60
+    if (codeTimer) clearInterval(codeTimer)
+    codeTimer = setInterval(() => {
+      codeCountdown.value -= 1
+      if (codeCountdown.value <= 0) {
+        clearInterval(codeTimer)
+        codeTimer = null
+      }
+    }, 1000)
+  } catch {
+    // 邮箱已注册 / 发送频繁 / 管理员未开启邮件服务等由拦截器提示
+  } finally {
+    sendingCode.value = false
+  }
+}
+
+function validateRegisterForm() {
+  const { email, code, password, password2 } = registerForm.value
+  if (!EMAIL_RE.test(email.trim())) return '请填写正确的邮箱'
+  if (!code.trim()) return '请填写邮箱验证码'
+  if (!password) return '请设置密码'
+  if (password.length < 6 || password.length > 20) return '密码长度需为 6-20 位'
+  if (/\s/.test(password)) return '密码不能包含空格'
+  if (/^\d+$/.test(password)) return '密码不能是纯数字，请混合字母或符号'
+  if (password !== password2) return '两次输入的密码不一致'
+  return ''
+}
+
 async function doRegister() {
   if (submitting.value) return
+
+  const message = validateRegisterForm()
+  if (message) {
+    toast.warning(message)
+    return
+  }
+
   submitting.value = true
   try {
-    const res = await oauthRegisterByTicket(ticket.value)
+    const res = await oauthRegisterByTicket({
+      key: ticket.value,
+      email: registerForm.value.email.trim(),
+      code: registerForm.value.code.trim(),
+      password: registerForm.value.password
+    })
     applyAuthResult(res?.data || {})
   } catch {
-    // 失败原因（票据过期 / 未开放建号 / 已绑别的账号等）由请求拦截器统一 toast，这里保持选择页
+    // 失败原因（验证码错误 / 邮箱已注册 / 密码太弱 / 票据过期等）由请求拦截器统一 toast，这里保持选择页
   } finally {
     submitting.value = false
   }
@@ -298,6 +400,10 @@ onMounted(() => {
   }
 
   handle(code, state, { ...context, platform })
+})
+
+onUnmounted(() => {
+  if (codeTimer) clearInterval(codeTimer)
 })
 </script>
 
@@ -422,5 +528,18 @@ onMounted(() => {
   font-size: 12px;
   line-height: 1.7;
   color: var(--text-muted);
+}
+/* 验证码行：输入框占满剩余宽度，按钮保持单行 */
+.oauth-code-row {
+  display: flex;
+  gap: 8px;
+}
+.oauth-code-row .input {
+  flex: 1;
+  min-width: 0;
+}
+.oauth-code-row .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 </style>

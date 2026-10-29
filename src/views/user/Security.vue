@@ -202,7 +202,7 @@
       </div>
     </div>
 
-    <!-- 修改密码（需要当前密码；与下方「重置密码」的分工见 script 里的注释） -->
+    <!-- 修改密码（需要当前密码；从未设过密码的第三方登录账号需联系管理员） -->
     <div class="card card-pad">
       <h2 class="block-title">修改密码</h2>
       <form @submit.prevent="handleChangePasswordSubmit">
@@ -217,7 +217,7 @@
             @input="validateOldPassword"
           />
           <p v-if="pwdErrors.oldPassword" class="form-error">{{ pwdErrors.oldPassword }}</p>
-          <p v-else class="field-tip">从未设置过密码（第三方登录注册）？请用下方「重置密码」</p>
+          <p v-else class="field-tip">从未设置过密码（第三方登录注册）？请联系管理员协助处理</p>
         </div>
 
         <div class="form-item">
@@ -266,87 +266,6 @@
       </form>
     </div>
 
-    <!-- 重置密码（忘记当前密码 / 从未设过密码时使用） -->
-    <div class="card card-pad">
-      <h2 class="block-title">重置密码<span class="title-tip">忘记当前密码时使用</span></h2>
-      <form @submit.prevent="handleResetPasswordSubmit">
-        <div class="form-item">
-          <div class="label-row">
-            <label class="form-label">邮箱 / 手机号</label>
-            <button
-              v-if="canSwitchContact"
-              type="button"
-              class="switch-link"
-              @click="switchContact"
-            >
-              切换为{{ nextContactLabel }}
-            </button>
-          </div>
-          <input
-            v-model="resetForm.contact"
-            class="input"
-            placeholder="请输入您的邮箱或手机号"
-            @input="validateContact"
-          />
-          <p v-if="errors.contact" class="form-error">{{ errors.contact }}</p>
-          <p v-else-if="contactHint" class="field-tip">{{ contactHint }}</p>
-        </div>
-
-        <div class="form-item">
-          <label class="form-label">验证码</label>
-          <div class="input-row">
-            <input v-model="resetForm.code" class="input" placeholder="请输入验证码" @input="validateCode" />
-            <button type="button" class="btn" :disabled="countdown > 0 || sendCodeLoading" @click="sendCode">
-              {{ countdown > 0 ? `${countdown}秒后重试` : '获取验证码' }}
-            </button>
-          </div>
-          <p v-if="errors.code" class="form-error">{{ errors.code }}</p>
-        </div>
-
-        <div class="form-item">
-          <label class="form-label">新密码</label>
-          <input
-            type="password"
-            v-model="resetForm.password"
-            class="input"
-            placeholder="请输入新密码"
-            minlength="6"
-            maxlength="20"
-            @input="validatePassword"
-          />
-          <p v-if="errors.password" class="form-error">{{ errors.password }}</p>
-        </div>
-
-        <div class="form-item">
-          <label class="form-label">确认新密码</label>
-          <input
-            type="password"
-            v-model="resetForm.verifyPwd"
-            class="input"
-            placeholder="请再次输入新密码"
-            @input="validateVerifyPwd"
-          />
-          <p v-if="errors.verifyPwd" class="form-error">{{ errors.verifyPwd }}</p>
-        </div>
-
-        <div v-if="resetForm.password" class="form-item">
-          <div class="password-strength">
-            <div class="strength-head">
-              <span class="text-muted">密码强度</span>
-              <span :class="['strength-text', passwordStrengthClass]">{{ passwordStrengthText }}</span>
-            </div>
-            <div class="strength-bar">
-              <div class="strength-fill" :class="passwordStrengthClass" :style="{ width: passwordStrengthWidth }"></div>
-            </div>
-          </div>
-        </div>
-
-        <button class="btn btn-primary" :disabled="resetLoading" type="submit">
-          {{ resetLoading ? '重置中...' : '重置密码' }}
-        </button>
-      </form>
-    </div>
-
     <!-- 安全提示 -->
     <div class="card card-pad">
       <h2 class="block-title">安全提示</h2>
@@ -373,8 +292,10 @@
         <li v-for="item in oauthList" :key="item.platform" class="oauth-item">
           <i class="oauth-brand-icon" :class="platformIcon(item.platform)" />
           <span class="oauth-info">
-            <span class="oauth-name">{{ item.name }}</span>
-            <span class="oauth-sub" :title="item.nickname">{{ item.nickname || '已绑定' }}</span>
+            <span class="oauth-name">
+              {{ item.name }}<span class="oauth-state is-bound">已绑定</span>
+            </span>
+            <span class="oauth-sub" :title="item.nickname">{{ item.nickname || '—' }}</span>
           </span>
           <button
             class="btn btn-sm btn-outline-danger"
@@ -388,8 +309,10 @@
         <li v-for="item in oauthAvailable" :key="item.platform" class="oauth-item">
           <i class="oauth-brand-icon" :class="platformIcon(item.platform)" />
           <span class="oauth-info">
-            <span class="oauth-name">{{ item.name }}</span>
-            <span class="oauth-sub">未绑定</span>
+            <span class="oauth-name">
+              {{ item.name }}<span class="oauth-state">未绑定</span>
+            </span>
+            <span class="oauth-sub">绑定后可用它一键登录</span>
           </span>
           <button class="btn btn-sm btn-primary" :disabled="!!oauthActing" @click="bindOauth(item)">
             绑定
@@ -494,7 +417,6 @@ import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
 import { changeAccount, changePassword, destroy, destroySendCode, getAccountRule, updateEmail, updatePhone } from '@/api/users'
-import { resetPasswordSendCode, resetPassword } from '@/api/comm'
 import { getMyOauth, oauthUnbind } from '@/api/oauth'
 import { enabledPlatforms, platformIcon, startOauth } from '@/utils/oauth'
 import { useIdentityVerify } from '@/utils/identity-verify'
@@ -823,82 +745,6 @@ async function updatePhoneFn() {
   }
 }
 
-// ===== 重置密码 =====
-const resetLoading = ref(false)
-const sendCodeLoading = ref(false)
-const countdown = ref(0)
-let countdownTimer = null
-
-const resetForm = reactive({ contact: '', code: '', password: '', verifyPwd: '' })
-const errors = reactive({ contact: '', code: '', password: '', verifyPwd: '' })
-const valid = reactive({ contact: false, code: false, password: false, verifyPwd: false })
-
-// 已绑定的联系方式（邮箱优先），用于自动填充
-const contactOptions = computed(() => {
-  const u = userStore.user || {}
-  return [u.email, u.phone].filter(Boolean)
-})
-const canSwitchContact = computed(() => contactOptions.value.length > 1)
-const nextContactLabel = computed(() => (resetForm.contact.trim() === (userStore.user || {}).email ? '手机号' : '邮箱'))
-const contactHint = computed(() => {
-  const u = userStore.user || {}
-  const cur = resetForm.contact.trim()
-  // 仅在当前值与绑定值一致（即自动填充的结果）时提示，手动输入时不打扰
-  if (!cur || (cur !== u.email && cur !== u.phone)) return ''
-  return canSwitchContact.value
-    ? '已自动填入你绑定的联系方式，可切换或手动修改'
-    : '已自动填入你绑定的联系方式，可手动修改'
-})
-
-// 自动填充：优先邮箱，其次手机号（已有输入内容时不覆盖）
-function fillContact() {
-  const u = userStore.user || {}
-  const contact = u.email || u.phone || ''
-  if (contact && !resetForm.contact) {
-    resetForm.contact = contact
-    validateContact()
-  }
-}
-
-// 邮箱 / 手机号切换
-function switchContact() {
-  const list = contactOptions.value
-  if (list.length < 2) return
-  const idx = list.indexOf(resetForm.contact.trim())
-  resetForm.contact = list[(idx + 1) % list.length]
-  validateContact()
-}
-
-function validateContact() {
-  const val = resetForm.contact.trim()
-  if (!val) { errors.contact = '请输入邮箱或手机号'; valid.contact = false; return }
-  const isPhone = /^1[3-9]\d{9}$/.test(val)
-  const isEmail = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(val)
-  if (!isPhone && !isEmail) { errors.contact = '请输入正确的邮箱或手机号'; valid.contact = false; return }
-  errors.contact = ''
-  valid.contact = true
-}
-function validateCode() {
-  const val = resetForm.code.trim()
-  if (!val) { errors.code = '请输入验证码'; valid.code = false; return }
-  if (val.length < 4) { errors.code = '验证码长度不足'; valid.code = false; return }
-  errors.code = ''
-  valid.code = true
-}
-function validatePassword() {
-  const message = checkNewPassword(resetForm.password)
-  errors.password = message
-  valid.password = !message
-  if (!message) validateVerifyPwd()
-}
-function validateVerifyPwd() {
-  const val = resetForm.verifyPwd
-  if (!val) { errors.verifyPwd = '请确认新密码'; valid.verifyPwd = false; return }
-  if (val !== resetForm.password) { errors.verifyPwd = '两次输入的密码不一致'; valid.verifyPwd = false; return }
-  errors.verifyPwd = ''
-  valid.verifyPwd = true
-}
-
 // 密码强度
 function calculatePasswordStrength(pwd) {
   if (!pwd) return 0
@@ -910,7 +756,7 @@ function calculatePasswordStrength(pwd) {
   if (/[A-Z]/.test(pwd) || /[^a-zA-Z0-9]/.test(pwd)) s += 25
   return Math.min(s, 100)
 }
-// 强度文案 / 颜色：修改密码与重置密码两个表单共用（原来两处各写了一份）
+// 强度文案 / 颜色：供修改密码表单使用
 function strengthText(value) {
   if (value < 25) return '弱'
   if (value < 50) return '一般'
@@ -939,15 +785,9 @@ function checkNewPassword(value, oldPassword = '') {
   return ''
 }
 
-const passwordStrengthValue = computed(() => calculatePasswordStrength(resetForm.password))
-const passwordStrengthWidth = computed(() => `${passwordStrengthValue.value}%`)
-const passwordStrengthText = computed(() => strengthText(passwordStrengthValue.value))
-const passwordStrengthClass = computed(() => strengthClass(passwordStrengthValue.value))
-
 // ===== 修改密码 =====
-// 与「重置密码」的分工：
-// - 修改密码：记得当前密码时主动更换 —— 要校验当前密码（本页上方卡片）
-// - 重置密码：忘记当前密码 / 第三方登录注册（从未设过密码）—— 用邮箱或手机验证码
+// 记得当前密码时主动更换：必须校验当前密码。
+// 忘记密码 / 第三方登录注册（从未设过密码）本页不提供重置入口，需联系管理员。
 const pwdLoading = ref(false)
 const pwdForm = reactive({ oldPassword: '', password: '', verifyPwd: '' })
 const pwdErrors = reactive({ oldPassword: '', password: '', verifyPwd: '' })
@@ -1006,59 +846,6 @@ async function doChangePassword() {
     // 错误已由拦截器提示（如「密码错误！」「新密码不能与当前密码相同！」）
   } finally {
     pwdLoading.value = false
-  }
-}
-
-function startCountdown() {
-  countdown.value = CONST.CODE_COOLDOWN
-  if (countdownTimer) clearInterval(countdownTimer)
-  countdownTimer = setInterval(() => {
-    if (countdown.value > 0) countdown.value--
-    else { clearInterval(countdownTimer); countdownTimer = null }
-  }, 1000)
-}
-
-async function sendCode() {
-  validateContact()
-  if (!valid.contact) return
-  const contact = resetForm.contact.trim()
-  sendCodeLoading.value = true
-  try {
-    await resetPasswordSendCode(contact)
-    toast.success('验证码发送成功！')
-    startCountdown()
-  } catch {
-    // 拦截器已提示
-  } finally {
-    sendCodeLoading.value = false
-  }
-}
-
-function handleResetPasswordSubmit() {
-  validateContact()
-  validateCode()
-  validatePassword()
-  validateVerifyPwd()
-  if (!valid.contact || !valid.code || !valid.password || !valid.verifyPwd) {
-    toast.warning('请检查表单填写是否正确')
-    return
-  }
-  doResetPassword()
-}
-
-async function doResetPassword() {
-  resetLoading.value = true
-  try {
-    await resetPassword(resetForm.contact.trim(), resetForm.code.trim(), resetForm.password)
-    toast.success('密码修改成功，请重新登录')
-    resetForm.contact = ''
-    resetForm.code = ''
-    resetForm.password = ''
-    resetForm.verifyPwd = ''
-  } catch {
-    // 拦截器已提示
-  } finally {
-    resetLoading.value = false
   }
 }
 
@@ -1142,8 +929,6 @@ function fetchUserInfo() {
     emailForm.email = u.email || ''
     phoneForm.phone = u.phone || ''
   }
-  // 重置密码：自动填入当前绑定的邮箱或手机号
-  fillContact()
 }
 
 onMounted(() => {
@@ -1154,7 +939,6 @@ onMounted(() => {
 // 刷新页面时 user 可能晚于组件挂载，登录态就绪后补填一次
 watch(() => userStore.user?.id, () => fetchUserInfo())
 onUnmounted(() => {
-  if (countdownTimer) clearInterval(countdownTimer)
   if (codeTimer) clearInterval(codeTimer)
   if (emailTimer) clearInterval(emailTimer)
   if (phoneTimer) clearInterval(phoneTimer)
@@ -1173,7 +957,7 @@ onUnmounted(() => {
   border-bottom: 1px solid var(--border-soft);
 }
 .danger-title { color: var(--danger); }
-/* 卡片标题后的补充说明（如「重置密码」的适用场景） */
+/* 卡片标题后的补充说明（如「手机号|邮箱设置」的用途说明） */
 .title-tip {
   margin-left: 8px;
   font-size: 12px;
@@ -1431,6 +1215,29 @@ onUnmounted(() => {
 .oauth-name {
   font-size: 14px;
   color: var(--text);
+}
+/*
+ * 绑定状态：只用颜色 + 小圆点区分，不加底色胶囊，避免和右侧按钮抢视觉。
+ * 已绑定走成功色，未绑定保持辅助色（默认继承 --text-light）。
+ */
+.oauth-state {
+  margin-left: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-light);
+}
+.oauth-state::before {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  vertical-align: 1px;
+}
+.oauth-state.is-bound {
+  color: var(--success);
 }
 .oauth-sub {
   font-size: 12px;
