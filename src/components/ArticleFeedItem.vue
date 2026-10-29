@@ -13,6 +13,7 @@
         :animated="frameRender.animated"
         :fallback="defaultAvatar"
         :alt="author?.nickname"
+        :verified="author?.cert"
         size="40px"
         @click="goAuthor"
       />

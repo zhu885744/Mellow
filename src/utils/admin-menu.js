@@ -27,6 +27,7 @@ export const ADMIN_MENU_GROUPS = [
       '/admin/users', '/admin/comment', '/admin/placard', '/admin/banner',
       '/admin/tags', '/admin/level', '/admin/exp', '/admin/goods', '/admin/integral',
       '/admin/decoration', '/admin/badges', '/admin/checkin', '/admin/message', '/admin/reports',
+      '/admin/certifications', '/admin/cert-types',
       '/admin/links', '/admin/links/group', '/admin/attachment', '/admin/logs', '/admin/system',
       '/admin/theme'
     ]

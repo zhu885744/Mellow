@@ -112,7 +112,6 @@
                   「{{ t.done ? '已完成' : (t.remain > 0 ? `还可 +${t.remain} 积分` : '可继续') }}」
                 </span>
               </span>
-              <span class="task-value">+{{ t.value }}/次</span>
             </div>
             <div class="task-progress">
               <div class="task-bar"><span class="task-fill" :style="{ width: t.progress + '%' }" /></div>
@@ -706,11 +705,6 @@ onMounted(() => {
   font-size: 14px;
   font-weight: 500;
   color: var(--text);
-}
-.task-value {
-  font-size: 12px;
-  font-weight: 600;
-  color: #d4a148;
 }
 .task-progress {
   display: flex;

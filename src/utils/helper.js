@@ -137,7 +137,9 @@ export const pickCommentAuthor = (item) => {
     title: pickUserTitle(author),
     level: pickUserLevel(author),
     // json 里带佩戴中的勋章（wearing_badge），评论昵称旁要渲染它
-    json: author?.json || item?.json || {}
+    json: author?.json || item?.json || {},
+    // 认证摘要：后端 SanitizeAuthor 注入到内嵌作者对象，头像右下角的盾牌读它
+    cert: author?.cert || item?.cert || null
   }
 }
 

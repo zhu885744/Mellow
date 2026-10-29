@@ -1,7 +1,15 @@
 <template>
   <div class="comment-item" :id="`comment-${comment.id}`" :class="{ 'is-child': isChild, 'comment-highlight': highlightId && String(highlightId) === String(comment.id) }">
     <div class="comment-avatar">
-      <img :src="thumbUrl(author.avatar || defaultAvatar, 80)" :alt="author.nickname" @error="onImgError" loading="lazy" />
+      <!-- 与动态 / 文章 / 作者主页共用同一套头像渲染：头像框 + 右下角认证角标 -->
+      <AvatarFrame
+        :src="author.avatar"
+        :name="author.nickname"
+        :fallback="defaultAvatar"
+        :verified="author.cert"
+        alt="评论者头像"
+        size="40px"
+      />
     </div>
     <div class="comment-body">
       <div class="comment-head">
@@ -201,10 +209,10 @@ import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/time'
 import { useUserStore } from '@/stores/user'
 import { isAdmin, pickCommentAuthor, getTitleColorClass, pickUserTitlePayload } from '@/utils/helper'
+import AvatarFrame from './AvatarFrame.vue'
 import TitleBadge from './TitleBadge.vue'
 import WearingBadge from './WearingBadge.vue'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
-import { thumbUrl } from '@/utils/image'
 import { parseUserAgent } from '@/utils/ua'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import EmojiEditor from './EmojiEditor.vue'
@@ -433,12 +441,10 @@ function submitReply() {
 .comment-item:last-child {
   border-bottom: none;
 }
-.comment-avatar img {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  object-fit: cover;
-  background: var(--bg-muted);
+/* 头像由 AvatarFrame 渲染（自带圆形裁剪 / 占位 / 角标），这里只管占位与不换行 */
+.comment-avatar {
+  display: flex;
+  flex-shrink: 0;
 }
 .comment-body {
   flex: 1;
@@ -709,9 +715,10 @@ function submitReply() {
     gap: 10px;
     padding: 14px 0;
   }
-  .comment-avatar img {
-    width: 36px;
-    height: 36px;
+  /* AvatarFrame 的尺寸是内联 style（40px），移动端要缩小只能 !important */
+  .comment-avatar :deep(.avatar-frame) {
+    width: 36px !important;
+    height: 36px !important;
   }
   .comment-time {
     font-size: 12px;

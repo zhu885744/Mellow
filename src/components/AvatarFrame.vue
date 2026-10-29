@@ -23,11 +23,28 @@
       decoding="async"
       @error="frameFailed = true"
     />
+    <!--
+      右下角角标：目前用于认证标识（VerifiedBadge）
+
+      z-index 必须大于头像框的 2，否则会被放大的头像框素材盖住；
+      容器刻意不设 overflow:hidden（见 .avatar-frame），角标才能探出头像边界。
+      也支持 #badge 插槽自定义内容（比如以后要挂角标式勋章）。
+    -->
+    <span
+      v-if="verified?.title || $slots.badge"
+      class="avatar-frame-badge"
+      :style="badgeStyle"
+    >
+      <slot name="badge">
+        <VerifiedBadge v-if="verified?.title" :cert="verified" size="sm" />
+      </slot>
+    </span>
   </span>
 </template>
 
 <script setup>
 import { ref, computed } from 'vue'
+import VerifiedBadge from './VerifiedBadge.vue'
 import { thumbUrl } from '@/utils/image'
 
 // 与后端 app/model/decoration.go 的 frameHoleMin / frameHoleMax / frameOffsetLimit 保持一致
@@ -67,7 +84,15 @@ const props = defineProps({
    * 是否播动效（后台装扮的「开启动效」）
    * 数据来自 users.json.frame_animated（佩戴头像框时由服务端回写）
    */
-  animated: { type: Boolean, default: false }
+  animated: { type: Boolean, default: false },
+  /**
+   * 认证摘要（后端 CertSummary：{ title, cert_type, type_text, color, ... }）
+   *
+   * 有值时在头像右下角渲染 VerifiedBadge；没有 title 视为无认证，不渲染。
+   * 列表场景的 cert 由后端 SanitizeAuthor 注入到内嵌作者对象里，
+   * 个人主页则来自 user-certification/one。
+   */
+  verified: { type: Object, default: null }
 })
 
 const failed = ref(false)
@@ -132,6 +157,13 @@ const textStyle = computed(() => {
   return { fontSize: `${fontSize}px` }
 })
 
+// 角标字号跟随头像尺寸：75px → 21px，44px → 13px（下限 11px，再小就认不出是盾牌）
+const badgeStyle = computed(() => {
+  const px = parseFloat(String(props.size))
+  const fontSize = Number.isFinite(px) && px > 0 ? Math.max(11, Math.round(px * 0.28)) : 18
+  return { '--avatar-badge-font': `${fontSize}px` }
+})
+
 function onError() {
   if (props.fallback) failed.value = true
 }
@@ -171,6 +203,38 @@ function onError() {
   line-height: 1;
   user-select: none;
   z-index: 1;
+}
+
+/*
+ * 右下角角标（认证标识）
+ *
+ * 位置取右下 45°：translate 的百分比以角标自身尺寸为基准，
+ * 让角标有约 1/5 探出头像边界，既压在头像上又不会被裁掉。
+ * z-index 必须高于头像框的 2。font-size 由 badgeStyle 按头像尺寸注入。
+ */
+.avatar-frame-badge {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--avatar-badge-font, 15px);
+  line-height: 1;
+  cursor: help;
+  transform: translate(20%, 20%);
+}
+
+/*
+ * VerifiedBadge 自带的 sm 字号（12px）会盖掉父级 font-size，
+ * 这里强制继承，角标才能真正跟随头像大小缩放。
+ * 双圈白色 drop-shadow 当作描边：浅色头像上也看得清盾牌轮廓。
+ */
+.avatar-frame-badge :deep(.verified-badge) {
+  font-size: inherit;
+  filter: drop-shadow(0 0 1.5px rgba(255, 255, 255, 0.95))
+    drop-shadow(0 1px 2px rgba(0, 0, 0, 0.18));
 }
 
 /*

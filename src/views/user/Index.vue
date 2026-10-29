@@ -223,6 +223,7 @@ const CATALOGUE = [
   { key: 'exp', name: '等级经验', icon: 'bi bi-stars', to: '/user/exp' },
   { key: 'decorations', name: '我的装扮', icon: 'bi bi-gem', to: '/user/decorations' },
   { key: 'badges', name: '我的勋章', icon: 'bi bi-award', to: '/user/badges' },
+  { key: 'verification', name: '我的认证', icon: 'bi bi-patch-check', to: '/user/verification' },
   { key: 'goods', name: '积分商城', icon: 'bi bi-shop', to: '/goods' },
   { key: 'notifications', name: '消息通知', icon: 'bi bi-bell', to: '/user/notifications' },
   { key: 'blocks', name: '拉黑与举报', icon: 'bi bi-shield-slash', to: '/user/blocks' },

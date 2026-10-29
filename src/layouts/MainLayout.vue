@@ -70,7 +70,7 @@
         </router-link>
 
         <!-- 全局搜索（独立页面 /search，Ctrl+K 可直达） -->
-        <router-link to="/search" class="btn btn-ghost btn-sm btn-block" active-class="active">
+        <router-link to="/search" class="btn btn-ghost btn-sm btn-block" active-class="is-active">
           <i class="bi bi-search" />
           <span>搜索</span>
           <kbd class="search-kbd">Ctrl K</kbd>
@@ -79,23 +79,23 @@
         <nav class="site-nav">
           <!-- 未配置自定义菜单：显示默认导航 -->
           <template v-if="!customMenus.length">
-            <router-link to="/" exact-active-class="active" class="nav-item">
+            <router-link to="/" exact-active-class="is-active" class="nav-item">
               <span class="nav-zh">发现</span>
             </router-link>
             <!-- 聚合流（关注 / 推荐 / 热门）：按关注关系聚合，未登录由路由守卫引导登录 -->
-            <router-link to="/feed" active-class="active" class="nav-item">
+            <router-link to="/feed" active-class="is-active" class="nav-item">
               <span class="nav-zh">关注</span>
             </router-link>
             <!-- 话题广场：热度榜 + 我关注的（聚合页见 /topic/:key） -->
-            <router-link to="/topics" active-class="active" class="nav-item">
+            <router-link to="/topics" active-class="is-active" class="nav-item">
               <span class="nav-zh">话题</span>
             </router-link>
             <!-- 勋章馆：公开的荣誉墙 / 佩戴榜 -->
-            <router-link to="/badges" active-class="active" class="nav-item">
+            <router-link to="/badges" active-class="is-active" class="nav-item">
               <span class="nav-zh">勋章</span>
             </router-link>
             <!-- 文档站：独立布局（/docs） -->
-            <router-link to="/docs" active-class="active" class="nav-item">
+            <router-link to="/docs" active-class="is-active" class="nav-item">
               <span class="nav-zh">文档</span>
             </router-link>
             <!-- 动态导航页（来自 /api/pages/all） -->
@@ -103,13 +103,13 @@
               v-for="p in pages"
               :key="p.id"
               :to="navTarget(p)"
-              active-class="active"
+              active-class="is-active"
               class="nav-item"
             >
               <span class="nav-zh">{{ p.title }}</span>
             </router-link>
             <!-- 积分商城 -->
-            <router-link to="/goods" active-class="active" class="nav-item">
+            <router-link to="/goods" active-class="is-active" class="nav-item">
               <span class="nav-zh">商城</span>
             </router-link>
           </template>
@@ -130,8 +130,8 @@
               <router-link
                 v-else
                 :to="item.url"
-                :active-class="isMenuRoot(item.url) ? 'router-link-active' : 'active'"
-                :exact-active-class="isMenuRoot(item.url) ? 'active' : 'router-link-exact-active'"
+                :active-class="isMenuRoot(item.url) ? 'router-link-active' : 'is-active'"
+                :exact-active-class="isMenuRoot(item.url) ? 'is-active' : 'router-link-exact-active'"
                 class="nav-item"
               >
                 <i v-if="item.icon" :class="item.icon" aria-hidden="true" />
@@ -144,7 +144,7 @@
           <router-link
             v-if="canEnterAdmin(userStore.user)"
             to="/admin"
-            active-class="active"
+            active-class="is-active"
             class="nav-item"
           >
             <i class="bi bi-gear-wide-connected"></i>
@@ -541,6 +541,11 @@ onMounted(() => {
 .nav-item.is-active {
   color: var(--primary);
   font-weight: 600;
+  background: var(--accent-soft);
+}
+/* 侧栏搜索按钮（btn-ghost）没有 is-active 样式，进入 /search 后与导航项同款高亮 */
+.btn-ghost.is-active {
+  color: var(--primary);
   background: var(--accent-soft);
 }
 /* 自定义菜单项的前置图标（bootstrap-icons） */

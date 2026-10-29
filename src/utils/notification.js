@@ -5,6 +5,7 @@
  *   article / moments / page  → 内容 id，直接进详情页
  *   comment                   → 评论 id，需要先查评论拿到所属内容再跳（本站评论通知也走这里）
  *   user                      → 用户 uid，进用户主页 /author/:id
+ *   user-certification        → 认证记录 id，进「我的认证」查看资料与审核状态
  *   links / integral-card / decoration → 固定页面
  *
  * 消息中心（views/user/Notifications.vue）与侧栏最新消息（components/SidebarRight.vue）
@@ -77,6 +78,9 @@ export async function notificationLink(n) {
     case 'badge':
       // 勋章（限定勋章即将到期）：去「我的勋章」看进度并佩戴
       return '/user/badges'
+    case 'user-certification':
+      // 认证（审核结果 / 后台改资料）：去「我的认证」看状态与最新资料
+      return '/user/verification'
     case 'user':
       // 用户主页打赏 / 关注 / 提及
       return bindId ? `/author/${bindId}` : ''

@@ -190,7 +190,8 @@ const menuGroups = computed(() => [
       { path: '/user/exp', name: '等级经验', icon: 'bi bi-stars' },
       { path: '/user/integral', name: '我的积分', icon: 'bi bi-coin' },
       { path: '/user/decorations', name: '我的装扮', icon: 'bi bi-gem' },
-      { path: '/user/badges', name: '我的勋章', icon: 'bi bi-award' }
+      { path: '/user/badges', name: '我的勋章', icon: 'bi bi-award' },
+      { path: '/user/verification', name: '我的认证', icon: 'bi bi-patch-check' }
     ]
   },
   {

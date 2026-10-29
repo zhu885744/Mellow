@@ -113,6 +113,8 @@ const routes = [
       { path: 'decorations', name: 'user-decorations', component: () => import('@/views/user/Decorations.vue') },
       // 我的勋章：已获得的勋章 + 未完成的任务条件与进度
       { path: 'badges', name: 'user-badges', component: () => import('@/views/user/Badges.vue') },
+      // 我的认证：按后台配置的认证类型提交申请、查看审核进度与已通过的认证信息
+      { path: 'verification', name: 'user-verification', component: () => import('@/views/user/Verification.vue') },
       { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
       // 拉黑与举报：我的拉黑列表（可解除）+ 我提交的举报与处理进展（可撤回）
       { path: 'blocks', name: 'user-blocks', component: () => import('@/views/user/Blocks.vue') },
@@ -212,6 +214,10 @@ const routes = [
       { path: 'checkin', name: 'admin-checkin', component: () => import('@/views/admin/Checkin.vue'), meta: { title: '签到管理' } },
       // 举报管理：处理用户提交的举报（属实可同时移除内容，封禁仍走用户管理）
       { path: 'reports', name: 'admin-reports', component: () => import('@/views/admin/Reports.vue'), meta: { title: '举报管理' } },
+      // 用户认证：审核认申请（类型 / 领域 / 申请字段由「认证类型」页配置）
+      { path: 'certifications', name: 'admin-certifications', component: () => import('@/views/admin/Certifications.vue'), meta: { title: '用户认证' } },
+      // 认证类型：自定义认证类型、该类型下的领域与申请字段、认证说明
+      { path: 'cert-types', name: 'admin-cert-types', component: () => import('@/views/admin/CertTypes.vue'), meta: { title: '认证类型' } },
       { path: 'message', name: 'admin-message', component: () => import('@/views/admin/Message.vue'), meta: { title: '消息管理' } },
       // 友链管理：Links.vue 承载统计概览，LinkList.vue 为列表子路由（子页通过 inject 联动筛选）
       {

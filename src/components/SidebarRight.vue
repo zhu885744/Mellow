@@ -13,6 +13,7 @@
           :frame-hole="frameRender.hole"
           :frame-offset-x="frameRender.offsetX"
           :frame-offset-y="frameRender.offsetY"
+          :verified="user?.cert"
           alt="用户头像"
         />
         <div class="user-name">{{ user?.nickname }}</div>

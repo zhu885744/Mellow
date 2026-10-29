@@ -13,6 +13,7 @@
           :frame-hole="frameRender.hole"
           :frame-offset-x="frameRender.offsetX"
           :frame-offset-y="frameRender.offsetY"
+          :verified="cert"
           alt="头像"
         />
         <div class="author-meta">
@@ -30,6 +31,7 @@
               v-else-if="profile.title"
               :class="['author-title', titleClass]"
             >{{ profile.title }}</span>
+            <!-- 认证标识已移到头像右下角（AvatarFrame 的 verified），昵称行不再重复展示 -->
             <!-- 佩戴中的勋章：users.json.wearing_badge，佩戴时后端已把名称/图标/配色/稀有度冗余写入 -->
             <WearingBadge v-if="profile.json?.wearing_badge" :badge="profile.json.wearing_badge" />
             <!-- 封禁标识（后端 users/one 的 result.ban）：申诉中 / 申诉驳回期间也保持显示 -->
@@ -41,15 +43,32 @@
           <!-- 用户 ID：仅手机端展示（参考移动端个人主页的 ID 行） -->
           <div v-if="profile.id" class="author-id">ID {{ profile.id }}</div>
           <div class="author-desc">{{ profile.description || '这个人很懒，什么都没留下' }}</div>
-          <!-- 勋章：只展示已获得的（公开接口 badge/held），未获得的属于「任务进度」，不在这里露出 -->
+          <!-- 认证信息：默认只展示认证名称 + 后台填写的认证说明（认证领域不对外展示） -->
+          <div v-if="cert" class="author-cert">
+            <!-- 与昵称旁的盾牌同色：统一走 utils/cert 的 certColor -->
+            <i class="bi bi-patch-check-fill" :style="{ color: certIconColor }" />
+            <span class="author-cert-text">{{ cert.title }}</span>
+            <span v-if="cert.description" class="author-cert-desc">{{ cert.description }}</span>
+          </div>
+          <!--
+            勋章：默认只展示昵称旁佩戴的那一枚（WearingBadge），
+            全部已获得的勋章收在折叠入口后面，避免主页被勋章墙占满。
+            未获得的属于「任务进度」，任何情况下都不在这里露出。
+          -->
           <div v-if="badges.length" class="author-badges">
-            <AchievementBadge
-              v-for="item in badges"
-              :key="item.id"
-              :badge="item"
-              size="sm"
-              held
-            />
+            <template v-if="showAllBadges">
+              <AchievementBadge
+                v-for="item in badges"
+                :key="item.id"
+                :badge="item"
+                size="sm"
+                held
+              />
+            </template>
+            <button type="button" class="author-badges-toggle" @click="showAllBadges = !showAllBadges">
+              <i class="bi" :class="showAllBadges ? 'bi-chevron-up' : 'bi-award'" aria-hidden="true" />
+              {{ showAllBadges ? '收起勋章' : `全部勋章 ${badges.length}` }}
+            </button>
           </div>
           <a
             v-if="website && website.url"
@@ -292,6 +311,8 @@ import TitleBadge from '@/components/TitleBadge.vue'
 import WearingBadge from '@/components/WearingBadge.vue'
 import AchievementBadge from '@/components/AchievementBadge.vue'
 import { getUserBadges } from '@/api/badge'
+import { getUserCertification } from '@/api/user-certification'
+import { certColor } from '@/utils/cert'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import ReportDialog from '@/components/ReportDialog.vue'
 import RewardDialog from '@/components/RewardDialog.vue'
@@ -634,8 +655,24 @@ async function enrichTargets(items) {
   }
 }
 
-// 已获得的勋章（公开接口，用户主页只展示拿到的）
+// 已获得的勋章（公开接口）：默认不展开，主页只显示昵称旁佩戴的那一枚
 const badges = ref([])
+const showAllBadges = ref(false)
+
+// 认证摘要（公开接口，未认证 / 审核中 / 已过期时返回 null）
+const cert = ref(null)
+
+// 认证图标颜色：与 VerifiedBadge 共用同一取色函数，避免两处颜色不一致
+const certIconColor = computed(() => certColor(cert.value || {}))
+
+async function loadCertification() {
+  try {
+    const res = await getUserCertification(uid.value)
+    cert.value = res.data || null
+  } catch {
+    cert.value = null
+  }
+}
 
 async function loadBadges() {
   try {
@@ -674,6 +711,7 @@ async function loadProfile() {
     // 口径只统计公开内容，且不会像原来那样「文章数用 countArticlesByAuthor、关注/粉丝用 counts」各算一份
     loadSocialStats()
     loadBadges()
+    loadCertification()
   } catch {
     profile.value = { nickname: '用户不存在', avatar: '', description: '' }
   }
@@ -1040,6 +1078,8 @@ watch(() => route.params.id, () => {
   banShown.value = false
   suggestions.value = []
   blocked.value = false
+  // 换了人，勋章墙回到「只看佩戴」的默认状态
+  showAllBadges.value = false
   loadProfile()
   loadRelation()
   loadBlockState()
@@ -1223,12 +1263,54 @@ watch(() => route.params.id, () => {
   line-height: 1.6;
   overflow-wrap: break-word;
 }
+/* 认证信息行：类型 + 认证名称 + 说明，跟在签名下方 */
+.author-cert {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -6px 0 14px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.author-cert .bi {
+  /* 颜色由内联 style 提供（与 VerifiedBadge 同源），这里只管尺寸 */
+  font-size: 13px;
+}
+.author-cert-text {
+  font-weight: 600;
+  color: var(--text-soft);
+}
+.author-cert-desc {
+  color: var(--text-light);
+}
 /* 勋章行：只读展示，横向换行排列（手机上会自动折成两行） */
 .author-badges {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   margin: 0 0 14px;
+}
+/* 「全部勋章」的折叠入口：轻量胶囊按钮，不和勋章本身抢视觉重量 */
+.author-badges-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text-soft);
+  background: var(--bg-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: color 0.2s ease, border-color 0.2s ease;
+}
+.author-badges-toggle:hover {
+  color: var(--text);
+  border-color: var(--text-light);
 }
 .author-website {
   display: inline-flex;

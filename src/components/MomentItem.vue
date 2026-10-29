@@ -12,6 +12,7 @@
         :animated="frameRender.animated"
         :fallback="defaultAvatar"
         :alt="author?.nickname"
+        :verified="author?.cert"
         size="44px"
         @click="goAuthor"
       />

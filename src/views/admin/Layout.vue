@@ -14,7 +14,7 @@
           <RouterLink
             to="/admin/dashboard"
             class="admin-nav-item"
-            active-class="active"
+            active-class="is-active"
           >
             <i class="bi bi-speedometer2" />
             <span class="admin-nav-text">概览</span>
@@ -24,7 +24,7 @@
             :key="item.path"
             :to="item.path"
             class="admin-nav-item"
-            active-class="active"
+            active-class="is-active"
           >
             <span class="admin-nav-icon" v-if="item.isSvg" v-html="item.svg" />
             <i v-else :class="item.icon" />
@@ -38,7 +38,7 @@
             :key="child.path"
             :to="child.path"
             class="admin-nav-item"
-            active-class="active"
+            active-class="is-active"
           >
             <span class="admin-nav-icon" v-if="child.isSvg" v-html="child.icon" />
             <i v-else :class="child.icon || 'bi bi-circle'" />
