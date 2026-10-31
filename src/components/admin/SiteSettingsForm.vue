@@ -170,6 +170,175 @@
       </div>
     </section>
 
+    <!-- 个性侧边栏 -->
+    <section class="card card-pad">
+      <header class="config-head">
+        <div>
+          <h3 class="config-title">个性侧边栏</h3>
+          <p class="config-desc">
+            右侧栏的模块、顺序、标题、条数与显隐；支持自定义 HTML 与链接列表
+          </p>
+        </div>
+      </header>
+
+      <div class="switch-row">
+        <div>
+          <div class="form-label">启用右侧边栏</div>
+          <p class="form-hint">关闭后前台整栏不渲染（模块配置仍保留，随时可以再打开）</p>
+        </div>
+        <label class="switch">
+          <input v-model="globalConfig.sidebar.enabled" type="checkbox" />
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+
+      <div v-if="globalConfig.sidebar.enabled" class="sb-list">
+        <div v-for="(module, index) in globalConfig.sidebar.modules" :key="module.id" class="sb-module">
+          <div class="sb-module-head">
+            <div class="sb-module-name">
+              <i :class="module.icon || 'bi bi-grid'" aria-hidden="true" />
+              <strong>{{ sidebarModuleTitle(module) }}</strong>
+              <span class="sb-module-type">{{ sidebarTypeName(module.type) }}</span>
+              <span v-if="module.visible === false" class="sb-module-hidden">已隐藏</span>
+            </div>
+            <div class="sb-module-actions">
+              <label class="switch" title="前台是否显示该模块">
+                <input v-model="module.visible" type="checkbox" />
+                <span class="switch-slider"></span>
+              </label>
+              <button
+                type="button"
+                class="btn btn-sm"
+                :disabled="index === 0"
+                title="上移"
+                @click="moveSidebarModule(index, 'up')"
+              >
+                <i class="bi bi-arrow-up" />
+              </button>
+              <button
+                type="button"
+                class="btn btn-sm"
+                :disabled="index === globalConfig.sidebar.modules.length - 1"
+                title="下移"
+                @click="moveSidebarModule(index, 'down')"
+              >
+                <i class="bi bi-arrow-down" />
+              </button>
+              <button type="button" class="btn btn-sm btn-danger" @click="removeSidebarModule(index)">删除</button>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-item">
+              <label class="form-label">模块类型</label>
+              <SelectMenu
+                :model-value="module.type"
+                variant="field"
+                :options="SIDEBAR_TYPE_OPTIONS"
+                @update:model-value="(value) => changeSidebarType(module, value)"
+              />
+              <p class="form-hint">切换类型会按新类型重置标题、条数与内容等字段</p>
+            </div>
+            <div class="form-item">
+              <label class="form-label">标题</label>
+              <input
+                v-model="module.title"
+                class="input"
+                :placeholder="sidebarTypeDefaults(module.type).title || '使用类型默认标题'"
+              />
+              <p class="form-hint">留空则使用类型默认标题</p>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-item">
+              <label class="form-label">图标（bootstrap-icons）</label>
+              <div class="input-group">
+                <input v-model="module.icon" class="input" placeholder="bi bi-shuffle" />
+                <span class="menu-icon-preview">
+                  <i :class="module.icon || 'bi bi-question-circle'" aria-hidden="true" />
+                </span>
+                <a
+                  class="btn btn-sm icon-library-link"
+                  href="https://icons.getbootstrap.com/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="去 Bootstrap Icons 官网查找并复制图标类名"
+                >
+                  <i class="bi bi-box-arrow-up-right" /> 图标库
+                </a>
+              </div>
+            </div>
+            <div v-if="showSidebarField(module.type, 'limit')" class="form-item">
+              <label class="form-label">显示条数</label>
+              <input v-model.number="module.limit" class="input" type="number" min="1" max="100" />
+              <p class="form-hint">该模块列表最多展示多少条</p>
+            </div>
+          </div>
+
+          <div v-if="showSidebarField(module.type, 'moreUrl')" class="form-grid">
+            <div class="form-item">
+              <label class="form-label">「更多」文案</label>
+              <input v-model="module.moreText" class="input" placeholder="留空则显示「更多」" />
+            </div>
+            <div class="form-item">
+              <label class="form-label">「更多」链接</label>
+              <input v-model="module.moreUrl" class="input" placeholder="站内路径如 /topics，或完整网址" />
+              <p class="form-hint">留空则不显示右上角入口；站外链接自动新窗口打开</p>
+            </div>
+          </div>
+
+          <div v-if="showSidebarField(module.type, 'content')" class="form-item">
+            <label class="form-label">自定义内容（HTML）</label>
+            <textarea
+              v-model="module.content"
+              class="input sb-textarea"
+              rows="6"
+              placeholder="<p>这里可以写公告、广告位、友链或任意 HTML</p>"
+            />
+            <p class="form-hint">原样渲染到前台，请只粘贴可信内容</p>
+          </div>
+
+          <div v-if="showSidebarField(module.type, 'items')" class="sb-links">
+            <div v-if="!module.items.length" class="sb-links-empty">还没有链接，点下方「添加链接」</div>
+            <div v-for="(link, linkIndex) in module.items" :key="link.id || linkIndex" class="sb-link-row">
+              <input v-model="link.name" class="input sb-link-name" placeholder="名称" />
+              <input v-model="link.icon" class="input sb-link-icon" placeholder="bi bi-link" />
+              <input v-model="link.url" class="input sb-link-url" placeholder="/about 或 https://…" />
+              <SelectMenu v-model="link.target" variant="field" :options="MENU_TARGET_OPTIONS" />
+              <button type="button" class="btn btn-sm btn-danger" @click="removeSidebarLink(module, linkIndex)">
+                删除
+              </button>
+            </div>
+            <button type="button" class="btn btn-sm" @click="addSidebarLink(module)">
+              <i class="bi bi-plus-lg" /> 添加链接
+            </button>
+          </div>
+
+          <div class="sb-module-flags">
+            <label class="sb-check">
+              <input v-model="module.collapsible" type="checkbox" />
+              允许访客折叠
+            </label>
+            <label v-if="module.collapsible" class="sb-check">
+              <input v-model="module.collapsed" type="checkbox" />
+              默认折叠
+            </label>
+          </div>
+        </div>
+
+        <div class="sb-add">
+          <div class="sb-add-type">
+            <SelectMenu v-model="newSidebarType" variant="field" :options="SIDEBAR_TYPE_OPTIONS" />
+          </div>
+          <button type="button" class="btn btn-sm btn-primary" @click="addSidebarModule">
+            <i class="bi bi-plus-lg" /> 添加模块
+          </button>
+          <button type="button" class="btn btn-sm" @click="resetSidebarModules">恢复默认</button>
+        </div>
+      </div>
+    </section>
+
     <!-- 备案信息 -->
     <section class="card card-pad">
       <header class="config-head">
@@ -389,6 +558,14 @@ import { saveConfig } from '@/api/config'
 import { uploadAttachments } from '@/api/attachment'
 import { useSiteStore } from '@/stores/site'
 import { toast } from '@/utils/toast'
+import {
+  SIDEBAR_TYPES,
+  createSidebarModule,
+  defaultSidebarConfig,
+  normalizeSidebarConfig,
+  sidebarModuleTitle,
+  sidebarTypeMeta
+} from '@/utils/sidebar'
 
 const siteStore = useSiteStore()
 
@@ -513,7 +690,9 @@ function defaultConfig() {
       position: 'center',
       show_back_to_top: true,
       buttons: []
-    }
+    },
+    // 右侧边栏：模块 / 顺序 / 标题 / 条数 / 自定义内容（结构见 utils/sidebar.js）
+    sidebar: defaultSidebarConfig()
   }
 }
 
@@ -574,6 +753,67 @@ function moveMenu(index, direction) {
   list[target] = temp
 }
 
+// ---------- 个性侧边栏 ----------
+// 模块类型下拉：与 utils/sidebar.js 的注册表同源，后台新增类型只需改那一个文件
+const SIDEBAR_TYPE_OPTIONS = SIDEBAR_TYPES.map((item) => ({ value: item.value, label: item.name }))
+const newSidebarType = ref('html')
+
+function sidebarTypeName(type) {
+  return sidebarTypeMeta(type).name
+}
+
+function sidebarTypeDefaults(type) {
+  return sidebarTypeMeta(type).defaults || {}
+}
+
+/** 某类型是否支持某个字段（limit / moreUrl / content / items） */
+function showSidebarField(type, key) {
+  return sidebarTypeMeta(type).fields.includes(key)
+}
+
+/** 切换模块类型：字段按新类型重置，但保留 id、显隐、折叠等通用设置 */
+function changeSidebarType(module, type) {
+  const fresh = createSidebarModule(type, [])
+  const keep = {
+    id: module.id,
+    visible: module.visible,
+    collapsible: module.collapsible,
+    collapsed: module.collapsed
+  }
+  Object.assign(module, fresh, keep)
+}
+
+function addSidebarModule() {
+  const list = globalConfig.value.sidebar.modules
+  list.push(createSidebarModule(newSidebarType.value, list))
+}
+
+function removeSidebarModule(index) {
+  globalConfig.value.sidebar.modules.splice(index, 1)
+}
+
+function moveSidebarModule(index, direction) {
+  const list = globalConfig.value.sidebar.modules
+  const target = direction === 'up' ? index - 1 : index + 1
+  if (target < 0 || target >= list.length) return
+  const temp = list[index]
+  list[index] = list[target]
+  list[target] = temp
+}
+
+function resetSidebarModules() {
+  globalConfig.value.sidebar = defaultSidebarConfig()
+}
+
+function addSidebarLink(module) {
+  const id = module.items.reduce((max, item) => Math.max(max, Number(item?.id) || 0), 0) + 1
+  module.items.push({ id, name: '新链接', icon: 'bi bi-link-45deg', url: '', target: 'internal' })
+}
+
+function removeSidebarLink(module, index) {
+  module.items.splice(index, 1)
+}
+
 // 格式化日期
 function formatDate(timestamp) {
   if (!timestamp) return ''
@@ -615,7 +855,9 @@ async function getGlobalConfig() {
         position: config.float_buttons?.position || 'center',
         show_back_to_top: config.float_buttons?.show_back_to_top !== false,
         buttons: config.float_buttons?.buttons || []
-      }
+      },
+      // 未配置过时回退到默认 8 个模块，保证与改造前的侧边栏完全一致
+      sidebar: normalizeSidebarConfig(config.sidebar)
     }
   } catch {
     toast.error('获取网站设置失败')
@@ -626,7 +868,10 @@ async function getGlobalConfig() {
 async function saveGlobalConfig() {
   saving.value = true
   try {
-    await saveConfig(CONFIG_KEY, globalConfig.value)
+    // 先取一次最新完整配置再合并：本表单只认识自己的字段，
+    // 直接整体覆盖会把其它后台页面（默认头像、上传模式等）写入的键抹掉
+    const latest = (await siteStore.load(true)) || {}
+    await saveConfig(CONFIG_KEY, { ...latest, ...globalConfig.value })
     toast.success('网站设置保存成功')
     // 同步失效 site store 缓存，保证前台立即读取到最新配置
     await siteStore.invalidate()
@@ -900,6 +1145,134 @@ onMounted(getGlobalConfig)
   flex-shrink: 0;
   white-space: nowrap;
   text-decoration: none;
+}
+
+/* ---------- 个性侧边栏 ---------- */
+.sb-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.sb-module {
+  padding: 14px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: var(--bg-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sb-module-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.sb-module-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.sb-module-name i {
+  color: var(--primary);
+}
+
+.sb-module-type {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.sb-module-hidden {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.sb-module-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.sb-textarea {
+  width: 100%;
+  min-height: 120px;
+  padding: 10px 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  resize: vertical;
+}
+
+.sb-links {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sb-links-empty {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.sb-link-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1.4fr 120px auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.sb-module-flags {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+
+.sb-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+
+.sb-add {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding-top: 4px;
+}
+
+.sb-add-type {
+  width: 200px;
+}
+
+@media (max-width: 720px) {
+  .sb-link-row {
+    grid-template-columns: 1fr 1fr;
+  }
+  .sb-add-type {
+    width: 100%;
+  }
 }
 
 @media (max-width: 720px) {
