@@ -5,6 +5,9 @@
  * 共用同一份筛选定义，避免两处各自维护 where 条件导致统计与列表口径不一致。
  */
 
+// 实况图（图片::视频）的解析/序列化，见 utils/livePhoto.js
+import { parseLiveList, serializeLiveList } from './livePhoto'
+
 // 列表查询字段：不拉取 json/text 等大字段
 // 注意：reason（驳回原因）必须在这里，否则后台列表刷新后拿不到原因、行内的原因标签会消失
 export const MOMENT_LIST_FIELD =
@@ -163,12 +166,28 @@ export function isMomentPublic(item) {
 
 /**
  * 解析配图：后端以逗号分隔字符串存储，兼容数组与 | 分隔写法
+ *
+ * 实况图在字符串里是「图片::视频」（见 utils/livePhoto.js），
+ * 这里只返回图片地址 —— 所有「只要图」的地方（后台缩略图、回收站、举报图等）
+ * 无需关心实况图；需要视频的用 parseMomentMedia。
+ *
  * @returns {string[]}
  */
 export function parseMomentImages(raw) {
-  if (!raw) return []
-  const arr = Array.isArray(raw) ? raw : String(raw).split(/[,|]/)
-  return arr.map((s) => String(s).trim()).filter(Boolean)
+  return parseLiveList(raw).map((item) => item.image)
+}
+
+/**
+ * 解析配图（含实况视频）
+ * @returns {{ image: string, video: string }[]}
+ */
+export function parseMomentMedia(raw) {
+  return parseLiveList(raw)
+}
+
+/** 序列化配图（发布 / 编辑动态时用）：带视频的项写成 图片::视频 */
+export function serializeMomentImages(items) {
+  return serializeLiveList(items)
 }
 
 // 状态文案：草稿 / 待审核 / 未通过 / 已发布

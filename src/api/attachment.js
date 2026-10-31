@@ -73,6 +73,27 @@ function isFileLike(value) {
 }
 
 /**
+ * 是否安卓实况照片（Motion Photo：JPEG 尾巴里追加了一段 MP4）
+ *
+ * 只读头部 256KB 找 XMP 标记，覆盖 Pixel / 小米 / 三星 / 华为等主流机型。
+ * 这类文件**不能走 canvas 重编码**：WebP 转换只保留画面，内嵌的视频会被丢掉，
+ * 而后端 attachment/batch 正是靠原始字节把视频拆出来的
+ * （见 app/api/controller/motion_photo.go）。
+ *
+ * 识别不出时按普通图片处理，最坏结果只是压缩后没有实况效果。
+ */
+async function isMotionPhoto(file) {
+  if (!isFileLike(file) || !/^image\//i.test(file.type || '')) return false
+  if (file.size < 4096) return false
+  try {
+    const head = await file.slice(0, 256 * 1024).text()
+    return /MicroVideoOffset|MotionPhoto_Data|GCamera:MicroVideo/.test(head)
+  } catch {
+    return false
+  }
+}
+
+/**
  * 按后台「图片上传压缩」配置，把 FormData 里的图片先转成 WebP
  *
  * - off：原样上传
@@ -97,8 +118,13 @@ async function prepareUploadFormData(formData) {
   }
 
   const compressOne = async (file) => {
-    if (isFileLike(file) && canCompressImage(file)) return compressImageToWebp(file)
-    return file
+    if (!isFileLike(file) || !canCompressImage(file)) return file
+    // 实况图原样上传：canvas 重编码会丢掉 JPEG 里内嵌的 MP4
+    if (await isMotionPhoto(file)) {
+      console.info('[webp] 跳过实况图压缩：', file.name)
+      return file
+    }
+    return compressImageToWebp(file)
   }
 
   const next = new FormData()

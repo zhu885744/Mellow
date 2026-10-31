@@ -105,6 +105,50 @@ export const truncate = (str, len = 80) => {
  */
 export const clone = (obj) => JSON.parse(JSON.stringify(obj))
 
+// 媒体短代码：@[live](视频 "封面" "说明") / @[video](url "标题") / @[audio] / @[file]
+const MEDIA_SHORTCODE_RE = /@\[(live|video|audio|file)\]\s*\(([^)]*)\)/g
+// 未闭合的短代码：摘要按字数截断时会把它切成半截（@[live](https://… 没有右括号）
+const MEDIA_SHORTCODE_BROKEN_RE = /@\[(?:live|video|audio|file)\]\s*\([^)]*$/g
+// 连括号都没有的残留标记（渲染器判参数不足时原样输出）
+const MEDIA_SHORTCODE_TAG_RE = /@\[(?:live|video|audio|file)\](?!\()/g
+
+const isUrlLike = (value) => /^(?:https?:)?\/\//i.test(value) || value.startsWith('/')
+
+/**
+ * 正文 / 摘要转纯文本（列表摘要、摘要展示用）
+ *
+ * 只做轻量字符串清洗，**不走 markdown-it**：列表一页十几张卡，为了几百字摘要
+ * 去加载 markdown-it + highlight.js（gzip 约 88KB）并逐篇解析并不划算。
+ *
+ * 重点是媒体短代码 —— `@[live](视频 "封面" "说明")` 这类标记是给渲染器看的，
+ * 直接截断展示会露出 `@live`、封面图地址之类的字样：
+ * 能取到标题 / 说明就换成那段文字（说明 → live 第三参数、file 的文件名、
+ * video / audio 的标题），取不到就整体丢掉；被截断的残缺短代码也一并清掉。
+ *
+ * 图片、链接、HTML 标签、行首记号与强调符号都清掉；`[emoji:url]` 保留，
+ * 交给 EmojiText 渲染成表情图。
+ */
+export const stripArticleMarkup = (text) => {
+  return String(text || '')
+    .replace(/```[\s\S]*?```/g, ' ') // 代码块整体丢掉
+    .replace(MEDIA_SHORTCODE_RE, (_match, _kind, args) => {
+      // 引号里的参数都是文字；live 的封面图是 URL，过滤掉不当作摘要
+      const labels = [...String(args).matchAll(/"([^"]*)"/g)]
+        .map((item) => item[1].trim())
+        .filter((label) => label && !isUrlLike(label))
+      return labels.length ? ` ${labels[0]} ` : ' '
+    })
+    .replace(MEDIA_SHORTCODE_BROKEN_RE, ' ')
+    .replace(MEDIA_SHORTCODE_TAG_RE, ' ')
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ') // 图片
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // 链接 → 只留文字
+    .replace(/<[^>]*>/g, ' ') // 富文本残留标签
+    .replace(/^[>#*+\-\s]{1,6}/gm, '') // 行首标题 / 引用 / 列表记号
+    .replace(/[*_~`]+/g, '') // 强调符号
+    .replace(/\s+/g, ' ')
+    .trim()
+}
+
 /**
  * 获取 cookie（统一复用 utils/cookie，避免实现分叉）
  */

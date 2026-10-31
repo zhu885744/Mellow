@@ -902,6 +902,17 @@
                 <div class="form-item">
                   <label class="form-label">允许的后缀</label>
                   <input v-model="toml.storage.attachment.allow_extensions" class="input" type="text" />
+                  <p class="form-hint">
+                    小写、英文逗号分隔，留空表示不限制。图片 jpg/jpeg/png/webp/gif/avif/heic/tiff…，
+                    视频 mp4/mov/webm/mkv/avi…，压缩包 zip/rar/7z/tar/gz…
+                  </p>
+                  <button
+                    type="button"
+                    class="btn btn-sm"
+                    @click="toml.storage.attachment.allow_extensions = RECOMMENDED_ATTACHMENT_EXTS"
+                  >
+                    <i class="bi bi-magic" /> 填入推荐列表
+                  </button>
                 </div>
                 <div class="form-item">
                   <label class="form-label">单文件最大（KB）</label>
@@ -1548,6 +1559,23 @@ const STORAGE_DRIVERS = [
  */
 const DEFAULT_DIR_RULE = '{Y}-{m}/{d}'
 const DEFAULT_FILE_RULE = '{timestamp}{str-random-10}'
+
+/**
+ * 附件后缀推荐值：图片（含 avif / heic）、视频、压缩包、文档、文本
+ *
+ * 与后端默认值（app/facade/bootstrap.go）保持一致；已部署站点读的是自己的
+ * config/storage.toml，不会自动变，所以提供「填入推荐列表」一键应用。
+ */
+const RECOMMENDED_ATTACHMENT_EXTS = [
+  // 图片
+  'jpg', 'jpeg', 'jfif', 'png', 'apng', 'gif', 'webp', 'bmp', 'svg', 'ico', 'tif', 'tiff', 'avif', 'heic', 'heif',
+  // 视频
+  'mp4', 'm4v', 'mov', 'webm', 'mkv', 'avi', 'flv', 'wmv', '3gp', 'mpg', 'mpeg', 'ogv',
+  // 压缩包
+  'zip', 'rar', '7z', 'tar', 'gz', 'tgz', 'bz2', 'tbz2', 'xz', 'txz',
+  // 文档 / 文本
+  'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv', 'txt', 'md'
+].join(',')
 
 // 占位符说明（顺序与后端 StorageRulePlaceholders 一致）
 const UPLOAD_RULE_TOKENS = [

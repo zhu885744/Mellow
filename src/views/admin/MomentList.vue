@@ -333,6 +333,7 @@ import {
   momentListParams,
   isMomentPublic,
   parseMomentImages,
+  parseMomentMedia,
   momentStatusLabel,
   momentStatusClass
 } from '@/utils/moment'
@@ -389,7 +390,8 @@ function moreCount(item) {
 }
 
 function preview(item, index) {
-  openLightbox(thumbsOf(item), index)
+  // 带视频信息：实况图在灯箱里手动点「播放实况」才播
+  openLightbox(parseMomentMedia(item.images), index)
 }
 
 function authorName(item) {

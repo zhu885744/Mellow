@@ -62,9 +62,20 @@
       class="moment-images"
       :class="'img-grid-' + getGridType(shownImages.length)"
     >
-      <div v-for="(img, i) in shownImages" :key="i" class="moment-img-wrap">
+      <div v-for="(img, i) in shownImages" :key="img.image || i" class="moment-img-wrap">
+        <!-- 实况图：静态封面 + 悬停/按住播放的短视频（见 components/LivePhoto.vue） -->
+        <LivePhoto
+          v-if="img.video"
+          :image="thumbUrl(img.image, previewThumbWidth)"
+          :video="img.video"
+          :square="shownImages.length > 1"
+          :fit="shownImages.length > 1 ? 'cover' : 'contain'"
+          class="moment-img-live"
+          @click="previewImage(i)"
+        />
         <img
-          :src="thumbUrl(img, previewThumbWidth)"
+          v-else
+          :src="thumbUrl(img.image, previewThumbWidth)"
           class="moment-img"
           loading="lazy"
           decoding="async"
@@ -177,6 +188,8 @@ import { createReport } from '@/api/report'
 import { call } from '@/api/request'
 import { like, unlike, isLiked, likesCount } from '@/api/tags'
 import { openLightbox } from '@/utils/lightbox'
+import LivePhoto from './LivePhoto.vue'
+import { parseMomentMedia } from '@/utils/moment'
 import { thumbUrl } from '@/utils/image'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 import { useRouter } from 'vue-router'
@@ -419,16 +432,8 @@ async function submitReport({ reason, detail, images }) {
     reporting.value = false
   }
 }
-// 图片字段可能是数组、逗号分隔字符串或空
-function parseImages(field) {
-  if (!field) return []
-  if (Array.isArray(field)) return field.filter(Boolean)
-  return String(field)
-    .split(/[,|]/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-}
-const imageList = computed(() => parseImages(props.moment.images))
+// 配图字段可能是数组、逗号分隔字符串或空；实况图项为 { image, video }
+const imageList = computed(() => parseMomentMedia(props.moment.images))
 
 /* ---------------- 列表卡片：正文 / 图片只展示一部分 ---------------- */
 // 正文预览的可见字符数（一个表情 / @提及 / #话题# 都算 1 个）
@@ -550,6 +555,7 @@ async function copyLink() {
 }
 
 function previewImage(i) {
+  // 带上 video：灯箱里是手动点「播放实况」才播，不会一打开就自动放
   openLightbox(imageList.value, i)
 }
 
@@ -746,6 +752,14 @@ function onActionMenu(key) {
   background: none;
 }
 .moment-img:hover {
+  transform: scale(1.02);
+}
+/* 实况图：与普通图同一套尺寸/圆角/交互观感（尺寸由组件内部按 square/fit 决定） */
+.moment-img-live {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+.moment-img-live:hover {
   transform: scale(1.02);
 }
 /* 超出预览数量的图片：最后一张压一层「+N」 */

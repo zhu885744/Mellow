@@ -36,8 +36,8 @@
       </span>
     </div>
 
-    <div v-if="article.abstract" class="abstract">
-      <EmojiText :text="article.abstract" :size="18" />
+    <div v-if="abstractText" class="abstract">
+      <EmojiText :text="abstractText" :size="18" />
     </div>
 
     <!-- 当前可见范围：作者 / 管理员可直接查看时也把设置值显示出来，避免误以为设置没生效 -->
@@ -194,7 +194,7 @@ import { formatDate } from '@/utils/time'
 import { renderMarkdown } from '@/utils/markdown'
 import { sanitizeHtml, isRichTextEditor } from '@/utils/html'
 import { toast } from '@/utils/toast'
-import { copyText } from '@/utils/helper'
+import { copyText, stripArticleMarkup } from '@/utils/helper'
 import { openLightbox } from '@/utils/lightbox'
 import { popIcon, popOut, burstHeart } from '@/utils/likeFx'
 
@@ -250,6 +250,10 @@ function openReward() {
 }
 
 const isRichText = computed(() => isRichTextEditor(article.value?.editor))
+
+// 摘要展示前清掉 markdown / 媒体短代码：历史数据的 abstract 可能存着
+// @[live](视频 "封面") 这类源码（旧版自动摘要没处理 live）
+const abstractText = computed(() => stripArticleMarkup(article.value?.abstract || ''))
 
 // 可见范围：scope_state 为 login / pay 时说明后端已按可见范围清空正文
 const articleLocked = computed(() => {

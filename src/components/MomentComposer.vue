@@ -80,8 +80,11 @@
 
     <!-- 已选图片 -->
     <div v-if="images.length" class="composer-images">
-      <div v-for="(img, i) in images" :key="img" class="composer-image">
-        <img :src="img" class="composer-image-img" alt="预览" loading="lazy" />
+      <div v-for="(img, i) in images" :key="img.image" class="composer-image">
+        <img :src="img.image" class="composer-image-img" alt="预览" loading="lazy" />
+        <span v-if="img.video" class="composer-image-live">LIVE</span>
+        <!-- 设为实况图：本地上传短视频，或从附件库挑一条已上传的视频 -->
+        <LivePhotoVideoPicker v-model:video="img.video" :disabled="uploading" />
         <button type="button" class="composer-image-del" title="移除" @click="removeImage(i)">
           <i class="bi bi-x-lg" />
         </button>
@@ -148,8 +151,10 @@ import { storeToRefs } from 'pinia'
 import EmojiEditor from './EmojiEditor.vue'
 import AttachmentLibrary from './AttachmentLibrary.vue'
 import ScopeRadio from './ScopeRadio.vue'
+import LivePhotoVideoPicker from './LivePhotoVideoPicker.vue'
 import { useUserStore } from '@/stores/user'
 import { createMoment, uploadMomentImages } from '@/api/moments'
+import { serializeLiveList } from '@/utils/livePhoto'
 import { toast } from '@/utils/toast'
 
 const MAX_IMAGES = 9
@@ -167,6 +172,10 @@ const userStore = useUserStore()
 const { user } = storeToRefs(userStore)
 
 const content = ref('')
+/**
+ * 待发布配图：每项 { image, video }
+ * video 为空是普通图片；有视频就是实况图（存库时写成 图片::视频，见 utils/livePhoto.js）
+ */
 const images = ref([])
 const location = ref('')
 // 可见范围（后端字段 scope）：1 公开 2 登录可见 3 付费可见；付费时 scope_integral 为兑换积分
@@ -237,9 +246,15 @@ async function onPick(event) {
 
     const res = await uploadMomentImages(formData)
     const results = res.data?.results || []
-    const urls = results.filter((item) => item.status !== 'fail' && item.full_url).map((item) => item.full_url)
+    const rows = results.filter((item) => item.status !== 'fail' && item.full_url)
 
-    images.value.push(...urls)
+    // 安卓实况照片是一张内嵌视频的 jpg：后端拆完会带回 live_video，
+    // 这里直接配成实况图，用户不用再点「实况」按钮单独传一遍视频
+    images.value.push(...rows.map((row) => ({ image: row.full_url, video: row.live_video || '' })))
+
+    const liveCount = rows.filter((row) => row.live_video).length
+    if (liveCount) toast.success(`已识别 ${liveCount} 张实况图`)
+
     if (results.some((item) => item.status === 'fail')) {
       toast.warning('部分图片上传失败')
     }
@@ -262,8 +277,9 @@ function onLibrarySelect(urls = []) {
     return
   }
 
-  const add = urls.filter((url) => url && !images.value.includes(url)).slice(0, rest)
-  images.value.push(...add)
+  const exists = new Set(images.value.map((item) => item.image))
+  const add = urls.filter((url) => url && !exists.has(url)).slice(0, rest)
+  images.value.push(...add.map((url) => ({ image: url, video: '' })))
 
   if (!add.length) {
     toast.info('所选图片已在列表中')
@@ -287,7 +303,8 @@ async function submit() {
     const scopeValue = [1, 2, 3].includes(Number(scope.value)) ? Number(scope.value) : 1
     const res = await createMoment({
       content: content.value,
-      images: images.value.join(','),
+      // 实况图写成 图片::视频（普通图不受影响）
+      images: serializeLiveList(images.value),
       location: location.value.trim(),
       scope: scopeValue,
       scope_integral: scopeValue === 3 ? Math.max(1, Number(scopeIntegral.value) || 0) : 0,
@@ -413,6 +430,21 @@ defineExpose({ submit, reset, hasDraft })
   height: 100%;
   object-fit: cover;
 }
+/* 实况图：左上角 LIVE 角标（右下角的「实况」按钮由 LivePhotoVideoPicker 提供） */
+.composer-image-live {
+  position: absolute;
+  left: 4px;
+  top: 4px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 14px;
+}
+
 .composer-image-del {
   position: absolute;
   top: 4px;

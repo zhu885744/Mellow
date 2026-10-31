@@ -166,6 +166,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { escapeHtml } from '@/utils/emoji'
+import { parseLiveItem } from '@/utils/livePhoto'
 import EmptyState from '@/components/EmptyState.vue'
 import { call } from '@/api/request'
 import { fromNow } from '@/utils/time'
@@ -436,7 +437,9 @@ function stripTags(text) {
 function firstImage(value) {
   if (!value) return ''
   const list = Array.isArray(value) ? value : String(value).split(',')
-  return String(list.find((url) => String(url || '').trim()) || '').trim()
+  // 实况图项是「图片::视频」，缩略图只能取图片那一段
+  const found = list.map(parseLiveItem).find((item) => item.image)
+  return found ? found.image : ''
 }
 
 function markThumbBroken(item) {

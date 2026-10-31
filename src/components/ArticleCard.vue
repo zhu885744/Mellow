@@ -25,7 +25,7 @@
           </span>
         </div>
         <p class="article-abstract">
-          <EmojiText :text="truncate(article.abstract || article.text || article.content, abstractLimit)" :size="16" />
+          <EmojiText :text="abstractText" :size="16" />
         </p>
         <div class="article-foot">
           <span v-if="author" class="meta-stat">
@@ -43,7 +43,7 @@
 import { computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { formatDate } from '@/utils/time'
-import { truncate } from '@/utils/helper'
+import { truncate, stripArticleMarkup } from '@/utils/helper'
 import EmojiText from '@/components/EmojiText.vue'
 import WearingBadge from '@/components/WearingBadge.vue'
 
@@ -53,6 +53,12 @@ const props = defineProps({
 })
 
 const router = useRouter()
+
+// 摘要：先洗掉 markdown / 媒体短代码（@[live] 等）再按长度截断，
+// 否则列表里会露出 @live、封面图地址这类源码字样
+const abstractText = computed(() =>
+  truncate(stripArticleMarkup(props.article.abstract || props.article.text || props.article.content), props.abstractLimit)
+)
 
 // 封面
 const cover = computed(() => {

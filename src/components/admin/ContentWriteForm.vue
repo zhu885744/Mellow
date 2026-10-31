@@ -309,21 +309,19 @@ import {
 import { listAllTags, createTag } from '@/api/tags'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
-import { parseIdField, toIdField, truncate, isAdmin } from '@/utils/helper'
+import { parseIdField, toIdField, truncate, isAdmin, stripArticleMarkup } from '@/utils/helper'
 
 /**
  * 自动摘要：先把正文里的标记（媒体短代码 / 图片 / 表情）剥掉再截断
  *
- * 否则摘要会直接显示 @[video](https://.../a.mp4) 这种源码 —— 列表页不渲染 markdown。
+ * 否则摘要会直接显示 @[live](https://.../a.mp4 "封面") / @[video](...) 这种源码
+ * —— 列表页不渲染 markdown。媒体短代码（含实况图 live）统一由
+ * stripArticleMarkup 清理，这里只额外去掉表情标记：摘要字段有长度限制，
+ * [emoji:url] 一个就占掉几十个字符。
  */
 function autoAbstract(content) {
-  const plain = String(content || '')
-    .replace(/@\[(?:video|audio|file)\]\([^)]*\)/g, ' ')
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
-    .replace(/\[emoji:[^\]]+\]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return truncate(plain, 120)
+  const plain = stripArticleMarkup(content).replace(/\[emoji:[^\]]+\]/g, ' ')
+  return truncate(plain.replace(/\s+/g, ' ').trim(), 120)
 }
 import { toLocalInput } from '@/utils/time'
 import { toast } from '@/utils/toast'

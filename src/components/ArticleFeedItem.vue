@@ -135,7 +135,8 @@ import {
   pickUserLevel,
   pickUserTitle,
   pickUserTitlePayload,
-  getTitleColorClass
+  getTitleColorClass,
+  stripArticleMarkup
 } from '@/utils/helper'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
@@ -204,28 +205,10 @@ const showScopeNotice = computed(
   () => !userStore.isLogged && Number(props.article.scope) > 1
 )
 
-/**
- * 正文转纯文本（列表摘要用）
- *
- * 只做轻量清洗，**不走 markdown-it**：之前为了 240 字摘要把整篇正文交给
- * markdown-it + highlight.js 渲染，等于让首页无条件加载这两个 chunk
- * （生产 gzip 约 88KB）并对每篇文章跑一遍解析，实测 6 张卡就吃掉主线程 100ms+。
- * 后端返回的 abstract 本身就是截好的纯文本摘要，优先用它。
- */
-function toPlainText(text) {
-  return String(text || '')
-    .replace(/```[\s\S]*?```/g, ' ') // 代码块整体丢掉
-    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ') // 图片
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // 链接 → 只留文字
-    .replace(/<[^>]*>/g, ' ') // 富文本残留标签
-    .replace(/^[>#*+\-\s]{1,6}/gm, '') // 行首标题 / 引用 / 列表记号
-    .replace(/[*_~`]+/g, '') // 强调符号
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
+// 正文转纯文本（列表摘要用）：媒体短代码 / 图片 / 链接 / 残留标签都在
+// utils/helper.js 的 stripArticleMarkup 里统一清掉，这里不再重复实现
 const plainText = computed(() => {
-  const raw = toPlainText(props.article.abstract || props.article.text || props.article.content || '')
+  const raw = stripArticleMarkup(props.article.abstract || props.article.text || props.article.content || '')
   const title = String(props.article.title || '').trim()
   // 摘要通常从正文第一行（也就是标题）开始，和卡片上方的大标题重复，去掉
   if (!title || !raw.startsWith(title)) return raw

@@ -837,3 +837,222 @@ export function defineVideoPlayer() {
   if (window.customElements.get('mellow-video')) return
   window.customElements.define('mellow-video', MellowVideo)
 }
+
+/* ============================================================
+ * 实况图：<mellow-live src="视频" image="封面图" caption="说明">
+ *
+ * 给文章正文用（动态那边是 Vue 组件 components/LivePhoto.vue，两者观感一致）：
+ *   - 静态封面图铺满卡片，左下角一个 LIVE 角标；
+ *   - 桌面悬停 / 触屏按住时叠一层静音循环视频，松手立刻暂停复位；
+ *   - 视频编码不支持 / 文件 404 时把视频层摘掉，只留封面图，不弹错。
+ * 短代码：@[live](视频URL "封面图URL" "说明")，见 utils/markdown.js。
+ * ============================================================ */
+
+const LIVE_STYLE = `
+  :host { display: flex; justify-content: center; margin: 14px 0; }
+  *, *::before, *::after { box-sizing: border-box; }
+
+  .live {
+    position: relative;
+    display: inline-block;
+    max-width: 100%;
+    overflow: hidden;
+    border-radius: 14px;
+    background: #000;
+    cursor: pointer;
+    line-height: 0;
+  }
+  img.cover {
+    display: block;
+    max-width: 100%;
+    max-height: var(--md-live-max-height, 70vh);
+    object-fit: contain;
+  }
+  video.clip {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+    background: #000;
+  }
+  .live.is-playing video.clip { opacity: 1; }
+
+  .badge {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 7px 2px 5px;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.5);
+    color: #fff;
+    font: 600 10px/1.6 system-ui, -apple-system, sans-serif;
+    letter-spacing: 0.04em;
+    backdrop-filter: blur(2px);
+    pointer-events: none;
+  }
+  .badge i { font-style: normal; color: #ffd6a5; }
+
+  .cap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    padding: 18px 12px 8px;
+    font: 400 12px/1.5 system-ui, -apple-system, sans-serif;
+    color: #fff;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.65), transparent);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+`
+
+class MellowLive extends HTMLElement {
+  static get observedAttributes() {
+    return ['src', 'image', 'caption']
+  }
+
+  constructor() {
+    super()
+    this._built = false
+    this._broken = false
+    this._root = this.attachShadow({ mode: 'open' })
+    this.onEnter = () => {
+      if (!this._hoverable) return
+      this.play()
+    }
+    this.onLeave = () => {
+      if (!this._hoverable) return
+      this.stop()
+    }
+    this.onPressStart = () => {
+      if (this._hoverable) return
+      clearTimeout(this._pressTimer)
+      this._pressTimer = setTimeout(() => this.play(), 120)
+    }
+    this.onPressEnd = () => {
+      if (this._hoverable) return
+      clearTimeout(this._pressTimer)
+      this.stop()
+    }
+  }
+
+  connectedCallback() {
+    if (this._built) return this.sync()
+    this._built = true
+    this._hoverable =
+      typeof window !== 'undefined' && window.matchMedia
+        ? window.matchMedia('(hover: hover)').matches
+        : true
+
+    const style = document.createElement('style')
+    style.textContent = LIVE_STYLE
+
+    this._wrap = document.createElement('div')
+    this._wrap.className = 'live'
+
+    this._img = document.createElement('img')
+    this._img.className = 'cover'
+    this._img.loading = 'lazy'
+    this._img.decoding = 'async'
+    this._img.alt = ''
+
+    this._video = document.createElement('video')
+    this._video.className = 'clip'
+    this._video.muted = true
+    this._video.loop = true
+    this._video.playsInline = true
+    this._video.preload = 'metadata'
+    this._video.addEventListener('error', () => this.fail())
+    this._video.addEventListener('loadeddata', () => {
+      if (!this._video.videoWidth) this.fail()
+    })
+
+    this._badge = document.createElement('span')
+    this._badge.className = 'badge'
+
+    this._cap = document.createElement('span')
+    this._cap.className = 'cap'
+
+    this._wrap.append(this._img, this._video, this._badge, this._cap)
+    this._root.append(style, this._wrap)
+
+    this._wrap.addEventListener('mouseenter', this.onEnter)
+    this._wrap.addEventListener('mouseleave', this.onLeave)
+    this._wrap.addEventListener('pointerdown', this.onPressStart)
+    this._wrap.addEventListener('pointerup', this.onPressEnd)
+    this._wrap.addEventListener('pointercancel', this.onPressEnd)
+    this._wrap.addEventListener('pointerleave', this.onPressEnd)
+
+    this.sync()
+  }
+
+  disconnectedCallback() {
+    clearTimeout(this._pressTimer)
+    this.stop()
+  }
+
+  attributeChangedCallback() {
+    if (this._built) this.sync()
+  }
+
+  sync() {
+    const video = this.getAttribute('src') || ''
+    const image = this.getAttribute('image') || ''
+    const caption = this.getAttribute('caption') || ''
+
+    this._img.src = image
+    this._cap.textContent = caption
+    this._cap.style.display = caption ? '' : 'none'
+    this._badge.innerHTML = '<i>●</i> LIVE'
+
+    if (video && this._video.getAttribute('src') !== video) {
+      this._broken = false
+      this._video.src = video
+    }
+    this._video.style.display = video && !this._broken ? '' : 'none'
+    this._badge.style.display = video && !this._broken ? '' : 'none'
+  }
+
+  async play() {
+    if (this._broken || !this._video?.src) return
+    try {
+      this._video.currentTime = 0
+      await this._video.play()
+      this._wrap.classList.add('is-playing')
+    } catch {
+      this.fail()
+    }
+  }
+
+  stop() {
+    const video = this._video
+    if (!video) return
+    this._wrap.classList.remove('is-playing')
+    video.pause()
+    try {
+      video.currentTime = 0
+    } catch {}
+  }
+
+  fail() {
+    this._broken = true
+    this._video.style.display = 'none'
+    this._badge.style.display = 'none'
+    this._wrap.classList.remove('is-playing')
+  }
+}
+
+/** 幂等注册实况图 */
+export function defineLivePhoto() {
+  if (typeof window === 'undefined' || !window.customElements) return
+  if (window.customElements.get('mellow-live')) return
+  window.customElements.define('mellow-live', MellowLive)
+}

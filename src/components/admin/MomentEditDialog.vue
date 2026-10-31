@@ -55,6 +55,13 @@
     <div v-if="form.images.length" class="edit-images">
       <div v-for="(img, i) in form.images" :key="img + i" class="edit-img-item">
         <img :src="img" alt="配图" loading="lazy" />
+        <span v-if="liveMap[img]" class="edit-img-live">LIVE</span>
+        <!-- 实况视频：本地上传或从附件库挑选，保存时按图片地址回填 -->
+        <LivePhotoVideoPicker
+          :video="liveMap[img] || ''"
+          :disabled="saving"
+          @update:video="setLiveVideo(img, $event)"
+        />
         <button type="button" class="img-remove" title="移除" @click="removeImage(i)">
           <i class="bi bi-x-lg" />
         </button>
@@ -119,9 +126,10 @@ import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import OwnerInfo from '@/components/admin/OwnerInfo.vue'
 import EmojiEditor from '@/components/EmojiEditor.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
+import LivePhotoVideoPicker from '@/components/LivePhotoVideoPicker.vue'
 import ScopeRadio from '@/components/ScopeRadio.vue'
 import { updateMoment, uploadMomentImages } from '@/api/moments'
-import { parseMomentImages } from '@/utils/moment'
+import { parseMomentImages, parseMomentMedia, serializeMomentImages } from '@/utils/moment'
 import { toast } from '@/utils/toast'
 
 const MAX_IMAGES = 9
@@ -160,6 +168,8 @@ const saving = ref(false)
 const uploading = ref(false)
 const showLibrary = ref(false)
 const fileInput = ref(null)
+/** 图片地址 → 实况视频地址：弹窗只编辑图片列表，保存时按地址回填视频 */
+const liveMap = ref({})
 
 const title = computed(() => (form.id ? `编辑动态 #${form.id}` : '编辑动态'))
 const canSave = computed(() => !!form.content.trim() || form.images.length > 0)
@@ -182,6 +192,12 @@ function resetForm() {
   form.audit = [0, 1, 2].includes(audit) ? audit : 1
   form.content = item.content || ''
   form.images = parseMomentImages(item.images)
+  // 实况图的视频单独记住：本弹窗只编辑图片列表，保存时按图片地址回填视频，
+  // 避免「后台改一次正文，实况图就退化成静态图」
+  liveMap.value = {}
+  parseMomentMedia(item.images).forEach((media) => {
+    if (media.video) liveMap.value[media.image] = media.video
+  })
   form.location = item.location || ''
   const scope = Number(item.scope)
   form.scope = [1, 2, 3].includes(scope) ? scope : 1
@@ -207,7 +223,15 @@ function onVisibleChange(visible) {
 }
 
 function removeImage(index) {
-  form.images.splice(index, 1)
+  const [removed] = form.images.splice(index, 1)
+  if (removed && liveMap.value[removed]) delete liveMap.value[removed]
+}
+
+/** 给某张图设置 / 取消实况视频（本地上传或附件库都走这里） */
+function setLiveVideo(image, url) {
+  if (!image) return
+  if (url) liveMap.value[image] = url
+  else delete liveMap.value[image]
 }
 
 async function onPick(event) {
@@ -239,8 +263,14 @@ async function onPick(event) {
     valid.forEach((file) => fd.append('files', file))
     const res = await uploadMomentImages(fd)
     const results = res.data?.results || []
-    const urls = results.filter((r) => r.status !== 'fail' && r.full_url).map((r) => r.full_url)
-    form.images.push(...urls)
+    const rows = results.filter((r) => r.status !== 'fail' && r.full_url)
+    // 安卓实况照片（内嵌视频的 jpg）：后端拆出的视频记到 liveMap，
+    // 保存时再按图片地址回填成「图片::视频」
+    rows.forEach((row) => {
+      if (row.live_video) liveMap.value[row.full_url] = row.live_video
+    })
+    form.images.push(...rows.map((row) => row.full_url))
+    if (rows.some((row) => row.live_video)) toast.success('已识别实况图')
     if (results.some((r) => r.status === 'fail')) toast.warning('部分图片上传失败')
   } catch {
     /* 请求拦截器已提示 */
@@ -276,7 +306,10 @@ async function submit() {
     await updateMoment({
       id: form.id,
       content: form.content,
-      images: form.images,
+      // 回填实况视频：普通图仍是纯地址，实况图恢复成 图片::视频
+      images: serializeMomentImages(
+        form.images.map((image) => ({ image, video: liveMap.value[image] || '' }))
+      ),
       location: form.location.trim(),
       scope: scopeValue,
       scope_integral: scopeValue === 3 ? Math.max(1, Number(form.scopeIntegral) || 0) : 0,
@@ -326,6 +359,20 @@ async function submit() {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+/* 实况图角标（左上角，与发布器的 LIVE 标识一致） */
+.edit-img-live {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 14px;
 }
 .img-remove {
   position: absolute;

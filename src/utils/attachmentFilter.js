@@ -5,8 +5,11 @@
  */
 
 // 常见图片 / 视频 / 音频扩展名（后端未返回 mime_type 时兜底判断）
-export const IMAGE_EXTS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif']
-export const VIDEO_EXTS = ['mp4', 'webm', 'ogv', 'mov', 'm4v', 'avi', 'mkv', 'flv', 'wmv', 'm3u8', 'ts']
+//
+// 图片只列浏览器能直接 <img> 显示的格式：heic / heif / tif / tiff 即使归到图片
+// 类型也显示不出来，放进附件库缩略图会变破图。
+export const IMAGE_EXTS = ['jpg', 'jpeg', 'jfif', 'png', 'apng', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif']
+export const VIDEO_EXTS = ['mp4', 'webm', 'ogv', 'mov', 'm4v', 'avi', 'mkv', 'flv', 'wmv', '3gp', 'mpg', 'mpeg', 'm3u8', 'ts']
 export const AUDIO_EXTS = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'flac', 'wma', 'opus']
 const SIMPLE_EXTS = { image: IMAGE_EXTS, video: VIDEO_EXTS, audio: AUDIO_EXTS }
 

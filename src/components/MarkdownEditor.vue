@@ -78,6 +78,19 @@
         <i class="bi bi-paperclip" />
       </button>
 
+      <!-- 实况图：一次选「一张封面图 + 一段短视频」，插入 @[live](视频 "封面图")；
+           安卓实况照片本身就是一张内嵌视频的 jpg，只选那张图也行 -->
+      <button
+        type="button"
+        class="markdown-editor-tool"
+        title="插入实况图（封面图 + 短视频；安卓实况照片直接选那张图即可）"
+        :disabled="liveUploading"
+        @mousedown.prevent
+        @click="pickLive"
+      >
+        <i :class="liveUploading ? 'bi bi-arrow-repeat markdown-editor-spin' : 'bi bi-record-circle'" />
+      </button>
+
       <!-- 上传视频 / 音频 / 附件（按扩展名自动生成对应短代码） -->
       <button
         type="button"
@@ -187,11 +200,22 @@
 
     <input ref="fileRef" type="file" accept="image/*" hidden @change="onFileChange" />
 
+    <!-- 实况图：图片与视频一起选（先选中的图片当封面，第一条视频当实况）；
+         也可以只选一张安卓实况照片，视频由后端拆出 -->
+    <input
+      ref="liveRef"
+      type="file"
+      accept="image/*,video/*"
+      multiple
+      hidden
+      @change="onLiveChange"
+    />
+
     <!-- 视频 / 音频 / 附件：实际允许的类型由后端 storage 配置兜底校验 -->
     <input
       ref="mediaRef"
       type="file"
-      accept="video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,.rar,.7z,.tar,.gz"
+      accept="video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.zip,.rar,.7z,.tar,.gz,.tgz,.bz2,.tbz2,.xz,.txz,.mkv,.avi,.flv,.wmv,.3gp,.mpg,.mpeg,.ogv"
       multiple
       hidden
       @change="onMediaChange"
@@ -813,6 +837,67 @@ async function onMediaChange(e) {
     toast.error('上传失败，请检查文件类型与大小限制')
   } finally {
     mediaUploading.value = false
+  }
+}
+
+/* ===== 实况图（封面图 + 短视频） =====
+ * 两种来源：
+ *   1. 同时选「一张封面图 + 一段短视频」，分别上传后插入
+ *      @[live](视频URL "封面图URL")；
+ *   2. 安卓手机拍的实况照片本身就是一张内嵌视频的 jpg，只选这张图即可，
+ *      后端会拆出视频并通过 live_video 返回（app/api/controller/motion_photo.go）。
+ * 解析见 utils/markdown.js 的 renderLive，作者不用手动拼短代码。
+ */
+const liveRef = ref(null)
+const liveUploading = ref(false)
+
+function pickLive() {
+  liveRef.value?.click()
+}
+
+async function onLiveChange(e) {
+  const files = Array.from(e.target.files || [])
+  e.target.value = ''
+  if (!files.length) return
+
+  const image = files.find((file) => file.type.startsWith('image/'))
+  const video = files.find((file) => file.type.startsWith('video/'))
+  // 安卓实况照片就是一张 jpg（视频内嵌在文件里），所以没单独选视频也能继续，
+  // 由后端拆分后带回 live_video（见 app/api/controller/motion_photo.go）
+  if (!image) {
+    toast.warning('请选择一张封面图（实况视频可选）')
+    return
+  }
+  if (video && video.size > 30 * 1024 * 1024) {
+    toast.warning('实况视频建议 1~3 秒、不超过 30MB')
+    return
+  }
+
+  liveUploading.value = true
+  try {
+    const fd = new FormData()
+    fd.append('files', image)
+    if (video) fd.append('files', video)
+    const res = await uploadAttachments(fd)
+
+    // 结果顺序与提交顺序一致：第 1 个是封面图，手动选了视频时第 2 个才是视频
+    const rows = (res.data?.results || [])
+      .filter((row) => row.status !== 'fail' && (row.full_url || row.url))
+    const imageUrl = rows[0]?.full_url || rows[0]?.url || ''
+    const videoUrl = video
+      ? rows[1]?.full_url || rows[1]?.url || ''
+      : rows[0]?.live_video || ''
+    if (!imageUrl || !videoUrl) {
+      toast.warning(video ? '实况视频上传失败，请稍后重试' : '这张图片不是实况照片（未找到内嵌视频）')
+      return
+    }
+
+    insertMarker(`@[live](${videoUrl} "${imageUrl}")`, true)
+    toast.success('已插入实况图，发布后悬停（手机按住）可播放')
+  } catch {
+    toast.error('实况图上传失败，请检查文件类型与大小限制')
+  } finally {
+    liveUploading.value = false
   }
 }
 

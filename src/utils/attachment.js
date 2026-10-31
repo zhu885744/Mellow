@@ -11,14 +11,22 @@
 export const ATTACHMENT_FIELD =
   'id,uuid,original_name,save_name,save_path,full_url,file_size,mime_type,file_ext,storage_driver,uploader_id,uploader_name,uploader_account,target_type,target_id,create_time,update_time,delete_time'
 
-/** 扩展名分组：用于类型筛选（where.file_ext 的 $in / $nin） */
+/** 扩展名分组：用于类型筛选（where.file_ext 的 $in / $nin）与类型图标 */
 export const ATTACHMENT_EXT_GROUPS = {
-  image: ['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'tiff'],
-  video: ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'm3u8'],
-  audio: ['mp3', 'wav', 'ogg', 'flac', 'm4a', 'aac', 'wma'],
+  image: ['png', 'jpg', 'jpeg', 'jfif', 'apng', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif', 'heic', 'heif', 'tif', 'tiff'],
+  video: ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'm4v', '3gp', 'mpg', 'mpeg', 'ogv', 'm3u8', 'ts'],
+  audio: ['mp3', 'wav', 'ogg', 'oga', 'flac', 'm4a', 'aac', 'wma', 'opus'],
   doc: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'md', 'csv', 'rtf'],
-  archive: ['zip', 'rar', '7z', 'tar', 'gz', 'bz2']
+  archive: ['zip', 'rar', '7z', 'tar', 'gz', 'tgz', 'bz2', 'tbz2', 'xz', 'txz', 'cab']
 }
+
+/**
+ * 浏览器能直接用 <img> 显示的图片格式
+ *
+ * heic / heif / tif / tiff 虽然属于图片类别（筛选、图标仍算图片），但 Chrome 等
+ * 浏览器解不了，当缩略图会显示破图，所以预览判断单独用这份清单。
+ */
+export const PREVIEW_IMAGE_EXTS = ['jpg', 'jpeg', 'jfif', 'png', 'apng', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif']
 
 /** 类型下拉（value 与 ATTACHMENT_EXT_GROUPS 的 key 对应，other 需排除已知类型） */
 export const ATTACHMENT_TYPE_OPTIONS = [
@@ -78,9 +86,11 @@ export function attachmentIcon(item) {
   return ATTACHMENT_TYPE_ICONS[attachmentTypeOf(item)] || ATTACHMENT_TYPE_ICONS.other
 }
 
-/** 是否可直接用 <img> 预览（svg 按代码处理，这里同样可预览） */
+/** 是否可直接用 <img> 预览（heic / tiff 浏览器解不了，按文件卡片展示） */
 export function isPreviewableImage(item) {
-  return attachmentTypeOf(item) === 'image'
+  const mime = String(item?.mime_type || '').toLowerCase()
+  if (mime.startsWith('image/')) return true
+  return PREVIEW_IMAGE_EXTS.includes(normalizeExt(item?.file_ext))
 }
 
 /**

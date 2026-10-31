@@ -175,6 +175,13 @@
               <div v-if="editForm.images.length" class="edit-images">
                 <div v-for="(img, i) in editForm.images" :key="img" class="edit-img-item">
                   <img :src="img" alt="配图" loading="lazy" />
+                  <span v-if="liveMap[img]" class="edit-img-live">LIVE</span>
+                  <!-- 实况视频：本地上传或从附件库挑选，保存时按图片地址回填 -->
+                  <LivePhotoVideoPicker
+                    :video="liveMap[img] || ''"
+                    :disabled="saving"
+                    @update:video="setEditLive(img, $event)"
+                  />
                   <button type="button" class="img-remove" title="移除" @click="removeEditImage(i)">
                     <i class="bi bi-x-lg" />
                   </button>
@@ -237,12 +244,14 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmojiEditor from '@/components/EmojiEditor.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
+import LivePhotoVideoPicker from '@/components/LivePhotoVideoPicker.vue'
 import ScopeRadio from '@/components/ScopeRadio.vue'
 import ScopeBadge from '@/components/ScopeBadge.vue'
 import { listMoments, updateMoment, removeMoment, uploadMomentImages } from '@/api/moments'
 import { likesCount } from '@/api/tags'
 import { renderEmojiWithBreaks } from '@/utils/emoji'
 import { openLightbox } from '@/utils/lightbox'
+import { parseMomentImages, parseMomentMedia, serializeMomentImages } from '@/utils/moment'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
 import { fromNow } from '@/utils/time'
@@ -296,16 +305,15 @@ function renderContent(item) {
   return renderEmojiWithBreaks(text, { size: 20 })
 }
 
-// 解析动态配图：后端以逗号分隔字符串存储，兼容数组形式
+// 解析动态配图：后端以逗号分隔字符串存储，实况图项是「图片::视频」，
+// 这里只取图片地址（视频信息由 liveMap 保存，编辑时原样带回）
 function imagesOf(item) {
-  const raw = item?.images
-  if (!raw) return []
-  const arr = Array.isArray(raw) ? raw : String(raw).split(',')
-  return arr.map((s) => String(s).trim()).filter(Boolean)
+  return parseMomentImages(item?.images)
 }
 
 function preview(item, index) {
-  openLightbox(imagesOf(item), index)
+  // 带视频信息：灯箱里手动点「播放实况」才播
+  openLightbox(parseMomentMedia(item?.images), index)
 }
 
 async function load() {
@@ -393,6 +401,8 @@ const saving = ref(false)
 const uploading = ref(false)
 const fileInput = ref(null)
 const editingId = ref(null)
+/** 图片地址 → 实况视频地址（编辑时保留原有实况图） */
+const liveMap = ref({})
 
 const editForm = reactive({
   content: '',
@@ -417,6 +427,12 @@ function openEdit(item) {
   editingId.value = item.id
   editForm.content = item.content || ''
   editForm.images = [...imagesOf(item)]
+  // 实况图的视频单独记住：本弹窗只编辑图片列表，保存时按图片地址回填视频，
+  // 避免「编辑一次正文，实况图就退化成静态图」
+  liveMap.value = {}
+  parseMomentMedia(item?.images).forEach((media) => {
+    if (media.video) liveMap.value[media.image] = media.video
+  })
   editForm.location = item.location || ''
   const scope = Number(item.scope)
   editForm.scope = [1, 2, 3].includes(scope) ? scope : 1
@@ -459,10 +475,14 @@ async function onPick(e) {
     valid.forEach((file) => fd.append('files', file))
     const res = await uploadMomentImages(fd)
     const results = res.data?.results || []
-    const urls = results
-      .filter((r) => r.status !== 'fail' && r.full_url)
-      .map((r) => r.full_url)
-    editForm.images.push(...urls)
+    const rows = results.filter((r) => r.status !== 'fail' && r.full_url)
+    // 安卓实况照片（内嵌视频的 jpg）：后端拆出的视频记下来，
+    // 保存时按图片地址回填成「图片::视频」
+    rows.forEach((row) => {
+      if (row.live_video) liveMap.value[row.full_url] = row.live_video
+    })
+    editForm.images.push(...rows.map((row) => row.full_url))
+    if (rows.some((row) => row.live_video)) toast.success('已识别实况图')
     if (results.some((r) => r.status === 'fail')) toast.warning('部分图片上传失败')
   } catch {
     /* 拦截器已提示 */
@@ -472,7 +492,15 @@ async function onPick(e) {
 }
 
 function removeEditImage(i) {
-  editForm.images.splice(i, 1)
+  const [removed] = editForm.images.splice(i, 1)
+  if (removed && liveMap.value[removed]) delete liveMap.value[removed]
+}
+
+/** 给某张图设置 / 取消实况视频（本地上传或附件库都走这里） */
+function setEditLive(image, url) {
+  if (!image) return
+  if (url) liveMap.value[image] = url
+  else delete liveMap.value[image]
 }
 
 // 附件库：把选中的已上传图片加入动态配图（去重 + 数量上限）
@@ -502,7 +530,10 @@ async function submitEdit() {
     await updateMoment({
       id: editingId.value,
       content: editForm.content,
-      images: editForm.images,
+      // 回填实况视频：普通图仍是纯地址，实况图恢复成 图片::视频
+      images: serializeMomentImages(
+        editForm.images.map((image) => ({ image, video: liveMap.value[image] || '' }))
+      ),
       location: editForm.location,
       scope: scopeValue,
       // 非付费可见时清零，避免残留旧的兑换积分
@@ -857,6 +888,20 @@ onMounted(() => {
   height: 100%;
   object-fit: cover;
   display: block;
+}
+/* 实况图角标（左上角，与发布器的 LIVE 标识一致） */
+.edit-img-live {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  padding: 0 3px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.5);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 14px;
 }
 .img-remove {
   position: absolute;

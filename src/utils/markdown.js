@@ -30,12 +30,13 @@ import xml from 'highlight.js/lib/languages/xml'
 import yaml from 'highlight.js/lib/languages/yaml'
 // 表情图片地址统一走运行时解析（与 @/utils/emoji 的 renderEmoji 保持一致）
 import { getFullUrl } from '@/utils/runtimeConfig'
-import { defineAudioPlayer, defineVideoPlayer } from '@/utils/mediaPlayer'
+import { defineAudioPlayer, defineLivePhoto, defineVideoPlayer } from '@/utils/mediaPlayer'
 
 // 注册正文音视频播放器（<mellow-audio> / <mellow-video> 自定义元素，幂等）
 // v-html 插入同名标签时浏览器会自动升级，文章 / 独立页 / 文档 / 编辑器预览都不用单独接
 defineAudioPlayer()
 defineVideoPlayer()
+defineLivePhoto()
 
 // 语言名 + 常见别名（同一份语法注册多次，兼容 ```js / ```javascript 等写法）
 const HIGHLIGHT_LANGUAGES = {
@@ -167,7 +168,7 @@ md.renderer.rules.emoji = function (tokens, idx) {
  *  3. 短代码是纯文本：可搜索、可迁移、可回退，后端存储结构完全不用动，老文章零影响。
  * ============================================================ */
 
-const MEDIA_SHORTCODE_RE = /^@\[(video|audio|file)\]\(\s*([^)\s]+)\s*(?:"([^"]*)")?\s*(?:"([^"]*)")?\s*\)/
+const MEDIA_SHORTCODE_RE = /^@\[(video|audio|file|live)\]\(\s*([^)\s]+)\s*(?:"([^"]*)")?\s*(?:"([^"]*)")?\s*\)/
 const MEDIA_VIDEO_EXT = /\.(mp4|webm|ogv|mov|m4v)(\?|#|$)/i
 const MEDIA_AUDIO_EXT = /\.(mp3|wav|ogg|m4a|aac|flac)(\?|#|$)/i
 
@@ -259,6 +260,40 @@ function renderMedia(kind, url, caption, meta) {
   )
 }
 
+/**
+ * 实况图 HTML：@[live](视频URL "封面图URL" "说明")
+ *
+ * 文章正文的图片是 markdown 语法，一个 `![]()` 只能带一个 URL，放不下「封面 + 视频」这一对，
+ * 所以复用媒体短代码：位置参数是视频（实况部分），第一个引号参数是静态封面。
+ * 渲染成 <mellow-live>（见 utils/mediaPlayer.js）：悬停 / 按住播放，播不了就只显示封面。
+ */
+function renderLive(videoUrl, imageUrl, caption) {
+
+  const video = safeMediaUrl(videoUrl)
+  const image = safeMediaUrl(imageUrl)
+  if (!video || !image) {
+    // 参数不全就原样显示源码，至少不让内容凭空消失
+    return md.utils.escapeHtml(`@[live](${videoUrl || ''}${imageUrl ? ` "${imageUrl}"` : ''})`)
+  }
+
+  const src = md.utils.escapeHtml(getFullUrl(video))
+  const cover = md.utils.escapeHtml(getFullUrl(image))
+  const text = String(caption || '')
+  const captionAttr = text ? ` caption="${md.utils.escapeHtml(text)}"` : ''
+
+  if (typeof window !== 'undefined' && window.customElements) {
+    return `<mellow-live class="markdown-live" src="${src}" image="${cover}"${captionAttr}></mellow-live>`
+  }
+
+  // 兜底：封面图 + 原生视频（没有自定义元素支持的极端环境）
+  return (
+    `<span class="markdown-media markdown-live">` +
+    `<img src="${cover}" alt="${md.utils.escapeHtml(text || '实况图')}" loading="lazy" decoding="async">` +
+    `<video src="${src}" muted loop playsinline preload="metadata"></video>` +
+    `</span>`
+  )
+}
+
 md.inline.ruler.before('link', 'media_shortcode', function (state, silent) {
   // 绝大多数字符不是 @，先做一次廉价判断，避免每个字符都跑正则
   if (state.src.charCodeAt(state.pos) !== 0x40) return false
@@ -277,6 +312,8 @@ md.inline.ruler.before('link', 'media_shortcode', function (state, silent) {
 
 md.renderer.rules.media_shortcode = function (tokens, idx) {
   const { kind, url, caption, size } = tokens[idx].meta || {}
+  // 实况图：URL 是视频，第一个引号参数是封面图，第二个是说明
+  if (kind === 'live') return renderLive(url, caption, size)
   return renderMedia(kind, url, caption, size)
 }
 
