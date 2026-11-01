@@ -542,9 +542,9 @@ async function save() {
       avatar: form.avatar,
       json: currentJson
     }
-    if (form.gender !== 0) {
-      payload.gender = genderMap[form.gender]
-    }
+    // 始终提交性别：选「保密」时传空字符串。若在 0 时跳过该字段，
+    // 用户一旦选过男/女就再也改不回保密（后端会保留旧值）。
+    payload.gender = genderMap[form.gender] ?? ''
 
     await updateUser(payload)
     toast.success('用户信息更新成功')

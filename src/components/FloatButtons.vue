@@ -20,13 +20,13 @@
       <img v-if="btn.image_url" class="float-btn-preview" :src="btn.image_url" alt="" loading="lazy" />
     </button>
 
-    <!-- 主题切换 -->
+    <!-- 主题切换：只有浅色 / 深色两态，点一次就切过去 -->
     <button
       type="button"
       class="float-btn-item"
-      title="切换主题"
-      aria-label="切换主题"
-      @click="themeStore.cycle()"
+      :title="themeStore.isDark ? '切换到浅色模式' : '切换到深色模式'"
+      :aria-label="themeStore.isDark ? '切换到浅色模式' : '切换到深色模式'"
+      @click="themeStore.toggle()"
     >
       <i :class="themeIcon" />
     </button>
@@ -54,11 +54,10 @@ import { useThemeStore } from '@/stores/theme'
 const siteStore = useSiteStore()
 const themeStore = useThemeStore()
 
-const themeIcon = computed(() => {
-  if (themeStore.mode === 'dark') return 'bi bi-moon-stars-fill'
-  if (themeStore.mode === 'light') return 'bi bi-sun-fill'
-  return 'bi bi-circle-half'
-})
+// 图标展示当前生效的主题：深色显示月亮，浅色显示太阳
+const themeIcon = computed(() =>
+  themeStore.isDark ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill'
+)
 
 // 悬浮按钮配置来自站点配置（site store 统一缓存/去重）
 const config = computed(() => {

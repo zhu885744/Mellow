@@ -49,16 +49,34 @@
       </div>
     </section>
 
-    <div class="card card-pad">
+    <div class="card card-pad files-card">
       <header class="list-head">
         <div>
-          <h2 class="block-title">附件列表</h2>
-          <p class="block-desc">
-            彻底删除会连同存储文件一起移除，不可恢复
-            <template v-if="total > 0"> · 共 {{ total }} 个</template>
-          </p>
+          <h2 class="block-title">
+            附件列表
+            <span v-if="total > 0" class="files-count">{{ total }}</span>
+          </h2>
+          <p class="block-desc">彻底删除会连同存储文件一起移除，不可恢复</p>
         </div>
       </header>
+
+      <div class="files-layout">
+        <!-- 左侧类型导航：取代原来的类型下拉，点一下就能切分类 -->
+        <aside class="type-rail" aria-label="按附件类型筛选">
+          <button
+            v-for="t in typeRail"
+            :key="t.value"
+            type="button"
+            class="type-rail-item"
+            :class="{ 'is-active': typeKey === t.value }"
+            @click="pickType(t.value)"
+          >
+            <i :class="t.icon" aria-hidden="true" />
+            <span class="type-rail-label">{{ t.label }}</span>
+          </button>
+        </aside>
+
+        <div class="files-main">
 
       <!-- 工具栏 -->
       <div class="list-filter">
@@ -80,14 +98,6 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
-            v-model="typeKey"
-            :options="ATTACHMENT_TYPE_OPTIONS"
-            icon="bi bi-file-earmark"
-            placeholder="全部类型"
-            @change="reload"
-          />
-
           <SelectMenu
             v-model="sortKey"
             :options="sortOptions"
@@ -161,11 +171,19 @@
             />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 个</span>
+          <span v-if="selectedIds.length" class="list-head-sel">已选 {{ selectedIds.length }} 个</span>
+          <span class="list-head-tip"><i class="bi bi-info-circle" aria-hidden="true" /> 悬停可复制、重命名或删除</span>
         </div>
 
         <ul class="attachment-grid">
-          <li v-for="item in list" :key="item.id" class="attachment-card" :class="{ 'is-selected': isSelected(item.id) }">
-            <label class="pick card-pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
+          <li
+            v-for="item in list"
+            :key="item.id"
+            class="attachment-card"
+            :class="{ 'is-selected': isSelected(item.id) }"
+            @click="openPreview(item)"
+          >
+            <label class="pick card-pick" :title="isSelected(item.id) ? '取消选择' : '选择'" @click.stop>
               <input
                 type="checkbox"
                 :checked="isSelected(item.id)"
@@ -175,65 +193,68 @@
               />
             </label>
 
-            <button
-              type="button"
-              class="attachment-preview"
+            <div
+              class="attachment-thumb"
+              role="button"
+              tabindex="0"
               :title="`预览 ${item.original_name}`"
-              @click="openPreview(item)"
+              :aria-label="`预览 ${item.original_name}`"
+              @keydown.enter.prevent="openPreview(item)"
             >
-              <img v-if="isPreviewableImage(item)" :src="item.full_url" :alt="item.original_name" loading="lazy" />
-              <span v-else class="attachment-filetype">
+              <img
+                v-if="isPreviewableImage(item)"
+                :src="item.full_url"
+                :alt="item.original_name"
+                loading="lazy"
+              />
+              <span v-else class="attachment-filetype" :class="`is-${attachmentTypeOf(item)}`">
                 <i :class="attachmentIcon(item)" />
                 <em>{{ extText(item) }}</em>
               </span>
-            </button>
 
-            <div class="attachment-info">
-              <div class="attachment-name" :title="item.original_name">{{ item.original_name || '未命名' }}</div>
-              <div class="attachment-meta">
-                <span class="meta-text">{{ formatFileSize(item.file_size) }}</span>
-                <span class="meta-text"><i class="bi bi-clock" /> {{ timeText(item) }}</span>
-              </div>
-              <div class="attachment-meta">
-                <span class="meta-text" :title="uploaderTitle(item)">
-                  <i class="bi bi-person" /> {{ uploaderName(item) }}
-                </span>
-                <span class="meta-text">{{ attachmentTypeLabel(item) }}</span>
+              <!-- 悬浮操作：复制 / 重命名 / 删除（回收站内为恢复 / 彻底删除） -->
+              <div class="thumb-actions" @click.stop>
+                <button class="thumb-action" title="复制链接" aria-label="复制链接" @click="copyUrl(item)">
+                  <i class="bi bi-clipboard" />
+                </button>
+                <template v-if="trash">
+                  <button class="thumb-action" title="恢复" aria-label="恢复" :disabled="busy" @click="restore(item)">
+                    <i class="bi bi-arrow-counterclockwise" />
+                  </button>
+                  <button class="thumb-action is-danger" title="彻底删除" aria-label="彻底删除" :disabled="busy" @click="askForceDelete(item)">
+                    <i class="bi bi-x-octagon" />
+                  </button>
+                </template>
+                <template v-else>
+                  <button class="thumb-action" title="重命名" aria-label="重命名" :disabled="busy" @click="openRename(item)">
+                    <i class="bi bi-pencil" />
+                  </button>
+                  <button class="thumb-action is-danger" title="删除" aria-label="删除" :disabled="busy" @click="askRemove(item)">
+                    <i class="bi bi-trash" />
+                  </button>
+                </template>
               </div>
             </div>
 
-            <div class="attachment-actions">
-              <button class="btn btn-ghost btn-sm" title="复制链接" aria-label="复制链接" @click="copyUrl(item)">
-                <i class="bi bi-clipboard" />
-              </button>
-              <template v-if="trash">
-                <button class="btn btn-ghost btn-sm" title="恢复" aria-label="恢复" :disabled="busy" @click="restore(item)">
-                  <i class="bi bi-arrow-counterclockwise" />
-                </button>
-                <button class="btn btn-ghost btn-sm danger" title="彻底删除" aria-label="彻底删除" :disabled="busy" @click="askForceDelete(item)">
-                  <i class="bi bi-x-octagon" />
-                </button>
-              </template>
-              <template v-else>
-                <button class="btn btn-ghost btn-sm" title="重命名" aria-label="重命名" :disabled="busy" @click="openRename(item)">
-                  <i class="bi bi-pencil" />
-                </button>
-                <button class="btn btn-ghost btn-sm danger" title="删除" aria-label="删除" :disabled="busy" @click="askRemove(item)">
-                  <i class="bi bi-trash" />
-                </button>
-              </template>
+            <div class="attachment-name" :title="item.original_name">{{ item.original_name || '未命名' }}</div>
+            <div class="attachment-meta" :title="`${timeText(item)} · ${uploaderTitle(item)}`">
+              <span>{{ formatFileSize(item.file_size) }}</span>
+              <span class="attachment-meta-sep" aria-hidden="true" />
+              <span>{{ attachmentTypeLabel(item) }}</span>
             </div>
           </li>
         </ul>
       </template>
 
-      <Pagination
-        v-if="!loading && total > pageSize"
-        :current="page"
-        :total="total"
-        :page-size="pageSize"
-        @update:current="changePage"
-      />
+          <Pagination
+            v-if="!loading && total > pageSize"
+            :current="page"
+            :total="total"
+            :page-size="pageSize"
+            @update:current="changePage"
+          />
+        </div>
+      </div>
     </div>
 
     <!-- 预览 / 详情 -->
@@ -273,6 +294,10 @@
         <div class="preview-row">
           <dt>存储</dt>
           <dd>{{ preview.driver || '—' }}</dd>
+        </div>
+        <div class="preview-row">
+          <dt>上传者</dt>
+          <dd>{{ preview.uploader || '—' }}</dd>
         </div>
         <div class="preview-row">
           <dt>上传时间</dt>
@@ -359,6 +384,7 @@ import {
   ATTACHMENT_TYPE_OPTIONS,
   attachmentIcon,
   attachmentTypeLabel,
+  attachmentTypeOf,
   attachmentWhereJSON,
   isPreviewableImage,
   isPreviewableVideo,
@@ -394,6 +420,30 @@ const keyword = ref('')
 const searchKey = ref('')
 const selectedIds = ref([])
 
+// 左侧类型导航：直接复用类型选项，图标按类型区分
+const TYPE_ICONS = {
+  '': 'bi bi-collection',
+  image: 'bi bi-file-earmark-image',
+  video: 'bi bi-file-earmark-play',
+  audio: 'bi bi-file-earmark-music',
+  doc: 'bi bi-file-earmark-text',
+  archive: 'bi bi-file-earmark-zip',
+  other: 'bi bi-file-earmark'
+}
+
+const typeRail = ATTACHMENT_TYPE_OPTIONS.map((item) => ({
+  value: item.value,
+  label: item.value ? item.label : '全部',
+  icon: TYPE_ICONS[item.value] || TYPE_ICONS.other
+}))
+
+/** 左侧导航切换类型：回到第一页重新拉取 */
+function pickType(value) {
+  if (typeKey.value === value) return
+  typeKey.value = value
+  reload()
+}
+
 // ===== 统计 =====
 const loadingStats = ref(false)
 const stats = reactive({ total: 0, size: 0, image: 0, trash: 0 })
@@ -417,6 +467,7 @@ const preview = reactive({
   size: '',
   mime: '',
   driver: '',
+  uploader: '',
   time: '',
   url: '',
   raw: null
@@ -642,6 +693,7 @@ function openPreview(item) {
   preview.size = formatFileSize(item.file_size)
   preview.mime = item.mime_type || ''
   preview.driver = item.storage_driver || ''
+  preview.uploader = uploaderName(item)
   preview.time = formatTime(item.create_time)
   preview.url = item.full_url || ''
   preview.raw = item
@@ -855,6 +907,85 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-muted);
 }
+/* 标题后的总数徽章 */
+.files-count {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.8;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- 文件管理器布局：左类型导航 + 右主区 ---------- */
+.files-layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 18px;
+}
+.type-rail {
+  flex: 0 0 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+}
+.type-rail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
+}
+.type-rail-item .bi {
+  flex-shrink: 0;
+  font-size: 15px;
+  color: var(--text-light);
+  transition: color var(--dur-fast) var(--ease);
+}
+.type-rail-item:hover {
+  background: var(--bg-card);
+  color: var(--text);
+}
+.type-rail-item:hover .bi {
+  color: var(--primary);
+}
+.type-rail-item.is-active {
+  background: var(--bg-card);
+  color: var(--primary-deep);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+.type-rail-item.is-active .bi {
+  color: var(--primary);
+}
+.type-rail-label {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.files-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 
 /* 标题右侧的存储方式徽章 */
 .store-badge {
@@ -1049,35 +1180,52 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 8px 4px;
+  padding: 10px 4px 6px;
 }
 .list-head-text {
   font-size: 12px;
   color: var(--text-muted);
 }
+.list-head-sel {
+  font-size: 12px;
+  color: var(--primary);
+}
+.list-head-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--text-light);
+}
 
+/* 文件管理器风格：小格子 + 大类型图标 + 居中文件名 */
 .attachment-grid {
   display: grid;
-  /* 卡片宽度固定区间，窄屏自动减少列数 */
-  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(108px, 1fr));
+  gap: 6px;
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
 }
 .attachment-card {
   position: relative;
   display: flex;
   flex-direction: column;
-  padding: 8px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px 8px;
+  border: 1px solid transparent;
   border-radius: var(--radius);
-  transition: border-color 0.15s, background 0.15s;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
 }
 .attachment-card:hover {
-  border-color: var(--primary);
+  background: var(--bg-muted);
 }
 .attachment-card.is-selected {
-  border-color: var(--primary);
   background: var(--accent-wash);
+  border-color: var(--accent-soft);
 }
 
 .pick {
@@ -1093,27 +1241,44 @@ onMounted(() => {
 }
 .card-pick {
   position: absolute;
-  left: 12px;
-  top: 12px;
-  z-index: 1;
+  left: 8px;
+  top: 8px;
+  z-index: 3;
   padding: 2px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.9);
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
+}
+.attachment-card:hover .card-pick,
+.attachment-card.is-selected .card-pick,
+.card-pick:focus-within {
+  opacity: 1;
 }
 
-.attachment-preview {
+/* 缩略图 / 文件图标区 */
+.attachment-thumb {
+  position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: 1 / 1;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border: none;
   border-radius: var(--radius-sm);
-  background: var(--bg-muted);
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
   cursor: pointer;
+  outline: none;
 }
-.attachment-preview img {
+.attachment-card:hover .attachment-thumb {
+  border-color: var(--border);
+}
+.attachment-thumb:focus-visible {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+.attachment-thumb img {
   display: block;
   width: 100%;
   height: 100%;
@@ -1123,59 +1288,115 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  color: var(--text-muted);
+  justify-content: center;
+  gap: 2px;
+  color: var(--text-light);
 }
 .attachment-filetype .bi {
-  font-size: 32px;
+  font-size: 38px;
+  line-height: 1;
 }
 .attachment-filetype em {
-  font-size: 11px;
+  font-size: 10px;
   font-style: normal;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+/* 类型配色：图标颜色即文件类型，和文件名下方的类型文字对应 */
+.attachment-filetype.is-image .bi {
+  color: #0ea5e9;
+}
+.attachment-filetype.is-video .bi {
+  color: #8b5cf6;
+}
+.attachment-filetype.is-audio .bi {
+  color: #d946ef;
+}
+.attachment-filetype.is-doc .bi {
+  color: #3b82f6;
+}
+.attachment-filetype.is-archive .bi {
+  color: #eab308;
+}
+.attachment-filetype.is-other .bi {
+  color: #94a3b8;
 }
 
-.attachment-info {
-  margin-top: 8px;
-  min-width: 0;
+/* 悬浮操作条：不占布局，叠在缩略图底部 */
+.thumb-actions {
+  position: absolute;
+  inset: auto 0 0 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 4px;
+  background: linear-gradient(180deg, rgba(32, 28, 22, 0), rgba(32, 28, 22, 0.62));
+  opacity: 0;
+  transition: opacity var(--dur-fast) var(--ease);
 }
+.attachment-card:hover .thumb-actions,
+.attachment-card:focus-within .thumb-actions {
+  opacity: 1;
+}
+.thumb-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text-soft);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.thumb-action:hover:not(:disabled) {
+  background: #fff;
+  color: var(--primary);
+}
+.thumb-action.is-danger:hover:not(:disabled) {
+  color: var(--danger);
+}
+.thumb-action:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .attachment-name {
-  font-size: 13px;
-  font-weight: 600;
+  width: 100%;
+  font-size: 12px;
+  line-height: 1.5;
   color: var(--text);
+  text-align: center;
+  word-break: break-all;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .attachment-meta {
   display: flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 4px;
+  justify-content: center;
+  gap: 5px;
+  width: 100%;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--text-light);
+  white-space: nowrap;
+  overflow: hidden;
 }
-.meta-text {
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-}
-
-.attachment-actions {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 2px;
-  margin-top: 6px;
-}
-.attachment-actions .danger:hover:not(:disabled) {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-.attachment-actions .btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.attachment-meta-sep {
+  width: 2px;
+  height: 2px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
 }
 
 /* ---------- 弹窗 ---------- */
@@ -1265,6 +1486,14 @@ onMounted(() => {
   color: var(--text-muted);
 }
 
+/* 触屏没有 hover：勾选框与操作条常驻，否则无法重命名 / 删除 */
+@media (hover: none) {
+  .card-pick,
+  .thumb-actions {
+    opacity: 1;
+  }
+}
+
 @media (max-width: 768px) {
   .list-filter {
     gap: 8px;
@@ -1274,8 +1503,37 @@ onMounted(() => {
     width: 100%;
     margin-left: 0;
   }
+  /* 左侧导航改为横向滚动条 */
+  .files-layout {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .type-rail {
+    flex: 0 0 auto;
+    flex-direction: row;
+    gap: 2px;
+    padding: 5px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .type-rail::-webkit-scrollbar {
+    display: none;
+  }
+  .type-rail-item {
+    width: auto;
+    height: 30px;
+    padding: 0 10px;
+    flex-shrink: 0;
+  }
   .attachment-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  }
+  .attachment-filetype .bi {
+    font-size: 32px;
+  }
+  .list-head-tip {
+    display: none;
   }
   .stat-grid {
     grid-template-columns: repeat(2, 1fr);
