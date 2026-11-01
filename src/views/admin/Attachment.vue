@@ -246,7 +246,10 @@
       width="560px"
       @confirm="preview.visible = false"
     >
-      <div v-if="preview.image" class="preview-image">
+      <div v-if="preview.video" class="preview-video">
+        <video :src="preview.video" controls preload="metadata" playsinline>您的浏览器不支持视频播放</video>
+      </div>
+      <div v-else-if="preview.image" class="preview-image">
         <img :src="preview.image" :alt="preview.title" loading="lazy" />
       </div>
       <div v-else class="preview-icon">
@@ -358,6 +361,7 @@ import {
   attachmentTypeLabel,
   attachmentWhereJSON,
   isPreviewableImage,
+  isPreviewableVideo,
   formatFileSize,
   normalizeExt,
   sanitizeAttachmentKeyword
@@ -406,6 +410,7 @@ const preview = reactive({
   visible: false,
   title: '',
   image: '',
+  video: '',
   icon: '',
   ext: '',
   name: '',
@@ -630,6 +635,7 @@ async function onFileChange(e) {
 function openPreview(item) {
   preview.title = item.original_name || '附件详情'
   preview.image = isPreviewableImage(item) ? item.full_url : ''
+  preview.video = isPreviewableVideo(item) ? item.full_url : ''
   preview.icon = attachmentIcon(item)
   preview.ext = extText(item)
   preview.name = item.original_name || '—'
@@ -1173,7 +1179,8 @@ onMounted(() => {
 }
 
 /* ---------- 弹窗 ---------- */
-.preview-image {
+.preview-image,
+.preview-video {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1186,6 +1193,15 @@ onMounted(() => {
   max-width: 100%;
   max-height: 320px;
   object-fit: contain;
+}
+.preview-video {
+  background: #000;
+}
+.preview-video video {
+  width: 100%;
+  max-height: 320px;
+  border-radius: var(--radius);
+  background: #000;
 }
 .preview-icon {
   display: flex;

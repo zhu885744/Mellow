@@ -91,31 +91,41 @@ onMounted(async () => {
   gap: 10px;
 }
 .social-btn {
-  flex: 1;
+  /* 1 1 0：无论几个平台、屏幕多窄，都等分一行；min-width 允许文字省略而不是换行 */
+  flex: 1 1 0;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   height: 42px;
   padding: 0 12px;
-  border: 1px solid var(--border);
-  border-radius: 4px;
-  background: var(--bg-card);
+  border: none;
+  border-radius: 6px;
+  background: var(--bg-muted);
   color: var(--text-soft);
   font-size: 14px;
   font-family: inherit;
   cursor: pointer;
-  transition: border-color 0.18s, color 0.18s, background 0.18s;
+  transition: color 0.18s, background 0.18s;
 }
 .social-btn:hover {
-  border-color: var(--primary-soft);
   color: var(--primary);
-  background: var(--bg-muted);
+  /* 无边框按钮靠底色区分：hover 时掺入一点主色，比直接用 primary-soft 更柔 */
+  background: color-mix(in srgb, var(--primary) 9%, var(--bg-muted));
 }
 /* 平台图标（bi-tencent-qq / bi-github / bi-git）：跟随按钮文字色 */
 .social-icon {
+  flex-shrink: 0;
   font-size: 18px;
   line-height: 1;
+}
+/* 平台名过长时省略，保证三个按钮始终在同一行 */
+.social-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .social-hint {
   margin: 10px 0 0;
@@ -125,10 +135,18 @@ onMounted(async () => {
   text-align: center;
 }
 
-/* 窄屏：按钮竖排，避免文字挤压 */
+/* 窄屏：仍保持一行，只收紧间距与字号，不改成竖排 */
 @media (max-width: 420px) {
   .social-list {
-    flex-direction: column;
+    gap: 8px;
+  }
+  .social-btn {
+    gap: 6px;
+    padding: 0 8px;
+    font-size: 13px;
+  }
+  .social-icon {
+    font-size: 16px;
   }
 }
 </style>

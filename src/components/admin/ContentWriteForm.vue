@@ -690,6 +690,8 @@ async function submit(status) {
       publishAtTouched.value = false
     }
     dirty.value = false
+    // 已落库：清掉编辑器里的本地草稿，避免下次打开误提示「发现本地草稿」
+    editorRef.value?.clearDraft?.()
 
     if (isPage.value) {
       savedTip.value = '已保存'

@@ -1,163 +1,49 @@
 <template>
   <div class="markdown-editor" :class="{ 'is-fullscreen': fullscreen }">
-    <!-- 工具栏 -->
-    <div class="markdown-editor-toolbar">
-      <!-- 表情 -->
-      <div class="markdown-editor-emoji-wrap">
-        <button type="button" class="markdown-editor-tool" title="插入表情" @mousedown.prevent @click="toggleEmoji">
-          <i class="bi bi-emoji-smile" />
-        </button>
-        <EmojiPicker v-if="showEmoji" v-model="showEmoji" @select="insertEmoji" />
-      </div>
+    <EditorToolbar
+      ref="toolbarRef"
+      :tools="tools"
+      :mode="mode"
+      :split-view="splitView"
+      :fullscreen="fullscreen"
+      :uploading="uploading"
+      :media-uploading="mediaUploading"
+      :live-uploading="liveUploading"
+      @select-tool="runTool($event.apply)"
+      @insert-emoji="insertEmoji"
+      @toggle-mention="onMentionToggle"
+      @pick-image="pickImage"
+      @open-library="showLibrary = true"
+      @open-media-library="openMediaLibrary"
+      @pick-media="pickMedia"
+      @pick-live="pickLive"
+      @toggle-mode="toggleMode"
+      @toggle-split="toggleSplit"
+      @toggle-fullscreen="toggleFullscreen()"
+    />
 
-      <!-- @ 提及：候选只含「我关注的人」，插入纯文本 @昵称；保存时后端解析成链接并发通知 -->
-      <div class="markdown-editor-mention-wrap" style="position: relative">
-        <button type="button" class="markdown-editor-tool" title="@ 提及" @mousedown.prevent @click="toggleMention">
-          <i class="bi bi-at" />
-        </button>
-        <MentionPicker
-          v-if="mentionOpen"
-          ref="mentionRef"
-          :keyword="mentionKeyword"
-          :position="mentionPosition"
-          @select="applyMention"
-        />
-      </div>
+    <!-- @ 提及候选（position: fixed，DOM 位置不影响定位） -->
+    <MentionPicker
+      v-if="mentionOpen"
+      ref="mentionRef"
+      :keyword="mentionKeyword"
+      :position="mentionPosition"
+      @select="applyMention"
+    />
 
-      <!-- 上传图片 -->
-      <button
-        type="button"
-        class="markdown-editor-tool"
-        title="上传图片"
-        :disabled="uploading"
-        @mousedown.prevent
-        @click="pickImage"
-      >
-        <i :class="uploading ? 'bi bi-arrow-repeat markdown-editor-spin' : 'bi bi-image'" />
-      </button>
-
-      <!-- 从附件库插入图片 -->
-      <button
-        type="button"
-        class="markdown-editor-tool"
-        title="从附件库插入图片"
-        @mousedown.prevent
-        @click="showLibrary = true"
-      >
-        <i class="bi bi-folder2-open" />
-      </button>
-
-      <!-- 视频 / 音频 / 附件：从附件库选择，插入 @[video] / @[audio] / @[file] 短代码 -->
-      <button
-        type="button"
-        class="markdown-editor-tool"
-        title="插入视频"
-        @mousedown.prevent
-        @click="openMediaLibrary('video')"
-      >
-        <i class="bi bi-camera-video" />
-      </button>
-
-      <button
-        type="button"
-        class="markdown-editor-tool"
-        title="插入音频"
-        @mousedown.prevent
-        @click="openMediaLibrary('audio')"
-      >
-        <i class="bi bi-music-note-beamed" />
-      </button>
-
-      <button
-        type="button"
-        class="markdown-editor-tool"
-        title="插入附件"
-        @mousedown.prevent
-        @click="openMediaLibrary('file')"
-      >
-        <i class="bi bi-paperclip" />
-      </button>
-
-      <!-- 实况图：一次选「一张封面图 + 一段短视频」，插入 @[live](视频 "封面图")；
-           安卓实况照片本身就是一张内嵌视频的 jpg，只选那张图也行 -->
-      <button
-        type="button"
-        class="markdown-editor-tool"
-        title="插入实况图（封面图 + 短视频；安卓实况照片直接选那张图即可）"
-        :disabled="liveUploading"
-        @mousedown.prevent
-        @click="pickLive"
-      >
-        <i :class="liveUploading ? 'bi bi-arrow-repeat markdown-editor-spin' : 'bi bi-record-circle'" />
-      </button>
-
-      <!-- 上传视频 / 音频 / 附件（按扩展名自动生成对应短代码） -->
-      <button
-        type="button"
-        class="markdown-editor-tool"
-        title="上传视频 / 音频 / 附件"
-        :disabled="mediaUploading"
-        @mousedown.prevent
-        @click="pickMedia"
-      >
-        <i :class="mediaUploading ? 'bi bi-arrow-repeat markdown-editor-spin' : 'bi bi-cloud-arrow-up'" />
-      </button>
-
-      <span class="markdown-editor-toolbar-split" />
-
-      <button
-        v-for="tool in tools"
-        :key="tool.key"
-        type="button"
-        class="markdown-editor-tool"
-        :title="tool.title"
-        @mousedown.prevent
-        @click="runTool(tool.apply)"
-      >
-        <i v-if="tool.icon" :class="tool.icon" />
-        <span v-else class="markdown-editor-tool-text">{{ tool.text }}</span>
-      </button>
-
-      <span class="markdown-editor-toolbar-flex" />
-
-      <!-- 全屏编辑 -->
-      <button
-        type="button"
-        class="markdown-editor-tool"
-        :class="{ 'is-active': fullscreen }"
-        :title="fullscreen ? '退出全屏 (Esc)' : '全屏编辑'"
-        @mousedown.prevent
-        @click="toggleFullscreen"
-      >
-        <i :class="fullscreen ? 'bi bi-fullscreen-exit' : 'bi bi-arrows-fullscreen'" />
-      </button>
-
-      <!-- 分屏预览：仅全屏下可用（左写右预览，边写边看） -->
-      <button
-        v-if="fullscreen"
-        type="button"
-        class="markdown-editor-tool"
-        :class="{ 'is-active': splitView }"
-        :title="splitView ? '退出分屏，单栏编辑' : '分屏预览（左写右预览）'"
-        @mousedown.prevent
-        @click="toggleSplit"
-      >
-        <i class="bi bi-layout-split" />
-      </button>
-
-      <!-- 预览 / 继续编辑 -->
-      <button
-        type="button"
-        class="markdown-editor-tool"
-        :class="{ 'is-active': mode === 'preview' && !splitView }"
-        :title="mode === 'preview' && !splitView ? '继续编辑' : splitView ? '只看预览' : '预览'"
-        @click="toggleMode"
-      >
-        <i :class="mode === 'preview' && !splitView ? 'bi bi-pencil-square' : 'bi bi-eye'" />
-      </button>
+    <!-- 本地草稿恢复提示：只在「本地内容与当前正文不同」时出现 -->
+    <div v-if="draftPrompt" class="markdown-editor-draft">
+      <span class="markdown-editor-draft-text">
+        <i class="bi bi-clock-history" aria-hidden="true" />
+        发现 {{ draftPrompt.time }} 的本地草稿，内容与当前正文不一致
+      </span>
+      <span class="markdown-editor-draft-actions">
+        <button type="button" class="btn btn-ghost btn-sm" @click="discardDraft">忽略</button>
+        <button type="button" class="btn btn-primary btn-sm" @click="restoreDraft">恢复草稿</button>
+      </span>
     </div>
 
-    <!-- 正文 -->
+    <!-- 正文：源码编辑 + 预览 -->
     <div class="markdown-editor-body" :class="{ 'is-split': splitView }">
       <!-- 源码编辑：只有 [emoji:url] 渲染成表情图，图片 markdown 与 @[video] 等短代码保持文本 -->
       <div
@@ -182,34 +68,22 @@
         :style="{ minHeight: fullscreen ? '0px' : minHeight }"
         v-html="html"
       />
-
-      <!-- 字数（右下角，与参考设计一致） -->
-      <span class="markdown-editor-count" :class="{ 'is-over': count > maxLength }">
-        {{ count }}<em>/{{ maxLength }}</em>
-      </span>
     </div>
 
-    <!-- 全屏底部状态条（全屏时父级操作栏被遮住，这里留出退出口） -->
-    <div v-if="fullscreen" class="markdown-editor-fullscreen-foot">
-      <span class="markdown-editor-fullscreen-tip">
-        <i class="bi bi-keyboard" aria-hidden="true" />
-        Ctrl + S 保存 · Esc 退出全屏
-      </span>
-      <button type="button" class="btn btn-sm" @click="toggleFullscreen">退出全屏</button>
-    </div>
+    <EditorStatusBar
+      :count="count"
+      :max-length="maxLength"
+      :saved-text="draftSavedText"
+      :fullscreen="fullscreen"
+      @save="emit('save')"
+      @exit-fullscreen="toggleFullscreen(false)"
+    />
 
     <input ref="fileRef" type="file" accept="image/*" hidden @change="onFileChange" />
 
     <!-- 实况图：图片与视频一起选（先选中的图片当封面，第一条视频当实况）；
          也可以只选一张安卓实况照片，视频由后端拆出 -->
-    <input
-      ref="liveRef"
-      type="file"
-      accept="image/*,video/*"
-      multiple
-      hidden
-      @change="onLiveChange"
-    />
+    <input ref="liveRef" type="file" accept="image/*,video/*" multiple hidden @change="onLiveChange" />
 
     <!-- 视频 / 音频 / 附件：实际允许的类型由后端 storage 配置兜底校验 -->
     <input
@@ -231,7 +105,7 @@
       @select="onLibrarySelect"
     />
 
-    <!-- 附件库（视频 / 音频 / 任意附件）：三个按钮共用，按当前类型过滤，选中后生成对应短代码 -->
+    <!-- 附件库（视频 / 音频 / 任意附件）：共用同一个弹窗，按当前类型过滤 -->
     <AttachmentLibrary
       v-model:visible="showMediaLibrary"
       :title="mediaTitle"
@@ -244,8 +118,28 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
-import EmojiPicker from './EmojiPicker.vue'
+/**
+ * 文章 / 页面 / 文档共用的 Markdown 编辑器
+ *
+ * 组成（重构后）：
+ *   components/editor/EditorToolbar.vue   分组工具栏 + 插入面板（纯展示，不碰正文）
+ *   components/editor/EditorStatusBar.vue 字数 / 阅读时长 / 草稿状态 / 全屏保存
+ *   composables/useEditorMode.js          写作 · 预览 · 分屏 · 全屏
+ *   composables/useMentionPanel.js        @ 候选面板的状态与定位
+ *   composables/useEditorDraft.js         本地草稿自动保存（防丢稿）
+ *
+ * 本文件只保留「源码 ↔ DOM」这一块真正的编辑器内核：
+ *   contenteditable 里是 Markdown 源码文本（表情与图片被渲染成原子节点），
+ *   每次输入序列化回字符串交给 v-model，外部内容变化时整体重建 DOM。
+ *
+ * 对外契约（ContentWriteForm / DocsWrite 依赖，勿改）：
+ *   props  modelValue / placeholder / minHeight / maxLength
+ *   emits  update:modelValue / save
+ *   expose focus() / clearDraft()
+ */
+import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import EditorToolbar from '@/components/editor/EditorToolbar.vue'
+import EditorStatusBar from '@/components/editor/EditorStatusBar.vue'
 import MentionPicker from './MentionPicker.vue'
 import AttachmentLibrary from './AttachmentLibrary.vue'
 import { renderMarkdown } from '@/utils/markdown'
@@ -254,6 +148,10 @@ import { uploadArticleImage } from '@/api/article'
 import { uploadAttachments } from '@/api/attachment'
 import { attachmentMarker } from '@/utils/attachment'
 import { toast } from '@/utils/toast'
+import { formatTime } from '@/utils/time'
+import { useEditorMode } from '@/composables/useEditorMode'
+import { useEditorDraft } from '@/composables/useEditorDraft'
+import { useMentionPanel } from '@/composables/useMentionPanel'
 import {
   sourceToHtml,
   serializeEditor,
@@ -274,154 +172,86 @@ const props = defineProps({
   modelValue: { type: String, default: '' },
   placeholder: { type: String, default: '来说点什么吧...' },
   minHeight: { type: String, default: '420px' },
-  // 字数展示上限（仅用于右下角计数展示，不做硬性截断）
-  maxLength: { type: Number, default: 5000 }
+  // 字数展示上限（仅用于状态栏计数，不做硬性截断）
+  maxLength: { type: Number, default: 5000 },
+  // 本地草稿键：默认按当前路由路径区分；传空串可关闭本地草稿
+  draftKey: { type: String, default: '' }
 })
 
 const emit = defineEmits(['update:modelValue', 'save'])
 
 const editorRef = ref(null)
+const toolbarRef = ref(null)
 const fileRef = ref(null)
-const mode = ref('write')
 const uploading = ref(false)
-const showEmoji = ref(false)
-const fullscreen = ref(false)
 
 const html = computed(() => renderMarkdown(props.modelValue))
 const count = computed(() => (props.modelValue || '').replace(/\s/g, '').length)
 
+// ===== 视图模式（写作 / 预览 / 分屏 / 全屏） =====
+const { mode, splitView, fullscreen, showEditor, showPreview, toggleMode, toggleSplit, toggleFullscreen } = useEditorMode({
+  focus: () => editorRef.value?.focus(),
+  // 工具栏面板还开着时，第一次 Esc 只关面板
+  shouldIgnoreEscape: () => toolbarRef.value?.isPanelOpen?.() === true
+})
+
 // ===== @ 提及 =====
-// 候选只含「我关注的人」（见 api/mention.js），插入纯文本 @昵称；
-// 保存时后端会规范化为 @[昵称](/author/uid) 并给被 @ 的人发站内通知（app/model/mention.go）。
-//
-// 两条触发路径：
-//   ① 正文里直接输入 @ —— 弹面板并随输入过滤（与评论框 / 动态编辑器一致）；
-//   ② 工具栏的 @ 按钮 —— 列出全部候选，插到光标处。
-// 面板坐标一律用**视口坐标**（MentionPicker 是 position: fixed），
-// 不要传「相对容器」的坐标 —— 那样容器层级一变就会整体错位。
 const mentionRef = ref(null)
-const mentionOpen = ref(false)
-const mentionKeyword = ref('')
-// 本次面板是「输入 @ 触发」还是「工具栏按钮触发」：
-// 前者正文里已有一个 @关键词 需要被替换掉，后者不能回删字符
-const mentionReplace = ref(false)
-const mentionPosition = ref({ left: 0, top: 0, flipTo: null })
+const {
+  open: mentionOpen,
+  keyword: mentionKeyword,
+  position: mentionPosition,
+  syncFromSelection: syncMention,
+  toggle: toggleMentionPanel,
+  onKeydown: onMentionKeydown,
+  apply: applyMention
+} = useMentionPanel({ getRoot: () => editorRef.value, panelRef: mentionRef })
 
-const MENTION_GAP = 6
-// 面板最大高度 236 + 间距（与 MentionPicker 的样式保持一致）
-const MENTION_PANEL_HEIGHT = 246
-
-/** 由光标 / 按钮的矩形算出面板坐标（视口坐标），下方空间不足时向上翻 */
-function mentionStyleByRect(rect) {
-  const below = rect.bottom + MENTION_GAP
-  return {
-    left: rect.left,
-    top: below,
-    flipTo: below + MENTION_PANEL_HEIGHT > window.innerHeight ? rect.top - MENTION_GAP : null
-  }
+/** 工具栏 @ 按钮：切回写作态并贴在按钮下方展开候选 */
+function onMentionToggle(rect) {
+  if (mode.value === 'preview') mode.value = 'write'
+  nextTick(() => toggleMentionPanel(rect))
 }
 
-/** 光标前正处于「@关键词」时打开面板并按关键词过滤 */
-function syncMentionState() {
-  const root = editorRef.value
-  const selection = window.getSelection()
+// ===== 本地草稿（防丢稿） =====
+const {
+  restored: draftRestored,
+  lastSavedAt,
+  init: initDraft,
+  clear: clearDraft,
+  consume: consumeDraft,
+  discard: discardDraftCache
+} = useEditorDraft({
+  key: () => props.draftKey || window.location.pathname,
+  getValue: () => props.modelValue
+})
 
-  if (!root || !selection || !selection.rangeCount) {
-    mentionOpen.value = false
-    return
-  }
+const draftPrompt = computed(() => {
+  const found = draftRestored.value
+  if (!found) return null
+  return { time: found.updatedAt ? formatTime(Math.floor(found.updatedAt / 1000)) : '刚刚' }
+})
 
-  const range = selection.getRangeAt(0)
-  const node = range.startContainer
+const draftSavedText = computed(() => {
+  if (!lastSavedAt.value) return ''
+  return `本地草稿已存 ${formatTime(Math.floor(lastSavedAt.value / 1000)).slice(11)}`
+})
 
-  if (!range.collapsed || !root.contains(node) || node.nodeType !== Node.TEXT_NODE) {
-    mentionOpen.value = false
-    return
-  }
-
-  // @ 前必须是行首或空白，避免把邮箱 a@b.com 当成 @ 提及
-  const before = node.textContent.slice(0, range.startOffset)
-  const matched = before.match(/(?:^|\s)@([^\s@]{0,32})$/)
-  if (!matched) {
-    mentionOpen.value = false
-    return
-  }
-
-  const rects = range.getClientRects()
-  const caret = rects.length ? rects[rects.length - 1] : range.getBoundingClientRect()
-
-  mentionKeyword.value = matched[1]
-  mentionReplace.value = true
-  mentionPosition.value = mentionStyleByRect(caret)
-  mentionOpen.value = true
+function restoreDraft() {
+  const value = consumeDraft()
+  if (!value) return
+  // 先重建 DOM 再同步给父级：emitModel 会更新 lastValue，父级回传时 watcher 就不再重建了
+  renderFrom(value)
+  emitModel(value)
+  toast.success('已恢复本地草稿')
 }
 
-/** 工具栏 @ 按钮：不做关键词过滤，面板贴在按钮下方 */
-function toggleMention(event) {
-  const rect = event?.currentTarget?.getBoundingClientRect?.()
-  mentionKeyword.value = ''
-  mentionReplace.value = false
-  if (rect) mentionPosition.value = mentionStyleByRect(rect)
-  mentionOpen.value = !mentionOpen.value
+/** 点「忽略」= 删掉本地副本，避免下次打开又提示 */
+function discardDraft() {
+  discardDraftCache()
 }
 
-/** 面板打开时接管方向键 / 回车 / Esc；返回 true 表示该按键已被面板处理 */
-function onMentionKeydown(event) {
-  if (!mentionOpen.value) return false
-
-  if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-    mentionRef.value?.move(event.key === 'ArrowDown' ? 1 : -1)
-    return true
-  }
-
-  if (event.key === 'Enter') {
-    // 候选为空时返回 false，让回车继续走编辑器的换行
-    return mentionRef.value?.selectActive() === true
-  }
-
-  if (event.key === 'Escape') {
-    mentionOpen.value = false
-    return true
-  }
-
-  return false
-}
-
-function applyMention(user) {
-  const keyword = mentionKeyword.value
-  // 输入触发时正文里已经有一个「@关键词」，长度是 keyword.length + 1（那个 @）；
-  // 工具栏触发时正文里没有 @，这里必须是 0 —— 否则会把它前面一个字符误删
-  const consume = mentionReplace.value ? keyword.length + 1 : 0
-
-  mentionReplace.value = false
-  mentionOpen.value = false
-  if (!user?.nickname) return
-
-  const root = editorRef.value
-  if (!root) return
-
-  // 工具栏按钮都带 @mousedown.prevent，点按钮不会丢选区，光标仍在正文里
-  root.focus()
-  const selection = window.getSelection()
-  if (!selection || !selection.rangeCount) return
-
-  const range = selection.getRangeAt(0)
-  const node = range.startContainer
-
-  // 先把已输入的「@关键词」整段选中，下面的 execCommand 会用 @昵称 覆盖它
-  if (consume > 0 && node.nodeType === Node.TEXT_NODE) {
-    const start = Math.max(0, range.startOffset - consume)
-    const replaceRange = document.createRange()
-    replaceRange.setStart(node, start)
-    replaceRange.setEnd(node, range.startOffset)
-    selection.removeAllRanges()
-    selection.addRange(replaceRange)
-  }
-
-  // 用 execCommand 插入纯文本：会触发 input 事件，交给 onInput → serializeEditor 同步源码
-  document.execCommand('insertText', false, `@${user.nickname} `)
-}
-
+// ===== 工具栏 =====
 const tools = [
   { key: 'bold', title: '加粗 (Ctrl+B)', icon: 'bi bi-type-bold', apply: (v, s, e) => wrapText(v, s, e, '**', '**', '加粗文字') },
   { key: 'italic', title: '斜体 (Ctrl+I)', icon: 'bi bi-type-italic', apply: (v, s, e) => wrapText(v, s, e, '*', '*', '斜体文字') },
@@ -434,7 +264,7 @@ const tools = [
   { key: 'code', title: '行内代码', icon: 'bi bi-code', apply: (v, s, e) => wrapText(v, s, e, '`', '`', 'code') },
   { key: 'block', title: '代码块', icon: 'bi bi-code-square', apply: codeBlockText },
   { key: 'hr', title: '分割线', icon: 'bi bi-dash-lg', apply: (v, s, e) => insertTextAt(v, s, e, '\n\n---\n\n') },
-  { key: 'link', title: '链接', icon: 'bi bi-link-45deg', apply: linkText },
+  { key: 'link', title: '链接 (Ctrl+K)', icon: 'bi bi-link-45deg', apply: linkText },
   { key: 'table', title: '表格', icon: 'bi bi-table', apply: tableText }
 ]
 
@@ -497,7 +327,7 @@ function onInput(e) {
   const { text } = serializeEditor(root)
   emitModel(text)
   // 输入 @ / 继续输入关键词时，同步 @ 候选面板
-  syncMentionState()
+  syncMention()
 
   // 手动敲完一个表情标记（[emoji:url]）时即时渲染成表情图；图片 / 短代码保持文本
   const data = e?.data || ''
@@ -519,7 +349,7 @@ function renderCompletedMarker() {
   applySource(text, offsets.end)
 }
 
-/** 外部（加载 / 重置）变更内容时重建编辑器 */
+/** 外部（加载 / 重置 / 恢复草稿）变更内容时重建编辑器 */
 watch(
   () => props.modelValue,
   (val) => {
@@ -532,16 +362,12 @@ watch(
 )
 
 onMounted(() => {
-  window.addEventListener('keydown', onWindowKeydown)
   nextTick(() => {
     renderFrom(props.modelValue)
     lastValue = props.modelValue || ''
+    // 内容就位后再比对本地草稿，避免把「还没加载出来的正文」当成空稿
+    initDraft(props.modelValue || '')
   })
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', onWindowKeydown)
-  restoreBodyOverflow()
 })
 
 function onPaste(e) {
@@ -587,6 +413,11 @@ function onKeydown(e) {
     runTool((v, s, en) => wrapText(v, s, en, '*', '*', '斜体文字'))
     return
   }
+  if (mod && key === 'k') {
+    e.preventDefault()
+    runTool(linkText)
+    return
+  }
   // Tab 缩进
   if (e.key === 'Tab') {
     e.preventDefault()
@@ -595,7 +426,7 @@ function onKeydown(e) {
   }
 }
 
-// ===== 工具栏 =====
+// ===== 工具栏执行 =====
 function runTool(apply) {
   if (mode.value === 'preview') mode.value = 'write'
   nextTick(() => {
@@ -610,69 +441,7 @@ function runTool(apply) {
   })
 }
 
-function toggleMode() {
-  // 分屏下点「预览」= 退出分屏、只看预览
-  if (splitView.value) {
-    splitView.value = false
-    mode.value = 'preview'
-    return
-  }
-  mode.value = mode.value === 'write' ? 'preview' : 'write'
-  if (mode.value === 'write') {
-    nextTick(() => editorRef.value?.focus())
-  }
-}
-
-// ===== 全屏分屏（左写右预览） =====
-// 只在全屏下启用：正文区左侧是 markdown 源码，右侧是实时预览，两边各自滚动。
-const splitView = ref(false)
-
-const showEditor = computed(() => splitView.value || mode.value === 'write')
-const showPreview = computed(() => splitView.value || mode.value === 'preview')
-
-function toggleSplit() {
-  splitView.value = !splitView.value
-  // 分屏必须有一栏可写，否则和「只看预览」没区别
-  if (splitView.value) mode.value = 'write'
-  nextTick(() => editorRef.value?.focus())
-}
-
-// ===== 全屏编辑 =====
-let bodyOverflow = ''
-
-function toggleFullscreen() {
-  fullscreen.value = !fullscreen.value
-  if (fullscreen.value) {
-    // 全屏默认就是「边写边预览」的分屏形态
-    splitView.value = true
-    mode.value = 'write'
-    // 锁住页面滚动，避免全屏时背景跟着滚
-    bodyOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    nextTick(() => editorRef.value?.focus())
-  } else {
-    splitView.value = false
-    restoreBodyOverflow()
-  }
-}
-
-function restoreBodyOverflow() {
-  document.body.style.overflow = bodyOverflow || ''
-}
-
-function onWindowKeydown(e) {
-  if (e.key !== 'Escape' || !fullscreen.value) return
-  // 表情面板打开时先关面板，再按一次才退出全屏
-  if (showEmoji.value) return
-  e.preventDefault()
-  toggleFullscreen()
-}
-
 // ===== 表情 =====
-function toggleEmoji() {
-  showEmoji.value = !showEmoji.value
-}
-
 function insertEmoji(emoji) {
   const text = String(emoji || '')
   if (!text) return
@@ -777,9 +546,9 @@ function onLibrarySelect(urls = []) {
 }
 
 /* ===== 视频 / 音频 / 附件（正文短代码） =====
- * 工具栏三个按钮（视频 / 音频 / 附件）共用同一个附件库弹窗，只是按当前类型过滤；
+ * 工具栏「插入」面板三个入口共用同一个附件库弹窗，只是按当前类型过滤；
  * 插入的是 @[video](url "标题") / @[audio](url "标题") / @[file](url "文件名" "大小")，
- * 在编辑器里只是普通文本（不渲染播放器），解析在 @/utils/markdown（markdown-it 规则 media_shortcode）。
+ * 在编辑器里只是普通文本（不渲染播放器），解析在 @/utils/markdown（media_shortcode 规则）。
  */
 const showMediaLibrary = ref(false)
 const mediaRef = ref(null)
@@ -842,11 +611,9 @@ async function onMediaChange(e) {
 
 /* ===== 实况图（封面图 + 短视频） =====
  * 两种来源：
- *   1. 同时选「一张封面图 + 一段短视频」，分别上传后插入
- *      @[live](视频URL "封面图URL")；
+ *   1. 同时选「一张封面图 + 一段短视频」，分别上传后插入 @[live](视频URL "封面图URL")；
  *   2. 安卓手机拍的实况照片本身就是一张内嵌视频的 jpg，只选这张图即可，
- *      后端会拆出视频并通过 live_video 返回（app/api/controller/motion_photo.go）。
- * 解析见 utils/markdown.js 的 renderLive，作者不用手动拼短代码。
+ *      后端会拆出视频并通过 live_video 返回。
  */
 const liveRef = ref(null)
 const liveUploading = ref(false)
@@ -862,8 +629,6 @@ async function onLiveChange(e) {
 
   const image = files.find((file) => file.type.startsWith('image/'))
   const video = files.find((file) => file.type.startsWith('video/'))
-  // 安卓实况照片就是一张 jpg（视频内嵌在文件里），所以没单独选视频也能继续，
-  // 由后端拆分后带回 live_video（见 app/api/controller/motion_photo.go）
   if (!image) {
     toast.warning('请选择一张封面图（实况视频可选）')
     return
@@ -881,12 +646,9 @@ async function onLiveChange(e) {
     const res = await uploadAttachments(fd)
 
     // 结果顺序与提交顺序一致：第 1 个是封面图，手动选了视频时第 2 个才是视频
-    const rows = (res.data?.results || [])
-      .filter((row) => row.status !== 'fail' && (row.full_url || row.url))
+    const rows = (res.data?.results || []).filter((row) => row.status !== 'fail' && (row.full_url || row.url))
     const imageUrl = rows[0]?.full_url || rows[0]?.url || ''
-    const videoUrl = video
-      ? rows[1]?.full_url || rows[1]?.url || ''
-      : rows[0]?.live_video || ''
+    const videoUrl = video ? rows[1]?.full_url || rows[1]?.url || '' : rows[0]?.live_video || ''
     if (!imageUrl || !videoUrl) {
       toast.warning(video ? '实况视频上传失败，请稍后重试' : '这张图片不是实况照片（未找到内嵌视频）')
       return
@@ -923,70 +685,18 @@ function onDrop(e) {
   if (file) uploadAndInsert(file)
 }
 
-defineExpose({ focus: () => editorRef.value?.focus() })
+defineExpose({
+  focus: () => editorRef.value?.focus(),
+  /** 表单保存成功后调用：清掉本地草稿，避免下次打开误提示 */
+  clearDraft: () => clearDraft()
+})
 </script>
 
 <style scoped>
+/* ---------- 容器 ---------- */
 .markdown-editor {
-  background: transparent;
-  overflow: hidden;
-}
-
-/* ---------- 工具栏 ---------- */
-.markdown-editor-toolbar {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 2px;
-  padding: 8px 10px;
-  border-top: 1px solid var(--border-soft);
-  border-bottom: 1px solid var(--border-soft);
-}
-.markdown-editor-emoji-wrap {
   position: relative;
-  display: inline-flex;
-}
-.markdown-editor-tool {
-  min-width: 30px;
-  height: 30px;
-  padding: 0 6px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  border: none;
-  border-radius: var(--radius-sm);
   background: transparent;
-  color: var(--text-soft);
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-.markdown-editor-tool:hover:not(:disabled) {
-  background: var(--bg-muted);
-  color: var(--primary);
-}
-.markdown-editor-tool:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.markdown-editor-tool.is-active {
-  background: var(--accent-soft);
-  color: var(--primary-deep);
-}
-.markdown-editor-tool-text {
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: -0.2px;
-}
-.markdown-editor-toolbar-split {
-  width: 1px;
-  height: 16px;
-  margin: 0 4px;
-  background: var(--border);
-}
-.markdown-editor-toolbar-flex {
-  flex: 1;
-  min-width: 8px;
 }
 
 /* ---------- 正文 ---------- */
@@ -996,18 +706,19 @@ defineExpose({ focus: () => editorRef.value?.focus() })
 .markdown-editor-content {
   display: block;
   width: 100%;
-  padding: 16px 18px 40px;
+  padding: 20px 22px 24px;
   outline: none;
   min-height: 420px;
   color: var(--text);
   font-size: 15px;
-  line-height: 1.9;
+  line-height: 1.95;
   font-family: var(--font-sans);
   /* 保留多个空格 / 空格缩进 */
   white-space: pre-wrap;
   word-break: break-word;
   overflow-wrap: anywhere;
   cursor: text;
+  caret-color: var(--primary);
 }
 .markdown-editor-content.is-empty::before {
   content: attr(data-placeholder);
@@ -1015,7 +726,7 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   pointer-events: none;
 }
 .markdown-editor-preview {
-  padding: 16px 18px 40px;
+  padding: 20px 22px 28px;
   overflow-y: auto;
   max-height: 620px;
   /* 预览区（尤其分屏时只有半屏宽）比正文窄，视频按 70vh 撑开会占满整列，
@@ -1034,26 +745,31 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   border-radius: 4px;
 }
 
-/* 右下角字数统计 */
-.markdown-editor-count {
-  position: absolute;
-  right: 14px;
-  bottom: 10px;
+/* ---------- 本地草稿提示条 ---------- */
+.markdown-editor-draft {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 14px;
+  background: var(--gold-wash);
+  border-bottom: 1px solid var(--gold-line);
   font-size: 12px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-  pointer-events: none;
-  user-select: none;
+  color: var(--text-soft);
 }
-.markdown-editor-count em {
-  font-style: normal;
-  color: var(--text-light);
+.markdown-editor-draft-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
 }
-.markdown-editor-count.is-over {
-  color: var(--danger);
+.markdown-editor-draft-text .bi {
+  color: var(--warning);
 }
-.markdown-editor-count.is-over em {
-  color: var(--danger);
+.markdown-editor-draft-actions {
+  display: inline-flex;
+  gap: 6px;
+  flex-shrink: 0;
 }
 
 /* ---------- 全屏编辑 ---------- */
@@ -1067,10 +783,9 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   background: var(--bg);
   animation: mdFullscreenIn var(--dur) var(--ease);
 }
-.markdown-editor.is-fullscreen .markdown-editor-toolbar {
+.markdown-editor.is-fullscreen :deep(.editor-toolbar) {
   flex: 0 0 auto;
   padding: 8px 18px;
-  background: var(--bg-card);
   border-top: none;
 }
 .markdown-editor.is-fullscreen .markdown-editor-body {
@@ -1085,10 +800,10 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   min-height: 0;
   max-height: none;
   width: 100%;
-  max-width: 880px;
+  max-width: 860px;
   margin: 0 auto;
   overflow-y: auto;
-  padding: 24px 24px 72px;
+  padding: 28px 24px 64px;
 }
 /* 全屏分屏：左写右预览，两栏各自滚动 */
 .markdown-editor.is-fullscreen .markdown-editor-body.is-split {
@@ -1101,32 +816,15 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   min-width: 0;
   max-width: none;
   margin: 0;
-  padding: 22px 20px 64px;
+  padding: 24px 22px 56px;
 }
 .markdown-editor.is-fullscreen .markdown-editor-body.is-split .markdown-editor-preview {
   border-left: 1px solid var(--border-soft);
   background: var(--bg-card);
 }
-.markdown-editor.is-fullscreen .markdown-editor-count {
-  right: 20px;
-  bottom: 14px;
-}
-.markdown-editor-fullscreen-foot {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 8px 18px;
-  background: var(--bg-card);
-  border-top: 1px solid var(--border-soft);
-}
-.markdown-editor-fullscreen-tip {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
+.markdown-editor.is-fullscreen .markdown-editor-draft {
+  padding-left: 22px;
+  padding-right: 22px;
 }
 
 @keyframes mdFullscreenIn {
@@ -1140,37 +838,11 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   }
 }
 
-.markdown-editor-spin {
-  display: inline-block;
-  animation: mdSpin 0.8s linear infinite;
-}
-@keyframes mdSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
 @media (max-width: 768px) {
-  .markdown-editor-toolbar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .markdown-editor-toolbar::-webkit-scrollbar {
-    display: none;
-  }
-  .markdown-editor-tool,
-  .markdown-editor-toolbar-split {
-    flex-shrink: 0;
-  }
-  .markdown-editor-toolbar-flex {
-    display: none;
-  }
   .markdown-editor-content,
   .markdown-editor-preview {
     font-size: 14px;
-    padding-left: 14px;
-    padding-right: 14px;
+    padding: 16px 14px 20px;
   }
   /* 窄屏放不下左右两栏：分屏改成上下两半（上写下看） */
   .markdown-editor.is-fullscreen .markdown-editor-body.is-split {
@@ -1179,11 +851,15 @@ defineExpose({ focus: () => editorRef.value?.focus() })
   .markdown-editor.is-fullscreen .markdown-editor-body.is-split .markdown-editor-content,
   .markdown-editor.is-fullscreen .markdown-editor-body.is-split .markdown-editor-preview {
     flex: 1 1 50%;
-    padding: 16px 14px 40px;
+    padding: 14px 14px 28px;
   }
   .markdown-editor.is-fullscreen .markdown-editor-body.is-split .markdown-editor-preview {
     border-left: none;
     border-top: 1px solid var(--border-soft);
+  }
+  .markdown-editor-draft {
+    flex-wrap: wrap;
+    padding: 8px 12px;
   }
 }
 </style>

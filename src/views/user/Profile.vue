@@ -18,6 +18,7 @@
               :frame-hole="frameRender.hole"
               :frame-offset-x="frameRender.offsetX"
               :frame-offset-y="frameRender.offsetY"
+              :verified="userStore.user?.cert"
               alt="头像预览"
             />
           </div>

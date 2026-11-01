@@ -19,6 +19,7 @@
         :frame-hole="wearingFrameGeometry.hole"
         :frame-offset-x="wearingFrameGeometry.offsetX"
         :frame-offset-y="wearingFrameGeometry.offsetY"
+        :verified="user?.cert"
         size="64px"
       />
       <div class="wearing-info">

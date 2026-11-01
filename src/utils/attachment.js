@@ -28,6 +28,17 @@ export const ATTACHMENT_EXT_GROUPS = {
  */
 export const PREVIEW_IMAGE_EXTS = ['jpg', 'jpeg', 'jfif', 'png', 'apng', 'gif', 'webp', 'bmp', 'svg', 'ico', 'avif']
 
+/**
+ * 浏览器能直接用 <video> 播放的视频格式
+ *
+ * avi / mkv / flv / wmv / rmvb 等属于视频类别（筛选、图标仍算视频），但 Chrome
+ * 解不了容器或编码，放进播放器只会黑屏，所以预览判断单独用这份清单。
+ */
+export const PREVIEW_VIDEO_EXTS = ['mp4', 'm4v', 'webm', 'ogv']
+
+/** 可直接播放的视频 MIME（扩展名缺失 / 不规范时兜底） */
+const PREVIEW_VIDEO_MIMES = ['video/mp4', 'video/webm', 'video/ogg']
+
 /** 类型下拉（value 与 ATTACHMENT_EXT_GROUPS 的 key 对应，other 需排除已知类型） */
 export const ATTACHMENT_TYPE_OPTIONS = [
   { value: '', label: '全部类型' },
@@ -91,6 +102,16 @@ export function isPreviewableImage(item) {
   const mime = String(item?.mime_type || '').toLowerCase()
   if (mime.startsWith('image/')) return true
   return PREVIEW_IMAGE_EXTS.includes(normalizeExt(item?.file_ext))
+}
+
+/** 是否可直接用 <video> 预览（avi / mkv 等浏览器不支持，按文件卡片展示） */
+export function isPreviewableVideo(item) {
+  const mime = String(item?.mime_type || '')
+    .toLowerCase()
+    .split(';')[0]
+    .trim()
+  if (PREVIEW_VIDEO_MIMES.includes(mime)) return true
+  return PREVIEW_VIDEO_EXTS.includes(normalizeExt(item?.file_ext))
 }
 
 /**

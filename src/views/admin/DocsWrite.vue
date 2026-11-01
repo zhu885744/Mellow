@@ -67,6 +67,7 @@
 
         <!-- 正文：复用文章编辑器组件（MarkdownEditor 自带工具栏 / 预览 / 图片上传 / 代码高亮） -->
         <MarkdownEditor
+          ref="editorRef"
           v-model="form.content"
           placeholder="支持 Markdown：标题、列表、代码块、表格…"
           min-height="460px"
@@ -119,6 +120,8 @@ const tree = ref([])
 const ready = ref(false)
 const saving = ref(false)
 const dirty = ref(false)
+// 正文编辑器：保存成功后用它清掉本地草稿
+const editorRef = ref(null)
 
 const form = reactive(emptyForm())
 
@@ -259,6 +262,8 @@ async function save(status) {
 
     form.status = target
     dirty.value = false
+    // 已落库：清掉编辑器里的本地草稿，避免下次打开误提示「发现本地草稿」
+    editorRef.value?.clearDraft?.()
     toast.success(target === 1 ? '已发布' : '已存为草稿')
 
     // 新建成功后转成编辑态，地址换成带 id 的深链

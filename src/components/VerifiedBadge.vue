@@ -1,6 +1,31 @@
 <template>
-  <span v-if="cert && cert.title" class="verified-badge" :class="sizeClass" :style="{ color: toneColor }" :title="tip">
-    <i class="bi bi-patch-check-fill" aria-hidden="true" />
+  <span
+    v-if="cert && cert.title"
+    class="verified-badge"
+    :class="[sizeClass, { 'is-dot': variant === 'dot' }]"
+    :style="{ color: toneColor }"
+    :title="tip"
+  >
+    <!--
+      dot 形态的对勾用内联 SVG：bootstrap-icons 是字体字形，在不同字号下
+      基线会偏（圆里看起来「掉下去」），SVG 才能做到视觉绝对居中。
+    -->
+    <svg
+      v-if="variant === 'dot'"
+      class="verified-dot-check"
+      viewBox="0 0 16 16"
+      aria-hidden="true"
+    >
+      <path
+        d="M13.1 4.5 6.6 11 2.9 7.3"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.6"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+    <i v-else class="bi bi-patch-check-fill" aria-hidden="true" />
     <span v-if="showText" class="verified-text">{{ cert.title }}</span>
   </span>
 </template>
@@ -29,7 +54,13 @@ const props = defineProps({
   // 是否在图标后显示认证名称
   showText: { type: Boolean, default: false },
   // sm / md（昵称行用 md，列表里用 sm）
-  size: { type: String, default: 'md' }
+  size: { type: String, default: 'md' },
+  /**
+   * 展示形态：
+   *   icon → 盾牌图标（默认，用于文字旁边）
+   *   dot  → 圆形实心 + 白色对勾，用于头像右下角的角标
+   */
+  variant: { type: String, default: 'icon' }
 })
 
 const toneColor = computed(() => certColor(props.cert || {}))
@@ -60,6 +91,31 @@ const tip = computed(() => {
 }
 .verified-badge.is-sm {
   font-size: 12px;
+}
+
+/*
+ * 头像右下角的角标形态：圆形实心 + 白色对勾
+ *
+ * 颜色仍取认证类型色（父级内联 style 的 color），背景用 currentColor，
+ * 图标单独刷成白色；1.5px 白描边让角标在深色 / 花哨头像上也立得住。
+ */
+.verified-badge.is-dot {
+  width: 1em;
+  height: 1em;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 1.5px #fff, 0 1px 3px rgba(0, 0, 0, 0.22);
+  /* 圆内只放一个对勾，用 flex 居中 + SVG 保证水平/垂直都正 */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.verified-dot-check {
+  display: block;
+  flex-shrink: 0;
+  width: 56%;
+  height: 56%;
+  color: #fff;
 }
 .verified-text {
   font-size: 11px;

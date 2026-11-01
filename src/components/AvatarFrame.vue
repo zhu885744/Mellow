@@ -36,7 +36,8 @@
       :style="badgeStyle"
     >
       <slot name="badge">
-        <VerifiedBadge v-if="verified?.title" :cert="verified" size="sm" />
+        <!-- dot 形态：圆形实心 + 白色对勾，贴在头像右下角 -->
+        <VerifiedBadge v-if="verified?.title" :cert="verified" size="sm" variant="dot" />
       </slot>
     </span>
   </span>
@@ -208,8 +209,9 @@ function onError() {
 /*
  * 右下角角标（认证标识）
  *
- * 位置取右下 45°：translate 的百分比以角标自身尺寸为基准，
- * 让角标有约 1/5 探出头像边界，既压在头像上又不会被裁掉。
+ * 定位：right/bottom 贴 0、不做 translate。
+ * 圆形容器里，这样徽章圆心到头像圆心的距离 ≈ 半径，正好落在头像右下边缘上
+ * （和主流 App 的认证角标一致）；再加 translate 就会整块飘到头像外面。
  * z-index 必须高于头像框的 2。font-size 由 badgeStyle 按头像尺寸注入。
  */
 .avatar-frame-badge {
@@ -223,7 +225,6 @@ function onError() {
   font-size: var(--avatar-badge-font, 15px);
   line-height: 1;
   cursor: help;
-  transform: translate(20%, 20%);
 }
 
 /*

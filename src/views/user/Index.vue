@@ -9,7 +9,11 @@
       <!-- 资料卡：昵称可进个人主页；右侧签到 -->
       <section class="my-profile">
         <div class="my-profile-top">
-          <img class="my-avatar" :src="avatar" :alt="nickname" @error="onAvatarError" loading="lazy" />
+          <span class="my-avatar-wrap">
+            <img class="my-avatar" :src="avatar" :alt="nickname" @error="onAvatarError" loading="lazy" />
+            <!-- 认证标识统一挂在头像右下角，与侧边栏 / 作者主页保持一处 -->
+            <VerifiedBadge v-if="user?.cert?.title" class="my-avatar-cert" :cert="user.cert" variant="dot" />
+          </span>
           <div class="my-profile-text">
             <RouterLink v-if="uid" :to="`/author/${uid}`" class="my-nickname" title="进入我的主页">
               <span class="my-nickname-text">{{ nickname }}</span>
@@ -195,6 +199,7 @@ import { getIntegral, getIntegralTasks } from '@/api/goods'
 import { getCheckinStatus, signIn } from '@/api/checkin'
 import { toast } from '@/utils/toast'
 import MomentComposeDialog from '@/components/MomentComposeDialog.vue'
+import VerifiedBadge from '@/components/VerifiedBadge.vue'
 
 /**
  * 「我的」聚合页（/user）
@@ -494,6 +499,11 @@ onMounted(() => {
   align-items: center;
   gap: 12px;
 }
+.my-avatar-wrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
 .my-avatar {
   width: 52px;
   height: 52px;
@@ -501,6 +511,14 @@ onMounted(() => {
   border-radius: 50%;
   object-fit: cover;
   background: var(--bg-muted);
+}
+/* 头像右下角的认证角标（VerifiedBadge 的 dot 形态，尺寸随这里放大） */
+.my-avatar-cert {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 2;
+  font-size: 15px;
 }
 .my-profile-text {
   flex: 1;
