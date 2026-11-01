@@ -113,7 +113,7 @@
     <ConfirmDialog
       v-model:visible="showConfirm"
       title="确认兑换"
-      :message="`确定使用 ${confirmItem?.price ?? 0} 积分兑换「${confirmItem?.name ?? ''}」吗？有效期 ${formatDuration(confirmItem?.duration)}，兑换后可在「我的装扮」中佩戴。`"
+      :message="confirmMessage"
       confirm-text="确认兑换"
       cancel-text="再想想"
       loading-text="兑换中..."
@@ -155,6 +155,15 @@ const owning = ref({ wearing: {}, list: {} })
 const buyingId = ref(null)
 const showConfirm = ref(false)
 const confirmItem = ref(null)
+
+// 0 积分装扮按「免费」描述，不出现「使用 0 积分兑换」
+const confirmMessage = computed(() => {
+  const item = confirmItem.value
+  if (!item) return ''
+  const price = Number(item.price) || 0
+  const pay = price > 0 ? `使用 ${price} 积分` : '免费'
+  return `确定${pay}兑换「${item.name ?? ''}」吗？有效期 ${formatDuration(item.duration)}，兑换后可在「我的装扮」中佩戴。`
+})
 
 // 价格档位：与后端 decoration/shop 的 price_type 参数一一对应
 const PRICE_TABS = [

@@ -198,7 +198,10 @@
                   </span>
                 </div>
                 <div class="goods-meta">
-                  <span class="meta-text"><i class="bi bi-coin" /> {{ item.price }} 积分</span>
+                  <span class="meta-text">
+                    <i :class="isFreePrice(item.price) ? 'bi bi-gift' : 'bi bi-coin'" />
+                    {{ isFreePrice(item.price) ? '免费' : `${item.price} 积分` }}
+                  </span>
                   <span class="meta-text" :class="{ 'is-warn': Number(item.stock) <= 5 }">
                     <i class="bi bi-box-seam" /> 库存 {{ item.stock }}
                   </span>
@@ -295,7 +298,10 @@
               </div>
               <div class="order-goods">
                 <span class="goods-title">{{ orderGoodsTitle(order) }}</span>
-                <span class="meta-text"><i class="bi bi-coin" /> {{ order.price }} 积分</span>
+                <span class="meta-text">
+                  <i :class="isFreePrice(order.price) ? 'bi bi-gift' : 'bi bi-coin'" />
+                  {{ isFreePrice(order.price) ? '免费' : `${order.price} 积分` }}
+                </span>
               </div>
               <div class="order-meta">
                 <span class="meta-text"><i class="bi bi-person" /> {{ orderUserText(order) }}</span>
@@ -1049,6 +1055,9 @@ function openEdit(item) {
   edit.cardsText = cardsToText(item.cards)
   edit.visible = true
 }
+
+// 0 积分商品按「免费」展示，列表与订单里不再出现「0 积分」
+const isFreePrice = (price) => Number(price) <= 0
 
 // 非负整数校验（允许 0）
 function intOrNull(raw, allowZero = true) {

@@ -2,27 +2,27 @@
   <div class="goods-page">
     <SectionTitle title="积分商城">
       <template #extra>
-        <router-link to="/user/integral" class="text-muted link">我的积分 <i class="bi bi-arrow-right" /></router-link>
+        <span class="section-count">{{ total || goodsList.length }} 件可兑换</span>
       </template>
     </SectionTitle>
 
-    <!-- 积分余额卡片 -->
-    <div v-if="userStore.isLogged" class="card card-pad balance-card">
-      <div class="balance-left">
-        <i class="bi bi-coin balance-icon" aria-hidden="true" />
+    <!-- 积分余额卡片：左余额 / 右兑换统计 -->
+    <div v-if="userStore.isLogged" class="card balance-card">
+      <div class="balance-main">
+        <span class="balance-coin" aria-hidden="true">
+          <i class="bi bi-coin" />
+        </span>
         <div class="balance-info">
           <div class="balance-label">我的积分余额</div>
           <div class="balance-value">
-            <span class="balance-num">{{ balance }}</span>
-            <span class="balance-unit">积分</span>
+            {{ balance }}<em>积分</em>
           </div>
         </div>
+        <router-link to="/user/integral" class="balance-more">
+          积分明细 <i class="bi bi-chevron-right" aria-hidden="true" />
+        </router-link>
       </div>
-      <div class="balance-tip">
-        <i class="bi bi-lightbulb" aria-hidden="true" />
-        <span>通过签到、发布内容等任务赚取积分</span>
-      </div>
-      <!-- 我的兑换统计 -->
+
       <div class="balance-stats">
         <div class="stat-item">
           <span class="stat-num">{{ myStats.pending }}</span>
@@ -38,18 +38,22 @@
         </div>
         <div class="stat-item">
           <span class="stat-num">{{ myStats.integral_spent }}</span>
-          <span class="stat-label">累计消耗积分</span>
+          <span class="stat-label">累计消耗</span>
         </div>
       </div>
     </div>
-    <div v-else class="card card-pad balance-card">
-      <div class="balance-left">
-        <i class="bi bi-coin balance-icon" aria-hidden="true" />
+
+    <div v-else class="card balance-card">
+      <div class="balance-main">
+        <span class="balance-coin" aria-hidden="true">
+          <i class="bi bi-coin" />
+        </span>
         <div class="balance-info">
-          <div class="balance-label">登录后查看积分</div>
+          <div class="balance-label">登录后查看积分余额</div>
+          <div class="balance-hint">签到、发布内容、参与互动都能赚积分</div>
         </div>
+        <router-link to="/auth/login" class="btn btn-sm btn-primary">立即登录</router-link>
       </div>
-      <router-link to="/auth/login" class="btn btn-sm btn-primary">立即登录</router-link>
     </div>
 
     <!-- 商城分区：积分商品 / 装扮（装扮来自后台「装扮管理」，可自由扩展类型） -->
@@ -98,34 +102,46 @@
       <EmptyState text="暂无商品" />
     </div>
     <div v-else class="goods-grid">
-      <div v-for="g in decoratedGoods" :key="g.id" class="goods-card card">
+      <article
+        v-for="g in decoratedGoods"
+        :key="g.id"
+        class="goods-card"
+        :class="{ 'is-disabled': g.can_buy === false }"
+        role="button"
+        tabindex="0"
+        :aria-label="`查看 ${g.title} 详情`"
+        @click="openDetail(g)"
+        @keydown.enter.prevent="openDetail(g)"
+        @keydown.space.prevent="openDetail(g)"
+      >
         <div class="goods-cover-wrap">
           <img :src="g.cover || defaultCover" class="goods-cover" :alt="g.title" @error="onCoverError" loading="lazy" />
+          <!-- 类型角标 -->
+          <span class="goods-type" :class="g.type === 'physical' ? 'is-physical' : 'is-virtual'">
+            <i :class="g.type === 'physical' ? 'bi bi-box-seam' : 'bi bi-lightning-charge'" aria-hidden="true" />
+            {{ g.type === 'physical' ? '实物' : '虚拟' }}
+          </span>
           <!-- 兑换时间状态角标：未开始 / 即将结束（1 小时内）/ 已结束 -->
           <span v-if="g._state" class="goods-state" :class="g._state.type">
             <i :class="g._state.icon" aria-hidden="true" /> {{ g._state.text }}
           </span>
         </div>
+
         <div class="goods-body">
-          <div class="goods-title">
-            {{ g.title }}
-            <span class="type-tag" :class="g.type === 'physical' ? 'physical' : 'virtual'">
-              {{ g.type === 'physical' ? '实物' : '虚拟' }}
-            </span>
-          </div>
-          <div class="goods-desc">{{ g.description || '暂无描述' }}</div>
+          <h4 class="goods-title" :title="g.title">{{ g.title }}</h4>
+          <p class="goods-desc">{{ g.description || '暂无描述' }}</p>
+
           <div class="goods-tags">
             <span v-if="Number(g.limit_per_user) > 0" class="goods-tag">
               限购 {{ g.limit_per_user }} 件<template v-if="Number(g.limit_remain) >= 0"> · 剩 {{ g.limit_remain }}</template>
             </span>
-            <span v-if="Number(g.min_exp) > 0" class="goods-tag">需经验达到 {{ g.min_exp }} 可兑换</span>
-            <span v-if="Number(g.sold) > 0" class="goods-tag">已兑 {{ g.sold }}</span>
+            <span v-if="Number(g.min_exp) > 0" class="goods-tag">需经验 {{ g.min_exp }}</span>
             <!-- 装扮类商品：展示关联装扮的有效期（永久 / N 天），兑换前就告知使用期限 -->
             <span
               v-if="g.decoration_duration !== undefined && g.decoration_duration !== null"
               class="goods-tag is-duration"
             >
-              <i class="bi bi-clock-history" aria-hidden="true" /> 有效期 {{ formatDuration(g.decoration_duration) }}
+              <i class="bi bi-clock-history" aria-hidden="true" /> {{ formatDuration(g.decoration_duration) }}
             </span>
             <!-- 距结束倒计时（1 小时内转为警示色） -->
             <span
@@ -133,29 +149,35 @@
               class="goods-tag is-deadline"
               :class="{ 'is-urgent': g._endUrgent }"
             >
-              <i class="bi bi-hourglass-split" aria-hidden="true" /> 距限时兑换结束 {{ g._endCountdown }}
+              <i class="bi bi-hourglass-split" aria-hidden="true" /> {{ g._endCountdown }}
             </span>
           </div>
+
           <div class="goods-foot">
-            <span class="goods-price"><i class="bi bi-coin" /> {{ g.price }}</span>
-            <span class="goods-stock" :class="{ empty: Number(g.stock) <= 0 }">
-              {{ Number(g.stock) > 0 ? `库存 ${g.stock}` : '已售罄' }}
+            <span class="goods-price" :class="{ 'is-free': isFreePrice(g.price) }">
+              <i :class="isFreePrice(g.price) ? 'bi bi-gift' : 'bi bi-coin'" aria-hidden="true" />
+              <span v-if="isFreePrice(g.price)" class="goods-free">免费</span>
+              <template v-else>{{ g.price }}<em>积分</em></template>
+            </span>
+            <span class="goods-stock" :class="{ 'is-empty': Number(g.stock) <= 0 }">
+              {{ Number(g.stock) > 0 ? `剩 ${g.stock}` : '已售罄' }}
             </span>
           </div>
-          <button
-            class="btn btn-primary btn-block"
-            :disabled="g.can_buy === false || buyingId === g.id"
-            :title="g._title"
-            @click="buy(g)"
-          >
-            <span v-if="buyingId === g.id" class="spinner"></span>
-            <template v-else-if="g._startCountdown">
-              <i class="bi bi-clock" aria-hidden="true" /> 未开始 · 还剩 {{ g._startCountdown }}
-            </template>
-            <span v-else>{{ g.can_buy === false ? (g.buy_reason || '不可兑换') : '兑换' }}</span>
-          </button>
+
+          <!-- 整卡可点，这里只是视觉上的入口，避免出现嵌套按钮 -->
+          <span class="goods-detail-entry" :title="g._title">
+            查看详情 <i class="bi bi-arrow-right" aria-hidden="true" />
+          </span>
         </div>
-      </div>
+      </article>
+    </div>
+
+    <!-- 加载更多：商品超过一页时才出现 -->
+    <div v-if="hasMore || loadingMore" class="goods-more">
+      <button type="button" class="btn btn-ghost" :disabled="loadingMore" @click="loadMore">
+        <span v-if="loadingMore" class="spinner" />
+        {{ loadingMore ? '加载中...' : `加载更多（${goodsList.length}/${total}）` }}
+      </button>
     </div>
 
     <!-- 我的订单 -->
@@ -174,7 +196,9 @@
               <span class="status-tag" :class="`status-${o.status}`">{{ statusText(o.status) }}</span>
             </div>
             <div class="order-card-meta">
-              <span class="order-card-price"><i class="bi bi-coin" /> {{ o.price }}</span>
+              <span class="order-card-price">
+                <i class="bi bi-coin" /> {{ isFreePrice(o.price) ? '免费' : o.price }}
+              </span>
               <span v-if="o.order_no" class="order-card-no">单号 {{ o.order_no }}</span>
               <span class="order-card-time">{{ formatTime(o.create_time) }}</span>
             </div>
@@ -198,7 +222,8 @@
             <!-- 已取消：展示退款金额 -->
             <div v-if="o.status === 3" class="order-card-refund">
               <i class="bi bi-arrow-counterclockwise" />
-              <span>订单已取消，已退还 {{ o.refund || o.price }} 积分</span>
+              <span v-if="isFreePrice(o.refund || o.price)">订单已取消，未消耗积分</span>
+              <span v-else>订单已取消，已退还 {{ o.refund || o.price }} 积分</span>
             </div>
             <!-- 订单操作 -->
             <div v-if="o.status === 0 || o.status === 1" class="order-card-actions">
@@ -240,11 +265,15 @@
                 <img :src="confirmGoods?.cover || defaultCover" class="confirm-cover" :alt="confirmGoods?.title" @error="onCoverError" loading="lazy" />
                 <div class="confirm-info">
                   <div class="confirm-title">{{ confirmGoods?.title }}</div>
-                  <div class="confirm-price"><i class="bi bi-coin" /> {{ confirmGoods?.price }} 积分</div>
+                  <div class="confirm-price">
+                    <i class="bi bi-coin" />
+                    {{ isFreePrice(confirmGoods?.price) ? '免费' : `${confirmGoods?.price} 积分` }}
+                  </div>
                 </div>
               </div>
               <div class="confirm-tip">
-                兑换后立即发货，确定使用 <strong>{{ confirmGoods?.price }}</strong> 积分兑换吗？
+                <template v-if="isFreePrice(confirmGoods?.price)">兑换后立即发货，确定免费兑换吗？</template>
+                <template v-else>兑换后立即发货，确定使用 <strong>{{ confirmGoods?.price }}</strong> 积分兑换吗？</template>
               </div>
               <!-- 装扮类商品：兑换前说明有效期与后续佩戴入口 -->
               <div
@@ -314,6 +343,16 @@
       </Transition>
     </Teleport>
 
+    <!-- 商品详情弹窗：列表卡片与「查看详情」都打开它，兑换入口也在里面 -->
+    <GoodsDetailDialog
+      v-model:visible="showDetail"
+      :goods="detailGoods"
+      :balance="balance"
+      :is-logged="userStore.isLogged"
+      :buying="buyingId === detailGoods?.id"
+      @buy="onDetailBuy"
+    />
+
     <!-- 取消订单确认弹窗 -->
     <ConfirmDialog
       v-model:visible="showCancelConfirm"
@@ -354,6 +393,7 @@ import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DecorationShop from '@/components/DecorationShop.vue'
+import GoodsDetailDialog from '@/components/goods/GoodsDetailDialog.vue'
 import { getDecorationConfig } from '@/api/decoration'
 
 const route = useRoute()
@@ -382,6 +422,13 @@ const loading = ref(false)
 const ordersLoading = ref(false)
 const buyingId = ref(null)
 
+// 分页：「加载更多」逐页追加；静默刷新时按已加载数量整体重取，避免把追加的页冲掉
+const LIST_LIMIT = 24
+const page = ref(1)
+const total = ref(0)
+const loadingMore = ref(false)
+const hasMore = computed(() => goodsList.value.length < total.value)
+
 // 分类
 const categories = ref([])
 const activeCategory = ref('')
@@ -404,6 +451,9 @@ const deliverContent = ref('')
 const deliverGoods = ref(null)
 
 const defaultCover = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><rect width="120" height="120" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="28" fill="%238a8a82" font-family="serif">兑</text></svg>'
+
+/** 0 积分商品按「免费」展示，UI 里不再出现「0 积分」 */
+const isFreePrice = (price) => Number(price) <= 0
 
 function onCoverError(e) {
   e.target.src = defaultCover
@@ -494,18 +544,40 @@ watch(
 onUnmounted(stopTimer)
 
 // silent = true 时不显示整页 loading（用于倒计时结束后的静默刷新）
-async function loadGoods(silent = false) {
-  if (!silent) loading.value = true
+// append = true 时追加下一页（「加载更多」）
+async function loadGoods(silent = false, append = false) {
+  if (append) loadingMore.value = true
+  else if (!silent) loading.value = true
   try {
-    const params = {}
+    const params = { page: append ? page.value + 1 : 1, limit: LIST_LIMIT }
     if (activeCategory.value) params.category = activeCategory.value
+
     const res = await getGoods(params)
-    goodsList.value = res.data?.data || []
+    const rows = res.data?.data || []
+    total.value = Number(res.data?.count) || rows.length
+
+    if (append) {
+      goodsList.value = [...goodsList.value, ...rows]
+    } else if (silent) {
+      // 静默刷新只更新第一页的兑换状态，保留「加载更多」出来的后续页
+      const latest = new Map(rows.map((row) => [row.id, row]))
+      goodsList.value = goodsList.value.map((item) => latest.get(item.id) || item)
+    } else {
+      goodsList.value = rows
+    }
+
+    if (!silent) page.value = params.page
   } catch {
-    if (!silent) goodsList.value = []
+    if (!append && !silent) goodsList.value = []
   } finally {
-    if (!silent) loading.value = false
+    loading.value = false
+    loadingMore.value = false
   }
+}
+
+function loadMore() {
+  if (loadingMore.value || !hasMore.value) return
+  loadGoods(false, true)
 }
 
 async function loadCategories() {
@@ -521,6 +593,8 @@ async function loadCategories() {
 function setCategory(category) {
   if (activeCategory.value === category) return
   activeCategory.value = category || ''
+  // 换分类回到第一页，避免带着「已展开页数」去请求新分类
+  page.value = 1
   loadGoods()
 }
 
@@ -600,6 +674,21 @@ async function loadOrders() {
   } finally {
     ordersLoading.value = false
   }
+}
+
+// ===== 商品详情弹窗 =====
+const showDetail = ref(false)
+const detailGoods = ref(null)
+
+function openDetail(goods) {
+  detailGoods.value = goods
+  showDetail.value = true
+}
+
+/** 详情里点兑换：先收起详情，再走原有兑换流程（虚拟商品确认 / 实物填地址） */
+function onDetailBuy(goods) {
+  showDetail.value = false
+  buy(goods)
 }
 
 async function buy(g) {
@@ -737,73 +826,94 @@ onMounted(() => {
 
 .balance-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  /* 空间不足时提示文案自动换到下一排，避免被挤压成竖排文字 */
-  flex-wrap: wrap;
-  gap: 12px 16px;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--gold-soft), var(--accent-wash));
   border: 1px solid var(--gold-line);
 }
-.balance-left {
+.balance-main {
+  flex: 1 1 auto;
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 14px;
-  min-width: 0;
+  padding: 16px 18px;
+}
+.balance-coin {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--gold-line);
+  color: #d4a148;
+  font-size: 24px;
+  box-shadow: var(--shadow-sm);
 }
 .balance-info {
   min-width: 0;
-}
-.balance-icon {
-  flex-shrink: 0;
-  font-size: 34px;
-  color: #d4a148;
+  flex: 1;
 }
 .balance-label {
   font-size: 12px;
   color: var(--text-muted);
 }
 .balance-value {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0 5px;
-  font-size: 24px;
-  font-weight: 700;
-  line-height: 1.25;
+  margin-top: 2px;
+  font-size: 26px;
+  font-weight: 800;
+  line-height: 1.2;
   color: var(--primary-deep);
   /* 数字等宽，余额变化时不抖动 */
   font-variant-numeric: tabular-nums;
-}
-.balance-num {
   overflow-wrap: anywhere;
 }
-.balance-unit {
-  font-size: 13px;
+.balance-value em {
+  margin-left: 5px;
+  font-style: normal;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
 }
-.balance-tip {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  min-width: 0;
+.balance-hint {
+  margin-top: 2px;
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-muted);
 }
-.balance-tip .bi {
+.balance-more {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: var(--control-h-sm);
+  padding: 0 12px;
+  border: 1px solid var(--gold-line);
+  border-radius: 999px;
+  background: var(--bg-card);
+  color: var(--text-soft);
+  font-size: 12px;
+  text-decoration: none;
+  transition: all var(--dur-fast) var(--ease);
 }
-/* 我的兑换统计：整行占满，与余额区隔开 */
+.balance-more:hover {
+  border-color: var(--primary-soft);
+  color: var(--primary);
+}
+/* 我的兑换统计：与余额区用竖线隔开 */
 .balance-stats {
-  flex-basis: 100%;
+  flex: 0 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
-  margin-top: 4px;
-  padding-top: 12px;
-  border-top: 1px dashed var(--gold-line);
+  grid-template-columns: repeat(4, minmax(64px, 1fr));
+  align-items: center;
+  gap: 4px;
+  padding: 14px 18px;
+  border-left: 1px dashed var(--gold-line);
 }
 .stat-item {
   display: flex;
@@ -818,6 +928,11 @@ onMounted(() => {
   font-variant-numeric: tabular-nums;
 }
 .stat-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.section-count {
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -903,14 +1018,35 @@ onMounted(() => {
 
 .goods-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(224px, 1fr));
   gap: 16px;
 }
+.goods-more {
+  display: flex;
+  justify-content: center;
+  padding: 2px 0 4px;
+}
 .goods-card {
-  overflow: hidden;
-  padding: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease),
+    border-color var(--dur-fast) var(--ease);
+}
+.goods-card:hover,
+.goods-card:focus-visible {
+  transform: translateY(-2px);
+  border-color: var(--primary-soft);
+  box-shadow: var(--shadow);
+  outline: none;
+}
+.goods-card.is-disabled {
+  opacity: 0.88;
 }
 .goods-cover-wrap {
   position: relative;
@@ -919,7 +1055,37 @@ onMounted(() => {
   overflow: hidden;
   background: var(--bg-muted);
 }
-/* 兑换时间状态角标 */
+.goods-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform var(--dur-slow) var(--ease);
+}
+.goods-card:hover .goods-cover {
+  transform: scale(1.03);
+}
+/* 类型角标（右上）：虚拟 / 实物 */
+.goods-type {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.7;
+  color: #fff;
+}
+.goods-type.is-virtual {
+  background: rgba(46, 122, 92, 0.92);
+}
+.goods-type.is-physical {
+  background: rgba(199, 72, 42, 0.92);
+}
+/* 兑换时间状态角标（左上） */
 .goods-state {
   position: absolute;
   top: 10px;
@@ -942,12 +1108,6 @@ onMounted(() => {
 .goods-state.is-end {
   background: rgba(50, 46, 38, 0.72);
 }
-.goods-cover {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
 .goods-body {
   padding: 14px;
   display: flex;
@@ -956,43 +1116,74 @@ onMounted(() => {
   flex: 1;
 }
 .goods-title {
+  margin: 0;
   font-size: 15px;
   font-weight: 600;
+  line-height: 1.45;
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .goods-desc {
+  margin: 0;
   font-size: 12px;
   color: var(--text-muted);
-  line-height: 1.5;
+  line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 36px;
+  min-height: 38px;
 }
 .goods-foot {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 2px;
 }
 .goods-price {
-  font-size: 16px;
-  font-weight: 700;
+  /* 图标与金额是同级的 flex 子项：用 gap 控间距，
+     不要依赖模板里的换行（Vue 会丢掉元素之间的纯空白文本节点） */
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 18px;
+  font-weight: 800;
   color: #d4a148;
+  font-variant-numeric: tabular-nums;
 }
 .goods-price .bi {
   font-size: 13px;
+}
+.goods-price em {
+  margin-left: 0;
+  font-style: normal;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+/* 0 积分商品：显示「免费」而不是「0 积分」 */
+.goods-price.is-free {
+  color: var(--success);
+}
+.goods-free {
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--success);
+  letter-spacing: 0.02em;
 }
 .goods-stock {
   font-size: 12px;
   color: var(--text-muted);
 }
-.goods-stock.empty {
+.goods-stock.is-empty {
   color: var(--danger);
 }
-/* 商品标签：限购 / 经验门槛 / 已兑换 */
+/* 商品标签：限购 / 经验门槛 / 有效期 / 倒计时 */
 .goods-tags {
   display: flex;
   flex-wrap: wrap;
@@ -1026,6 +1217,24 @@ onMounted(() => {
   background: var(--gold-wash);
   color: #c7902f;
 }
+/* 卡片底部的详情入口（整卡可点，这里只做视觉提示） */
+.goods-detail-entry {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: var(--control-h-sm);
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-soft);
+  font-size: 13px;
+  font-weight: 500;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.goods-card:hover .goods-detail-entry {
+  background: var(--primary);
+  color: #fff;
+}
 
 .status-tag {
   display: inline-block;
@@ -1046,25 +1255,6 @@ onMounted(() => {
 .status-tag.status-3 {
   background: var(--bg-muted);
   color: var(--text-light);
-}
-
-/* 商品类型标签 */
-.type-tag {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 8px;
-  font-size: 11px;
-  border-radius: 999px;
-  vertical-align: middle;
-  font-weight: 500;
-}
-.type-tag.virtual {
-  background: rgba(108, 154, 77, 0.14);
-  color: var(--success);
-}
-.type-tag.physical {
-  background: var(--gold-soft);
-  color: #c7902f;
 }
 
 /* 兑换记录卡片 */
@@ -1114,6 +1304,10 @@ onMounted(() => {
   color: var(--text-muted);
 }
 .order-card-price {
+  /* 图标与文字用 gap 控间距（模板换行会被 Vue 压缩掉） */
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   color: #d4a148;
   font-weight: 600;
 }
@@ -1310,6 +1504,9 @@ onMounted(() => {
   white-space: nowrap;
 }
 .confirm-price {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   margin-top: 4px;
   font-size: 15px;
   font-weight: 700;
@@ -1343,35 +1540,45 @@ onMounted(() => {
   opacity: 0;
 }
 
-/* 手机端：余额与提示上下排列，提示文案独立一行，不再与余额争抢横向空间 */
+/* 手机端：余额与统计上下排列，统计改为四等分一排 */
 @media (max-width: 640px) {
-  .balance-card.card-pad {
+  .balance-card {
     flex-direction: column;
-    align-items: stretch;
-    gap: 12px;
-    padding: 16px;
   }
-  .balance-left {
+  .balance-main {
     gap: 12px;
+    padding: 14px;
   }
-  .balance-icon {
-    font-size: 30px;
+  .balance-coin {
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
   }
   .balance-value {
     font-size: 22px;
   }
-  .balance-tip {
-    align-items: flex-start;
-    padding-top: 11px;
+  .balance-stats {
+    grid-template-columns: repeat(4, 1fr);
+    padding: 12px 10px;
+    border-left: none;
     border-top: 1px dashed var(--gold-line);
-    line-height: 1.6;
   }
-  .balance-tip .bi {
-    margin-top: 3px;
+  .stat-label {
+    white-space: normal;
   }
-  /* 未登录态：登录按钮占满整行，点击区域更大 */
-  .balance-card > .btn {
-    width: 100%;
+  .goods-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 12px;
+  }
+  .goods-body {
+    padding: 12px;
+    gap: 6px;
+  }
+  .goods-desc {
+    min-height: 0;
+  }
+  .goods-detail-entry {
+    height: var(--control-h);
   }
 }
 </style>

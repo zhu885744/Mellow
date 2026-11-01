@@ -776,6 +776,28 @@ h1, h2, h3 {
   background: var(--text-light);
 }
 
+/* ---------- 弹窗内不显示滚动条 ----------
+ * 弹窗内容区（AdminFormDialog、各页面自绘 modal、附件库、灯箱…）照常可以滚动，
+ * 只是不再画出右侧/底部滚动条：浮层容器统一以 mask / overlay 命名，
+ * 这里直接命中整棵子树，新增弹窗不用再各写一遍。
+ * 注意：这是「隐藏滚动条」而不是「禁止滚动」，滚轮与触屏依然生效。
+ */
+[class*='mask'],
+[class*='overlay'],
+[class*='mask'] *,
+[class*='overlay'] * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+[class*='mask']::-webkit-scrollbar,
+[class*='overlay']::-webkit-scrollbar,
+[class*='mask'] *::-webkit-scrollbar,
+[class*='overlay'] *::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
 /* ========== 响应式 ========== */
 @media (max-width: 1024px) {
   :root {

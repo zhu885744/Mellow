@@ -3,8 +3,12 @@
     <SectionTitle title="友情链接">
       <template #extra>
         <div class="links-extra">
-          <button class="btn btn-sm" @click="openExplain">友链说明</button>
-          <button class="btn btn-sm" @click="openApply">申请友链</button>
+          <button class="btn btn-sm" @click="openExplain">
+            <i class="bi bi-info-circle" aria-hidden="true" /> 友链说明
+          </button>
+          <button class="btn btn-sm btn-primary" @click="openApply">
+            <i class="bi bi-plus-lg" aria-hidden="true" /> 申请友链
+          </button>
         </div>
       </template>
     </SectionTitle>
@@ -18,24 +22,36 @@
     </div>
 
     <div v-else>
-      <!-- 分组筛选：仅当存在多个分组时出现，"全部" 为默认视图 -->
-      <div v-if="groups.length > 1" class="group-filter">
-        <button
-          class="group-chip"
-          :class="{ 'is-active': activeGroupId === null }"
-          @click="activeGroupId = null"
-        >
-          全部<span class="group-chip-count">{{ totalCount }}</span>
-        </button>
-        <button
-          v-for="g in groups"
-          :key="g.id"
-          class="group-chip"
-          :class="{ 'is-active': activeGroupId === g.id }"
-          @click="activeGroupId = g.id"
-        >
-          {{ g.name }}<span class="group-chip-count">{{ g.list.length }}</span>
-        </button>
+      <div class="links-toolbar">
+        <!-- 分组筛选：仅当存在多个分组时出现，"全部" 为默认视图 -->
+        <div v-if="groups.length > 1" class="group-filter">
+          <button
+            class="group-chip"
+            :class="{ 'is-active': activeGroupId === null }"
+            @click="activeGroupId = null"
+          >
+            全部<span class="group-chip-count">{{ totalCount }}</span>
+          </button>
+          <button
+            v-for="g in groups"
+            :key="g.id"
+            class="group-chip"
+            :class="{ 'is-active': activeGroupId === g.id }"
+            @click="activeGroupId = g.id"
+          >
+            {{ g.name }}<span class="group-chip-count">{{ g.list.length }}</span>
+          </button>
+        </div>
+
+        <div class="links-summary">
+          <span>共 <strong>{{ totalCount }}</strong> 个站点</span>
+          <template v-if="checkedCount">
+            <span class="links-summary-sep" aria-hidden="true" />
+            <span class="links-summary-online">
+              <i class="bi bi-broadcast" aria-hidden="true" /> {{ onlineCount }} 个在线
+            </span>
+          </template>
+        </div>
       </div>
 
       <div v-for="g in filteredGroups" :key="g.id" class="link-group">
@@ -55,80 +71,118 @@
             rel="noopener"
             class="link-card"
           >
-            <div class="link-head">
-              <img :src="link.avatar || defaultAvatar" alt="头像" class="link-avatar" loading="lazy" />
-              <div class="link-info">
-                <div class="link-name">{{ link.nickname }}</div>
-                <div class="link-url">{{ host(link.url) }}</div>
+            <img :src="link.avatar || defaultAvatar" alt="" class="link-avatar" loading="lazy" />
+
+            <div class="link-main">
+              <div class="link-head">
+                <span class="link-name" :title="link.nickname">{{ link.nickname }}</span>
+                <span
+                  v-if="link.checked"
+                  class="link-status"
+                  :class="link.online ? 'is-online' : 'is-offline'"
+                  :title="link.online ? `响应耗时 ${link.responseTime}ms` : '链接检测未通过'"
+                >
+                  <i class="link-status-dot" />{{ link.online ? '在线' : '离线' }}
+                </span>
               </div>
-              <span
-                v-if="link.checked"
-                class="link-status"
-                :class="link.online ? 'is-online' : 'is-offline'"
-                :title="link.online ? `响应耗时 ${link.responseTime}ms` : '链接检测未通过'"
-              >
-                <i class="link-status-dot" />{{ link.online ? '在线' : '离线' }}
-              </span>
+
+              <div class="link-url" :title="link.url">
+                <i class="bi bi-link-45deg" aria-hidden="true" />{{ host(link.url) }}
+              </div>
+
+              <p class="link-desc">{{ link.description || '期待与您的互换链接' }}</p>
             </div>
-            <p class="link-desc">{{ link.description || '期待与您的互换链接' }}</p>
+
+            <i class="bi bi-arrow-up-right link-open" aria-hidden="true" />
           </a>
         </div>
       </div>
     </div>
 
-    <!-- 友链说明弹窗（滚动条已隐藏） -->
-    <div v-if="showExplain" class="dialog-mask" @click.self="showExplain = false">
-      <div class="dialog dialog-lg card card-pad">
-        <h3 class="dialog-title">友链说明</h3>
-        <div v-if="explainLoading" class="explain-loading">
-          <span class="spinner" /> 加载中...
+    <!-- 友链说明弹窗 -->
+    <div v-if="showExplain" class="dialog-mask" @click.self="closeExplain">
+      <div class="dialog dialog-lg" role="dialog" aria-modal="true" aria-label="友链说明">
+        <header class="dialog-head">
+          <h3 class="dialog-title">友链说明</h3>
+          <button type="button" class="dialog-close" title="关闭" aria-label="关闭" @click="closeExplain">
+            <i class="bi bi-x-lg" aria-hidden="true" />
+          </button>
+        </header>
+
+        <div class="dialog-body explain-body">
+          <div v-if="explainLoading" class="explain-loading">
+            <span class="spinner" /> 加载中...
+          </div>
+          <div v-else-if="explain" class="markdown-body explain-content" v-html="explainHtml" />
+          <EmptyState v-else text="暂无说明" />
         </div>
-        <div v-else-if="explain" class="markdown-body explain-content" v-html="explainHtml" />
-        <EmptyState v-else text="暂无说明" />
-        <div class="dialog-actions">
-          <button class="btn btn-primary" @click="showExplain = false">我知道了</button>
-        </div>
+
+        <footer class="dialog-actions">
+          <button class="btn btn-primary" @click="closeExplain">我知道了</button>
+        </footer>
       </div>
     </div>
 
     <!-- 申请对话框 -->
-    <div v-if="showApply" class="dialog-mask" @click.self="showApply = false">
-      <div class="dialog card card-pad">
-        <h3 class="dialog-title">申请友情链接</h3>
-        <div class="form-item">
-          <label class="form-label">站点名称 *</label>
-          <input v-model="form.nickname" class="input" />
-        </div>
-        <div class="form-item">
-          <label class="form-label">站点链接 *</label>
-          <input v-model="form.url" class="input" placeholder="https://" />
-        </div>
-        <div class="form-item">
-          <label class="form-label">站点描述</label>
-          <input v-model="form.description" class="input" />
-        </div>
-        <div class="form-item">
-          <label class="form-label">站点头像</label>
-          <input v-model="form.avatar" class="input" placeholder="粘贴图片链接，或点击下方按钮" />
-          <div class="image-actions">
-            <button type="button" class="btn btn-sm" :disabled="uploading" @click="avatarFileRef?.click()">
-              <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
-            </button>
-            <button type="button" class="btn btn-sm" title="从附件库选择" @click="showLibrary = true">
-              <i class="bi bi-folder2-open" /> 附件库
-            </button>
-            <button v-if="form.avatar" type="button" class="btn btn-sm btn-ghost" @click="form.avatar = ''">
-              移除
-            </button>
+    <div v-if="showApply" class="dialog-mask" @click.self="closeApply">
+      <div class="dialog" role="dialog" aria-modal="true" aria-label="申请友情链接">
+        <header class="dialog-head">
+          <h3 class="dialog-title">申请友情链接</h3>
+          <button type="button" class="dialog-close" title="关闭" aria-label="关闭" @click="closeApply">
+            <i class="bi bi-x-lg" aria-hidden="true" />
+          </button>
+        </header>
+
+        <div class="dialog-body">
+          <!-- 图标预览：上传后即时可见，避免用户填完才知道图挂了 -->
+          <div class="apply-avatar">
+            <img :src="form.avatar || defaultAvatar" class="apply-avatar-img" alt="站点图标预览" />
+            <div class="apply-avatar-side">
+              <div class="apply-avatar-actions">
+                <button type="button" class="btn btn-sm" :disabled="uploading" @click="avatarFileRef?.click()">
+                  <i class="bi bi-upload" aria-hidden="true" /> {{ uploading ? '上传中...' : '上传图片' }}
+                </button>
+                <button type="button" class="btn btn-sm" title="从附件库选择" @click="showLibrary = true">
+                  <i class="bi bi-folder2-open" aria-hidden="true" /> 附件库
+                </button>
+                <button v-if="form.avatar" type="button" class="btn btn-sm btn-ghost" @click="form.avatar = ''">
+                  移除
+                </button>
+              </div>
+              <p class="apply-avatar-tip">建议 200×200 正方形图片，5MB 以内</p>
+            </div>
             <input ref="avatarFileRef" type="file" accept="image/*" hidden @change="onAvatarChange" />
           </div>
+
+          <div class="form-item">
+            <label class="form-label">站点名称 *</label>
+            <input v-model="form.nickname" class="input" maxlength="40" placeholder="例如：某某的博客" />
+          </div>
+          <div class="form-item">
+            <label class="form-label">站点链接 *</label>
+            <input v-model="form.url" class="input" placeholder="https://" />
+          </div>
+          <div class="form-item">
+            <label class="form-label">站点描述</label>
+            <input v-model="form.description" class="input" maxlength="80" placeholder="一句话介绍你的站点" />
+          </div>
+          <div class="form-item">
+            <label class="form-label">图标链接</label>
+            <input v-model="form.avatar" class="input" placeholder="也可以直接粘贴图片地址" />
+          </div>
+
+          <p class="apply-tip">
+            <i class="bi bi-info-circle" aria-hidden="true" />
+            提交后进入人工审核，通过后会展示在友链列表中。
+          </p>
         </div>
-        <div class="dialog-actions">
-          <button class="btn" @click="showApply = false">取消</button>
+
+        <footer class="dialog-actions">
+          <button class="btn" @click="closeApply">取消</button>
           <button class="btn btn-primary" :disabled="submitting" @click="submit">
             {{ submitting ? '提交中...' : '提交申请' }}
           </button>
-        </div>
+        </footer>
       </div>
     </div>
 
@@ -143,7 +197,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listLinks, listLinkGroups, createLink } from '@/api/links'
@@ -316,6 +370,32 @@ const activeGroupId = ref(null)
 
 const totalCount = computed(() => groups.value.reduce((n, g) => n + (g.list?.length || 0), 0))
 
+// 已拿到检测结果的站点数 / 其中在线数：两者都只统计 checked 的卡片
+const checkedCount = computed(() =>
+  groups.value.reduce((n, g) => n + (g.list || []).filter((link) => link.checked).length, 0)
+)
+const onlineCount = computed(() =>
+  groups.value.reduce((n, g) => n + (g.list || []).filter((link) => link.checked && link.online).length, 0)
+)
+
+function closeExplain() {
+  showExplain.value = false
+}
+
+function closeApply() {
+  showApply.value = false
+}
+
+// Esc 关闭弹窗；附件库打开时交给它自己处理，避免一次关掉两层
+function onKeydown(e) {
+  if (e.key !== 'Escape' || showLibrary.value) return
+  if (showApply.value) {
+    showApply.value = false
+    return
+  }
+  if (showExplain.value) showExplain.value = false
+}
+
 const filteredGroups = computed(() => {
   if (activeGroupId.value === null) return groups.value
   return groups.value.filter((g) => g.id === activeGroupId.value)
@@ -411,16 +491,62 @@ async function submit() {
   }
 }
 
-onMounted(load)
+onMounted(() => {
+  load()
+  window.addEventListener('keydown', onKeydown)
+})
+
+onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 </script>
 
 <style scoped>
+/* --- 顶部工具行：分组筛选 + 站点统计 --- */
+.links-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-bottom: 20px;
+}
+
+.links-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.links-summary strong {
+  font-weight: 600;
+  color: var(--text-soft);
+}
+
+.links-summary-sep {
+  width: 1px;
+  height: 11px;
+  background: var(--border);
+}
+
+.links-summary-online {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--success);
+}
+
+.links-summary-online .bi {
+  font-size: 12px;
+}
+
 /* --- 分组筛选 --- */
 .group-filter {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 20px;
+  margin-bottom: 0;
 }
 
 .group-chip {
@@ -511,62 +637,81 @@ onMounted(load)
 
 .link-grid {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(272px, 1fr));
+  gap: 14px;
 }
 
-/* --- 卡片样式优化 --- */
+/* --- 友链卡片 --- */
 .link-card {
-  display: block;
+  position: relative;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: 106px;
+  padding: 15px 16px;
   text-decoration: none;
   color: inherit;
-  background: var(--bg-card, #fff);
-  border: 1px solid var(--border);
-  border-radius: var(--radius, 8px);
-  padding: 16px 18px;
-  transition: all 0.3s ease;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  transition: transform var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    box-shadow var(--dur-fast) var(--ease);
 }
 
 .link-card:hover {
-  transform: translateY(-4px);
-  border-color: var(--primary, #4f46e5);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+  transform: translateY(-2px);
+  border-color: var(--primary-soft);
+  box-shadow: var(--shadow);
+}
+
+.link-avatar {
+  width: 42px;
+  height: 42px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+}
+
+.link-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .link-head {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 6px;
-}
-
-.link-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  flex-shrink: 0;
-  background: var(--bg-muted, #f3f4f6);
-}
-
-.link-info {
-  flex: 1;
+  gap: 8px;
   min-width: 0;
 }
 
 .link-name {
-  font-size: 15px;
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
   font-weight: 600;
-  color: var(--text, #1f2937);
-  line-height: 1.3;
+  line-height: 1.4;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .link-url {
   font-size: 12px;
-  color: var(--text-muted, #6b7280);
+  color: var(--text-light);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.link-url .bi {
+  margin-right: 3px;
+  font-size: 11px;
 }
 
 /* --- 链接检测状态 --- */
@@ -575,13 +720,12 @@ onMounted(load)
   align-items: center;
   gap: 4px;
   flex-shrink: 0;
-  align-self: flex-start;
-  padding: 3px 8px;
+  padding: 2px 8px;
   border-radius: 999px;
-  background: var(--bg-muted, #f3f4f6);
-  color: var(--text-muted, #6b7280);
+  background: var(--bg-muted);
+  color: var(--text-muted);
   font-size: 11px;
-  line-height: 1;
+  line-height: 1.6;
   white-space: nowrap;
 }
 
@@ -593,23 +737,40 @@ onMounted(load)
 }
 
 .link-status.is-online {
-  color: var(--success, #6c9a4d);
+  color: var(--success);
 }
 
 .link-status.is-offline {
-  color: var(--danger, #d9544d);
+  color: var(--danger);
 }
 
 .link-desc {
-  font-size: 13px;
-  color: var(--text-soft, #4b5563);
-  line-height: 1.5;
-  margin: 4px 0 0;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.6;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
-  min-height: 36px;
+}
+
+/* 悬浮时右下角淡入的外链箭头 */
+.link-open {
+  position: absolute;
+  right: 14px;
+  bottom: 12px;
+  font-size: 12px;
+  color: var(--primary);
+  opacity: 0;
+  transform: translate(-2px, 2px);
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.link-card:hover .link-open {
+  opacity: 1;
+  transform: none;
 }
 
 /* --- 加载与空状态 --- */
@@ -623,12 +784,14 @@ onMounted(load)
 .dialog-mask {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  z-index: 1000;
+  /* 与全站弹窗层级一致，避免被吸顶导航压住 */
+  z-index: 3000;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 16px;
+  padding: 20px;
+  background: rgba(32, 28, 22, 0.5);
+  backdrop-filter: blur(2px);
 }
 
 .links-extra {
@@ -639,15 +802,66 @@ onMounted(load)
 
 .dialog {
   width: 100%;
-  max-width: 420px;
+  max-width: 460px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
 }
 .dialog-lg {
-  max-width: 640px;
+  max-width: 680px;
+}
+.dialog-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border-soft);
 }
 .dialog-title {
-  font-size: 16px;
+  margin: 0;
+  font-size: 15px;
   font-weight: 600;
-  margin-bottom: 16px;
+  color: var(--text);
+}
+.dialog-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+.dialog-close:hover {
+  background: var(--bg-muted);
+  color: var(--text);
+}
+.dialog-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px;
+}
+.dialog-actions {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border-soft);
+  background: var(--bg-card);
 }
 
 .explain-loading {
@@ -656,35 +870,75 @@ onMounted(load)
   color: var(--text-muted);
 }
 
-/* --- 友链说明内容区滚动条隐藏 --- */
-.explain-content {
-  max-height: 50vh;
-  overflow-y: auto;
-  scrollbar-width: none;        /* Firefox */
-  -ms-overflow-style: none;     /* IE/Edge */
+/* 说明内容：滚动交给 .dialog-body，这里只负责排版 */
+.explain-body {
+  padding: 18px 20px;
 }
-.explain-content::-webkit-scrollbar {
-  display: none;               /* Chrome/Safari/Opera */
+.explain-content {
+  font-size: 14px;
 }
 
-.image-actions {
+/* --- 申请弹窗：图标预览 --- */
+.apply-avatar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 8px;
+  gap: 14px;
+  padding: 12px;
+  margin-bottom: 14px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg);
 }
-.dialog-actions {
+.apply-avatar-img {
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+}
+.apply-avatar-side {
+  min-width: 0;
+}
+.apply-avatar-actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.apply-avatar-tip {
+  margin: 6px 0 0;
+  font-size: 11px;
+  color: var(--text-light);
+}
+.apply-tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--gold-wash);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.apply-tip .bi {
+  margin-top: 2px;
+  color: var(--warning);
 }
 
 /* --- 响应式适配 --- */
 @media (max-width: 640px) {
   .link-grid {
     grid-template-columns: 1fr;
+  }
+  .links-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+    margin-bottom: 16px;
   }
   /* 分组较多时横向滑动，避免 chips 折行占掉半屏 */
   .group-filter {
@@ -701,8 +955,32 @@ onMounted(load)
     flex: 0 0 auto;
     min-height: 34px;
   }
+  .links-summary {
+    justify-content: flex-end;
+  }
   .link-group {
     margin-bottom: 20px;
+  }
+  .link-card {
+    min-height: 0;
+    padding: 14px;
+  }
+  .link-open {
+    display: none;
+  }
+
+  /* 弹窗改成底部抽屉，拇指更容易够到按钮 */
+  .dialog-mask {
+    align-items: flex-end;
+    padding: 0;
+  }
+  .dialog {
+    max-width: none;
+    max-height: 92vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+  .dialog-actions {
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
   }
 }
 </style>
