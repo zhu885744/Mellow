@@ -2,9 +2,17 @@
   <div class="layout">
     <!-- 移动端顶栏（仅手机端显示） -->
     <div class="mobile-topbar">
+      <!-- 设置了 LOGO 就只显示 LOGO；没设置、或URL失效时退回纯文字 -->
       <router-link to="/" class="mobile-brand" title="返回首页">
-        <img v-if="site.avatar" class="mobile-brand-logo" :src="site.avatar" :alt="site.title" loading="lazy" />
-        {{ site.title }}
+        <img
+          v-if="site.avatar && !logoFailed"
+          class="mobile-brand-logo"
+          :src="site.avatar"
+          :alt="site.title"
+          loading="lazy"
+          @error="logoFailed = true"
+        />
+        <span v-else class="mobile-brand-text">{{ site.title }}</span>
       </router-link>
       <div class="mobile-actions">
         <!-- 搜索入口：手机端左栏（含搜索按钮）整块被隐藏，这里是唯一的入口 -->
@@ -768,6 +776,13 @@ onMounted(() => {
     min-width: 0;
     /* 顶栏品牌也是「返回首页」的链接 */
     text-decoration: none;
+  }
+  /* 没配 LOGO 时的文字版标题：父级是 flex，省略号要写在自身才生效 */
+  .mobile-brand-text {
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
   /* 网站 LOGO：移动端顶栏只留一个小图标 */
   .mobile-brand-logo {

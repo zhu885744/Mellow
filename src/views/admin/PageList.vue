@@ -208,10 +208,12 @@
       </template>
 
       <Pagination
-        v-if="!loading && total > pageSize"
+        v-if="!loading && total > 0"
         :current="page"
         :total="total"
         :page-size="pageSize"
+        :sizes="PAGE_SIZE_OPTIONS"
+        @update:page-size="(size) => { pageSize = size; page = 1; load() }"
         @update:current="changePage"
       />
     </div>
@@ -247,6 +249,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 import { ref, reactive, computed, onMounted, watchEffect } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
@@ -267,7 +270,7 @@ import { fromNow } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
-const pageSize = 15
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -362,7 +365,7 @@ async function load() {
 
     const params = {
       page: page.value,
-      limit: pageSize,
+      limit: pageSize.value,
       order: trash.value ? 'delete_time desc' : sortKey.value,
       where: JSON.stringify(where)
     }

@@ -1,5 +1,14 @@
 <template>
-  <nav v-if="pageCount > 1" class="pager" aria-label="分页导航">
+  <!-- sizes 为空时（前台列表）行为与以前完全一致：只有页码，没有条数下拉 -->
+  <nav v-if="pageCount > 1 || sizes.length" class="pager" aria-label="分页导航">
+    <!-- 每页条数：切换后只上报新值，回到第 1 页与重新请求由父组件处理 -->
+    <SelectMenu
+      v-if="sizes.length"
+      class="pager-size"
+      :model-value="pageSize"
+      :options="sizes"
+      @update:model-value="(value) => $emit('update:pageSize', Number(value))"
+    />
     <template v-for="(item, index) in pageItems" :key="`${item}-${index}`">
       <span v-if="item === '...'" class="pager-gap" aria-hidden="true">…</span>
       <button
@@ -19,12 +28,16 @@
 
 <script setup>
 import { computed } from 'vue'
+import SelectMenu from '@/components/SelectMenu.vue'
+
 const props = defineProps({
   current: { type: Number, default: 1 },
   total: { type: Number, default: 0 },
-  pageSize: { type: Number, default: 10 }
+  pageSize: { type: Number, default: 10 },
+  // 每页条数下拉的选项 [{ value, label }]；不传则不渲染下拉（前台列表保持原样）
+  sizes: { type: Array, default: () => [] }
 })
-defineEmits(['update:current'])
+defineEmits(['update:current', 'update:pageSize'])
 
 const pageCount = computed(() => Math.max(1, Math.ceil(props.total / props.pageSize)))
 
@@ -60,6 +73,10 @@ const pageItems = computed(() => {
   justify-content: center;
   gap: 6px;
   padding: 24px 0;
+}
+/* 条数下拉与页码按钮等高（触发器默认高度来自 --control-h-sm） */
+.pager-size :deep(.select-trigger) {
+  height: 32px;
 }
 .pager-btn {
   min-width: 32px;

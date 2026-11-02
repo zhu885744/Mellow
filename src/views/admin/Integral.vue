@@ -190,10 +190,12 @@
         </template>
 
         <Pagination
-          v-if="!userLoading && userTotal > pageSize"
+          v-if="!userLoading && userTotal > 0"
           :current="userPage"
           :total="userTotal"
-          :page-size="pageSize"
+          :page-size="userPageSize"
+          :sizes="PAGE_SIZE_OPTIONS"
+          @update:page-size="(size) => { userPageSize = size; userPage = 1; loadUsers() }"
           @update:current="changeUserPage"
         />
       </template>
@@ -352,10 +354,12 @@
         </template>
 
         <Pagination
-          v-if="!cardLoading && cardTotal > pageSize"
+          v-if="!cardLoading && cardTotal > 0"
           :current="cardPage"
           :total="cardTotal"
-          :page-size="pageSize"
+          :page-size="cardPageSize"
+          :sizes="PAGE_SIZE_OPTIONS"
+          @update:page-size="(size) => { cardPageSize = size; cardPage = 1; loadCards() }"
           @update:current="changeCardPage"
         />
       </template>
@@ -713,8 +717,11 @@ import { USER_SEARCH_FIELDS, sanitizeUserKeyword } from '@/utils/user'
 import { fromNow } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 
-const pageSize = 20
+// 用户积分与积分卡密是两个列表，各自记住自己的每页条数
+const userPageSize = ref(PAGE_SIZE_DEFAULT)
+const cardPageSize = ref(PAGE_SIZE_DEFAULT)
 
 const views = [
   {
@@ -1045,7 +1052,7 @@ async function loadUsers() {
   try {
     const params = {
       page: userPage.value,
-      limit: pageSize,
+      limit: userPageSize.value,
       field: USER_FIELD,
       order: userSort.value
     }
@@ -1201,7 +1208,7 @@ async function submitAdjust() {
 async function loadCards() {
   cardLoading.value = true
   try {
-    const params = { page: cardPage.value, limit: pageSize, order: cardSort.value }
+    const params = { page: cardPage.value, limit: cardPageSize.value, order: cardSort.value }
     switch (cardStatus.value) {
       case 'unused':
         params.status = 0

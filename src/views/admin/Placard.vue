@@ -170,10 +170,12 @@
       </template>
 
       <Pagination
-        v-if="!loading && total > pageSize"
+        v-if="!loading && total > 0"
         :current="page"
         :total="total"
         :page-size="pageSize"
+        :sizes="PAGE_SIZE_OPTIONS"
+        @update:page-size="(size) => { pageSize = size; page = 1; load() }"
         @update:current="changePage"
       />
     </div>
@@ -247,6 +249,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 公告管理（/admin/placard）
  *
@@ -287,7 +290,7 @@ import {
   placardTypeStyle
 } from '@/utils/placard'
 
-const pageSize = 15
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 
 // 打开方式：后端默认 _blank，前端仅识别 _self 为当前窗口
 const TARGET_OPTIONS = [
@@ -366,7 +369,7 @@ async function load() {
   loading.value = true
   selectedIds.value = []
   try {
-    const params = { page: page.value, limit: pageSize }
+    const params = { page: page.value, limit: pageSize.value }
     if (trash.value) params.onlyTrashed = true
     // 关键词走后端 like 的「字段名|值」格式：公告表只有 title 适合模糊匹配
     const kw = searchKey.value.replace(/['"\\%_|]/g, '').trim()

@@ -32,7 +32,6 @@ export const saveConfig = (key, json, value = '') =>
  * - SYSTEM_API_KEY、SYSTEM_API_KEY_LOCAL（开启密钥时是否放行本站来源）、ALLOW_REGISTER 只用 value（"0"/"1"）
  *   ALLOW_REGISTER 额外用 text 存「新用户默认权限组」ID 列表（如 "1,2"）
  * - SYSTEM_QPS、SYSTEM_QPS_BLOCK 用 value + json
- * - SYSTEM_PAGE_LIMIT 用 value + text（最大条数）
  * 这里只提交调用方显式传入的字段，避免把不需要的字段写成空值。
  *
  * @param {{key: string, value?: string, json?: any, text?: string}} data

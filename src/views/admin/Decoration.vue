@@ -223,7 +223,14 @@
             </div>
           </div>
 
-          <Pagination v-model:current="page" :total="total" :page-size="pageSize" @update:current="load()" />
+          <Pagination
+          v-model:current="page"
+          :total="total"
+          :page-size="pageSize"
+          :sizes="PAGE_SIZE_OPTIONS"
+          @update:page-size="(size) => { pageSize = size; page = 1; load() }"
+          @update:current="load()"
+        />
         </template>
       </template>
 
@@ -669,8 +676,9 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 
-const pageSize = 12
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 
 // 头像框对齐器的示例头像用当前管理员的，更接近真实观感
 const userStore = useUserStore()
@@ -818,7 +826,7 @@ function parseJson(value) {
 async function load() {
   loading.value = true
   try {
-    const params = { page: page.value, limit: pageSize }
+    const params = { page: page.value, limit: pageSize.value }
     if (statusFilter.value === 'on') params.status = 1
     if (statusFilter.value === 'off') params.status = 0
     if (trash.value) params.onlyTrashed = 'true'

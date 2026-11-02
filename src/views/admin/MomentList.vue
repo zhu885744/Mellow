@@ -252,10 +252,12 @@
       </template>
 
       <Pagination
-        v-if="!loading && total > pageSize"
+        v-if="!loading && total > 0"
         :current="page"
         :total="total"
         :page-size="pageSize"
+        :sizes="PAGE_SIZE_OPTIONS"
+        @update:page-size="(size) => { pageSize = size; page = 1; load() }"
         @update:current="changePage"
       />
     </div>
@@ -294,6 +296,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 动态列表（/admin/moments 子路由）
  *
@@ -343,7 +346,7 @@ const router = useRouter()
 // 父级 Moments.vue 注入的联动能力（统计卡片 ←→ 列表筛选）
 const admin = inject('momentsAdmin', null)
 
-const pageSize = 15
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 const tabs = MOMENT_TABS
 const sortOptions = MOMENT_SORT_OPTIONS
 
@@ -417,7 +420,7 @@ function buildParams() {
     // 回收站忽略状态标签（已删除的动态同样带任意 status/audit）
     key: trash.value ? MOMENT_TRASH_KEY : status.value,
     page: page.value,
-    limit: pageSize,
+    limit: pageSize.value,
     keyword: searchKey.value,
     // 回收站固定按删除时间倒序，其余跟随排序白名单
     order: trash.value ? MOMENT_TRASH_ORDER : sortKey.value

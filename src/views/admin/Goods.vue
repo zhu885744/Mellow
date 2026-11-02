@@ -242,10 +242,12 @@
         </template>
 
         <Pagination
-          v-if="!loading && total > pageSize"
+          v-if="!loading && total > 0"
           :current="page"
           :total="total"
           :page-size="pageSize"
+          :sizes="PAGE_SIZE_OPTIONS"
+          @update:page-size="(size) => { pageSize = size; page = 1; loadGoods() }"
           @update:current="changePage"
         />
       </template>
@@ -362,10 +364,12 @@
         </ul>
 
         <Pagination
-          v-if="!orderLoading && orderTotal > pageSize"
+          v-if="!orderLoading && orderTotal > 0"
           :current="orderPage"
           :total="orderTotal"
-          :page-size="pageSize"
+          :page-size="orderPageSize"
+          :sizes="PAGE_SIZE_OPTIONS"
+          @update:page-size="(size) => { orderPageSize = size; orderPage = 1; loadOrders() }"
           @update:current="changeOrderPage"
         />
       </template>
@@ -612,8 +616,11 @@ import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { fromNow, formatTime, toLocalInput, fromLocalInput } from '@/utils/time'
 import { debounce, copyText } from '@/utils/helper'
 import { toast } from '@/utils/toast'
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 
-const pageSize = 15
+// 商品与兑换订单是两个列表，各自记住自己的每页条数
+const pageSize = ref(PAGE_SIZE_DEFAULT)
+const orderPageSize = ref(PAGE_SIZE_DEFAULT)
 
 // 商品状态：0 下架 / 1 上架
 const SALE_OPTIONS = [
@@ -844,7 +851,7 @@ async function loadCategories() {
 async function loadGoods() {
   loading.value = true
   try {
-    const params = { page: page.value, limit: pageSize }
+    const params = { page: page.value, limit: pageSize.value }
     if (trash.value) {
       params.onlyTrashed = true
     } else if (status.value !== 'all') {
@@ -899,7 +906,7 @@ function changePage(p) {
 async function loadOrders() {
   orderLoading.value = true
   try {
-    const params = { page: orderPage.value, limit: pageSize }
+    const params = { page: orderPage.value, limit: orderPageSize.value }
     if (orderStatus.value !== '') params.status = Number(orderStatus.value)
     const res = await listOrdersAdmin(params)
     orders.value = res.data?.data || []

@@ -162,10 +162,12 @@
       </template>
 
       <Pagination
-        v-if="!loading && total > pageSize"
+        v-if="!loading && total > 0"
         :current="page"
         :total="total"
         :page-size="pageSize"
+        :sizes="PAGE_SIZE_OPTIONS"
+        @update:page-size="(size) => { pageSize = size; page = 1; load() }"
         @update:current="changePage"
       />
     </section>
@@ -241,6 +243,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 友链分组（/admin/links/group）
  *
@@ -274,7 +277,7 @@ import { fromNow } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
-const pageSize = 20
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 
 const list = ref([])
 const total = ref(0)
@@ -337,7 +340,7 @@ async function load() {
   try {
     const params = {
       page: page.value,
-      limit: pageSize,
+      limit: pageSize.value,
       field: LINK_GROUP_FIELD,
       order: trash.value ? 'delete_time desc' : 'id asc'
     }

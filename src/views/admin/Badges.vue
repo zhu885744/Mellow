@@ -211,10 +211,12 @@
       </ul>
 
       <Pagination
-        v-if="!loading && total > pageSize"
+        v-if="!loading && total > 0"
         :current="page"
         :total="total"
         :page-size="pageSize"
+        :sizes="PAGE_SIZE_OPTIONS"
+        @update:page-size="(size) => { pageSize = size; page = 1; load() }"
         @update:current="changePage"
       />
     </div>
@@ -559,6 +561,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 勋章管理（/admin/badges）
  *
@@ -600,7 +603,7 @@ import { fromNow } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
-const pageSize = 20
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 
 const list = ref([])
 const total = ref(0)
@@ -808,7 +811,7 @@ async function load() {
   // 翻页 / 换筛选后旧的勾选已经不在视图里，直接清掉，避免「批量移动」误伤
   selectedIds.value = []
   try {
-    const params = { page: page.value, limit: pageSize }
+    const params = { page: page.value, limit: pageSize.value }
     if (searchKey.value) params.like = `name|${searchKey.value}`
     if (trash.value) params.onlyTrashed = true
     // 分类筛选走 where：后端 buildQuery 会解析 JSON（0 = 未分类，也能精确筛到）

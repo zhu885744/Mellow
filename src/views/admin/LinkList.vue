@@ -228,10 +228,12 @@
     </template>
 
     <Pagination
-      v-if="!loading && total > pageSize"
+      v-if="!loading && total > 0"
       :current="page"
       :total="total"
       :page-size="pageSize"
+      :sizes="PAGE_SIZE_OPTIONS"
+      @update:page-size="(size) => { pageSize = size; page = 1; load() }"
       @update:current="changePage"
     />
 
@@ -370,6 +372,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 友链列表（/admin/links 子路由）
  *
@@ -425,7 +428,7 @@ import { fromNow } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
-const pageSize = 15
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 
 // 模板直接消费的选项（与父级统计卡片共用同一份定义）
 const tabs = LINK_TABS
@@ -537,7 +540,7 @@ async function load() {
     const params = linkListParams({
       key: trash.value ? LINK_TRASH_KEY : status.value,
       page: page.value,
-      limit: pageSize,
+      limit: pageSize.value,
       keyword: searchKey.value,
       searchField: searchField.value,
       group: group.value,

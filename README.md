@@ -1,6 +1,6 @@
 # MELLOW 主题
 
-基于 Vue 3 + Vite + 纯 HTML/CSS/JS 开发的三栏博客主题
+基于 Vue 3 + Vite + 纯 HTML/CSS/JS 开发的超强三栏INIS主题
 
 ## 功能模块
 
@@ -13,11 +13,30 @@
 
 ## 技术栈
 
-- **Vue 3** + Vue Router + Pinia
+- **Vue 3** + Vue Router + Pinia + vite
 - **Vite** 构建
 - **Axios** 请求
 - **markdown-it** 渲染
 - 纯 CSS（CSS 变量 + 响应式）
+
+## 所用到的依赖
+```bash
+"axios": "^1.6.8",
+"bootstrap-icons": "^1.13.1",
+"crypto-js": "^4.2.0",
+"dayjs": "^1.11.10",
+"highlight.js": "^11.9.0",
+"markdown-it": "^14.0.0",
+"pinia": "^2.1.7",
+"vue": "^3.4.21",
+"vue-router": "^4.3.0"
+```  
+
+## 开发
+拉取源码
+```bash
+git clone https://github.com/zhuxu-dev/mellow-theme.git
+```  
 
 ## 启动
 
@@ -26,7 +45,7 @@ npm install
 npm run dev
 ```
 
-默认开发端口 `5173`，通过 `vite.config.js` 中的 `proxy` 转发 `/api` 到后端 `http://localhost:8000`。
+默认开发端口 `5173`，通过 `vite.config.js` 中的 `proxy` 转发 `/api` 到后端如`http://localhost:8000`。
 
 ## 构建
 

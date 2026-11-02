@@ -260,10 +260,12 @@
       </template>
 
       <Pagination
-        v-if="!loading && total > pageSize"
+        v-if="!loading && total > 0"
         :current="page"
         :total="total"
         :page-size="pageSize"
+        :sizes="PAGE_SIZE_OPTIONS"
+        @update:page-size="(size) => { pageSize = size; page = 1; loadList() }"
         @update:current="changePage"
       />
     </div>
@@ -348,6 +350,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 消息管理（/admin/message）—— 管理端专用
  *
@@ -398,7 +401,7 @@ import { fromNow } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
-const pageSize = 15
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 
 // 管理端视角：读 / 写操作都带上（后端仅对 root 生效，其他账号传了会被忽略）
 const ADMIN = { scope: 'admin' }
@@ -692,7 +695,7 @@ async function loadAllStats() {
 async function loadList() {
   loading.value = true
   try {
-    const params = { page: page.value, limit: pageSize }
+    const params = { page: page.value, limit: pageSize.value }
     if (trash.value) params.onlyTrashed = true
 
     const kw = searchKey.value.replace(/['"\\%_|]/g, '').trim()

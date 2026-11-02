@@ -235,10 +235,12 @@
       </template>
 
       <Pagination
-        v-if="!loading && total > pageSize"
+        v-if="!loading && total > 0"
         :current="page"
         :total="total"
         :page-size="pageSize"
+        :sizes="PAGE_SIZE_OPTIONS"
+        @update:page-size="(size) => { pageSize = size; page = 1; load() }"
         @update:current="changePage"
       />
     </div>
@@ -274,6 +276,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 文章列表（/admin/article 的子路由）
  *
@@ -313,7 +316,7 @@ const router = useRouter()
 // 父级 Articles.vue 注入的联动能力（统计卡片 ←→ 列表筛选）
 const admin = inject('articlesAdmin', null)
 
-const pageSize = 15
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 const list = ref([])
 const total = ref(0)
 const page = ref(1)
@@ -467,7 +470,7 @@ async function load() {
 
     const params = {
       page: page.value,
-      limit: pageSize,
+      limit: pageSize.value,
       field: ARTICLE_FIELDS,
       order: trash.value ? 'delete_time desc' : sortKey.value,
       where: JSON.stringify(where)

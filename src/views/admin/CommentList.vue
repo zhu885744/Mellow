@@ -285,10 +285,12 @@
       </template>
 
       <Pagination
-        v-if="!loading && total > pageSize"
+        v-if="!loading && total > 0"
         :current="page"
         :total="total"
         :page-size="pageSize"
+        :sizes="PAGE_SIZE_OPTIONS"
+        @update:page-size="(size) => { pageSize = size; page = 1; load() }"
         @update:current="changePage"
       />
     </div>
@@ -369,6 +371,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 评论列表（/admin/comment 子路由）
  *
@@ -426,7 +429,7 @@ import {
 // 父级 Comments.vue 注入的联动能力（统计卡片 ←→ 列表筛选）
 const admin = inject('commentsAdmin', null)
 
-const pageSize = 15
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 const tabs = COMMENT_TABS
 const sortOptions = COMMENT_SORT_OPTIONS
 const searchFields = COMMENT_SEARCH_FIELDS
@@ -649,7 +652,7 @@ async function load() {
       commentListParams({
         key: trash.value ? COMMENT_TRASH_KEY : status.value,
         page: page.value,
-        limit: pageSize,
+        limit: pageSize.value,
         keyword: searchKey.value,
         searchField: searchField.value,
         level: level.value,

@@ -421,31 +421,6 @@
             </div>
           </section>
 
-          <!-- ============ 分页限制 ============ -->
-          <section v-else-if="tab === 'page'" class="card card-pad">
-            <header class="config-head">
-              <div>
-                <h3 class="config-title">分页限制</h3>
-                <p class="config-desc">限制列表接口单次查询的最大条数，避免一次拉取过多数据拖慢接口</p>
-              </div>
-            </header>
-            <div class="form-grid">
-              <div class="form-item">
-                <label class="form-label">启用限制</label>
-                <SelectMenu v-model="cfg.pageLimit.value" variant="field" :options="ON_OFF" />
-              </div>
-              <div class="form-item">
-                <label class="form-label">单次最大条数</label>
-                <input v-model="cfg.pageLimit.text" class="input" type="number" min="1" step="1" />
-              </div>
-            </div>
-            <div class="config-foot">
-              <button class="btn btn-primary btn-sm" :disabled="isSaving('pageLimit')" @click="savePageLimit">
-                <i class="bi bi-check2" /> 保存
-              </button>
-            </div>
-          </section>
-
           <!-- ============ 登录会话 ============ -->
           <section v-else-if="tab === 'session'" class="card card-pad">
             <header class="config-head">
@@ -1475,11 +1450,11 @@
  * 系统配置（/admin/system）
  *
  * 配置来源分两类：
- * 1. config 表（key / value / json / text）—— 安全策略、分页限制、注册开关；
+ * 1. config 表（key / value / json / text）—— 安全策略、注册开关；
  * 2. toml 文件（经 /api/toml 读写）—— 登录会话、缓存、存储、短信、通知、日志。
  *
  * 后端要点（app/api/controller/toml.go、app/api/middleware/*、app/model/config.go）：
- * - SYSTEM_API_KEY / SYSTEM_QPS / SYSTEM_QPS_BLOCK / SYSTEM_PAGE_LIMIT /
+ * - SYSTEM_API_KEY / SYSTEM_API_KEY_LOCAL / SYSTEM_QPS / SYSTEM_QPS_BLOCK /
  *   ALLOW_REGISTER 均为 config 表记录，value 是 "0"/"1" 字符串；
  * - QPS 自动封禁通知已并入统一邮件通知（SYSTEM_MAIL_NOTIFY 的 security.qps_ban 场景），
  *   不再有单独的 SYSTEM_QPS_NOTIFY；
@@ -1685,8 +1660,7 @@ const modules = [
     icon: 'bi bi-hdd-stack',
     tabs: [
       { key: 'cache', label: '缓存', icon: 'bi bi-database' },
-      { key: 'storage', label: '存储', icon: 'bi bi-hdd' },
-      { key: 'page', label: '分页限制', icon: 'bi bi-list-ol' }
+      { key: 'storage', label: '存储', icon: 'bi bi-hdd' }
     ]
   },
   {
@@ -1844,7 +1818,6 @@ const cfg = reactive({
   apiKey: { value: '0', local: '1' },
   qps: { value: '1', json: { point: 120, global: 600 } },
   qpsBlock: { value: '0', json: { count: 200, second: '60 * 60' } },
-  pageLimit: { value: '1', text: '50' },
   // 安全验证（SYSTEM_CAPTCHA）：
   // send_code 用下拉（"0"/"1"），其余场景用复选框（0/1），保存时统一归一为 0/1
   captcha: {
@@ -2296,7 +2269,6 @@ async function loadConfigs() {
   const apiKeyLocal = read('SYSTEM_API_KEY_LOCAL')
   const qps = read('SYSTEM_QPS')
   const block = read('SYSTEM_QPS_BLOCK')
-  const pageLimit = read('SYSTEM_PAGE_LIMIT')
   const captcha = read('SYSTEM_CAPTCHA')
   const register = read('ALLOW_REGISTER')
   const account = read('SYSTEM_ACCOUNT_CHANGE')
@@ -2320,10 +2292,6 @@ async function loadConfigs() {
   if (block) {
     cfg.qpsBlock.value = toText(block.value, '0')
     cfg.qpsBlock.json = { count: 200, second: '60 * 60', ...parseJson(block.json, {}) }
-  }
-  if (pageLimit) {
-    cfg.pageLimit.value = toText(pageLimit.value, '1')
-    cfg.pageLimit.text = toText(pageLimit.text, '50')
   }
   // 安全验证：配置不存在时保持默认值（send_code 开、敏感操作关）
   if (captcha) {
@@ -2756,14 +2724,6 @@ async function saveOauth() {
   // 回读一次统一口径（后端会补默认值）
   const latest = await readConfig('SYSTEM_OAUTH')
   if (latest) readOauthConfig(latest)
-}
-
-function savePageLimit() {
-  return saveConfigItem(
-    'pageLimit',
-    { key: 'SYSTEM_PAGE_LIMIT', data: { value: cfg.pageLimit.value, text: String(cfg.pageLimit.text) } },
-    '已保存'
-  )
 }
 
 /**

@@ -226,10 +226,12 @@
       </template>
 
       <Pagination
-        v-if="!loading && total > pageSize"
+        v-if="!loading && total > 0"
         :current="page"
         :total="total"
         :page-size="pageSize"
+        :sizes="PAGE_SIZE_OPTIONS"
+        @update:page-size="(size) => { pageSize = size; page = 1; load() }"
         @update:current="changePage"
       />
     </div>
@@ -299,6 +301,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * IP 黑名单（/admin/ip/black）
  *
@@ -329,7 +332,7 @@ import { fromNow, formatTime } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
 
-const pageSize = 20
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 
 // 状态筛选（expired 需要按当前时间比较，单独在列表里拼条件）
 const tabs = [
@@ -491,7 +494,7 @@ async function load() {
   try {
     const params = {
       page: page.value,
-      limit: pageSize,
+      limit: pageSize.value,
       order: trash.value ? 'delete_time desc' : 'id desc'
     }
     if (trash.value) params.onlyTrashed = true

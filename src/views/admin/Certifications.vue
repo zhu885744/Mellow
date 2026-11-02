@@ -122,10 +122,12 @@
       </ul>
 
       <Pagination
-        v-if="!loading && total > pageSize"
+        v-if="!loading && total > 0"
         :current="page"
         :total="total"
         :page-size="pageSize"
+        :sizes="PAGE_SIZE_OPTIONS"
+        @update:page-size="(size) => { pageSize = size; page = 1; load() }"
         @update:current="(p) => { page = p; load() }"
       />
     </section>
@@ -316,6 +318,7 @@
 </template>
 
 <script setup>
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 后台「用户认证」审核
  *
@@ -376,7 +379,7 @@ const pending = ref(0)
 const loading = ref(false)
 const busy = ref(false)
 const page = ref(1)
-const pageSize = 20
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 const status = ref('0')
 const certType = ref('')
 
@@ -437,7 +440,7 @@ async function load() {
   try {
     const res = await listCertifications({
       page: page.value,
-      limit: pageSize,
+      limit: pageSize.value,
       status: status.value,
       cert_type: certType.value
     })

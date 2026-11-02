@@ -167,10 +167,12 @@
         </ul>
 
         <Pagination
-          v-if="data.pages > 1"
+          v-if="!loading && total > 0"
           :current="page"
           :total="total"
           :page-size="limit"
+          :sizes="PAGE_SIZE_OPTIONS"
+          @update:page-size="(size) => { limit = size; page = 1; load() }"
           @update:current="(p) => { page = p; load() }"
         />
       </template>
@@ -184,6 +186,7 @@ import SelectMenu from '@/components/SelectMenu.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import { listLogDates, listLogFiles, readLog } from '@/api/log'
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 import { toast } from '@/utils/toast'
 
 // 与后端 logMaxLines 保持一致（仅用于提示文案）
@@ -212,7 +215,7 @@ const file = ref('')
 const level = ref('')
 const keyword = ref('')
 const page = ref(1)
-const limit = ref(50)
+const limit = ref(PAGE_SIZE_DEFAULT)
 
 const loading = ref(false)
 const loadingMeta = ref(false)

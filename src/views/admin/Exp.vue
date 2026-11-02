@@ -175,10 +175,12 @@
         </template>
 
         <Pagination
-          v-if="!userLoading && userTotal > pageSize"
+          v-if="!userLoading && userTotal > 0"
           :current="userPage"
           :total="userTotal"
-          :page-size="pageSize"
+          :page-size="userPageSize"
+          :sizes="PAGE_SIZE_OPTIONS"
+          @update:page-size="(size) => { userPageSize = size; userPage = 1; loadUsers() }"
           @update:current="changeUserPage"
         />
       </template>
@@ -301,10 +303,12 @@
         </ul>
 
         <Pagination
-          v-if="!loading && total > pageSize"
+          v-if="!loading && total > 0"
           :current="page"
           :total="total"
           :page-size="pageSize"
+          :sizes="PAGE_SIZE_OPTIONS"
+          @update:page-size="(size) => { pageSize = size; page = 1; load() }"
           @update:current="changePage"
         />
       </template>
@@ -502,8 +506,11 @@ import { USER_SEARCH_FIELDS, sanitizeUserKeyword } from '@/utils/user'
 import { fromNow } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
+import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 
-const pageSize = 15
+// 用户列表与经验流水是两个列表，各自记住自己的每页条数
+const userPageSize = ref(PAGE_SIZE_DEFAULT)
+const pageSize = ref(PAGE_SIZE_DEFAULT)
 
 const views = [
   {
@@ -770,7 +777,7 @@ async function loadUsers() {
   try {
     const params = {
       page: userPage.value,
-      limit: pageSize,
+      limit: userPageSize.value,
       field: USER_FIELD,
       order: userSort.value
     }
@@ -932,7 +939,7 @@ async function load() {
   try {
     const params = {
       page: page.value,
-      limit: pageSize,
+      limit: pageSize.value,
       order: trash.value ? 'delete_time desc' : sortKey.value
     }
     if (trash.value) params.onlyTrashed = true
