@@ -280,12 +280,16 @@ async function onPick(event) {
 }
 
 // 附件库：把选中的已上传图片加入配图（去重 + 数量上限）
-function onLibrarySelect(urls = []) {
+// items 里带 live_video：从库里选历史实况图时直接记进 liveMap，保存时拼成「图片::视频」
+function onLibrarySelect(urls = [], items = []) {
   const rest = MAX_IMAGES - form.images.length
   if (rest <= 0) {
     toast.warning(`最多上传 ${MAX_IMAGES} 张图片`)
     return
   }
+  items.forEach((item) => {
+    if (item?.full_url && item.live_video) liveMap.value[item.full_url] = item.live_video
+  })
   const add = urls.filter((url) => url && !form.images.includes(url)).slice(0, rest)
   form.images.push(...add)
   if (!add.length) {

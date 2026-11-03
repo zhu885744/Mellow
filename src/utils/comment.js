@@ -14,6 +14,9 @@
  * - result 内已附带 author / article / page / moments，无需额外请求即可展示来源。
  */
 
+// 实况图（图片::视频）的解析/序列化，见 utils/livePhoto.js
+import { parseLiveList } from './livePhoto'
+
 // 列表查询字段：不拉取 json/text/agent 等大字段，但需要 result（内含作者与来源）
 // 注：前台评论树走 comment/flat 且不传 field（返回全字段），所以能拿到 agent 用来
 // 展示「来自什么设备」（见 components/CommentItem.vue + utils/ua.js）；
@@ -277,9 +280,34 @@ export function commentBindLink(item) {
   }
 }
 
-/** 解析配图：后端以逗号分隔字符串存储，兼容数组与 | 分隔写法 */
-export function parseCommentImages(raw) {
+/**
+ * 解析配图的原始项（保留「图片::视频」写法）：返回 string[]
+ *
+ * 用于后台编辑表单回填 / 合并 / 保存 —— 只取封面会把实况图降级成静态图。
+ */
+export function parseCommentRawList(raw) {
   if (!raw) return []
   const arr = Array.isArray(raw) ? raw : String(raw).split(/[,|]/)
   return arr.map((s) => String(s).trim()).filter(Boolean)
+}
+
+/**
+ * 解析配图（含实况视频）：返回 { image, video }[]
+ *
+ * 与动态同一口径：实况图在库里写成 `图片URL::视频URL`（见 utils/livePhoto.js）。
+ * 只要图片地址的地方（后台缩略图、举报图等）用 parseCommentImages；
+ * 需要实况播放 / 灯箱「播放实况」的地方用本函数。
+ */
+export function parseCommentMedia(raw) {
+  return parseLiveList(raw)
+}
+
+/**
+ * 解析配图地址：返回图片 URL 数组（实况图只取封面）
+ *
+ * 注意：实况图一整项是 `图片::视频`，直接当 img src 会破图，
+ * 所以所有「只展示图片」的地方都必须经过这里。
+ */
+export function parseCommentImages(raw) {
+  return parseCommentMedia(raw).map((item) => item.image)
 }

@@ -69,18 +69,28 @@
         @click="goAuthor"
       ></div>
 
-      <!-- 评论图片 -->
+      <!-- 评论图片：实况图用 LivePhoto（封面 + 悬停/按住播放），与动态保持一致 -->
       <div v-if="images.length && !commentLocked" class="comment-images">
-        <img
-          v-for="(img, i) in images"
-          :key="img"
-          class="comment-img"
-          :src="img"
-          alt="评论图片"
-          loading="lazy"
-          @click="preview(i)"
-          @error="onImgError"
-        />
+        <template v-for="(img, i) in images" :key="`${img.image}-${i}`">
+          <LivePhoto
+            v-if="img.video"
+            class="comment-img comment-img-live"
+            :image="img.image"
+            :video="img.video"
+            alt="评论实况图"
+            fit="cover"
+            @click="preview(i)"
+          />
+          <img
+            v-else
+            class="comment-img"
+            :src="img.image"
+            alt="评论图片"
+            loading="lazy"
+            @click="preview(i)"
+            @error="onImgError"
+          />
+        </template>
       </div>
 
       <div class="comment-actions">
@@ -141,8 +151,10 @@
           </template>
         </EmojiEditor>
         <div v-if="replyImages.length" class="comment-reply-images">
-          <div v-for="(img, i) in replyImages" :key="img" class="reply-thumb">
-            <img :src="img" alt="" loading="lazy" />
+          <div v-for="(img, i) in replyImages" :key="img.image || i" class="reply-thumb">
+            <img :src="img.image" alt="" loading="lazy" />
+            <!-- 实况图：本地缩略图只展示封面，角标提示已识别到视频 -->
+            <span v-if="img.video" class="thumb-live">LIVE</span>
             <span class="img-del" title="移除" @click="removeImage(i)">×</span>
           </div>
         </div>
@@ -219,8 +231,11 @@ import EmojiEditor from './EmojiEditor.vue'
 import AttachmentLibrary from './AttachmentLibrary.vue'
 import ContentLock from './ContentLock.vue'
 import ScopeRadio from './ScopeRadio.vue'
+import LivePhoto from './LivePhoto.vue'
 import { uploadCommentImages } from '@/api/comment'
 import { openLightbox } from '@/utils/lightbox'
+import { parseCommentMedia } from '@/utils/comment'
+import { serializeLiveItem } from '@/utils/livePhoto'
 import { toast } from '@/utils/toast'
 
 const props = defineProps({
@@ -271,15 +286,10 @@ const agentRaw = computed(() => String(props.comment.agent || '').trim())
 // 解析成简短设备描述（如「Windows 10 · Chrome 120」），无法识别时 label 为空，标签自动隐藏
 const device = computed(() => parseUserAgent(agentRaw.value))
 
-// 评论图片：后端以逗号分隔字符串存储，这里统一解析为数组，兼容数组形式
-const images = computed(() => {
-  const raw = props.comment.images
-  if (!raw) return []
-  const list = Array.isArray(raw) ? raw : String(raw).split(',')
-  return list.map((s) => String(s).trim()).filter(Boolean)
-})
+// 评论图片：后端以逗号分隔字符串存储；实况图是「图片::视频」，解析成 { image, video }
+const images = computed(() => parseCommentMedia(props.comment.images))
 
-// 点击图片打开系统全局灯箱（支持左右切换、缩放、键盘操作）
+// 点击图片打开系统全局灯箱（支持左右切换、缩放、键盘操作；实况图带 video 才有「播放实况」按钮）
 function preview(index) {
   openLightbox(images.value, index)
 }
@@ -375,10 +385,11 @@ async function onPickImages(e) {
     valid.forEach((file) => fd.append('files', file))
     const res = await uploadCommentImages(fd)
     const results = res.data?.results || []
-    const urls = results
-      .filter((r) => r.status !== 'fail' && r.full_url)
-      .map((r) => r.full_url)
-    replyImages.value.push(...urls)
+    // 实况图：后端会把 JPEG 尾部内嵌的 MP4 拆出来单独存一条附件，地址在 live_video
+    const rows = results.filter((r) => r.status !== 'fail' && r.full_url)
+    replyImages.value.push(...rows.map((r) => ({ image: r.full_url, video: r.live_video || '' })))
+    const liveCount = rows.filter((r) => r.live_video).length
+    if (liveCount) toast.success(`已识别 ${liveCount} 张实况图`)
     if (results.some((r) => r.status === 'fail')) toast.warning('部分图片上传失败')
   } catch {
     /* 拦截器已提示 */
@@ -392,15 +403,19 @@ function removeImage(i) {
 }
 
 // 附件库：把选中的已上传图片加入回复图片（去重 + 数量上限）
+// items 里带 live_video（后端按「<封面名>-live.mp4」反查配对视频），
+// 从库里选历史实况图时也能直接成为实况图
 const showLibrary = ref(false)
-function onLibrarySelect(urls = []) {
+function onLibrarySelect(urls = [], items = []) {
   const rest = 9 - replyImages.value.length
   if (rest <= 0) {
     toast.warning('最多只能上传 9 张图片')
     return
   }
-  const add = urls.filter((url) => url && !replyImages.value.includes(url)).slice(0, rest)
-  replyImages.value.push(...add)
+  const exists = new Set(replyImages.value.map((item) => item.image))
+  const liveByUrl = new Map(items.map((item) => [item.full_url, item.live_video || '']))
+  const add = urls.filter((url) => url && !exists.has(url)).slice(0, rest)
+  replyImages.value.push(...add.map((url) => ({ image: url, video: liveByUrl.get(url) || '' })))
   if (!add.length) {
     toast.info('所选图片已在列表中')
   } else if (add.length < urls.length) {
@@ -421,7 +436,8 @@ function submitReply() {
   if (!replyText.value.trim() && !replyImages.value.length) return
   emit('submit', {
     content: replyText.value.trim(),
-    images: [...replyImages.value],
+    // 实况图序列化成「图片::视频」，后端按逗号拼接后原样存库
+    images: replyImages.value.map(serializeLiveItem).filter(Boolean),
     pid: props.comment.id,
     scope: Number(replyScope.value)
   })
@@ -655,6 +671,34 @@ function submitReply() {
 .comment-img:hover {
   transform: translateY(-2px);
   box-shadow: var(--shadow);
+}
+/* 实况图：与普通评论图同尺寸，悬停/按住时的播放由 LivePhoto 内部处理 */
+.comment-img-live {
+  width: 88px;
+  height: 88px;
+  flex: none;
+  border: 1px solid var(--border);
+  cursor: zoom-in;
+  transition: transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.comment-img-live:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow);
+}
+/* 已选缩略图上的实况角标（缩略图只显示封面） */
+.thumb-live {
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  pointer-events: none;
 }
 
 /* ===== 回复框图片上传 ===== */

@@ -784,10 +784,11 @@ onMounted(() => {
     white-space: nowrap;
     text-overflow: ellipsis;
   }
-  /* 网站 LOGO：移动端顶栏只留一个小图标 */
+  /* 网站 LOGO：移动端顶栏的品牌图标*/
   .mobile-brand-logo {
-    width: 24px;
-    height: 24px;
+    width: auto;
+    height: 32px;
+    max-width: 140px;
     flex-shrink: 0;
     object-fit: contain;
   }

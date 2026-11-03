@@ -87,7 +87,12 @@ async function isMotionPhoto(file) {
   if (file.size < 4096) return false
   try {
     const head = await file.slice(0, 256 * 1024).text()
-    return /MicroVideoOffset|MotionPhoto_Data|GCamera:MicroVideo/.test(head)
+    // 两类写法都要认：
+    //  - MicroVideoOffset / MotionPhoto_Data / GCamera:MicroVideo：Pixel、小米、三星等，
+    //    XMP 里带视频偏移；
+    //  - MotionPhoto="1"：华为（鸿蒙）动态照片只有这个标记、没有偏移字段，
+    //    视频固定在 JPEG 之后，由后端按 MP4 的 ftyp 盒子扫描定位。
+    return /MicroVideoOffset|MotionPhoto_Data|GCamera:MicroVideo|MotionPhoto\s*[:=]/i.test(head)
   } catch {
     return false
   }

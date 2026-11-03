@@ -42,10 +42,11 @@
               </button>
             </template>
           </EmojiEditor>
-          <!-- 已选图片预览 -->
+          <!-- 已选图片预览（实况图只显示封面 + LIVE 角标） -->
           <div v-if="newImages.length" class="img-preview">
-            <div v-for="(img, i) in newImages" :key="img" class="img-thumb">
-              <img :src="img" alt="" loading="lazy" />
+            <div v-for="(img, i) in newImages" :key="img.image || i" class="img-thumb">
+              <img :src="img.image" alt="" loading="lazy" />
+              <span v-if="img.video" class="thumb-live">LIVE</span>
               <span class="img-del" title="移除" @click="removeImage(i)">×</span>
             </div>
           </div>
@@ -194,6 +195,7 @@ import ReportDialog from './ReportDialog.vue'
 import RewardDialog from './RewardDialog.vue'
 import ScopeRadio from './ScopeRadio.vue'
 import { createReport } from '@/api/report'
+import { serializeLiveItem } from '@/utils/livePhoto'
 
 const props = defineProps({
   bindId: { type: [String, Number], required: true },
@@ -473,10 +475,11 @@ async function onPickImages(e) {
     valid.forEach((file) => fd.append('files', file))
     const res = await uploadCommentImages(fd)
     const results = res.data?.results || []
-    const urls = results
-      .filter((r) => r.status !== 'fail' && r.full_url)
-      .map((r) => r.full_url)
-    newImages.value.push(...urls)
+    // 实况图：后端会把 JPEG 尾部内嵌的 MP4 拆出来单独存一条附件，地址在 live_video
+    const rows = results.filter((r) => r.status !== 'fail' && r.full_url)
+    newImages.value.push(...rows.map((r) => ({ image: r.full_url, video: r.live_video || '' })))
+    const liveCount = rows.filter((r) => r.live_video).length
+    if (liveCount) toast.success(`已识别 ${liveCount} 张实况图`)
     if (results.some((r) => r.status === 'fail')) toast.warning('部分图片上传失败')
   } catch {
     /* 拦截器已提示 */
@@ -490,15 +493,19 @@ function removeImage(i) {
 }
 
 // 附件库：把选中的已上传图片加入待发表列表（去重 + 数量上限）
+// items 里带 live_video（后端按「<封面名>-live.mp4」反查配对视频），
+// 从库里选历史实况图时也能直接成为实况图
 const showLibrary = ref(false)
-function onLibrarySelect(urls = []) {
+function onLibrarySelect(urls = [], items = []) {
   const rest = 9 - newImages.value.length
   if (rest <= 0) {
     toast.warning('最多只能上传 9 张图片')
     return
   }
-  const add = urls.filter((url) => url && !newImages.value.includes(url)).slice(0, rest)
-  newImages.value.push(...add)
+  const exists = new Set(newImages.value.map((item) => item.image))
+  const liveByUrl = new Map(items.map((item) => [item.full_url, item.live_video || '']))
+  const add = urls.filter((url) => url && !exists.has(url)).slice(0, rest)
+  newImages.value.push(...add.map((url) => ({ image: url, video: liveByUrl.get(url) || '' })))
   if (!add.length) {
     toast.info('所选图片已在列表中')
   } else if (add.length < urls.length) {
@@ -514,7 +521,8 @@ async function submitRoot() {
   if (!content && !newImages.value.length) return
   await onSubmit({
     content,
-    images: [...newImages.value],
+    // 实况图序列化成「图片::视频」，后端按逗号拼接后原样存库
+    images: newImages.value.map(serializeLiveItem).filter(Boolean),
     pid: 0,
     scope: Number(scope.value)
   })
@@ -845,6 +853,21 @@ defineExpose({ load })
   height: 100%;
   object-fit: cover;
   display: block;
+}
+/* 已选缩略图上的实况角标（缩略图只显示封面） */
+.thumb-live {
+  position: absolute;
+  left: 2px;
+  bottom: 2px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  pointer-events: none;
 }
 .img-del {
   position: absolute;

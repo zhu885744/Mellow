@@ -70,6 +70,10 @@ export const countCommentsBatch = (bind_type, bind_ids) => {
 export const updateComment = (data) =>
   call('comment', 'update', { method: 'PUT', data })
 
+// 一次性回填历史评论的实况图（管理员）：早期上传只存了封面，
+// 这里按附件命名（<封面名>-live.mp4）把配图补成「封面::视频」，可重复执行
+export const repairCommentLive = () => call('comment', 'repair-live', { method: 'POST' })
+
 // 软删除（移入回收站），批量
 export const removeComments = (ids) =>
   call('comment', 'remove', { method: 'DELETE', params: { ids: toIdsString(ids) } })

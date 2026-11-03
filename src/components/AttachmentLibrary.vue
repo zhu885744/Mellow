@@ -54,6 +54,8 @@
                   <i class="bi bi-file-earmark-text" />
                   <em>{{ extOf(item) || 'file' }}</em>
                 </span>
+                <!-- 实况图：后端按命名反查到了配对视频，选中时会一起带出 -->
+                <span v-if="item.live_video" class="attachment-live">LIVE</span>
                 <span class="attachment-name">{{ item.original_name }}</span>
                 <span v-if="isPicked(item)" class="attachment-check"><i class="bi bi-check-lg" /></span>
               </button>
@@ -428,6 +430,21 @@ function formatSize(bytes) {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+/* 实况图角标：与右上角的选中圈分开摆，避免叠在一起 */
+.attachment-live {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.6;
+  pointer-events: none;
 }
 .attachment-check {
   position: absolute;

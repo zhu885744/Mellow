@@ -73,6 +73,16 @@
 
           <button
             class="btn btn-ghost btn-sm"
+            :disabled="busy || repairing"
+            title="补全实况图（把历史上只存了封面的配图补成实况图）"
+            aria-label="补全实况图"
+            @click="askRepairLive"
+          >
+            <i class="bi bi-camera-reels" />
+          </button>
+
+          <button
+            class="btn btn-ghost btn-sm"
             :disabled="loading"
             title="刷新"
             aria-label="刷新列表"
@@ -401,7 +411,8 @@ import {
   removeComments,
   forceDeleteComments,
   restoreComments,
-  clearCommentRecycle
+  clearCommentRecycle,
+  repairCommentLive
 } from '@/api/comment'
 import { fromNow } from '@/utils/time'
 import { debounce, pickCommentAuthor } from '@/utils/helper'
@@ -423,8 +434,11 @@ import {
   commentBindTitle,
   commentBindLink,
   parseCommentImages,
+  parseCommentMedia,
+  parseCommentRawList,
   isCommentReply
 } from '@/utils/comment'
+import { parseLiveItem } from '@/utils/livePhoto'
 
 // 父级 Comments.vue 注入的联动能力（统计卡片 ←→ 列表筛选）
 const admin = inject('commentsAdmin', null)
@@ -484,8 +498,9 @@ function moreCount(item) {
   return Math.max(0, imagesOf(item).length - MAX_THUMBS)
 }
 
+// 灯箱传 { image, video }：实况图会多一个「播放实况」按钮（缩略图仍只显示封面）
 function preview(item, index) {
-  openLightbox(imagesOf(item), index)
+  openLightbox(parseCommentMedia(item.images), index)
 }
 
 function authorOf(item) {
@@ -912,6 +927,29 @@ function askClearRecycle() {
   })
 }
 
+// ---------- 实况图回填 ----------
+// 早期评论上传只存了封面，视频附件其实还在库里（命名约定 <封面名>-live.mp4）。
+// 这个操作扫描全部评论、按命名找回配对视频，把配图补成「封面::视频」。
+const repairing = ref(false)
+function askRepairLive() {
+  openConfirm({
+    title: '补全实况图',
+    message: '将扫描全部评论，把能找回配对视频的配图补成实况图。可重复执行，已补过的会自动跳过。',
+    confirmText: '开始补全',
+    action: async () => {
+      repairing.value = true
+      try {
+        const res = await repairCommentLive()
+        const data = res?.data || {}
+        toast.success(`已扫描 ${data.scanned || 0} 条，补全 ${data.fixed || 0} 条`)
+        await afterMutation(0)
+      } finally {
+        repairing.value = false
+      }
+    }
+  })
+}
+
 // ---------- 编辑评论 ----------
 const edit = reactive({
   visible: false,
@@ -921,8 +959,10 @@ const edit = reactive({
   images: ''
 })
 
-// 输入框里是逗号分隔字符串，这里解析出来做缩略图预览
-const editImageList = computed(() => parseCommentImages(edit.images))
+// 缩略图预览只显示封面；保存 / 合并用 parseCommentRawList（保留「图片::视频」）
+const editImageList = computed(() =>
+  parseCommentRawList(edit.images).map((item) => parseLiveItem(item).image)
+)
 
 // ===== 评论图片：上传 / 附件库 =====
 const imageFileRef = ref(null)
@@ -930,10 +970,15 @@ const uploading = ref(false)
 const showImageLibrary = ref(false)
 
 // 追加到 edit.images（逗号分隔），重复地址跳过
+// 合并的是「原始项」：已经存在的实况图（图片::视频）不会在这里被截成纯封面
 function appendCommentImages(urls = []) {
-  const merged = [...editImageList.value]
+  const merged = [...parseCommentRawList(edit.images)]
+  const exists = new Set(merged.map((item) => parseLiveItem(item).image))
   for (const url of urls) {
-    if (url && !merged.includes(url)) merged.push(url)
+    if (url && !exists.has(url)) {
+      merged.push(url)
+      exists.add(url)
+    }
   }
   edit.images = merged.join(',')
 }
@@ -981,15 +1026,18 @@ async function onCommentImagesChange(event) {
 }
 
 // 从附件库选图：多选，追加到现有列表
-function onImageLibrarySelect(urls = []) {
+// 附件里的实况图（带 live_video）拼成「图片::视频」，否则只会存下封面
+function onImageLibrarySelect(urls = [], items = []) {
   showImageLibrary.value = false
-  appendCommentImages(urls)
+  const liveByUrl = new Map(items.map((item) => [item.full_url, item.live_video || '']))
+  appendCommentImages(urls.map((url) => (liveByUrl.get(url) ? `${url}::${liveByUrl.get(url)}` : url)))
 }
 
 function openEdit(item) {
   edit.id = Number(item.id)
   edit.content = item.content || ''
-  edit.images = parseCommentImages(item.images).join(',')
+  // 回填原始项：实况图保留「图片::视频」，否则一保存就降级成静态图
+  edit.images = parseCommentRawList(item.images).join(',')
   edit.visible = true
 }
 
@@ -1002,8 +1050,12 @@ async function saveEdit() {
 
   edit.loading = true
   try {
-    // images 传空串即清空该评论的配图
-    await updateComment({ id: edit.id, content, images: editImageList.value.join(',') })
+    // images 传空串即清空该评论的配图；用原始项拼接，保留实况图的「图片::视频」
+    await updateComment({
+      id: edit.id,
+      content,
+      images: parseCommentRawList(edit.images).join(',')
+    })
     toast.success('修改已保存')
     edit.visible = false
     await afterMutation(0)

@@ -504,13 +504,17 @@ function setEditLive(image, url) {
 }
 
 // 附件库：把选中的已上传图片加入动态配图（去重 + 数量上限）
+// items 里带 live_video：从库里选历史实况图时直接记进 liveMap，保存时拼成「图片::视频」
 const showLibrary = ref(false)
-function onLibrarySelect(urls = []) {
+function onLibrarySelect(urls = [], items = []) {
   const rest = 9 - editForm.images.length
   if (rest <= 0) {
     toast.warning('最多只能上传 9 张图片')
     return
   }
+  items.forEach((item) => {
+    if (item?.full_url && item.live_video) liveMap.value[item.full_url] = item.live_video
+  })
   const add = urls.filter((url) => url && !editForm.images.includes(url)).slice(0, rest)
   editForm.images.push(...add)
   if (!add.length) {
