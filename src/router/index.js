@@ -148,49 +148,48 @@ const routes = [
     children: [
       { path: '', redirect: '/admin/dashboard' },
       { path: 'dashboard', name: 'admin-dashboard', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '概览' } },
-      // 创作
-      { path: 'article/write', name: 'admin-article-write', component: () => import('@/views/admin/ArticleWrite.vue'), meta: { title: '撰写文章' } },
-      { path: 'article/edit/:id', name: 'admin-article-edit', component: () => import('@/views/admin/ArticleWrite.vue'), meta: { title: '编辑文章' } },
-      // 文章管理：Articles.vue 承载统计概览，ArticleList.vue 为列表子路由（子页通过 inject 联动筛选）
-      // 注意：article/write 与 article/edit/:id 是平级路由，不受此处嵌套影响
+      // ==================== 文章管理 ====================
+      // AdminHub 负责标签页，子路由承载具体功能；列表页外层 Articles.vue 还带统计卡片
       {
         path: 'article',
-        component: () => import('@/views/admin/Articles.vue'),
+        component: () => import('@/views/admin/AdminHub.vue'),
+        props: { section: 'article' },
         meta: { title: '文章管理' },
         children: [
-          { path: '', name: 'admin-article', component: () => import('@/views/admin/ArticleList.vue'), meta: { title: '文章管理' } }
+          {
+            path: '',
+            component: () => import('@/views/admin/Articles.vue'),
+            children: [
+              { path: '', name: 'admin-article', component: () => import('@/views/admin/ArticleList.vue'), meta: { title: '文章管理' } }
+            ]
+          },
+          { path: 'group', name: 'admin-article-group', component: () => import('@/views/admin/ArticleGroup.vue'), meta: { title: '文章分类' } },
+          { path: 'write', name: 'admin-article-write', component: () => import('@/views/admin/ArticleWrite.vue'), meta: { title: '撰写文章' } },
+          { path: 'edit/:id', name: 'admin-article-edit', component: () => import('@/views/admin/ArticleWrite.vue'), meta: { title: '编辑文章' } }
         ]
       },
-      { path: 'article/group', name: 'admin-article-group', component: () => import('@/views/admin/ArticleGroup.vue'), meta: { title: '文章分类' } },
-      { path: 'pages', name: 'admin-pages', component: () => import('@/views/admin/PageList.vue'), meta: { title: '独立页面' } },
-      // 文档站管理：文档库（项目列表） → 项目内目录/页面 → 独立整页编辑器
-      // 三层平级路由：pageOfPath() 会把它们都归到 /admin/docs，共用一个权限点
-      { path: 'docs', name: 'admin-docs', component: () => import('@/views/admin/DocsLibrary.vue'), meta: { title: '文档库' } },
-      { path: 'docs/:slug', name: 'admin-docs-project', component: () => import('@/views/admin/Docs.vue'), meta: { title: '文档管理' } },
-      { path: 'docs/:slug/write', name: 'admin-docs-write', component: () => import('@/views/admin/DocsWrite.vue'), meta: { title: '新建文档' } },
-      { path: 'docs/:slug/:id/edit', name: 'admin-docs-edit', component: () => import('@/views/admin/DocsWrite.vue'), meta: { title: '编辑文档' } },
-      { path: 'pages/write', name: 'admin-pages-write', component: () => import('@/views/admin/PageWrite.vue'), meta: { title: '撰写独立页面' } },
-      { path: 'pages/edit/:id', name: 'admin-pages-edit', component: () => import('@/views/admin/PageWrite.vue'), meta: { title: '编辑独立页面' } },
-      // 动态管理：Moments.vue 承载统计概览，MomentList.vue 为列表子路由（子页通过 inject 联动筛选）
-      {
-        path: 'moments',
-        component: () => import('@/views/admin/Moments.vue'),
-        meta: { title: '动态管理' },
-        children: [
-          { path: '', name: 'admin-moments', component: () => import('@/views/admin/MomentList.vue'), meta: { title: '动态管理' } }
-        ]
-      },
-      // 管理
-      // 用户管理：Users.vue 承载统计概览，UserList.vue 为列表子路由（子页通过 inject 联动筛选）
+      // ==================== 用户管理 ====================
       {
         path: 'users',
-        component: () => import('@/views/admin/Users.vue'),
+        component: () => import('@/views/admin/AdminHub.vue'),
+        props: { section: 'users' },
         meta: { title: '用户管理' },
         children: [
-          { path: '', name: 'admin-users', component: () => import('@/views/admin/UserList.vue'), meta: { title: '用户管理' } }
+          {
+            path: '',
+            component: () => import('@/views/admin/Users.vue'),
+            children: [
+              { path: '', name: 'admin-users', component: () => import('@/views/admin/UserList.vue'), meta: { title: '用户管理' } }
+            ]
+          },
+          { path: 'certifications', name: 'admin-certifications', component: () => import('@/views/admin/Certifications.vue'), meta: { title: '用户认证' } },
+          { path: 'cert-types', name: 'admin-cert-types', component: () => import('@/views/admin/CertTypes.vue'), meta: { title: '认证类型' } },
+          { path: 'level', name: 'admin-level', component: () => import('@/views/admin/Level.vue'), meta: { title: '等级管理' } },
+          { path: 'exp', name: 'admin-exp', component: () => import('@/views/admin/Exp.vue'), meta: { title: '经验管理' } },
+          { path: 'badges', name: 'admin-badges', component: () => import('@/views/admin/Badges.vue'), meta: { title: '勋章管理' } }
         ]
       },
-      // 评论管理：Comments.vue 承载统计概览，CommentList.vue 为列表子路由（子页通过 inject 联动筛选）
+      // ==================== 评论管理 ====================
       {
         path: 'comment',
         component: () => import('@/views/admin/Comments.vue'),
@@ -199,52 +198,139 @@ const routes = [
           { path: '', name: 'admin-comment', component: () => import('@/views/admin/CommentList.vue'), meta: { title: '评论管理' } }
         ]
       },
-      { path: 'placard', name: 'admin-placard', component: () => import('@/views/admin/Placard.vue'), meta: { title: '公告管理' } },
-      { path: 'banner', name: 'admin-banner', component: () => import('@/views/admin/Banner.vue'), meta: { title: '轮播管理' } },
-      { path: 'tags', name: 'admin-tags', component: () => import('@/views/admin/TagList.vue'), meta: { title: '话题管理' } },
-      { path: 'level', name: 'admin-level', component: () => import('@/views/admin/Level.vue'), meta: { title: '等级管理' } },
-      { path: 'exp', name: 'admin-exp', component: () => import('@/views/admin/Exp.vue'), meta: { title: '经验管理' } },
-      { path: 'goods', name: 'admin-goods', component: () => import('@/views/admin/Goods.vue'), meta: { title: '商品管理' } },
-      { path: 'integral', name: 'admin-integral', component: () => import('@/views/admin/Integral.vue'), meta: { title: '积分管理' } },
-      // 装扮管理：头像框 / 头衔等装扮的增删改查、批量发放与回收（关联商城商品自动同步）
-      { path: 'decoration', name: 'admin-decoration', component: () => import('@/views/admin/Decoration.vue'), meta: { title: '装扮管理' } },
-      // 勋章：任务条件（发布文章 / 注册满 N 天…）自动发放 + 手动发放与收回
-      { path: 'badges', name: 'admin-badges', component: () => import('@/views/admin/Badges.vue'), meta: { title: '勋章管理' } },
-      // 签到配置（独立模块：奖励项 / 周期 / 里程碑 / 月全勤 / 随机奖励 / 补签）
-      { path: 'checkin', name: 'admin-checkin', component: () => import('@/views/admin/Checkin.vue'), meta: { title: '签到管理' } },
-      // 举报管理：处理用户提交的举报（属实可同时移除内容，封禁仍走用户管理）
-      { path: 'reports', name: 'admin-reports', component: () => import('@/views/admin/Reports.vue'), meta: { title: '举报管理' } },
-      // 用户认证：审核认申请（类型 / 领域 / 申请字段由「认证类型」页配置）
-      { path: 'certifications', name: 'admin-certifications', component: () => import('@/views/admin/Certifications.vue'), meta: { title: '用户认证' } },
-      // 认证类型：自定义认证类型、该类型下的领域与申请字段、认证说明
-      { path: 'cert-types', name: 'admin-cert-types', component: () => import('@/views/admin/CertTypes.vue'), meta: { title: '认证类型' } },
-      { path: 'message', name: 'admin-message', component: () => import('@/views/admin/Message.vue'), meta: { title: '消息管理' } },
-      // 友链管理：Links.vue 承载统计概览，LinkList.vue 为列表子路由（子页通过 inject 联动筛选）
+      // ==================== 内容管理 ====================
       {
-        path: 'links',
-        component: () => import('@/views/admin/Links.vue'),
-        meta: { title: '友链管理' },
+        path: 'content',
+        component: () => import('@/views/admin/AdminHub.vue'),
+        props: { section: 'content' },
+        meta: { title: '内容管理' },
         children: [
-          { path: '', name: 'admin-links', component: () => import('@/views/admin/LinkList.vue'), meta: { title: '友链管理' } }
+          { path: '', redirect: '/admin/content/moments' },
+          {
+            path: 'moments',
+            component: () => import('@/views/admin/Moments.vue'),
+            children: [
+              { path: '', name: 'admin-moments', component: () => import('@/views/admin/MomentList.vue'), meta: { title: '动态管理' } }
+            ]
+          },
+          { path: 'placard', name: 'admin-placard', component: () => import('@/views/admin/Placard.vue'), meta: { title: '公告管理' } },
+          { path: 'banner', name: 'admin-banner', component: () => import('@/views/admin/Banner.vue'), meta: { title: '轮播管理' } },
+          { path: 'tags', name: 'admin-tags', component: () => import('@/views/admin/TagList.vue'), meta: { title: '话题管理' } }
         ]
       },
-      { path: 'links/group', name: 'admin-links-group', component: () => import('@/views/admin/LinkGroup.vue'), meta: { title: '友链分组' } },
+      // ==================== 独立页面 ====================
+      {
+        path: 'pages',
+        component: () => import('@/views/admin/AdminHub.vue'),
+        props: { section: 'pages' },
+        meta: { title: '独立页面' },
+        children: [
+          { path: '', name: 'admin-pages', component: () => import('@/views/admin/PageList.vue'), meta: { title: '独立页面' } },
+          { path: 'write', name: 'admin-pages-write', component: () => import('@/views/admin/PageWrite.vue'), meta: { title: '撰写独立页面' } },
+          { path: 'edit/:id', name: 'admin-pages-edit', component: () => import('@/views/admin/PageWrite.vue'), meta: { title: '编辑独立页面' } }
+        ]
+      },
+      // ==================== 文档库 ====================
+      // 文档站管理：文档库（项目列表） → 项目内目录/页面 → 独立整页编辑器
+      // 三层平级路由：adminMenuOfPath() 会把它们都归到「文档库」，共用一个权限点
+      { path: 'docs', name: 'admin-docs', component: () => import('@/views/admin/DocsLibrary.vue'), meta: { title: '文档库' } },
+      { path: 'docs/:slug', name: 'admin-docs-project', component: () => import('@/views/admin/Docs.vue'), meta: { title: '文档管理' } },
+      { path: 'docs/:slug/write', name: 'admin-docs-write', component: () => import('@/views/admin/DocsWrite.vue'), meta: { title: '新建文档' } },
+      { path: 'docs/:slug/:id/edit', name: 'admin-docs-edit', component: () => import('@/views/admin/DocsWrite.vue'), meta: { title: '编辑文档' } },
+      // ==================== 商城管理 ====================
+      {
+        path: 'goods',
+        component: () => import('@/views/admin/AdminHub.vue'),
+        props: { section: 'goods' },
+        meta: { title: '商城管理' },
+        children: [
+          { path: '', name: 'admin-goods', component: () => import('@/views/admin/Goods.vue'), meta: { title: '商品管理' } },
+          { path: 'integral', name: 'admin-integral', component: () => import('@/views/admin/Integral.vue'), meta: { title: '积分管理' } },
+          { path: 'decoration', name: 'admin-decoration', component: () => import('@/views/admin/Decoration.vue'), meta: { title: '装扮管理' } },
+          { path: 'checkin', name: 'admin-checkin', component: () => import('@/views/admin/Checkin.vue'), meta: { title: '签到管理' } }
+        ]
+      },
+      // ==================== 消息通知 ====================
+      { path: 'message', name: 'admin-message', component: () => import('@/views/admin/Message.vue'), meta: { title: '消息管理' } },
+      // ==================== 举报管理 ====================
+      { path: 'reports', name: 'admin-reports', component: () => import('@/views/admin/Reports.vue'), meta: { title: '举报管理' } },
+      // ==================== 友链管理 ====================
+      {
+        path: 'links',
+        component: () => import('@/views/admin/AdminHub.vue'),
+        props: { section: 'links' },
+        meta: { title: '友链管理' },
+        children: [
+          {
+            path: '',
+            component: () => import('@/views/admin/Links.vue'),
+            children: [
+              { path: '', name: 'admin-links', component: () => import('@/views/admin/LinkList.vue'), meta: { title: '友链管理' } }
+            ]
+          },
+          { path: 'group', name: 'admin-links-group', component: () => import('@/views/admin/LinkGroup.vue'), meta: { title: '友链分组' } }
+        ]
+      },
+      // ==================== 附件管理 ====================
       { path: 'attachment', name: 'admin-attachment', component: () => import('@/views/admin/Attachment.vue'), meta: { title: '附件管理' } },
-      { path: 'system', name: 'admin-system', component: () => import('@/views/admin/SystemConfig.vue'), meta: { title: '系统设置' } },
-      // 主题配色：设计 token（浅色 / 深色两套），保存后 /theme-custom.css 立即生效
-      { path: 'theme', name: 'admin-theme', component: () => import('@/views/admin/Theme.vue'), meta: { title: '主题配色' } },
+      // ==================== 数据统计 ====================
+      { path: 'stats', name: 'admin-stats', component: () => import('@/views/admin/Stats.vue'), meta: { title: '数据统计' } },
+      // ==================== 系统配置 ====================
+      {
+        path: 'system',
+        component: () => import('@/views/admin/AdminHub.vue'),
+        props: { section: 'system' },
+        meta: { title: '系统配置' },
+        children: [
+          { path: '', name: 'admin-system', component: () => import('@/views/admin/SystemConfig.vue'), meta: { title: '系统设置' } },
+          { path: 'theme', name: 'admin-theme', component: () => import('@/views/admin/Theme.vue'), meta: { title: '主题配色' } }
+        ]
+      },
+      // ==================== 安全中心 ====================
+      {
+        path: 'security',
+        component: () => import('@/views/admin/AdminHub.vue'),
+        props: { section: 'security' },
+        meta: { title: '安全中心' },
+        children: [
+          { path: '', redirect: '/admin/security/rules' },
+          { path: 'rules', name: 'admin-auth-rules', component: () => import('@/views/admin/AuthRules.vue'), meta: { title: '权限规则' } },
+          { path: 'group', name: 'admin-auth-group', component: () => import('@/views/admin/AuthGroup.vue'), meta: { title: '权限组' } },
+          { path: 'keys', name: 'admin-api-keys', component: () => import('@/views/admin/ApiKeys.vue'), meta: { title: '接口密钥' } },
+          { path: 'ip-black', name: 'admin-ip-black', component: () => import('@/views/admin/IpBlack.vue'), meta: { title: 'IP 黑名单' } },
+          { path: 'ip-white', name: 'admin-ip-white', component: () => import('@/views/admin/IpWhite.vue'), meta: { title: 'IP 白名单' } },
+          { path: 'qps', name: 'admin-qps-warn', component: () => import('@/views/admin/QpsWarn.vue'), meta: { title: 'QPS 预警' } },
+          // 后台页面管理：维护菜单/页面权限点（原在「系统配置」下，与权限规则同属安全域）
+          { path: 'pages', name: 'admin-auth-pages', component: () => import('@/views/admin/AuthPages.vue'), meta: { title: '后台页面管理' } }
+        ]
+      },
+      // ==================== 查看日志 ====================
       // 日志解析：只读查看 runtime/ 下的系统日志与通知日志（后端 app/api/controller/log.go）
       { path: 'logs', name: 'admin-logs', component: () => import('@/views/admin/Logs.vue'), meta: { title: '日志' } },
-      // 数据统计：消费服务端 socket 每秒推送的实时状态（app/socket/controller/status.go）
-      { path: 'stats', name: 'admin-stats', component: () => import('@/views/admin/Stats.vue'), meta: { title: '数据统计' } },
-      // 安全
-      { path: 'auth/rules', name: 'admin-auth-rules', component: () => import('@/views/admin/AuthRules.vue'), meta: { title: '权限规则' } },
-      { path: 'auth/group', name: 'admin-auth-group', component: () => import('@/views/admin/AuthGroup.vue'), meta: { title: '权限组' } },
-      { path: 'api/keys', name: 'admin-api-keys', component: () => import('@/views/admin/ApiKeys.vue'), meta: { title: 'API 密钥' } },
-      { path: 'auth/pages', name: 'admin-auth-pages', component: () => import('@/views/admin/AuthPages.vue'), meta: { title: '权限页面' } },
-      { path: 'ip/black', name: 'admin-ip-black', component: () => import('@/views/admin/IpBlack.vue'), meta: { title: 'IP 黑名单' } },
-      { path: 'ip/white', name: 'admin-ip-white', component: () => import('@/views/admin/IpWhite.vue'), meta: { title: 'IP 白名单' } },
-      { path: 'qps/warn', name: 'admin-qps-warn', component: () => import('@/views/admin/QpsWarn.vue'), meta: { title: 'QPS 告警' } }
+
+      // ==================== 旧地址兼容 ====================
+      // 菜单合并（37 → 15）后，老书签 / 站内历史链接仍按原路径访问，这里统一重定向到新位置
+      { path: 'placard', redirect: '/admin/content/placard' },
+      { path: 'banner', redirect: '/admin/content/banner' },
+      { path: 'tags', redirect: '/admin/content/tags' },
+      { path: 'moments', redirect: '/admin/content/moments' },
+      { path: 'certifications', redirect: '/admin/users/certifications' },
+      { path: 'cert-types', redirect: '/admin/users/cert-types' },
+      { path: 'level', redirect: '/admin/users/level' },
+      { path: 'exp', redirect: '/admin/users/exp' },
+      { path: 'badges', redirect: '/admin/users/badges' },
+      { path: 'integral', redirect: '/admin/goods/integral' },
+      { path: 'decoration', redirect: '/admin/goods/decoration' },
+      { path: 'checkin', redirect: '/admin/goods/checkin' },
+      { path: 'theme', redirect: '/admin/system/theme' },
+      { path: 'system/pages', redirect: '/admin/security/pages' },
+      { path: 'auth/pages', redirect: '/admin/security/pages' },
+      { path: 'auth/rules', redirect: '/admin/security/rules' },
+      { path: 'auth/group', redirect: '/admin/security/group' },
+      { path: 'api/keys', redirect: '/admin/security/keys' },
+      { path: 'ip/black', redirect: '/admin/security/ip-black' },
+      { path: 'ip/white', redirect: '/admin/security/ip-white' },
+      { path: 'qps/warn', redirect: '/admin/security/qps' }
     ]
   },
   {

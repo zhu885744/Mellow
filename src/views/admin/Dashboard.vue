@@ -14,7 +14,7 @@
           <RouterLink to="/admin/article/write" class="btn btn-sm btn-primary">
             <i class="bi bi-pencil-square" /> 撰写文章
           </RouterLink>
-          <RouterLink to="/admin/auth/pages" class="btn btn-sm">
+          <RouterLink to="/admin/security/pages" class="btn btn-sm">
             <i class="bi bi-layout-text-window" /> 菜单权限
           </RouterLink>
           <RouterLink to="/admin/system" class="btn btn-sm">

@@ -221,39 +221,60 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 18px 20px;
-  font-size: 17px;
+  padding: 16px 18px;
+  border-bottom: 1px solid var(--border-soft);
+  font-size: 16px;
   font-weight: 700;
-  color: var(--primary);
+  color: var(--text);
   white-space: nowrap;
   overflow: hidden;
 }
+/* 品牌图标做成小胶囊：与导航图标拉开层级，折叠时仍是一个完整的视觉块 */
+.manage-brand i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--primary);
+  font-size: 15px;
+}
 .manage-nav {
   flex: 1;
-  padding: 6px 12px;
+  padding: 10px 10px 6px;
   display: flex;
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
 }
 .manage-nav-group {
-  padding: 14px 12px 6px;
+  padding: 12px 12px 6px;
   font-size: 11px;
   letter-spacing: 0.08em;
-  text-transform: uppercase;
   color: var(--text-muted);
 }
 .manage-nav-item {
+  position: relative;
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 12px;
+  gap: 10px;
+  padding: 9px 12px;
   border-radius: var(--radius-sm);
   color: var(--text-soft);
   text-decoration: none;
   font-size: 14px;
   white-space: nowrap;
-  transition: all 0.15s;
+  transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+/* 图标统一宽度：不然 bi 图标宽窄不一，文字左边缘会参差 */
+.manage-nav-item i {
+  width: 18px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 15px;
 }
 .manage-nav-item:hover {
   background: var(--bg-muted);
@@ -263,6 +284,18 @@ onUnmounted(() => {
   background: var(--accent-soft);
   color: var(--primary);
   font-weight: 600;
+}
+/* 当前位置指示条：比只靠底色更明确，也避免折叠态看不出选中 */
+.manage-nav-item.is-active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 3px;
+  height: 16px;
+  margin-top: -8px;
+  border-radius: 0 2px 2px 0;
+  background: var(--primary);
 }
 .manage-sidebar-footer {
   padding: 12px;
@@ -415,6 +448,10 @@ onUnmounted(() => {
   background: var(--border-soft);
 }
 .manage-content {
+  /* 大屏下别把卡片拉成一整条：限宽居中，与前台阅读宽度观感一致 */
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
   padding: 22px;
   flex: 1;
 }
@@ -430,6 +467,12 @@ onUnmounted(() => {
 .sidebar-collapsed .manage-nav-text,
 .sidebar-collapsed .manage-nav-group {
   display: none;
+}
+/* 折叠态只留图标，品牌区要与导航图标的中心线对齐 */
+.sidebar-collapsed .manage-brand {
+  justify-content: center;
+  gap: 0;
+  padding: 16px 0;
 }
 .sidebar-collapsed .manage-nav-item {
   justify-content: center;
@@ -469,6 +512,21 @@ onUnmounted(() => {
   }
   .manage-content {
     padding: 14px;
+  }
+  .manage-topbar {
+    padding: 0 14px;
+    gap: 10px;
+  }
+}
+
+/* 超窄屏（多数手机）：顶栏只留头像，避免昵称把标题挤成两行 */
+@media (max-width: 560px) {
+  .manage-user-name,
+  .manage-menu-caret {
+    display: none;
+  }
+  .manage-menu-btn {
+    padding: 3px;
   }
 }
 </style>

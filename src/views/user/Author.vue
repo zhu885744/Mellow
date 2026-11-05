@@ -1,281 +1,391 @@
 <template>
   <div class="author-page">
-    <!-- 用户资料卡（手机端顶部横幅使用 users.json.cover，见下方 640px 适配） -->
-    <div class="card card-pad author-card" :style="coverStyle">
-      <div class="author-head">
-        <AvatarFrame
-          :src="profile.avatar"
-          :name="profile.nickname"
-          :frame="frame"
-          :animated="frameRender.animated"
-          :fallback="defaultAvatar"
-          :size="'75px'"
-          :frame-hole="frameRender.hole"
-          :frame-offset-x="frameRender.offsetX"
-          :frame-offset-y="frameRender.offsetY"
-          :verified="cert"
-          alt="头像"
-        />
-        <div class="author-meta">
-          <div class="author-name-row">
-            <span class="author-name">{{ profile.nickname }}</span>
-            <span v-if="level" class="author-level">Lv.{{ level }}</span>
-            <!-- 有装扮样式用 TitleBadge 还原后台配色（文字色 / 背景 / 边框 / 发光 / 图标 / 动效） -->
-            <TitleBadge
-              v-if="profile.title || titlePayload"
-              :payload="titlePayload || {}"
-              :text="profile.title"
-              size="md"
+    <!-- ===== 资料卡：封面横幅 + 头像压边 + 身份 + 数据 ===== -->
+    <section class="hero" :style="coverStyle">
+      <div class="hero-cover">
+        <!-- 更换背景：仅本人可见，点进「我的资料 → 主页封面」上传图片或选颜色 -->
+        <RouterLink v-if="isSelf" to="/user/profile" class="hero-cover-edit">
+          <i class="bi bi-image" aria-hidden="true" /> 更换背景
+        </RouterLink>
+      </div>
+
+      <div class="hero-body">
+        <div class="hero-head">
+          <div class="hero-avatar">
+            <AvatarFrame
+              :src="profile.avatar"
+              :name="profile.nickname"
+              :frame="frame"
+              :animated="frameRender.animated"
+              :fallback="defaultAvatar"
+              :size="avatarSize"
+              :frame-hole="frameRender.hole"
+              :frame-offset-x="frameRender.offsetX"
+              :frame-offset-y="frameRender.offsetY"
+              :verified="cert"
+              alt="头像"
             />
-            <span
-              v-else-if="profile.title"
-              :class="['author-title', titleClass]"
-            >{{ profile.title }}</span>
-            <!-- 认证标识已移到头像右下角（AvatarFrame 的 verified），昵称行不再重复展示 -->
-            <!-- 佩戴中的勋章：users.json.wearing_badge，佩戴时后端已把名称/图标/配色/稀有度冗余写入 -->
-            <WearingBadge v-if="profile.json?.wearing_badge" :badge="profile.json.wearing_badge" />
-            <!-- 封禁标识（后端 users/one 的 result.ban）：申诉中 / 申诉驳回期间也保持显示 -->
-            <span v-if="isBanned" class="author-ban-tag" :class="{ 'is-appeal': banStatus !== 0 }">
-              <i class="bi" :class="banStatus === 0 ? 'bi-slash-circle' : 'bi-hourglass-split'" />
-              {{ banStatusText }}
-            </span>
           </div>
-          <!-- 用户 ID：仅手机端展示（参考移动端个人主页的 ID 行） -->
-          <div v-if="profile.id" class="author-id">ID {{ profile.id }}</div>
-          <div class="author-desc">{{ profile.description || '这个人很懒，什么都没留下' }}</div>
-          <!-- 认证信息：默认只展示认证名称 + 后台填写的认证说明（认证领域不对外展示） -->
-          <div v-if="cert" class="author-cert">
-            <!-- 与昵称旁的盾牌同色：统一走 utils/cert 的 certColor -->
-            <i class="bi bi-patch-check-fill" :style="{ color: certIconColor }" />
-            <span class="author-cert-text">{{ cert.title }}</span>
-            <span v-if="cert.description" class="author-cert-desc">{{ cert.description }}</span>
-          </div>
-          <!--
-            勋章：默认只展示昵称旁佩戴的那一枚（WearingBadge），
-            全部已获得的勋章收在折叠入口后面，避免主页被勋章墙占满。
-            未获得的属于「任务进度」，任何情况下都不在这里露出。
-          -->
-          <div v-if="badges.length" class="author-badges">
-            <template v-if="showAllBadges">
-              <AchievementBadge
-                v-for="item in badges"
-                :key="item.id"
-                :badge="item"
-                size="sm"
-                held
+
+          <div class="hero-ident">
+            <div class="hero-name-row">
+              <h1 class="hero-name">{{ profile.nickname }}</h1>
+              <span v-if="level" class="hero-level">Lv.{{ level }}</span>
+              <!-- 有装扮样式用 TitleBadge 还原后台配色（文字色 / 背景 / 边框 / 发光 / 图标 / 动效） -->
+              <TitleBadge
+                v-if="profile.title || titlePayload"
+                :payload="titlePayload || {}"
+                :text="profile.title"
+                size="md"
               />
+              <span v-else-if="profile.title" :class="['author-title', titleClass]">{{ profile.title }}</span>
+              <!-- 佩戴中的勋章：users.json.wearing_badge，佩戴时后端已把名称/图标/配色/稀有度冗余写入 -->
+              <WearingBadge v-if="profile.json?.wearing_badge" :badge="profile.json.wearing_badge" />
+              <!-- 封禁标识（后端 users/one 的 result.ban）：申诉中 / 申诉驳回期间也保持显示 -->
+              <span v-if="isBanned" class="hero-ban-tag" :class="{ 'is-appeal': banStatus !== 0 }">
+                <i class="bi" :class="banStatus === 0 ? 'bi-slash-circle' : 'bi-hourglass-split'" aria-hidden="true" />
+                {{ banStatusText }}
+              </span>
+            </div>
+            <!-- 用户 ID：仅手机端展示（参考移动端个人主页的 ID 行） -->
+            <div v-if="profile.id" class="hero-id">ID {{ profile.id }}</div>
+          </div>
+
+          <div class="hero-actions">
+            <template v-if="!isSelf">
+              <!-- 四种按钮状态各用一套配色（后端 user-follows/relation）：
+                   关注=主色 / 回关=警示色（提醒你回应）/ 互相关注=成功色 / 已关注=幽灵弱化 -->
+              <button
+                type="button"
+                class="btn btn-sm"
+                :class="followButtonClass"
+                :title="followButtonTitle"
+                :disabled="followBusy"
+                @click="toggleFollow"
+              >{{ followButtonText }}</button>
+              <!-- 打赏：给这位用户送积分（自己的主页不显示，后端同样拒绝自打赏） -->
+              <button
+                type="button"
+                class="btn btn-sm btn-ghost"
+                title="用积分打赏 TA"
+                @click="openReward"
+              ><i class="bi bi-coin" aria-hidden="true" /> 打赏</button>
+              <!-- 拉黑 / 举报收进「更多」，避免低频且带破坏性的操作和关注按钮抢视线 -->
+              <CardActionMenu :items="moreMenuItems" @select="onMoreMenu" />
             </template>
-            <button type="button" class="author-badges-toggle" @click="showAllBadges = !showAllBadges">
-              <i class="bi" :class="showAllBadges ? 'bi-chevron-up' : 'bi-award'" aria-hidden="true" />
-              {{ showAllBadges ? '收起勋章' : `全部勋章 ${badges.length}` }}
-            </button>
-          </div>
-          <a
-            v-if="website && website.url"
-            class="author-website"
-            :href="website.url"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <i class="bi bi-link-45deg" /> {{ website.name || website.url }}
-          </a>
-          <!-- 社交数据卡片：文章 / 动态 / 关注 / 粉丝 / 获赞
-               数字来自后端 user-follows/stats（只统计对外公开的内容：audit=1 且 status=1），
-               关注 / 粉丝随关注按钮实时增减，其余为只读展示（不做跳转） -->
-          <div class="author-stats">
-            <div class="stat" @click="switchTab('article')">
-              <strong>{{ stats.article }}</strong>
-              <span>文章</span>
-            </div>
-            <div class="stat is-static">
-              <strong>{{ stats.moment }}</strong>
-              <span>动态</span>
-            </div>
-            <div class="stat" @click="switchTab('follow')">
-              <strong>{{ stats.follow }}</strong>
-              <span>关注</span>
-            </div>
-            <div class="stat" @click="switchTab('fans')">
-              <strong>{{ stats.fans }}</strong>
-              <span>粉丝</span>
-            </div>
-            <div class="stat is-static">
-              <strong>{{ stats.likes }}</strong>
-              <span>获赞</span>
-            </div>
-          </div>
-          <div class="author-actions">
-            <!-- 四种按钮状态各用一套配色（后端 user-follows/relation）：
-                 关注=主色 / 回关=警示色（提醒你回应）/ 互相关注=成功色 / 已关注=幽灵弱化 -->
-            <button
-              v-if="!isSelf"
-              class="btn btn-sm"
-              :class="followButtonClass"
-              :title="followButtonTitle"
-              :disabled="followBusy"
-              @click="toggleFollow"
-            >{{ followButtonText }}</button>
-            <!-- 拉黑：双向屏蔽（彼此内容不进对方动态流 + 不能互相私信），拉黑时会自动解除关注关系 -->
-            <button
-              v-if="!isSelf"
-              class="btn btn-sm"
-              :class="blocked ? 'btn-ghost' : 'btn-outline-danger'"
-              :title="
-                blocked
-                  ? '解除拉黑后，对方的内容会重新出现在你的动态流里'
-                  : '拉黑后彼此的内容都不再出现在对方的动态流里，且不能互相私信'
-              "
-              :disabled="followBusy"
-              @click="toggleBlock"
-            >{{ blocked ? '已拉黑' : '拉黑' }}</button>
-            <!-- 打赏：给这位用户送积分（自己的主页不显示，后端同样拒绝自打赏） -->
-            <button
-              v-if="!isSelf"
-              class="btn btn-sm btn-ghost"
-              title="用积分打赏 TA"
-              @click="openReward"
-            ><i class="bi bi-coin" aria-hidden="true" /> 打赏</button>
-            <button
-              v-if="!isSelf"
-              class="btn btn-sm btn-ghost"
-              title="举报该用户（仅管理员可见，对方不会收到通知）"
-              @click="reportVisible = true"
-            ><i class="bi bi-flag" aria-hidden="true" /> 举报</button>
             <template v-else>
-              <router-link to="/user/profile" class="btn btn-sm btn-ghost">编辑资料</router-link>
-              <button class="btn btn-sm btn-outline-danger" @click="userStore.logout">
-                <i class="bi bi-box-arrow-right" /> 退出登录
+              <RouterLink to="/user/profile" class="btn btn-sm">
+                <i class="bi bi-pencil" aria-hidden="true" /> 编辑资料
+              </RouterLink>
+              <button type="button" class="btn btn-sm btn-ghost" @click="userStore.logout">
+                <i class="bi bi-box-arrow-right" aria-hidden="true" /> 退出登录
               </button>
             </template>
           </div>
         </div>
-      </div>
 
-      <!-- 更换背景：仅本人可见，点进「我的资料 → 主页封面」上传图片或选颜色 -->
-      <RouterLink v-if="isSelf" to="/user/profile" class="author-cover-edit">
-        <i class="bi bi-image" aria-hidden="true" /> 更换背景
-      </RouterLink>
+        <p class="hero-desc">{{ profile.description || '这个人很懒，什么都没留下' }}</p>
 
-      <!-- 封禁提示条：该账号处于封禁中，展示关键信息并提供详情 / 申诉入口 -->
-      <div v-if="isBanned" class="author-ban-bar">
-        <i class="bi bi-exclamation-octagon" />
-        <div class="author-ban-bar-text">
-          <strong>{{ banBarTitle }}</strong>
-          <span>{{ banSummary }}</span>
+        <!-- 认证 / 个人网站：做成轻量胶囊，避免和签名抢行 -->
+        <div v-if="cert || (website && website.url)" class="hero-chips">
+          <!-- 认证信息：默认只展示认证名称 + 后台填写的认证说明（认证领域不对外展示） -->
+          <span v-if="cert" class="hero-chip">
+            <i class="bi bi-patch-check-fill" :style="{ color: certIconColor }" aria-hidden="true" />
+            <span class="hero-chip-strong">{{ cert.title }}</span>
+            <span v-if="cert.description" class="hero-chip-desc">{{ cert.description }}</span>
+          </span>
+          <a
+            v-if="website && website.url"
+            class="hero-chip hero-chip-link"
+            :href="website.url"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <i class="bi bi-link-45deg" aria-hidden="true" /> {{ website.name || website.url }}
+          </a>
         </div>
-        <button type="button" class="btn btn-sm btn-outline-danger" @click="openBanDialog">
-          查看详情<template v-if="isSelf"> / 申诉</template>
+
+        <!--
+          勋章：默认只展示昵称旁佩戴的那一枚（WearingBadge），
+          全部已获得的勋章收在折叠入口后面，避免主页被勋章墙占满。
+          未获得的属于「任务进度」，任何情况下都不在这里露出。
+        -->
+        <div v-if="badges.length" class="hero-badges">
+          <template v-if="showAllBadges">
+            <AchievementBadge
+              v-for="item in badges"
+              :key="item.id"
+              :badge="item"
+              size="sm"
+              held
+            />
+          </template>
+          <button type="button" class="hero-badges-toggle" @click="showAllBadges = !showAllBadges">
+            <i class="bi" :class="showAllBadges ? 'bi-chevron-up' : 'bi-award'" aria-hidden="true" />
+            {{ showAllBadges ? '收起勋章' : `全部勋章 ${badges.length}` }}
+          </button>
+        </div>
+
+        <!-- 社交数据：文章 / 动态 / 关注 / 粉丝 / 获赞
+             数字来自后端 user-follows/stats（只统计对外公开的内容：audit=1 且 status=1），
+             关注 / 粉丝随关注按钮实时增减，其余为只读展示（不做跳转） -->
+        <div class="hero-stats">
+          <button type="button" class="hero-stat" @click="switchTab('article')">
+            <strong>{{ stats.article }}</strong>
+            <span>文章</span>
+          </button>
+          <div class="hero-stat is-static">
+            <strong>{{ stats.moment }}</strong>
+            <span>动态</span>
+          </div>
+          <button type="button" class="hero-stat" @click="switchTab('follow')">
+            <strong>{{ stats.follow }}</strong>
+            <span>关注</span>
+          </button>
+          <button type="button" class="hero-stat" @click="switchTab('fans')">
+            <strong>{{ stats.fans }}</strong>
+            <span>粉丝</span>
+          </button>
+          <div class="hero-stat is-static">
+            <strong>{{ stats.likes }}</strong>
+            <span>获赞</span>
+          </div>
+        </div>
+
+        <!-- 封禁提示条：该账号处于封禁中，展示关键信息并提供详情 / 申诉入口 -->
+        <div v-if="isBanned" class="hero-ban">
+          <i class="bi bi-exclamation-octagon" aria-hidden="true" />
+          <div class="hero-ban-text">
+            <strong>{{ banBarTitle }}</strong>
+            <span>{{ banSummary }}</span>
+          </div>
+          <button type="button" class="btn btn-sm btn-outline-danger" @click="openBanDialog">
+            查看详情<template v-if="isSelf"> / 申诉</template>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 内容区：吸顶标签页 + 列表 ===== -->
+    <section class="panel">
+      <div class="tab-bar" role="tablist" :aria-label="`${who}的内容`">
+        <button
+          v-for="t in TABS"
+          :key="t.key"
+          type="button"
+          role="tab"
+          class="tab"
+          :class="{ 'is-active': tab === t.key }"
+          :aria-selected="tab === t.key"
+          @click="switchTab(t.key)"
+        >
+          {{ t.label }}
+          <span v-if="t.count !== null" class="tab-count">{{ t.count }}</span>
         </button>
       </div>
-    </div>
+
+      <div class="panel-body">
+        <div v-if="loading && !list.length" class="is-loading"><span class="spinner" /> 加载中…</div>
+        <div v-else-if="denied" class="empty-row">
+          <EmptyState :text="deniedText" />
+        </div>
+
+        <!-- 文章列表 -->
+        <template v-else-if="tab === 'article'">
+          <div v-if="!list.length" class="empty-row">
+            <EmptyState :text="emptyText" />
+          </div>
+          <template v-else>
+            <ArticleCard v-for="a in list" :key="a.id" :article="a" :abstract-limit="50" />
+            <div v-if="!finished" class="load-more">
+              <button type="button" class="btn btn-ghost btn-sm" :disabled="loading" @click="loadMore">
+                <span v-if="loading" class="spinner spinner-sm" />
+                {{ loading ? '加载中…' : '加载更多' }}
+              </button>
+            </div>
+            <p v-else class="list-end">没有更多了</p>
+          </template>
+        </template>
+
+        <!-- 粉丝 / 关注 列表 -->
+        <template v-else-if="tab === 'fans' || tab === 'follow'">
+          <!-- 粉丝管理条：只有本人在自己的粉丝列表里看得到 -->
+          <div v-if="isSelf && tab === 'fans'" class="fans-bar">
+            <template v-if="!fanManageMode">
+              <span class="fans-bar-text">共 {{ stats.fans }} 位粉丝</span>
+              <button v-if="list.length" type="button" class="btn btn-xs btn-ghost" @click="enterFanManage">
+                <i class="bi bi-check2-square" aria-hidden="true" /> 管理
+              </button>
+            </template>
+            <template v-else>
+              <label class="fans-check">
+                <input
+                  type="checkbox"
+                  :checked="allFansSelected"
+                  :indeterminate="partFansSelected"
+                  @change="toggleSelectAllFans"
+                />
+                <span>全选本页</span>
+              </label>
+              <span class="fans-bar-text">已选 {{ selectedFanIds.length }} 人</span>
+              <div class="fans-bar-actions">
+                <button type="button" class="btn btn-xs btn-ghost" :disabled="fanRemoving" @click="exitFanManage">
+                  取消
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-xs btn-danger"
+                  :disabled="!selectedFanIds.length || fanRemoving"
+                  @click="confirmRemoveFansVisible = true"
+                >移除</button>
+              </div>
+            </template>
+          </div>
+
+          <div v-if="!list.length" class="empty-row">
+            <EmptyState :text="emptyText" />
+          </div>
+          <ul v-else class="row-list" :class="{ 'is-managing': fanManageMode && tab === 'fans' }">
+            <li
+              v-for="item in list"
+              :key="item.id"
+              class="row-item"
+              @click="onFanRowClick($event, item)"
+            >
+              <!-- 批量模式：勾选框只在粉丝 tab 出现（关注 tab 不做批量操作） -->
+              <input
+                v-if="fanManageMode && tab === 'fans'"
+                v-model="selectedFanIds"
+                class="row-check"
+                type="checkbox"
+                :value="item.id"
+                :aria-label="`选择 ${item.nickname || '用户'}`"
+              />
+              <RouterLink :to="`/author/${item.uid || item.user_id || item.id}`" class="row-link">
+                <img
+                  :src="thumbUrl(item.avatar || defaultAvatar, 88)"
+                  class="row-avatar"
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  @error="onImgError"
+                />
+                <div class="row-info">
+                  <span class="row-name">
+                    {{ item.nickname || item.name || '匿名用户' }}
+                    <!-- 互关标识：后端 attachRelation 批量算好（未登录时不显示） -->
+                    <span v-if="item.mutual" class="row-tag" title="你们互相关注">互关</span>
+                    <span v-else-if="item.is_following" class="row-tag is-weak" title="你已关注 TA">已关注</span>
+                  </span>
+                  <span class="row-sub">{{ item.description || '这个人很懒，什么都没留下' }}</span>
+                </div>
+              </RouterLink>
+              <div class="row-tail">
+                <time class="row-time">{{ fromNow(item.create_time) }}</time>
+                <!-- 行内关注：关系态由后端 attachRelation 批量给出，点完就地更新，不整页刷新
+                     （粉丝管理模式里专注勾选，先不显示关注按钮） -->
+                <button
+                  v-if="canFollowRow(item) && !(fanManageMode && tab === 'fans')"
+                  type="button"
+                  class="btn btn-xs"
+                  :class="item.is_following ? 'btn-ghost' : 'btn-primary'"
+                  :disabled="followBusy"
+                  :title="item.is_following ? '取消关注' : '关注 TA'"
+                  @click="toggleFollowRow(item)"
+                >{{ followRowText(item) }}</button>
+              </div>
+            </li>
+          </ul>
+        </template>
+
+        <!-- 点赞 / 收藏 列表（含 文章/评论/动态 子分类） -->
+        <template v-else>
+          <div class="sub-tab-bar">
+            <button
+              v-for="st in currentSubTabs"
+              :key="st.key"
+              type="button"
+              class="sub-tab"
+              :class="{ 'is-active': subTab === st.key }"
+              @click="switchSubTab(st.key)"
+            >{{ st.label }}</button>
+          </div>
+          <div v-if="!list.length" class="empty-row">
+            <EmptyState :text="emptyText" />
+          </div>
+          <ul v-else class="row-list">
+            <li v-for="(i, k) in list" :key="i.id || k" class="row-item is-clickable" @click="goDetail(i)">
+              <span class="like-badge" :class="badgeClass(i.target_type)">{{ typeLabel(i.target_type) }}</span>
+              <span class="like-title" v-html="detailTitleHtml(i)" />
+              <time class="row-time">{{ fromNow(i.create_time) }}</time>
+            </li>
+          </ul>
+        </template>
+      </div>
+    </section>
 
     <!-- 可能认识的人：仅在自己的主页展示（基于「共同关注」的二度推荐，见后端 user-follows/suggest）。
          只展示聚合出来的「N 个共同关注」，不暴露任何具体的关注关系明细。 -->
-    <div v-if="isSelf && suggestions.length" class="card card-pad suggest-card">
-      <div class="suggest-head">
-        <h3 class="suggest-title"><i class="bi bi-person-plus" aria-hidden="true" /> 可能认识的人</h3>
+    <section v-if="isSelf && suggestions.length" class="panel suggest-panel">
+      <header class="suggest-head">
+        <h2 class="suggest-title"><i class="bi bi-person-plus" aria-hidden="true" /> 可能认识的人</h2>
         <span class="suggest-tip">根据你们共同关注的人推荐</span>
-      </div>
-      <ul class="suggest-list">
-        <li v-for="u in suggestions" :key="u.id" class="suggest-item">
-          <router-link :to="`/author/${u.id}`" class="suggest-link">
-            <img :src="u.avatar || defaultAvatar" class="suggest-avatar" alt="" @error="onImgError" loading="lazy" />
-            <div class="suggest-info">
-              <span class="suggest-name">{{ u.nickname || '匿名用户' }}</span>
-              <span class="suggest-sub">
-                <template v-if="u.mutual_count">{{ u.mutual_count }} 个共同关注</template>
-                <template v-else>{{ u.description || '这个人很懒，什么都没留下' }}</template>
-              </span>
-            </div>
-          </router-link>
+      </header>
+      <!-- 横向滑动卡片：人多了也只在一条轨道里滑动，不会把主页拉长 -->
+      <div class="suggest-track">
+        <button
+          v-if="suggestScrollable"
+          type="button"
+          class="suggest-nav is-prev"
+          :disabled="!canScrollPrev"
+          aria-label="向左查看更多"
+          @click="scrollSuggest(-1)"
+        >
+          <i class="bi bi-chevron-left" aria-hidden="true" />
+        </button>
+        <div
+          ref="suggestScroller"
+          class="suggest-scroller"
+          @scroll="updateSuggestScroll"
+          @wheel="onSuggestWheel"
+        >
+        <article v-for="u in suggestions" :key="u.id" class="suggest-card">
+          <RouterLink :to="`/author/${u.id}`" class="suggest-card-link">
+            <img
+              :src="thumbUrl(u.avatar || defaultAvatar, 96)"
+              class="suggest-avatar"
+              alt=""
+              loading="lazy"
+              decoding="async"
+              @error="onImgError"
+            />
+            <span class="suggest-name">{{ u.nickname || '匿名用户' }}</span>
+            <span class="suggest-sub">
+              <template v-if="u.mutual_count">{{ u.mutual_count }} 个共同关注</template>
+              <template v-else>{{ u.description || '这个人很懒，什么都没留下' }}</template>
+            </span>
+          </RouterLink>
           <button
             type="button"
-            class="btn btn-sm"
+            class="btn btn-xs suggest-follow"
             :class="u.following ? 'btn-ghost' : 'btn-primary'"
             :disabled="followBusy"
             @click="followSuggestion(u)"
           >{{ u.following ? '已关注' : '关注' }}</button>
-        </li>
-      </ul>
-    </div>
-
-    <!-- 内容区 -->
-    <div class="card card-pad">
-      <div class="tab-bar">
-        <button :class="['tab', tab === 'article' && 'is-active']" @click="switchTab('article')">TA的文章</button>
-        <button :class="['tab', tab === 'fans' && 'is-active']" @click="switchTab('fans')">TA的粉丝</button>
-        <button :class="['tab', tab === 'follow' && 'is-active']" @click="switchTab('follow')">TA的关注</button>
-        <button :class="['tab', tab === 'like' && 'is-active']" @click="switchTab('like')">TA的点赞</button>
-        <button :class="['tab', tab === 'collect' && 'is-active']" @click="switchTab('collect')">TA的收藏</button>
+        </article>
+        </div>
+        <button
+          v-if="suggestScrollable"
+          type="button"
+          class="suggest-nav is-next"
+          :disabled="!canScrollNext"
+          aria-label="向右查看更多"
+          @click="scrollSuggest(1)"
+        >
+          <i class="bi bi-chevron-right" aria-hidden="true" />
+        </button>
       </div>
-
-      <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
-      <div v-else-if="denied" class="empty-row">
-        <EmptyState :text="deniedText" />
-      </div>
-
-      <!-- 文章列表 -->
-      <template v-else-if="tab === 'article'">
-        <div v-if="!list.length" class="empty-row">
-          <EmptyState :text="emptyText" />
-        </div>
-        <template v-else>
-          <ArticleCard v-for="a in list" :key="a.id" :article="a" :abstract-limit="50" />
-          <div v-if="!finished" class="load-more">
-            <button class="btn btn-ghost btn-sm" :disabled="loading" @click="loadMore">
-              {{ loading ? '加载中...' : '加载更多' }}
-            </button>
-          </div>
-          <p v-else class="list-end">没有更多了</p>
-        </template>
-      </template>
-
-      <!-- 粉丝 / 关注 列表（仅本人可见） -->
-      <template v-else-if="tab === 'fans' || tab === 'follow'">
-        <div v-if="!list.length" class="empty-row">
-          <EmptyState :text="emptyText" />
-        </div>
-        <ul v-else class="user-list">
-          <li v-for="item in list" :key="item.id" class="user-item">
-            <router-link :to="`/author/${item.uid || item.user_id || item.id}`" class="user-link">
-              <img :src="item.avatar || defaultAvatar" class="user-avatar" @error="onImgError" loading="lazy" />
-              <div class="user-info">
-                <span class="user-name">{{ item.nickname || item.name || '匿名用户' }}</span>
-                <span class="user-sub">{{ item.description || '' }}</span>
-              </div>
-              <!-- 互关标识：后端 attachRelation 批量算好（未登录时不显示） -->
-              <span v-if="item.mutual" class="user-mutual" title="你们互相关注">已互关</span>
-              <span v-else-if="item.is_following" class="user-mutual is-following" title="你已关注 TA">已关注</span>
-              <span class="user-time">{{ fromNow(item.create_time) }}</span>
-            </router-link>
-          </li>
-        </ul>
-      </template>
-
-      <!-- 点赞 / 收藏 列表（本人与他人可见，含 文章/评论/动态 子分类） -->
-      <template v-else>
-        <div class="sub-tab-bar">
-          <button
-            v-for="st in currentSubTabs"
-            :key="st.key"
-            :class="['sub-tab', subTab === st.key && 'is-active']"
-            @click="switchSubTab(st.key)"
-          >{{ st.label }}</button>
-        </div>
-        <div v-if="!list.length" class="empty-row">
-          <EmptyState :text="emptyText" />
-        </div>
-        <ul v-else class="like-list">
-          <li v-for="(i, k) in list" :key="i.id || k" class="like-item" @click="goDetail(i)">
-            <div class="like-main">
-              <span class="like-badge" :class="badgeClass(i.target_type)">{{ typeLabel(i.target_type) }}</span>
-              <span class="like-title" v-html="detailTitleHtml(i)" />
-            </div>
-            <span class="like-time">{{ fromNow(i.create_time) }}</span>
-          </li>
-        </ul>
-      </template>
-    </div>
+    </section>
 
     <!-- 封禁信息弹窗：本人可提交申诉，查看他人主页时只展示信息 -->
     <BanAppealDialog ref="banDialogRef" :ban="banInfo" :appealable="isSelf" />
@@ -299,14 +409,27 @@
       :to-uid="uid"
       :to-name="profile.nickname || ''"
     />
+
+    <!-- 移除粉丝：二次确认，避免批量误删 -->
+    <ConfirmDialog
+      v-model:visible="confirmRemoveFansVisible"
+      danger
+      title="移除粉丝"
+      :message="`确定移除已选的 ${selectedFanIds.length} 位粉丝吗？移除后对方不再出现在你的粉丝列表里，也不会收到通知。`"
+      confirm-text="移除"
+      :loading="fanRemoving"
+      @confirm="removeSelectedFans"
+    />
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ArticleCard from '@/components/ArticleCard.vue'
 import AvatarFrame from '@/components/AvatarFrame.vue'
+import CardActionMenu from '@/components/CardActionMenu.vue'
+import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import TitleBadge from '@/components/TitleBadge.vue'
 import WearingBadge from '@/components/WearingBadge.vue'
 import AchievementBadge from '@/components/AchievementBadge.vue'
@@ -329,6 +452,7 @@ import { pickUserTitlePayload } from '@/utils/helper'
 import { resolveFrameRender } from '@/utils/frameRender'
 import { toast } from '@/utils/toast'
 import { renderEmoji } from '@/utils/emoji'
+import { thumbUrl } from '@/utils/image'
 import EmptyState from '@/components/EmptyState.vue'
 
 const route = useRoute()
@@ -340,6 +464,23 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
 
 const profile = ref({})
 const level = ref(0)
+
+// 头像尺寸：桌面 96 / 手机 76。AvatarFrame 会按 size 取 2 倍图，
+// 所以这里改小不只是视觉变化，也直接减少头像的下载量。
+const isMobile = ref(false)
+function syncViewport() {
+  isMobile.value = window.innerWidth <= 640
+}
+const avatarSize = computed(() => (isMobile.value ? '76px' : '96px'))
+onMounted(() => {
+  syncViewport()
+  window.addEventListener('resize', syncViewport)
+  window.addEventListener('resize', updateSuggestScroll)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncViewport)
+  window.removeEventListener('resize', updateSuggestScroll)
+})
 
 // 个人网站（来自 json.website，用户在「个人资料」页设置）
 const website = computed(() => (profile.value?.json && profile.value.json.website) || null)
@@ -366,13 +507,15 @@ const cover = computed(() => {
 // 交给 CSS 变量 --author-cover：图片用 url()，纯色用「同色渐变」
 // （background-image 不接受裸颜色值，必须包成渐变）。
 // 未设置封面时不写该变量，由 CSS 里的主题色渐变兜底。
+// 图片封面走 thumbUrl 按横幅宽度取图：主页封面是用户上传的大图，
+// 原图动辄 1~3MB，横幅实际只显示 644px 宽。
 const coverStyle = computed(() => {
   const item = cover.value
   if (!item) return {}
   if (item.type === 'color') {
     return { '--author-cover': `linear-gradient(0deg, ${item.value}, ${item.value})` }
   }
-  return { '--author-cover': `url("${item.value}")` }
+  return { '--author-cover': `url("${thumbUrl(item.value, 1300)}")` }
 })
 
 // 头衔（与 Profile 页一致的颜色映射）
@@ -450,6 +593,22 @@ const followButtonTitle = computed(() => {
   return '关注 TA，TA 的动态会出现在你的关注流里'
 })
 
+// 「更多」菜单：拉黑 / 举报都是低频且带破坏性的操作，收进三点菜单里
+const moreMenuItems = computed(() => [
+  {
+    key: 'block',
+    label: blocked.value ? '解除拉黑' : '拉黑',
+    icon: blocked.value ? 'bi bi-unlock' : 'bi bi-slash-circle',
+    danger: !blocked.value
+  },
+  { key: 'report', label: '举报该用户', icon: 'bi bi-flag', danger: true }
+])
+
+function onMoreMenu(key) {
+  if (key === 'block') toggleBlock()
+  else if (key === 'report') reportVisible.value = true
+}
+
 // ---------- 封禁信息（后端 users/one 的 result.ban，见 model.Users.banInfo） ----------
 const banInfo = ref(null)
 const banDialogRef = ref(null)
@@ -505,12 +664,26 @@ const page = ref(1)
 const pageSize = 10
 const finished = ref(false)
 
+// 第一人称 / 第三人称：看自己的主页时文案统一用「我」，避免页面上出现「TA还没有…」
+const who = computed(() => (isSelf.value ? '我' : 'TA'))
+
+// 标签页：count 只给后端统计得到的三个（文章 / 粉丝 / 关注），
+// 点赞、收藏没有对应统计接口，留 null 表示不显示徽标。
+// 标签文案不再带「TA的」前缀：主页已经是这个人的主页，前缀只会让 5 个标签排不下
+const TABS = computed(() => [
+  { key: 'article', label: '文章', count: stats.value.article },
+  { key: 'fans', label: '粉丝', count: stats.value.fans },
+  { key: 'follow', label: '关注', count: stats.value.follow },
+  { key: 'like', label: '点赞', count: null },
+  { key: 'collect', label: '收藏', count: null }
+])
+
 const emptyText = computed(() => {
-  if (tab.value === 'article') return 'TA还没有发布文章'
-  if (tab.value === 'fans') return 'TA还没有粉丝'
-  if (tab.value === 'follow') return 'TA还没有关注任何人'
-  if (tab.value === 'like') return 'TA还没有点赞内容'
-  return 'TA还没有收藏内容'
+  if (tab.value === 'article') return `${who.value}还没有发布文章`
+  if (tab.value === 'fans') return `${who.value}还没有粉丝`
+  if (tab.value === 'follow') return `${who.value}还没有关注任何人`
+  if (tab.value === 'like') return `${who.value}还没有点赞内容`
+  return `${who.value}还没有收藏内容`
 })
 
 const deniedText = ref('仅本人可见')
@@ -526,6 +699,11 @@ function switchTab(t) {
   page.value = 1
   finished.value = false
   denied.value = false
+  // 清空旧数据：否则新标签加载期间会先渲染上一个标签的列表，看起来像串了内容
+  list.value = []
+  // 粉丝管理模式只在粉丝 tab 内有效，切走就退出并清空勾选
+  fanManageMode.value = false
+  selectedFanIds.value = []
   load()
 }
 
@@ -688,6 +866,8 @@ async function loadProfile() {
     const res = await getUser(uid.value)
     const u = res.data || {}
     profile.value = {
+      // 补上 id：手机端的「ID xxx」行依赖它，之前漏了字段导致这一行永远不显示
+      id: u.id || uid.value,
       nickname: u.nickname || '匿名用户',
       avatar: u.avatar || '',
       description: u.description || u.remarks || '',
@@ -817,6 +997,51 @@ async function loadSuggestions() {
   }
 }
 
+// ---------- 「可能认识的人」横滑轨道 ----------
+// 桌面端：左右箭头 + 把纵向滚轮转成横向滚动；手机端保持原生滑动（箭头隐藏）
+const suggestScroller = ref(null)
+const suggestScrollable = ref(false)
+const canScrollPrev = ref(false)
+const canScrollNext = ref(false)
+
+function updateSuggestScroll() {
+  const el = suggestScroller.value
+  if (!el) return
+  const max = el.scrollWidth - el.clientWidth
+  suggestScrollable.value = max > 4
+  canScrollPrev.value = el.scrollLeft > 2
+  canScrollNext.value = el.scrollLeft < max - 2
+}
+
+function scrollSuggest(dir) {
+  const el = suggestScroller.value
+  if (!el) return
+  // 一次翻 2 张卡片的宽度，翻完停在卡片边缘（配合 scroll-snap）
+  el.scrollBy({ left: dir * 284, behavior: 'smooth' })
+}
+
+/**
+ * 滚轮横向滚动
+ *
+ * 只在「还能往这个方向滚」时接管滚轮；到达两端就放行，让页面继续纵向滚动，
+ * 否则鼠标停在卡片上会把整页滚动卡死。
+ */
+function onSuggestWheel(event) {
+  const el = suggestScroller.value
+  if (!el) return
+  const max = el.scrollWidth - el.clientWidth
+  if (max <= 4) return
+  const delta = Math.abs(event.deltaY) >= Math.abs(event.deltaX) ? event.deltaY : event.deltaX
+  if (!delta) return
+  const atStart = el.scrollLeft <= 0 && delta < 0
+  const atEnd = el.scrollLeft >= max - 1 && delta > 0
+  if (atStart || atEnd) return
+  event.preventDefault()
+  el.scrollLeft += delta
+}
+
+
+
 async function followSuggestion(user) {
   if (followBusy.value || user.following) return
   followBusy.value = true
@@ -829,6 +1054,126 @@ async function followSuggestion(user) {
     /* 拦截器已提示 */
   } finally {
     followBusy.value = false
+  }
+}
+
+// ---------- 粉丝 / 关注列表的行内关注 ----------
+// 目标用户 id 只认 uid / user_id：粉丝列表里的 item.id 是关注记录 id，
+// 拿它当 uid 去关注会关注到完全不相干的人。
+function rowUid(item) {
+  const id = Number(item.uid || item.user_id)
+  return Number.isFinite(id) && id > 0 ? id : 0
+}
+
+function canFollowRow(item) {
+  if (!userStore.isLogged) return false
+  const id = rowUid(item)
+  return id > 0 && id !== Number(userStore.user?.id)
+}
+
+function followRowText(item) {
+  if (item.is_following) return '已关注'
+  if (item.is_follower) return '回关'
+  return '关注'
+}
+
+/**
+ * 行内关注 / 取关
+ *
+ * 只更新这一行的关系态，不整页刷新；看自己的主页时顺带同步「关注」计数
+ * （只有自己的关注数会因这次操作变化，别人的数字不受影响）。
+ */
+async function toggleFollowRow(item) {
+  const targetUid = rowUid(item)
+  if (!targetUid || followBusy.value) return
+  followBusy.value = true
+  try {
+    if (item.is_following) {
+      await call('user-follows', 'unfollow', { method: 'PUT', data: { follow_uid: targetUid } })
+      item.is_following = false
+      item.mutual = false
+      if (isSelf.value) stats.value.follow = Math.max(0, stats.value.follow - 1)
+      toast.success('已取消关注')
+    } else {
+      const wasFollower = item.is_follower
+      await call('user-follows', 'follow', { method: 'POST', data: { follow_uid: targetUid } })
+      item.is_following = true
+      item.mutual = wasFollower
+      if (isSelf.value) stats.value.follow += 1
+      toast.success(wasFollower ? '回关成功，你们现在是互相关注' : '关注成功')
+    }
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    followBusy.value = false
+  }
+}
+
+// ---------- 粉丝批量管理（仅本人可见） ----------
+// 只处理「本页」勾选的粉丝：跨页累积容易误删，操作路径也更短
+const fanManageMode = ref(false)
+const selectedFanIds = ref([])
+const fanRemoving = ref(false)
+const confirmRemoveFansVisible = ref(false)
+
+const allFansSelected = computed(
+  () => list.value.length > 0 && selectedFanIds.value.length === list.value.length
+)
+const partFansSelected = computed(
+  () => selectedFanIds.value.length > 0 && !allFansSelected.value
+)
+
+function enterFanManage() {
+  fanManageMode.value = true
+  selectedFanIds.value = []
+}
+
+function exitFanManage() {
+  fanManageMode.value = false
+  selectedFanIds.value = []
+  confirmRemoveFansVisible.value = false
+}
+
+function toggleSelectAllFans() {
+  selectedFanIds.value = allFansSelected.value ? [] : list.value.map((i) => i.id)
+}
+
+/**
+ * 粉丝管理模式下整行可点：点哪都能勾选，比 16px 的勾选框好按
+ *
+ * 取消默认行为即可阻止 RouterLink 跳转（默认动作在事件冒泡结束后才执行）；
+ * 点在勾选框上时直接放行，交给 v-model 处理，否则会被这里再切一次。
+ */
+function onFanRowClick(event, item) {
+  if (!fanManageMode.value || tab.value !== 'fans') return
+  if (event.target.closest('.row-check')) return
+  event.preventDefault()
+  const index = selectedFanIds.value.indexOf(item.id)
+  if (index >= 0) selectedFanIds.value.splice(index, 1)
+  else selectedFanIds.value.push(item.id)
+}
+
+async function removeSelectedFans() {
+  const ids = selectedFanIds.value.slice()
+  if (!ids.length || fanRemoving.value) return
+  fanRemoving.value = true
+  try {
+    await call('user-follows', 'remove-fans', {
+      method: 'DELETE',
+      // DELETE 走 query：直接传数组会被序列化成 ids[]=，后端取不到，统一逗号分隔
+      params: { ids: ids.join(',') }
+    })
+    const removed = new Set(ids)
+    list.value = list.value.filter((i) => !removed.has(i.id))
+    stats.value.fans = Math.max(0, stats.value.fans - ids.length)
+    selectedFanIds.value = []
+    fanManageMode.value = false
+    confirmRemoveFansVisible.value = false
+    toast.success(`已移除 ${ids.length} 位粉丝`)
+  } catch {
+    /* 拦截器已提示 */
+  } finally {
+    fanRemoving.value = false
   }
 }
 
@@ -1089,160 +1434,821 @@ watch(() => route.params.id, () => {
   denied.value = false
   tab.value = 'article'
   subTab.value = 'all'
+  list.value = []
+  fanManageMode.value = false
+  selectedFanIds.value = []
   load()
 })
+
+// 推荐卡片渲染出来后再算一次箭头状态（首次进入时是空列表，数据到了才有得滚）
+watch(suggestions, () => nextTick(updateSuggestScroll), { immediate: true })
 </script>
 
 <style scoped>
-.author-card {
-  margin-bottom: 16px;
+/* ============================================================
+   用户主页（/author/:id）
+   结构：资料卡（封面横幅 + 头像压边 + 身份 + 数据条）→ 内容面板 → 可能认识的人
+   ============================================================ */
+.author-page {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
-/* 封面横幅（桌面 / 手机共用）：优先用 users.json.cover（组件里由 :style 写成 --author-cover），
-   未设置时用主色渐变兜底；底部叠一层暗色，让压边的头像与文字更清楚。
-   --author-card-pad 必须与各断点下卡片的内边距保持一致，横幅才能「满幅出血」铺满卡片顶部 */
-.author-page > .author-card {
-  --author-card-pad: 24px;
-  --author-cover-h: 156px;
+
+/* ---------- 资料卡 ---------- */
+.hero {
   position: relative;
   overflow: hidden;
-  padding: 0 var(--author-card-pad) var(--author-card-pad);
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
 }
-.author-card::before {
-  content: '';
-  display: block;
-  height: var(--author-cover-h);
-  margin: 0 calc(-1 * var(--author-card-pad));
+/* 封面横幅：优先用 users.json.cover（组件里由 :style 写成 --author-cover），
+   未设置时用主色渐变兜底；顶部提亮 + 底部压暗，压边的头像与文字才不会被背景吃掉 */
+.hero-cover {
+  position: relative;
+  height: 156px;
   background-color: var(--primary-deep);
   background-image:
-    linear-gradient(180deg, rgba(0, 0, 0, 0) 46%, rgba(0, 0, 0, 0.26) 100%),
+    radial-gradient(120% 140% at 12% 0%, rgba(255, 255, 255, 0.2), transparent 58%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.34) 100%),
     var(--author-cover, linear-gradient(135deg, var(--primary) 0%, var(--primary-deep) 100%));
-  background-size: cover, cover;
+  background-size: cover, cover, cover;
   background-position: center;
 }
-/* 头像上浮压住横幅下沿；描一圈卡片底色，任何封面上都清晰（头像框装饰不受影响） */
-.author-head .avatar-frame {
-  margin-top: -34px;
-  background: var(--bg-card);
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px var(--bg-card);
-}
-/* 「更换背景」：仅本人可见，贴在封面右下角（横幅高度随断点变，用变量算位置） */
-.author-cover-edit {
+/* 「更换背景」：仅本人可见，贴在横幅右下角 */
+.hero-cover-edit {
   position: absolute;
-  top: calc(var(--author-cover-h) - 36px);
-  right: 10px;
-  z-index: 1;
+  right: 12px;
+  bottom: 12px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
   height: 28px;
   padding: 0 10px;
-  border: none;
-  border-radius: 4px;
-  background: rgba(0, 0, 0, 0.55);
+  border-radius: var(--radius-sm);
+  background: rgba(20, 18, 15, 0.52);
   color: #fff;
   font-size: 12px;
   line-height: 1;
   text-decoration: none;
-  cursor: pointer;
-  backdrop-filter: blur(4px);
-  transition: background-color 0.18s, color 0.18s;
+  backdrop-filter: blur(6px);
+  transition: background-color var(--dur-fast) var(--ease);
 }
-.author-cover-edit:hover {
-  background: rgba(0, 0, 0, 0.72);
+.hero-cover-edit:hover {
+  background: rgba(20, 18, 15, 0.74);
   color: #fff;
 }
-.author-cover-edit .bi {
+.hero-cover-edit .bi {
   font-size: 13px;
 }
-.author-head {
-  display: flex;
-  gap: 20px;
-  align-items: flex-start;
+
+.hero-body {
+  /* 底部不留 padding：数据条是卡片的「页脚」，要一直贴到卡片底边，
+     否则数据条下面会多出一条 20px 的白边 */
+  padding: 0 24px;
 }
-.author-meta {
+.hero-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px;
+}
+/* 头像上浮压住横幅下沿；描一圈卡片底色，任何封面上都清晰 */
+.hero-avatar {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  margin-top: -42px;
+}
+.hero-avatar .avatar-frame {
+  background: var(--bg-card);
+  border-radius: 50%;
+  box-shadow: 0 0 0 4px var(--bg-card);
+}
+.hero-ident {
   flex: 1;
   min-width: 0;
+  padding-bottom: 2px;
 }
-.author-name-row {
+.hero-name-row {
   display: flex;
-  align-items: center;
-  gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
 }
-.author-name {
-  font-size: 20px;
+.hero-name {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 22px;
   font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.01em;
+  color: var(--text);
+  overflow-wrap: anywhere;
 }
-/* 用户 ID：默认不展示，仅手机端页面显示（见文件末尾的 640px 适配） */
-.author-id {
-  display: none;
-}
-.author-level {
-  font-size: 12px;
+.hero-level {
+  flex-shrink: 0;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: 999px;
   background: var(--accent-soft);
   color: var(--primary-deep);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
+/* 无装扮样式时的头衔兜底（配色见文末 .title-* 系列） */
 .author-title {
-  font-size: 12px;
+  flex-shrink: 0;
   padding: 2px 8px;
-  border-radius: 4px;
+  border-radius: 999px;
+  font-size: 11px;
   font-weight: 600;
   color: #fff;
 }
+/* 用户 ID：默认不展示，仅手机端页面显示（见 640px 适配） */
+.hero-id {
+  display: none;
+}
+.hero-actions {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 2px;
+}
 
 /* ---------- 封禁标识与提示条 ---------- */
-.author-ban-tag {
+.hero-ban-tag {
   display: inline-flex;
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  font-size: 12px;
-  font-weight: 600;
   border-radius: 999px;
   color: var(--danger);
   background: rgba(199, 72, 42, 0.12);
+  font-size: 11px;
+  font-weight: 600;
 }
 /* 申诉中 / 申诉驳回：改用琥珀色，与「封禁中」区分开（但同样属于封禁状态） */
-.author-ban-tag.is-appeal {
+.hero-ban-tag.is-appeal {
   color: var(--warning);
   background: var(--gold-wash);
 }
-.author-ban-bar {
+.hero-ban {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 16px;
+  /* 数据条是卡片页脚，这里补回资料卡底部留白 */
+  margin: 16px 0 20px;
   padding: 12px 14px;
   border-radius: var(--radius);
-  background: rgba(199, 72, 42, 0.08);
-  border: 1px solid rgba(199, 72, 42, 0.24);
+  background: rgba(199, 72, 42, 0.06);
+  border: 1px solid rgba(199, 72, 42, 0.22);
 }
-.author-ban-bar > i {
+.hero-ban > i {
   flex-shrink: 0;
   font-size: 18px;
   color: var(--danger);
 }
-.author-ban-bar-text {
+.hero-ban-text {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 2px;
 }
-.author-ban-bar-text strong {
-  font-size: 14px;
+.hero-ban-text strong {
+  font-size: 13px;
   color: var(--danger);
 }
-.author-ban-bar-text span {
+.hero-ban-text span {
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-muted);
-  word-break: break-word;
+  overflow-wrap: anywhere;
 }
-/* 头衔配色（与 Profile 页 10 个头衔一致） */
+
+/* ---------- 签名 / 认证 / 网站 ---------- */
+.hero-desc {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--text-soft);
+  overflow-wrap: anywhere;
+}
+.hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.hero-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.hero-chip .bi {
+  flex-shrink: 0;
+  font-size: 13px;
+}
+.hero-chip-strong {
+  color: var(--text-soft);
+  font-weight: 600;
+}
+.hero-chip-desc {
+  max-width: 220px;
+  color: var(--text-light);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hero-chip-link {
+  color: var(--primary-deep);
+  text-decoration: none;
+  transition: border-color var(--dur-fast) var(--ease);
+}
+.hero-chip-link:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+/* ---------- 勋章 ---------- */
+.hero-badges {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+/* 「全部勋章」的折叠入口：轻量胶囊，不和勋章本身抢视觉重量 */
+.hero-badges-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.hero-badges-toggle:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+
+/* ---------- 数据条：五等分 + 分隔线，出血到卡片两侧 ---------- */
+.hero-stats {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 18px -24px 0;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.hero-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease);
+}
+.hero-stat + .hero-stat {
+  border-left: 1px solid var(--border-soft);
+}
+.hero-stat strong {
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.hero-stat span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.hero-stat:hover strong,
+.hero-stat:hover span {
+  color: var(--primary);
+}
+/* 动态 / 获赞只是展示数字，不做跳转 → 不给手型光标与 hover 反馈，避免误导点击 */
+.hero-stat.is-static {
+  cursor: default;
+}
+.hero-stat.is-static:hover strong {
+  color: var(--text);
+}
+.hero-stat.is-static:hover span {
+  color: var(--text-muted);
+}
+
+/* ---------- 内容面板 ---------- */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+/* 吸顶标签栏：列表很长时也能随时切 Tab（手机端顶栏已吸顶，这里不重复吸） */
+.tab-bar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  gap: 2px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  background: var(--bg-card);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.tab-bar::-webkit-scrollbar {
+  display: none;
+}
+.tab {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 13px 10px;
+  border: none;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 14px;
+  font-family: inherit;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease);
+}
+/* 下划线用伪元素：切 Tab 时只改背景色，不引起布局跳动 */
+.tab::after {
+  content: '';
+  position: absolute;
+  right: 8px;
+  bottom: -1px;
+  left: 8px;
+  height: 2px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.tab:hover {
+  color: var(--primary);
+}
+.tab.is-active {
+  color: var(--primary-deep);
+  font-weight: 600;
+}
+.tab.is-active::after {
+  background: var(--primary);
+}
+.tab-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 17px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.tab.is-active .tab-count {
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+}
+.panel-body {
+  padding: 4px 18px 18px;
+}
+
+/* ---------- 子分类（点赞 / 收藏） ---------- */
+.sub-tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 12px 0 4px;
+}
+.sub-tab {
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1.5;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    background-color var(--dur-fast) var(--ease);
+}
+.sub-tab:hover {
+  color: var(--primary);
+  border-color: var(--primary);
+}
+.sub-tab.is-active {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-weight: 600;
+}
+
+/* ---------- 通用列表行（粉丝 / 关注 / 点赞 / 收藏 / 可能认识的人） ---------- */
+.row-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.row-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 8px;
+  border-radius: var(--radius);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.row-item:hover {
+  background: var(--bg-muted);
+}
+.row-item.is-clickable {
+  cursor: pointer;
+}
+.row-link {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  color: var(--text);
+  text-decoration: none;
+}
+.row-avatar {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-muted);
+}
+.row-info {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.row-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-link:hover .row-name {
+  color: var(--primary);
+}
+.row-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* 互关 / 已关注：互关用主色，单向关注弱化 */
+.row-tag {
+  flex-shrink: 0;
+  padding: 0 6px;
+  border: 1px solid var(--primary-soft);
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+}
+.row-tag.is-weak {
+  border-color: var(--border-soft);
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+.row-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-light);
+  font-variant-numeric: tabular-nums;
+}
+/* 行尾：关注时间 + 关注按钮 */
+.row-tail {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ---------- 粉丝批量管理 ---------- */
+.fans-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 12px 0 2px;
+  padding: 8px 10px;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.fans-bar-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fans-bar-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}
+.fans-check {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-soft);
+  cursor: pointer;
+}
+.fans-check input,
+.row-check {
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+.row-check {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+/* 管理模式下整行可点勾选，给个手型提示 */
+.row-list.is-managing .row-item {
+  cursor: pointer;
+}
+
+/* ---------- 点赞 / 收藏行 ---------- */
+.like-badge {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: var(--radius-xs);
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+.badge-comment {
+  background: rgba(46, 122, 92, 0.14);
+  color: var(--success);
+}
+.badge-moment {
+  background: var(--gold-wash);
+  color: var(--warning);
+}
+.badge-other {
+  background: var(--bg-muted);
+  color: var(--text-muted);
+}
+.like-title {
+  flex: 1;
+  min-width: 0;
+  color: var(--text);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-item.is-clickable:hover .like-title {
+  color: var(--primary);
+}
+
+/* ---------- 加载 / 空态 / 更多 ---------- */
+.is-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 48px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.empty-row {
+  padding: 44px 0;
+  text-align: center;
+}
+.load-more {
+  display: flex;
+  justify-content: center;
+  padding: 18px 0 4px;
+}
+.spinner-sm {
+  width: 12px;
+  height: 12px;
+  border-width: 2px;
+}
+.list-end {
+  margin: 18px 0 4px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-light);
+}
+
+/* ---------- 可能认识的人 ---------- */
+.suggest-panel {
+  padding: 16px 18px 10px;
+}
+.suggest-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+.suggest-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.suggest-title .bi {
+  font-size: 14px;
+  color: var(--primary);
+}
+.suggest-tip {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+/* 横向轨道：只横向滚动，滚动条隐藏；卡片对齐用 scroll-snap */
+.suggest-scroller {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+  padding: 2px 0 4px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.suggest-scroller::-webkit-scrollbar {
+  display: none;
+}
+.suggest-card {
+  display: flex;
+  flex: 0 0 132px;
+  /* min-width:0 才能让 flex 项真的锁死在 132px——
+     否则超长昵称的 min-content 会把卡片撑宽，横滑轨道里就会出现宽窄不一 */
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 14px 10px 12px;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  background: var(--bg-muted);
+  scroll-snap-align: start;
+  text-align: center;
+  transition: border-color var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+.suggest-card:hover {
+  border-color: var(--accent-ring);
+  transform: translateY(-2px);
+}
+.suggest-card-link {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  color: inherit;
+  text-decoration: none;
+}
+.suggest-avatar {
+  width: 48px;
+  height: 48px;
+  border: 1px solid var(--border-soft);
+  border-radius: 50%;
+  background: var(--bg-card);
+  object-fit: cover;
+}
+.suggest-name {
+  display: block;
+  width: 100%;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.suggest-card-link:hover .suggest-name {
+  color: var(--primary);
+}
+/* 两行截断 + 固定高度：卡片无论如何都对齐，关注按钮不会高低错落 */
+.suggest-sub {
+  display: -webkit-box;
+  min-height: 30px;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.4;
+  overflow: hidden;
+  word-break: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.suggest-follow {
+  width: 100%;
+}
+/* 轨道容器：给左右箭头做定位基准 */
+.suggest-track {
+  position: relative;
+}
+/* 左右箭头：桌面端点击翻页（手机端隐藏，用手指滑） */
+.suggest-nav {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  margin-top: -15px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+  color: var(--text-soft);
+  font-size: 13px;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease),
+    opacity var(--dur-fast) var(--ease);
+}
+.suggest-nav.is-prev {
+  left: -10px;
+}
+.suggest-nav.is-next {
+  right: -10px;
+}
+.suggest-nav:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.suggest-nav:disabled {
+  opacity: 0.32;
+  cursor: default;
+}
+
+/* ---------- 头衔配色（与 Profile 页 10 个头衔一致） ---------- */
 .title-zhangmen { background: linear-gradient(135deg, #c8a04a, #b07d2e); }
 .title-zhanglao { background: linear-gradient(135deg, #8e6f3e, #6c4f24); }
 .title-hufa { background: linear-gradient(135deg, #c0392b, #a93226); }
@@ -1256,488 +2262,137 @@ watch(() => route.params.id, () => {
 .title-xiake { background: linear-gradient(135deg, #4a9e6f, #2f7d52); }
 .title-xuetu { background: linear-gradient(135deg, #9aa0a6, #6c757d); }
 .title-default { background: #6c757d; }
-.author-desc {
-  font-size: 13px;
-  color: var(--text-soft);
-  margin: 8px 0 14px;
-  line-height: 1.6;
-  overflow-wrap: break-word;
-}
-/* 认证信息行：类型 + 认证名称 + 说明，跟在签名下方 */
-.author-cert {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: -6px 0 14px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.author-cert .bi {
-  /* 颜色由内联 style 提供（与 VerifiedBadge 同源），这里只管尺寸 */
-  font-size: 13px;
-}
-.author-cert-text {
-  font-weight: 600;
-  color: var(--text-soft);
-}
-.author-cert-desc {
-  color: var(--text-light);
-}
-/* 勋章行：只读展示，横向换行排列（手机上会自动折成两行） */
-.author-badges {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  margin: 0 0 14px;
-}
-/* 「全部勋章」的折叠入口：轻量胶囊按钮，不和勋章本身抢视觉重量 */
-.author-badges-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--text-soft);
-  background: var(--bg-muted);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  cursor: pointer;
-  transition: color 0.2s ease, border-color 0.2s ease;
-}
-.author-badges-toggle:hover {
-  color: var(--text);
-  border-color: var(--text-light);
-}
-.author-website {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13px;
-  color: var(--primary-deep);
-  text-decoration: none;
-  margin-bottom: 14px;
-  max-width: 100%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.author-website:hover {
-  text-decoration: underline;
-}
-.author-stats {
-  display: flex;
-  gap: 18px;
-  /* 五项（文章/动态/关注/粉丝/获赞）在窄屏要能换行，不能挤成一行 */
-  flex-wrap: wrap;
-  margin-bottom: 14px;
-}
-.author-stats .stat {
-  display: flex;
-  flex-direction: column;
-  cursor: pointer;
-}
-/* 动态 / 获赞只是展示数字，不做跳转 → 不给手型光标，避免误导点击 */
-.author-stats .stat.is-static {
-  cursor: default;
-}
-.author-stats .stat strong {
-  font-size: 18px;
-  font-weight: 700;
-  color: var(--primary-deep);
-}
-.author-stats .stat span {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.author-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
 
-.tab-bar {
-  display: flex;
-  gap: 8px;
-  border-bottom: 1px solid var(--border-soft);
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-.tab {
-  padding: 10px 14px;
-  font-size: 14px;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  color: var(--text-soft);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.tab:hover {
-  color: var(--primary);
-}
-.tab.is-active {
-  color: var(--primary-deep);
-  border-bottom-color: var(--primary);
-  font-weight: 600;
-}
-
-.sub-tab-bar {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 8px;
-  flex-wrap: wrap;
-}
-.sub-tab {
-  padding: 6px 14px;
-  font-size: 13px;
-  border: 1px solid var(--border-soft);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--text-soft);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.sub-tab:hover {
-  color: var(--primary);
-  border-color: var(--primary);
-}
-.sub-tab.is-active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
-  font-weight: 600;
-}
-
-.is-loading {
-  padding: 40px;
-  text-align: center;
-  color: var(--text-muted);
-}
-.empty-row {
-  text-align: center;
-  padding: 32px 0;
-}
-
-.like-list,
-.user-list {
-  display: flex;
-  flex-direction: column;
-}
-.like-item,
-.user-item {
-  border-bottom: 1px dashed var(--border-soft);
-}
-.like-item:last-child,
-.user-item:last-child {
-  border-bottom: none;
-}
-.like-item {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 4px;
-  cursor: pointer;
-}
-.like-item:hover .like-title {
-  color: var(--primary);
-}
-.like-main {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.like-title {
-  flex: 1;
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 14px;
-}
-.like-badge {
-  flex-shrink: 0;
-  font-size: 11px;
-  padding: 2px 8px;
-  border-radius: 3px;
-  color: #fff;
-}
-.badge-article {
-  background: var(--primary);
-}
-.load-more {
-  display: flex;
-  justify-content: center;
-  margin-top: 16px;
-}
-.list-end {
-  text-align: center;
-  margin-top: 16px;
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.badge-comment {
-  background: #5b9bd5;
-}
-.badge-moment {
-  background: #6aa84f;
-}
-.badge-other {
-  background: var(--text-muted);
-}
-.like-time {
-  flex-shrink: 0;
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.user-link {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 4px;
-  color: var(--text);
-}
-.user-link:hover .user-name {
-  color: var(--primary);
-}
-.user-avatar {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.user-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.user-name {
-  font-size: 14px;
-  font-weight: 600;
-}
-.user-sub {
-  font-size: 12px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.user-time {
-  font-size: 11px;
-  color: var(--text-muted);
-}
-/* 互关标识（后端 attachRelation 批量返回）：互关用主色，单向关注用弱化样式 */
-.user-mutual {
-  flex-shrink: 0;
-  margin-right: 8px;
-  padding: 1px 6px;
-  font-size: 11px;
-  border-radius: 999px;
-  color: var(--primary-deep);
-  background: var(--accent-soft);
-  border: 1px solid var(--primary-soft);
-}
-.user-mutual.is-following {
-  color: var(--text-muted);
-  background: var(--bg-muted);
-  border-color: var(--border-soft);
-}
-
-/* ========== 可能认识的人（仅本人主页） ========== */
-.suggest-card {
-  margin-bottom: 16px;
-}
-.suggest-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 6px;
-}
-.suggest-title {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-.suggest-tip {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.suggest-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.suggest-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 2px;
-  border-bottom: 1px dashed var(--border-soft);
-}
-.suggest-item:last-child {
-  border-bottom: none;
-}
-.suggest-link {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: var(--text);
-}
-.suggest-link:hover .suggest-name {
-  color: var(--primary);
-}
-.suggest-avatar {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  object-fit: cover;
-  border: 1px solid var(--border);
-  flex-shrink: 0;
-}
-.suggest-info {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-.suggest-name {
-  font-size: 14px;
-  font-weight: 600;
-}
-.suggest-sub {
-  font-size: 12px;
-  color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* ========== 移动端适配 ========== */
-@media (max-width: 768px) {
-  /* 顶部 tab 栏改为横向滚动，避免 5 个 tab 在手机上换行堆叠 */
-  .tab-bar {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+/* ========== 平板 ========== */
+@media (max-width: 900px) {
+  .hero-cover {
+    height: 132px;
   }
-  .tab-bar::-webkit-scrollbar {
-    display: none;
-  }
-  .tab {
-    flex-shrink: 0;
-    white-space: nowrap;
-  }
-  /* 头像区更紧凑 */
-  .author-head {
-    gap: 14px;
-  }
-  .author-name {
-    font-size: 18px;
-  }
-  .author-stats {
-    gap: 22px;
-  }
-  /* 卡片内边距收紧，与移动端容器留白保持一致
-     （资料卡自己用 --author-card-pad 控制，避免把封面横幅顶出一条内边距空白） */
-  .author-page > .card:not(.author-card) {
-    padding: 16px;
-  }
-  .author-page > .author-card {
-    --author-card-pad: 16px;
+  .hero-stats {
+    margin-top: 14px;
   }
 }
 
-/* ========== 手机端个人主页（参考移动端 UI：横幅 + 头像压边 + 内联数据 + 横向标签页）========== */
+/* ========== 手机端 ========== */
 @media (max-width: 640px) {
-  /* 资料卡：横幅与头像压边在基础样式里已生效，这里只按手机端尺寸调变量 */
-  .author-page > .author-card {
-    --author-card-pad: 14px;
-    --author-cover-h: 112px;
-    margin-bottom: 12px;
+  .author-page {
+    gap: 12px;
   }
-  /* 信息换到头像下方（头像仍由基础样式的负 margin 压住横幅下沿） */
-  .author-head {
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 0 10px;
+  .hero-cover {
+    height: 104px;
   }
-  .author-meta {
+  .hero-cover-edit {
+    right: 10px;
+    bottom: 10px;
+    height: 26px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+  .hero-body {
+    padding: 0 14px;
+  }
+  .hero-head {
+    gap: 10px;
+  }
+  .hero-avatar {
+    margin-top: -30px;
+    order: 1;
+  }
+  .hero-ident {
+    order: 2;
     flex: 1 1 100%;
-    min-width: 0;
+    padding-bottom: 0;
+    margin-top: 4px;
   }
-  .author-name-row {
-    gap: 8px;
-    margin-top: 10px;
+  .hero-actions {
+    order: 3;
+    width: 100%;
+    padding-bottom: 0;
   }
-  .author-name {
+  .hero-actions .btn {
+    flex: 1;
+  }
+  .hero-name {
     font-size: 19px;
   }
   /* ID 行：手机端才显示 */
-  .author-id {
+  .hero-id {
     display: block;
-    margin-top: 4px;
-    font-size: 12px;
+    margin-top: 2px;
+    font-size: 11px;
     color: var(--text-muted);
     font-variant-numeric: tabular-nums;
   }
-  .author-desc {
-    margin: 6px 0 10px;
+  .hero-desc {
+    margin-top: 10px;
+    font-size: 12.5px;
   }
-  /* 数据行：数字 + 文案并排，用竖线分隔 */
-  .author-stats {
-    align-items: center;
-    gap: 0;
-    margin-bottom: 12px;
+  .hero-chip-desc {
+    max-width: 160px;
   }
-  .author-stats .stat {
-    flex-direction: row;
-    align-items: baseline;
-    gap: 4px;
+  .hero-stats {
+    margin: 14px -14px 0;
+    padding: 8px 8px 10px;
   }
-  .author-stats .stat + .stat {
-    margin-left: 14px;
-    padding-left: 14px;
-    border-left: 1px solid var(--border-soft);
-  }
-  .author-stats .stat strong {
+  .hero-stat strong {
     font-size: 15px;
   }
-  /* 操作按钮：等宽并排，方便拇指点击 */
-  .author-actions {
-    gap: 8px;
+  .hero-stat span {
+    font-size: 10.5px;
   }
-  .author-actions .btn {
-    flex: 1;
-    min-width: 0;
+  .hero-ban {
+    flex-wrap: wrap;
+    margin-bottom: 14px;
   }
-  /* 内容区与标签页：内边距收紧
-     注意：必须排除资料卡（.author-card 同时也是 .card）—— 它自己用 padding-top: 0
-     让封面横幅铺满卡片顶部，这里若一并命中，两条规则特异性相同会由书写顺序决定胜负，
-     横幅顶部就会多出一条内边距空白。 */
-  .author-page > .card:not(.author-card) {
-    padding: 12px 14px 14px;
+  .hero-ban .btn {
+    width: 100%;
   }
+  /* 手机端顶栏已吸顶，Tab 栏不再吸顶，避免两层固定元素叠在一起 */
   .tab-bar {
-    gap: 4px;
-    margin-bottom: 6px;
+    position: static;
+    padding: 0 8px;
   }
   .tab {
-    padding: 9px 12px;
+    padding: 11px 9px;
     font-size: 13px;
+  }
+  .panel-body {
+    padding: 4px 12px 14px;
+  }
+  .row-item {
+    padding: 9px 6px;
+  }
+  /* 手机端行尾只留关注按钮：时间挤在一起没有阅读价值 */
+  .row-tail .row-time {
+    display: none;
+  }
+  .suggest-panel {
+    padding: 14px 14px 8px;
+  }
+  .suggest-card {
+    flex-basis: 118px;
+    padding: 12px 8px 10px;
+  }
+  /* 手机端用原生滑动，箭头既占地方又难点中 */
+  .suggest-nav {
+    display: none;
+  }
+  .fans-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-cover-edit,
+  .hero-chip-link,
+  .hero-badges-toggle,
+  .hero-stat,
+  .tab,
+  .tab::after,
+  .sub-tab,
+  .row-item {
+    transition: none;
   }
 }
 </style>

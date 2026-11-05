@@ -75,9 +75,14 @@
     </div>
 
     <!-- 最近创作 -->
-    <section v-if="recent.length" class="recent">
-      <h3 class="recent-title">最近创作</h3>
-      <ul class="recent-list">
+    <section class="recent">
+      <h3 class="recent-title">
+        最近创作
+        <router-link v-if="recent.length" to="/manage/posts" class="recent-more">
+          全部 <i class="bi bi-chevron-right" />
+        </router-link>
+      </h3>
+      <ul v-if="recent.length" class="recent-list">
         <li v-for="item in recent" :key="`a-${item.id}`" class="recent-row">
           <router-link :to="`/manage/posts/edit/${item.id}`" class="recent-link">
             {{ item.title || '无标题' }}
@@ -88,6 +93,13 @@
           <span class="recent-time">{{ fromNow(item.create_time) }}</span>
         </li>
       </ul>
+      <!-- 空态也保留这块区域：否则新用户看到的概览会突然「短一截」 -->
+      <p v-else class="recent-empty">
+        <i class="bi bi-feather" />
+        还没有文章，
+        <router-link to="/manage/posts/write">写一篇</router-link>
+        开始记录你的想法
+      </p>
     </section>
   </div>
 </template>
@@ -173,30 +185,37 @@ onMounted(() => {
 
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(118px, 1fr));
   gap: 10px;
   margin-bottom: 16px;
 }
 .stat-card {
-  padding: 14px 12px;
+  padding: 14px;
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius);
-  background: var(--bg-muted);
-  text-align: center;
-  transition: background 0.2s;
+  background: var(--bg-card);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
+.stat-card:hover {
+  border-color: var(--accent-glow);
+  box-shadow: var(--shadow-sm);
+}
+/* 待审核是「需要你知道」的数字，用暖色底把它从其余统计里拎出来 */
 .stat-card.is-warn {
+  border-color: transparent;
   background: var(--gold-soft);
 }
 .stat-num {
   display: block;
-  font-size: 20px;
+  font-size: 24px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--text);
-  line-height: 1.2;
+  line-height: 1.15;
 }
 .stat-label {
   display: block;
-  margin-top: 4px;
+  margin-top: 6px;
   font-size: 12px;
   color: var(--text-muted);
 }
@@ -215,18 +234,19 @@ onMounted(() => {
 
 .entry-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 12px;
 }
 .entry-card {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
+  gap: 14px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-card);
-  transition: all 0.2s;
+  transition: border-color var(--dur) var(--ease), background-color var(--dur) var(--ease),
+    transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
 }
 .entry-card:hover {
   border-color: var(--primary);
@@ -239,8 +259,8 @@ onMounted(() => {
   background: var(--accent-wash);
 }
 .entry-ico {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -248,7 +268,7 @@ onMounted(() => {
   border-radius: var(--radius);
   background: var(--bg-muted);
   color: var(--primary-deep);
-  font-size: 17px;
+  font-size: 18px;
 }
 .entry-primary .entry-ico {
   background: var(--primary);
@@ -275,6 +295,11 @@ onMounted(() => {
   flex-shrink: 0;
   color: var(--text-light);
   font-size: 13px;
+  transition: color var(--dur) var(--ease), transform var(--dur) var(--ease);
+}
+.entry-card:hover .entry-arrow {
+  color: var(--primary);
+  transform: translateX(2px);
 }
 
 .recent {
@@ -283,9 +308,25 @@ onMounted(() => {
   border-top: 1px solid var(--border-soft);
 }
 .recent-title {
-  margin: 0 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 6px;
   font-size: 14px;
   font-weight: 600;
+}
+.recent-more {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  transition: color var(--dur) var(--ease);
+}
+.recent-more:hover {
+  color: var(--primary);
 }
 .recent-list {
   display: flex;
@@ -295,12 +336,31 @@ onMounted(() => {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 0;
+  /* 负 margin 让 hover 底色略微出血，文字仍与其他内容左对齐 */
+  margin: 0 -8px;
+  padding: 9px 8px;
   border-bottom: 1px dashed var(--border-soft);
+  border-radius: var(--radius-sm);
   font-size: 13px;
+  transition: background-color var(--dur) var(--ease);
+}
+.recent-row:hover {
+  background: var(--bg-muted);
 }
 .recent-row:last-child {
   border-bottom: none;
+}
+.recent-empty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 16px 0;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.recent-empty a {
+  color: var(--primary);
 }
 .recent-link {
   flex: 1;

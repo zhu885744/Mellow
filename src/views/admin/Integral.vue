@@ -373,7 +373,7 @@
             <p class="block-desc">
               <i class="bi bi-info-circle" />
               每日签到的积分不在这里配置（签到已独立）——它的积分来自
-              <router-link to="/admin/checkin" class="stock-link">签到管理</router-link>
+              <router-link to="/admin/goods/checkin" class="stock-link">签到管理</router-link>
               的基础奖励，用户端的「今日任务 / 获取途径」会自动跟随。
             </p>
           </div>

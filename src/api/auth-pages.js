@@ -15,7 +15,7 @@ const toIdsArray = (ids) =>
 
 export const AUTH_PAGE_FIELD = 'id,name,path,icon,svg,size,hash,remark,create_time,update_time,delete_time'
 
-// ===== 后台管理（/admin/auth/pages）=====
+// ===== 后台管理（/admin/security/pages）=====
 
 // 页面列表（传 onlyTrashed=true 看回收站）
 export const listAuthPages = (params = {}) =>

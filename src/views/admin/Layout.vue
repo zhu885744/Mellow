@@ -127,8 +127,8 @@ import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useAuthPagesStore } from '@/stores/auth-pages'
 import { useThemeStore } from '@/stores/theme'
-import { adminAllowedPaths, canEnterAdmin } from '@/utils/helper'
-import { buildAdminMenus, buildAdminPinnedItems, pageOfPath, rememberAdminPath } from '@/utils/admin-menu'
+import { canEnterAdmin } from '@/utils/helper'
+import { buildAdminMenus, buildAdminPinnedItems, adminMenuOfPath, adminPathAllowed, rememberAdminPath } from '@/utils/admin-menu'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 
@@ -191,16 +191,19 @@ if (!canEnterAdmin(user.value)) {
   router.replace('/')
 }
 
-// 记录「最近访问」：把 /admin/article/edit/3 这类子路由归一到菜单页（/admin/article），
-// 供概览页快捷跳转的「最近访问」使用
+// 记录「最近访问」：把 /admin/article/edit/3、/admin/badges 这类子路由归一到一级菜单
+// （/admin/article、/admin/users），供概览页快捷跳转的「最近访问」使用
 function rememberVisited(path = route.path) {
-  const page = pageOfPath(authPagesStore.getFlat || [], path)
-  if (page) rememberAdminPath(page.path)
+  const menu = adminMenuOfPath(path)
+  if (menu) rememberAdminPath(menu.path)
 }
 
 /**
  * 路由级页面校验：手输 URL 打开没有权限的后台页面时，跳到第一个可见页面
  * （/admin/dashboard 是概览，不在页面权限清单里，能进后台即可访问）
+ *
+ * 权限按「一级模块」判定：模块下任意一个页面被勾选即可访问该模块的所有标签页
+ * （见 utils/admin-menu.js 的 adminPathAllowed）
  */
 function guardRoute(path = route.path) {
   if (!path.startsWith('/admin/') || path === '/admin/dashboard') return
@@ -208,11 +211,7 @@ function guardRoute(path = route.path) {
   const flat = authPagesStore.getFlat || []
   if (!flat.length) return
 
-  const allowedPaths = adminAllowedPaths(user.value, flat)
-  if (!allowedPaths) return
-
-  const page = pageOfPath(flat, path)
-  if (!page || allowedPaths.has(page.path)) return
+  if (adminPathAllowed(user.value, flat, path)) return
 
   // 兜底落地页：第一个可见分组 → 置顶入口 → 概览
   const first = menus.value[0]?.children?.[0]?.path || pinnedItems.value[0]?.path || '/admin/dashboard'

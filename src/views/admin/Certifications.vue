@@ -10,7 +10,7 @@
           </p>
         </div>
         <div class="head-actions">
-          <RouterLink class="btn btn-sm btn-soft" to="/admin/cert-types">
+          <RouterLink class="btn btn-sm btn-soft" to="/admin/users/cert-types">
             <i class="bi bi-sliders" /> 认证类型
           </RouterLink>
           <!-- 运营主动核验后直接发放，不依赖用户先提交申请 -->

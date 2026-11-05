@@ -367,7 +367,7 @@
                   头衔 / 头像框的全局开关；具体装扮的增删改查、价格与样式在「装扮管理」中维护
                 </p>
               </div>
-              <RouterLink class="btn btn-sm" to="/admin/decoration">
+              <RouterLink class="btn btn-sm" to="/admin/goods/decoration">
                 <i class="bi bi-box-arrow-up-right" /> 装扮管理
               </RouterLink>
             </header>

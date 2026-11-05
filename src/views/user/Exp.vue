@@ -12,10 +12,13 @@
           </div>
           <p class="profile-desc">{{ user?.description || '这个人很懒，什么都没留下' }}</p>
           <div class="exp-total">当前经验值 <strong>{{ exp }}</strong></div>
-          <div class="exp-bar">
+          <div class="exp-bar" role="progressbar" :aria-valuenow="expPercent" aria-valuemin="0" aria-valuemax="100">
             <div class="exp-bar-fill" :style="{ width: expPercent + '%' }" />
           </div>
-          <div class="exp-meta">{{ expText }}</div>
+          <div class="exp-meta">
+            <span class="exp-count">{{ expText }}</span>
+            <span class="exp-next">{{ nextTip }}</span>
+          </div>
         </div>
       </div>
     </div>
@@ -24,22 +27,28 @@
     <div class="card card-pad">
       <h3 class="block-title">经验获取途径</h3>
       <div v-if="loadingRules" class="is-loading"><span class="spinner" /> 加载中...</div>
-      <table v-else-if="rules.length" class="data-table">
-        <thead>
-          <tr>
-            <th>获取途径</th>
-            <th>经验值</th>
-            <th>每日上限</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="r in rules" :key="r.type">
-            <td>{{ r.name }}</td>
-            <td class="cell-num">+{{ r.value }}</td>
-            <td>{{ r.daily_limit > 0 ? `${r.daily_limit} 次` : '不限' }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else-if="rules.length" class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>获取途径</th>
+              <th>经验值</th>
+              <th>每日上限</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in rules" :key="r.type">
+              <td>{{ r.name }}</td>
+              <td class="cell-num">+{{ r.value }}</td>
+              <td>
+                <span class="limit-chip" :class="{ 'is-free': !(r.daily_limit > 0) }">
+                  {{ r.daily_limit > 0 ? `${r.daily_limit} 次/天` : '不限' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p v-else class="empty-text">暂无经验规则</p>
     </div>
 
@@ -47,24 +56,30 @@
     <div class="card card-pad">
       <h3 class="block-title">等级体系</h3>
       <div v-if="loadingLevels" class="is-loading"><span class="spinner" /> 加载中...</div>
-      <table v-else-if="levels.length" class="data-table">
-        <thead>
-          <tr>
-            <th>等级</th>
-            <th>等级值</th>
-            <th>所需经验</th>
-            <th>说明</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="lv in levels" :key="lv.id" :class="{ 'row-current': lv.value === levelValue }">
-            <td>{{ lv.name }}</td>
-            <td>Lv.{{ lv.value }}</td>
-            <td class="cell-num">{{ lv.exp }}</td>
-            <td class="cell-desc">{{ lv.description || '—' }}</td>
-          </tr>
-        </tbody>
-      </table>
+      <div v-else-if="levels.length" class="table-wrap table-wrap-wide">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>等级</th>
+              <th>等级值</th>
+              <th>所需经验</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="lv in levels" :key="lv.id" :class="{ 'row-current': lv.value === levelValue }">
+              <td>
+                {{ lv.name }}
+                <!-- 当前等级直接标出来，不用让用户自己在表里比对 -->
+                <span v-if="lv.value === levelValue" class="cur-tag">当前</span>
+              </td>
+              <td>Lv.{{ lv.value }}</td>
+              <td class="cell-num">{{ lv.exp }}</td>
+              <td class="cell-desc">{{ lv.description || '—' }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <p v-else class="empty-text">暂无等级数据</p>
     </div>
 
@@ -74,27 +89,29 @@
       <div v-if="loadingLogs" class="is-loading"><span class="spinner" /> 加载中...</div>
       <div v-else-if="!logs.length" class="empty-text">暂无经验记录</div>
       <template v-else>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>说明</th>
-              <th>变动</th>
-              <th>时间</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="l in logs" :key="l.id">
-              <td class="cell-desc">
-                <span>{{ l.description || typeName(l.type) }}</span>
-                <span v-if="logExtra(l)" class="log-extra">{{ logExtra(l) }}</span>
-              </td>
-              <td class="cell-num" :class="{ minus: Number(l.value) < 0 }">
-                {{ Number(l.value) > 0 ? '+' : '' }}{{ l.value }}
-              </td>
-              <td class="cell-time">{{ formatTime(l.create_time) }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>说明</th>
+                <th>变动</th>
+                <th>时间</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="l in logs" :key="l.id">
+                <td class="cell-desc">
+                  <span>{{ l.description || typeName(l.type) }}</span>
+                  <span v-if="logExtra(l)" class="log-extra">{{ logExtra(l) }}</span>
+                </td>
+                <td class="cell-num" :class="{ minus: Number(l.value) < 0 }">
+                  {{ Number(l.value) > 0 ? '+' : '' }}{{ l.value }}
+                </td>
+                <td class="cell-time">{{ formatTime(l.create_time) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
         <div v-if="hasMore" class="load-more">
           <button class="btn btn-sm btn-ghost" :disabled="loadingMore" @click="loadMoreLogs">
             {{ loadingMore ? '加载中...' : '加载更多' }}
@@ -190,6 +207,21 @@ const expPercent = computed(() => {
 const expText = computed(() => {
   const next = Number(levelInfo.value?.next?.exp) || 0
   return next ? `${exp.value} / ${next} EXP` : `${exp.value} EXP`
+})
+
+// 距离下一级还差多少：只给「x / y」还要用户自己减，直接算出差额更好读
+const nextTip = computed(() => {
+  const cur = Number(levelInfo.value?.current?.exp) || 0
+  const next = Number(levelInfo.value?.next?.exp) || 0
+  if (!next || next <= cur) return '已是最高等级'
+
+  const diff = Math.max(0, next - exp.value)
+  if (diff <= 0) return '经验已达标，等待升级'
+
+  const name = String(levelInfo.value?.next?.name || '').trim()
+  const value = Number(levelInfo.value?.next?.value) || 0
+  const label = [name, value ? `Lv.${value}` : ''].filter(Boolean).join(' ')
+  return `还差 ${diff} EXP 升到 ${label || '下一级'}`
 })
 
 async function loadRules() {
@@ -351,12 +383,55 @@ watch(() => user.value?.id, (id) => {
   transition: width 0.3s ease;
 }
 .exp-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-top: 6px;
   font-size: 12px;
   color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.exp-next {
+  color: var(--primary-deep);
 }
 
 /* 数据表格 */
+/* 窄屏下表格横向滑动：不加容器会把「说明」列挤成竖排单字 */
+.table-wrap {
+  overflow-x: auto;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+.table-wrap table {
+  min-width: 380px;
+}
+.table-wrap-wide table {
+  min-width: 480px;
+}
+.limit-chip {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-soft);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.limit-chip.is-free {
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+}
+.cur-tag {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
 .is-loading {
   padding: 24px;
   text-align: center;
@@ -430,5 +505,27 @@ watch(() => user.value?.id, (id) => {
 .data-table .row-current td:first-child {
   color: var(--primary-deep);
   font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .profile-hero {
+    gap: 12px;
+  }
+  .profile-avatar {
+    width: 52px;
+    height: 52px;
+  }
+  .profile-name {
+    font-size: 16px;
+  }
+  .exp-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+  .data-table th,
+  .data-table td {
+    padding: 9px 10px;
+  }
 }
 </style>

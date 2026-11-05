@@ -1,5 +1,32 @@
 <template>
   <div class="security-wrap">
+    <!-- 安全概览：把「哪些凭证已设置」摊开，不用逐个卡片翻 -->
+    <div class="card card-pad overview-card">
+      <div class="overview-head">
+        <div>
+          <h2 class="block-title is-flat">账号安全</h2>
+          <p class="overview-desc">邮箱与手机号用于登录、找回密码和身份验证，请保持可用</p>
+        </div>
+        <span class="overview-tone" :class="overviewTone">{{ overviewToneText }}</span>
+      </div>
+
+      <ul class="overview-list">
+        <li v-for="item in overviewItems" :key="item.key" class="overview-item">
+          <span class="overview-ico" :class="{ 'is-off': !item.done }">
+            <i :class="item.icon" />
+          </span>
+          <div class="overview-main">
+            <span class="overview-name">{{ item.name }}</span>
+            <span class="overview-value" :class="{ 'is-off': !item.done }">{{ item.value }}</span>
+          </div>
+          <button v-if="!item.done" class="btn btn-sm" type="button" @click="scrollTo(item.anchor)">
+            {{ item.action }}
+          </button>
+          <span v-else class="overview-ok"><i class="bi bi-check2" /></span>
+        </li>
+      </ul>
+    </div>
+
     <!-- 账号设置（是否可改用后台「系统设置 → 账号与登录 → 账号修改」控制） -->
     <div class="card card-pad">
       <h2 class="block-title">
@@ -85,8 +112,8 @@
     </div>
 
     <!-- 联系方式：邮箱 / 手机号改绑（原「联系方式」页的功能，已合并到账号安全） -->
-    <div class="card card-pad">
-      <h2 class="block-title">手机号|邮箱设置<span class="title-tip">用于登录、找回密码与安全验证</span></h2>
+    <div id="contact" class="card card-pad">
+      <h2 class="block-title">手机号与邮箱<span class="title-tip">用于登录、找回密码与安全验证</span></h2>
       <div class="contact-grid">
         <!-- 邮箱设置 -->
         <div class="contact-block">
@@ -280,7 +307,7 @@
     </div>
 
     <!-- 第三方账号绑定（QQ / GitHub / Gitee）：未开启任何平台时整块不显示 -->
-    <div v-if="oauthLoading || oauthList.length || oauthAvailable.length" class="card card-pad">
+    <div v-if="oauthLoading || oauthList.length || oauthAvailable.length" id="oauth" class="card card-pad">
       <h2 class="block-title">第三方账号</h2>
       <p class="oauth-tip">
         绑定后可用第三方账号一键登录。解绑前请确认已设置密码（或绑定了其它方式），否则会无法登录本站。
@@ -321,11 +348,25 @@
       </ul>
     </div>
 
-    <!-- 账号注销 -->
-    <div class="card card-pad">
-      <h2 class="block-title danger-title">账号注销</h2>
-      <p class="danger-tip">注销账号后，您的所有数据将被永久删除且无法恢复。</p>
-      <button class="btn btn-danger" @click="openDestroy">注销我的账号</button>
+    <!-- 账号注销：收进页尾折叠区，危险操作不常驻视线 -->
+    <div class="card danger-zone" :class="{ 'is-open': destroyZoneOpen }">
+      <button
+        class="danger-head"
+        type="button"
+        aria-controls="danger-zone-body"
+        :aria-expanded="destroyZoneOpen"
+        @click="destroyZoneOpen = !destroyZoneOpen"
+      >
+        <span class="danger-head-text">
+          <i class="bi bi-shield-exclamation" /> 账号注销
+        </span>
+        <i class="bi bi-chevron-down danger-caret" />
+      </button>
+
+      <div v-if="destroyZoneOpen" id="danger-zone-body" class="danger-body">
+        <p class="danger-tip">注销账号后，您的所有数据将被永久删除且无法恢复。</p>
+        <button class="btn btn-danger" @click="openDestroy">注销我的账号</button>
+      </div>
     </div>
   </div>
 
@@ -465,6 +506,85 @@ async function loadOauthMine() {
   } finally {
     oauthLoading.value = false
   }
+}
+
+// ===== 安全概览 =====
+// 已绑定的邮箱 / 手机号做脱敏展示：这是安全页，完整凭证没必要再铺一遍
+function maskEmail(value) {
+  const raw = String(value || '').trim()
+  const at = raw.indexOf('@')
+  if (at <= 0) return raw
+  const name = raw.slice(0, at)
+  const keep = name.slice(0, Math.min(2, name.length))
+  return `${keep}${'*'.repeat(Math.max(1, name.length - keep.length))}${raw.slice(at)}`
+}
+
+function maskPhone(value) {
+  const raw = String(value || '').trim()
+  if (raw.length < 7) return raw
+  return `${raw.slice(0, 3)}****${raw.slice(-4)}`
+}
+
+// 第三方平台全部未开启时，概览里不出现这一项，避免引导用户去绑一个不存在的入口
+const oauthEnabled = computed(() => oauthList.value.length + oauthAvailable.value.length > 0)
+
+const overviewItems = computed(() => {
+  const email = String(userStore.user?.email || '')
+  const phone = String(userStore.user?.phone || '')
+
+  const items = [
+    {
+      key: 'email',
+      name: '邮箱',
+      icon: 'bi bi-envelope',
+      done: !!email,
+      value: email ? maskEmail(email) : '未绑定，无法用邮箱找回密码',
+      action: '去绑定',
+      anchor: 'contact'
+    },
+    {
+      key: 'phone',
+      name: '手机号',
+      icon: 'bi bi-phone',
+      done: !!phone,
+      value: phone ? maskPhone(phone) : '未绑定，无法用手机号找回密码',
+      action: '去绑定',
+      anchor: 'contact'
+    }
+  ]
+
+  if (oauthEnabled.value) {
+    const bound = oauthList.value
+    items.push({
+      key: 'oauth',
+      name: '第三方账号',
+      icon: 'bi bi-shield-lock',
+      done: bound.length > 0,
+      value: bound.length
+        ? `已绑定 ${bound.length} 个（${bound.map((item) => item.name).join(' / ')}）`
+        : '未绑定，绑定后可用第三方账号一键登录',
+      action: '去绑定',
+      anchor: 'oauth'
+    })
+  }
+
+  return items
+})
+
+const missingCount = computed(() => overviewItems.value.filter((item) => !item.done).length)
+const overviewTone = computed(() => (missingCount.value ? 'is-warn' : 'is-good'))
+const overviewToneText = computed(() =>
+  missingCount.value ? `建议完善 ${missingCount.value} 项` : '安全状态良好'
+)
+
+// 点击概览里的「去绑定」滚到对应卡片，并短暂高亮一下，避免用户找不到落点
+function scrollTo(anchor) {
+  if (typeof document === 'undefined') return
+  const target = document.getElementById(anchor)
+  if (!target) return
+  target.scrollIntoView({ behavior: 'smooth', block: 'center' })
+  target.classList.add('is-flash')
+  setTimeout(() => target.classList.remove('is-flash'), 1200)
 }
 
 // 绑定：跳第三方授权页；回调页识别到已登录会直接把该平台绑到当前账号（mode=bind）
@@ -851,6 +971,8 @@ async function doChangePassword() {
 
 // ===== 账号注销 =====
 // ===== 注销账户 =====
+// 页尾折叠区：默认收起，避免危险操作常驻在视线里
+const destroyZoneOpen = ref(false)
 const destroyVisible = ref(false)
 const destroyLoading = ref(false)
 const destroyError = ref('')
@@ -956,7 +1078,51 @@ onUnmounted(() => {
   padding-bottom: 12px;
   border-bottom: 1px solid var(--border-soft);
 }
-.danger-title { color: var(--danger); }
+/* ===== 账号注销：页尾折叠区 ===== */
+.danger-zone {
+  padding: 0;
+  overflow: hidden;
+  border-color: rgba(217, 84, 77, 0.32);
+}
+.danger-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 15px 18px;
+  border: none;
+  background: transparent;
+  color: var(--danger);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color var(--dur) var(--ease);
+}
+.danger-head:hover {
+  background: rgba(217, 84, 77, 0.06);
+}
+.danger-head-text {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.danger-caret {
+  font-size: 12px;
+  transition: transform var(--dur) var(--ease);
+}
+.danger-zone.is-open .danger-caret {
+  transform: rotate(180deg);
+}
+.danger-body {
+  padding: 14px 18px 18px;
+  border-top: 1px dashed rgba(217, 84, 77, 0.3);
+}
+.danger-body .danger-tip {
+  margin-bottom: 14px;
+}
 /* 卡片标题后的补充说明（如「手机号|邮箱设置」的用途说明） */
 .title-tip {
   margin-left: 8px;
@@ -969,12 +1135,128 @@ onUnmounted(() => {
   flex-direction: column;
   gap: 16px;
 }
+/* ===== 安全概览 ===== */
+.overview-card .block-title.is-flat {
+  margin: 0 0 4px;
+  padding: 0;
+  border: none;
+  font-size: 15px;
+}
+.overview-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.overview-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+.overview-tone {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.overview-tone.is-good {
+  background: var(--accent-soft);
+  color: var(--success);
+}
+.overview-tone.is-warn {
+  background: var(--gold-soft);
+  color: var(--warning);
+}
+.overview-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.overview-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 2px;
+  border-top: 1px dashed var(--border-soft);
+}
+.overview-item:first-child {
+  border-top: none;
+}
+.overview-ico {
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-size: 15px;
+}
+.overview-ico.is-off {
+  background: var(--bg-muted);
+  color: var(--text-light);
+}
+.overview-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.overview-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.overview-value {
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.overview-value.is-off {
+  color: var(--warning);
+}
+.overview-ok {
+  flex-shrink: 0;
+  font-size: 16px;
+  color: var(--success);
+}
+/* 从概览跳转过来时闪一下，明确「就是要改这个卡片」 */
+.is-flash {
+  animation: card-flash 1.2s var(--ease);
+}
+@keyframes card-flash {
+  0% {
+    box-shadow: 0 0 0 0 var(--accent-glow);
+  }
+  30% {
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  100% {
+    box-shadow: 0 0 0 0 transparent;
+  }
+}
 .input-row {
   display: flex;
   gap: 8px;
 }
 .input-row .input {
   flex: 1;
+}
+/* 验证码按钮文案会随倒计时变长（60秒后重试），别让它把输入框挤没 */
+.input-row .btn {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 /* ===== 联系方式（邮箱 / 手机号改绑）===== */
 .contact-grid {
@@ -1065,14 +1347,24 @@ onUnmounted(() => {
 .strength-fill.info { background: #2980b9; }
 .strength-fill.success { background: var(--success); }
 
+/* 安全提示条目不多但都很短：大屏分两列，别拉成一条长长的竖列表 */
 .tip-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 10px 20px;
 }
 .tip-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   font-size: 13px;
+  line-height: 1.6;
   color: var(--text-soft);
+}
+.tip-list li i {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--text-light);
 }
 .danger-tip {
   font-size: 13px;
@@ -1088,6 +1380,7 @@ onUnmounted(() => {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(3px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1097,7 +1390,9 @@ onUnmounted(() => {
 .modal-box {
   width: 100%;
   max-width: 420px;
-  background: var(--bg);
+  /* 弹窗底色用卡片色：用页面底色会在遮罩上显得「凹进去」 */
+  background: var(--bg-card);
+  border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 24px;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);

@@ -1,11 +1,18 @@
 /**
  * 后台菜单（侧边栏 / 概览页快捷跳转）共享口径
  *
- * 页面清单来自 auth-pages 接口（动态，含名称 / 图标 / 权限 hash），
- * 这里只负责「分组顺序 + 权限过滤 + 图标解析」三件事：
+ * 菜单合并（37 → 15）之后，侧边栏只保留一级模块入口，子功能由
+ * views/admin/AdminHub.vue 的标签页承载。这里负责「分组顺序 + 权限过滤 + 图标解析」：
  * - 侧边栏（views/admin/Layout.vue）与概览页快捷跳转（views/admin/Dashboard.vue）
  *   共用同一份结果，避免出现「侧边栏有、快捷入口没有」或权限过滤不一致；
- * - 新增后台页面时只需在 ADMIN_MENU_GROUPS 里补一条路径（想固定在「概览」下方则加到 ADMIN_PINNED）。
+ * - 新增一级模块时只需在 ADMIN_MENU_GROUPS 里补一条（想固定在「概览」下方则加到 ADMIN_PINNED）。
+ *
+ * 每个菜单项的字段：
+ *   path   菜单跳转地址（新的一级路径，旧地址在 router 里统一 redirect 过来）
+ *   pages  该模块包含的所有页面路径（含合并前的旧路径）
+ *          → 权限判定：只要勾选了其中任意一个页面，整个入口就可见（旧库已勾选的权限不会失效）
+ *          → 存在性判定：只要有一条 auth-pages 记录存在，入口就显示
+ *   name / icon  前端兜底文案与图标；若库里有同 path 的页面记录，则以库里的为准（保留管理员的改名 / 换图标）
  */
 import { adminAllowedPaths } from '@/utils/helper'
 import { cache } from '@/utils/cache'
@@ -16,28 +23,107 @@ export const ADMIN_MENU_GROUPS = [
     name: 'create',
     label: '创作',
     items: [
-      '/admin/article/write', '/admin/article', '/admin/article/group',
-      '/admin/pages', '/admin/pages/write', '/admin/docs', '/admin/moments'
+      {
+        path: '/admin/article',
+        name: '文章管理',
+        icon: 'bi bi-file-earmark-text',
+        pages: ['/admin/article', '/admin/article/write', '/admin/article/group']
+      },
+      {
+        path: '/admin/pages',
+        name: '独立页面',
+        icon: 'bi bi-window',
+        pages: ['/admin/pages', '/admin/pages/write']
+      },
+      {
+        path: '/admin/docs',
+        name: '文档库',
+        icon: 'bi bi-journal-bookmark',
+        pages: ['/admin/docs']
+      },
+      {
+        path: '/admin/content',
+        name: '内容管理',
+        icon: 'bi bi-collection-play',
+        pages: ['/admin/moments', '/admin/placard', '/admin/banner', '/admin/tags']
+      }
     ]
   },
   {
     name: 'manage',
     label: '管理',
     items: [
-      '/admin/users', '/admin/comment', '/admin/placard', '/admin/banner',
-      '/admin/tags', '/admin/level', '/admin/exp', '/admin/goods', '/admin/integral',
-      '/admin/decoration', '/admin/badges', '/admin/checkin', '/admin/message', '/admin/reports',
-      '/admin/certifications', '/admin/cert-types',
-      '/admin/links', '/admin/links/group', '/admin/attachment', '/admin/logs', '/admin/system',
-      '/admin/theme'
+      {
+        path: '/admin/users',
+        name: '用户管理',
+        icon: 'bi bi-people',
+        pages: ['/admin/users', '/admin/certifications', '/admin/cert-types', '/admin/level', '/admin/exp', '/admin/badges']
+      },
+      {
+        path: '/admin/comment',
+        name: '评论管理',
+        icon: 'bi bi-chat-square-text',
+        pages: ['/admin/comment']
+      },
+      {
+        path: '/admin/goods',
+        name: '商城管理',
+        icon: 'bi bi-bag',
+        pages: ['/admin/goods', '/admin/integral', '/admin/decoration', '/admin/checkin']
+      },
+      {
+        path: '/admin/message',
+        name: '消息通知',
+        icon: 'bi bi-bell',
+        pages: ['/admin/message']
+      },
+      {
+        path: '/admin/reports',
+        name: '举报管理',
+        icon: 'bi bi-flag',
+        pages: ['/admin/reports']
+      },
+      {
+        path: '/admin/links',
+        name: '友链管理',
+        icon: 'bi bi-link-45deg',
+        pages: ['/admin/links', '/admin/links/group']
+      },
+      {
+        path: '/admin/attachment',
+        name: '附件管理',
+        icon: 'bi bi-folder2-open',
+        pages: ['/admin/attachment']
+      },
+      {
+        path: '/admin/system',
+        name: '系统配置',
+        icon: 'bi bi-gear',
+        pages: ['/admin/system', '/admin/theme']
+      },
+      {
+        path: '/admin/logs',
+        name: '查看日志',
+        icon: 'bi bi-journal-text',
+        pages: ['/admin/logs']
+      }
     ]
   },
   {
     name: 'security',
     label: '安全',
     items: [
-      '/admin/auth/rules', '/admin/auth/group', '/admin/api/keys', '/admin/auth/pages',
-      '/admin/ip/black', '/admin/ip/white', '/admin/qps/warn'
+      {
+        path: '/admin/security',
+        name: '安全中心',
+        icon: 'bi bi-shield-lock',
+        pages: [
+          '/admin/auth/rules', '/admin/auth/group', '/admin/api/keys',
+          '/admin/ip/black', '/admin/ip/white', '/admin/qps/warn',
+          // 后台页面管理：维护菜单/页面权限点
+          '/admin/auth/pages'
+        ]
+      }
     ]
   }
 ]
@@ -50,11 +136,14 @@ export const ADMIN_MENU_GROUPS = [
 export const ADMIN_PINNED = {
   name: 'pinned',
   label: '置顶',
-  items: ['/admin/stats']
+  items: [
+    { path: '/admin/stats', name: '数据统计', icon: 'bi bi-graph-up-arrow', pages: ['/admin/stats'] }
+  ]
 }
 
 // 置顶路径：从分组里排除，避免同一个页面上两处出现
-const PINNED_PATHS = new Set(ADMIN_PINNED.items)
+const PINNED_PATHS = new Set(ADMIN_PINNED.items.map((item) => item.path))
+const ALL_MENU_ITEMS = [...ADMIN_PINNED.items, ...ADMIN_MENU_GROUPS.flatMap((group) => group.items)]
 
 // icon 名称 → Bootstrap Icons（仅用于展示；auth-pages 自带 svg 优先）
 const FALLBACK_ICONS = {
@@ -104,20 +193,41 @@ function menuContext(user, flat) {
   }
 }
 
+// 菜单项覆盖的页面路径（新一级 path + 合并前的旧 path）
+function menuPages(menu) {
+  const pages = Array.isArray(menu.pages) && menu.pages.length ? menu.pages : [menu.path]
+  return pages.includes(menu.path) ? pages : [menu.path, ...pages]
+}
+
 /**
- * 取出一批 path 对应的菜单项（仅保留系统实际存在 + 当前账号有权限的页面）
+ * 判断某个菜单项是否对当前账号可见
+ *
+ * 存在性：库里至少有一条该模块的页面记录（老库只有旧 path，新库可能有新一级 path）
+ * 权限：  勾选了该模块下任意一个页面即可见 —— 权限仍按 auth-pages 的细粒度记录存，
+ *        界面按一级模块展示，避免老库已勾选的权限在菜单合并后失效
  */
-function pickMenuItems(paths, allowedPaths, byPath) {
-  return paths
-    .filter((path) => byPath[path]) // 仅保留系统实际存在的页面
-    .filter((path) => !allowedPaths || allowedPaths.has(path)) // 按权限过滤
-    .map((path) => {
-      const page = byPath[path]
+function menuVisible(menu, allowedPaths, byPath) {
+  const pages = menuPages(menu)
+  if (!pages.some((path) => byPath[path])) return false
+  return !allowedPaths || pages.some((path) => allowedPaths.has(path))
+}
+
+/**
+ * 取出一批菜单项对应的展示数据（仅保留系统实际存在 + 当前账号有权限的）
+ *
+ * 名称 / 图标优先用库里的记录（管理员可在「后台页面管理」改名换图标），
+ * 一级 path 尚未入库时回退到配置里的 name / icon。
+ */
+function pickMenuItems(items, allowedPaths, byPath) {
+  return items
+    .filter((item) => menuVisible(item, allowedPaths, byPath))
+    .map((item) => {
+      const page = byPath[item.path] || {}
       const svg = page.svg || (typeof page.icon === 'string' && page.icon.includes('<svg') ? page.icon : '')
       return {
-        path,
-        name: page.name || path,
-        icon: svg ? '' : resolveAdminIcon(page.icon),
+        path: item.path,
+        name: page.name || item.name || item.path,
+        icon: svg ? '' : resolveAdminIcon(page.icon || item.icon),
         isSvg: !!svg,
         svg
       }
@@ -142,7 +252,7 @@ export function buildAdminMenus(user, flat) {
     .map((group) => ({
       name: group.name,
       label: group.label,
-      children: pickMenuItems(group.items.filter((path) => !PINNED_PATHS.has(path)), ctx.allowedPaths, ctx.byPath)
+      children: pickMenuItems(group.items.filter((item) => !PINNED_PATHS.has(item.path)), ctx.allowedPaths, ctx.byPath)
     }))
     .filter((group) => group.children.length)
 }
@@ -158,18 +268,39 @@ export function buildAdminPinnedItems(user, flat) {
 }
 
 /**
- * 菜单 path → 「最长前缀匹配」的后台页面
- * 例：/admin/article/edit/3 → /admin/article
+ * 路由 path → 所属的一级菜单项（配置，不是接口数据）
+ *
+ * 例：/admin/badges（旧地址）、/admin/users/badges（新地址）都归到「用户管理」。
+ * 用于「最近访问」归一化与手输 URL 的权限校验。
  */
-export function pageOfPath(flat, path) {
-  const list = Array.isArray(flat) ? flat : []
+export function adminMenuOfPath(path) {
+  if (typeof path !== 'string') return null
   let matched = null
-  list.forEach((page) => {
-    if ((path === page.path || path.startsWith(`${page.path}/`)) && (!matched || page.path.length > matched.path.length)) {
-      matched = page
+  let matchedLen = -1
+  for (const menu of ALL_MENU_ITEMS) {
+    for (const prefix of menuPages(menu)) {
+      if ((path === prefix || path.startsWith(`${prefix}/`)) && prefix.length > matchedLen) {
+        matched = menu
+        matchedLen = prefix.length
+      }
     }
-  })
+  }
   return matched
+}
+
+/**
+ * 当前账号能否访问某个后台路径（按所属一级模块判定）
+ *
+ * @returns {boolean} 不属于任何一级模块的路径（如 /admin/dashboard）一律放行
+ */
+export function adminPathAllowed(user, flat, path) {
+  const menu = adminMenuOfPath(path)
+  if (!menu) return true
+
+  const ctx = menuContext(user, flat)
+  if (!ctx) return true
+
+  return menuVisible(menu, ctx.allowedPaths, ctx.byPath)
 }
 
 // ---------- 最近访问（概览页快捷跳转专用，存 localStorage） ----------

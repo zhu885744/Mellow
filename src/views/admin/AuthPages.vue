@@ -271,7 +271,7 @@
 <script setup>
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
- * 后台页面管理（/admin/auth/pages）
+ * 后台页面管理（/admin/security/pages）
  *
  * 后端约束（app/api/controller/auth-pages.go、app/model/auth-pages.go）：
  * - validator 要求 name 与 path 必填；
