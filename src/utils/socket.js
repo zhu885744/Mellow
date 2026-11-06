@@ -16,9 +16,12 @@ import { TOKEN_NAME } from '@/api/request'
  *   { type: 'kicked', content: '…' }                                   ← 被管理员踢下线（服务端随后断连）
  *   { type: 'single' | 'private' | 'broadcast', ... }                  ← 聊天 / 通知类
  *
- * 可发送的消息（管理员）：
- *   { type: 'ping' }                        ← 心跳
- *   { type: 'kick', to: '<client_id>' }      ← 断开某个连接（仅管理员，服务端会校验身份）
+ * 可发送的消息：
+ *   { type: 'ping' }                                   ← 心跳
+ *   { type: 'auth', token }                            ← 连接后认领登录身份
+ *   { type: 'ack', data: { target_uid, seq } }         ← 私信送达确认（批量，seq 即消息 id）
+ *   { type: 'read', data: { target_uid, seq } }        ← 私信已读水位（可选，正常走 HTTP）
+ *   { type: 'kick', to: '<client_id>' }                 ← 断开某个连接（仅管理员，服务端会校验身份）
  *
  * 两个关键点：
  *   1. 浏览器无法给 WebSocket 握手设置请求头，跨域时也带不上 Cookie ——

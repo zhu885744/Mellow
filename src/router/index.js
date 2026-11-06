@@ -34,6 +34,14 @@ const routes = [
       }
     ]
   },
+  // 私信：整屏聊天页，独立于所有布局（自己撑满视口，不带站点侧栏 / 页脚 / 手机底栏）
+  // 与 /docs 同理，必须放在 `/` 之前 —— MainLayout 末尾有 `:key` 兜底路由
+  {
+    path: '/messages',
+    name: 'messages',
+    component: () => import('@/views/messages/Index.vue'),
+    meta: { auth: true, title: '私信' }
+  },
   {
     path: '/',
     component: () => import('@/layouts/MainLayout.vue'),
@@ -116,6 +124,9 @@ const routes = [
       // 我的认证：按后台配置的认证类型提交申请、查看审核进度与已通过的认证信息
       { path: 'verification', name: 'user-verification', component: () => import('@/views/user/Verification.vue') },
       { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
+      // 私信已独立成 /messages（整屏聊天页）：旧地址保留重定向，
+      // 书签、站内旧链接、?to=<uid> 直达参数都不会失效
+      { path: 'messages', redirect: (to) => ({ path: '/messages', query: to.query }) },
       // 拉黑与举报：我的拉黑列表（可解除）+ 我提交的举报与处理进展（可撤回）
       { path: 'blocks', name: 'user-blocks', component: () => import('@/views/user/Blocks.vue') },
       // 站点配置（管理员）：已迁至后台 /admin/system 的「网站设置」模块，旧地址保留为重定向

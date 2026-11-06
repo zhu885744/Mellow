@@ -145,6 +145,7 @@ import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useNotificationStore } from '@/stores/notification'
+import { useChatStore } from '@/stores/chat'
 import { isAdmin as helperIsAdmin } from '@/utils/helper'
 import BanAppealDialog from '@/components/BanAppealDialog.vue'
 import MobileTabBar from '@/components/MobileTabBar.vue'
@@ -154,6 +155,7 @@ const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/200
 const route = useRoute()
 const userStore = useUserStore()
 const notif = useNotificationStore()
+const chat = useChatStore()
 const { user } = storeToRefs(userStore)
 
 const collapsed = ref(false)
@@ -197,7 +199,10 @@ const menuGroups = computed(() => [
   {
     label: '互动',
     items: [
-      { path: '/user/notifications', name: '消息通知', icon: 'bi bi-bell', badge: notif.count > 0 ? notif.count : '' }
+      { path: '/user/notifications', name: '消息通知', icon: 'bi bi-bell', badge: notif.count > 0 ? notif.count : '' },
+      // 私信：独立整屏页面（/messages，不套用户中心布局），这里只留入口；
+      // 未读数来自 WebSocket 实时推送（见 stores/chat.js）
+      { path: '/messages', name: '私信', icon: 'bi bi-chat-dots', badge: chat.unread > 0 ? chat.unread : '' }
     ]
   }
 ])

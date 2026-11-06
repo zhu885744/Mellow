@@ -1,6 +1,65 @@
 <template>
   <div>
     <div class="profile-layout">
+      <!-- 消息提醒：本机偏好，点开即生效，不走「保存设置」也不写后端 -->
+      <div class="card card-pad">
+        <h2 class="block-title">消息提醒</h2>
+
+        <div class="form-item">
+          <div class="switch-row">
+            <div class="switch-text">
+              <span class="switch-title">新消息提示音</span>
+              <span class="hint">页面在前台时收到新私信播放一声「叮咚」，点开关即可试听。</span>
+            </div>
+            <button
+              :class="['switch', { on: chatStore.alert.sound }]"
+              role="switch"
+              :aria-checked="chatStore.alert.sound"
+              @click="chatStore.setAlert('sound', !chatStore.alert.sound)"
+            >
+              <span class="knob" />
+            </button>
+          </div>
+        </div>
+
+        <div class="form-item">
+          <div class="switch-row">
+            <div class="switch-text">
+              <span class="switch-title">右下角悬浮通知</span>
+              <span class="hint">在任意页面收到新私信时，右下角弹出提示卡片；正在看的会话不会打扰。</span>
+            </div>
+            <button
+              :class="['switch', { on: chatStore.alert.toast }]"
+              role="switch"
+              :aria-checked="chatStore.alert.toast"
+              @click="chatStore.setAlert('toast', !chatStore.alert.toast)"
+            >
+              <span class="knob" />
+            </button>
+          </div>
+        </div>
+
+        <div class="form-item">
+          <div class="switch-row">
+            <div class="switch-text">
+              <span class="switch-title">桌面通知（窗口在后台时）</span>
+              <span class="hint">{{ desktopHint }}</span>
+            </div>
+            <button
+              :class="['switch', { on: desktopEnabled }]"
+              role="switch"
+              :aria-checked="desktopEnabled"
+              :disabled="!desktopSupported"
+              @click="toggleDesktop"
+            >
+              <span class="knob" />
+            </button>
+          </div>
+        </div>
+
+        <p class="hint">以上设置只保存在当前浏览器（不随账号同步），关闭后仍有未读角标与未读列表。</p>
+      </div>
+
       <!-- 隐私设置 -->
       <div class="card card-pad">
         <h2 class="block-title">隐私设置</h2>
@@ -50,17 +109,37 @@
         </button>
         <button class="btn" :disabled="loading" @click="reset">重置</button>
       </div>
+
     </div>
   </div>
 </template>
 
 <script setup>
-import { reactive, ref, onMounted, watch } from 'vue'
+import { computed, reactive, ref, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { useChatStore } from '@/stores/chat'
+import { useDesktopNotice } from '@/composables/useDesktopNotice'
 import { updateUser } from '@/api/users'
 import { toast } from '@/utils/toast'
 
 const userStore = useUserStore()
+// 消息提醒开关直接读写 chat store（localStorage 持久化），不需要保存按钮
+const chatStore = useChatStore()
+
+// 桌面通知要走浏览器授权，申请必须发生在点击里，统一交给 composable
+const {
+  supported: desktopSupported,
+  enabled: desktopEnabled,
+  blocked: desktopBlocked,
+  toggle: toggleDesktop
+} = useDesktopNotice()
+
+const desktopHint = computed(() => {
+  if (!desktopSupported) return '当前环境不支持（浏览器要求 HTTPS）。'
+  if (desktopBlocked.value) return '浏览器已拒绝通知权限，请在地址栏左侧的站点设置里允许通知。'
+  if (desktopEnabled.value) return '窗口最小化或切到其他标签页时，也会弹出系统通知。'
+  return '开启后，窗口在后台也能收到系统级通知（需浏览器授权）。'
+})
 
 const followsOptions = [
   { value: 'all', label: '全部公开' },
@@ -205,6 +284,10 @@ watch(
 }
 .switch.on {
   background: var(--primary);
+}
+.switch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 .knob {
   position: absolute;

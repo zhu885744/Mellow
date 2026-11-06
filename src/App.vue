@@ -7,24 +7,45 @@
   <Lightbox />
   <!-- 全局滑块验证：发送验证码被判定为频繁时，由 request.js 的拦截器唤起（见 utils/captchaGate） -->
   <SliderCaptcha />
+  <!-- 新消息悬浮通知（右下角）：同样挂全局，任何页面收到私信都能提示；
+       是否弹出由 chat store 判断（后台标签页不弹、正在看的会话不弹），
+       开关在消息页头部与用户中心「消息提醒」里。 -->
+  <ChatNotice />
   <!-- 右侧悬浮按钮（主题切换 / 自定义按钮 / 返回顶部）
        同样挂全局：前台、登录页、后台、用户中心、创作中心、文档站都显示。
-       安装向导页不显示 —— 未安装时 /api 会被整体拦住（412），
-       悬浮按钮拿不到站点配置，也不该出现在安装流程里。 -->
-  <FloatButtons v-if="route.name !== 'install'" />
+       两处例外：
+         - 安装向导：未安装时 /api 会被整体拦住（412），拿不到站点配置，也不该出现在安装流程里；
+         - 私信（/messages）：整屏聊天页，自己消息靠右排列，悬浮按钮正好压在自己的气泡上。 -->
+  <FloatButtons v-if="route.name !== 'install' && route.name !== 'messages'" />
 </template>
 
 <script setup>
 import { watch } from 'vue'
 import { RouterView, useRoute } from 'vue-router'
 import { useSiteStore } from '@/stores/site'
+import { useUserStore } from '@/stores/user'
+import { useChatStore } from '@/stores/chat'
 import { applySiteAssets } from '@/utils/siteAssets'
 import SliderCaptcha from '@/components/SliderCaptcha.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import FloatButtons from '@/components/FloatButtons.vue'
+import ChatNotice from '@/components/ChatNotice.vue'
 
 const siteStore = useSiteStore()
 const route = useRoute()
+const userStore = useUserStore()
+const chatStore = useChatStore()
+
+// 私信实时通道：登录后建立 WebSocket（复用 /socket），退出登录时断开并清空未读。
+// 挂在 App 而不是聊天页：不在聊天页时也要能收到新消息、更新用户中心的未读角标。
+watch(
+  () => userStore.isLogged,
+  (logged) => {
+    if (logged) chatStore.start()
+    else chatStore.stop()
+  },
+  { immediate: true }
+)
 
 // 站点信息（网站标题 / 描述 / 关键词 / 图标）应用的唯一入口：
 // 前台、登录页、后台、用户中心、创作中心都挂在 App 下，这里应用一次即可全覆盖。

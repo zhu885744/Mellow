@@ -70,6 +70,14 @@
                 title="用积分打赏 TA"
                 @click="openReward"
               ><i class="bi bi-coin" aria-hidden="true" /> 打赏</button>
+              <!-- 私信：落到用户中心的私信页并直接打开与 TA 的对话；
+                   拉黑关系下不展示（后端也会拦，见 model.UserBlocks.CanInteract） -->
+              <RouterLink
+                v-if="!blocked"
+                :to="{ path: '/messages', query: { to: uid } }"
+                class="btn btn-sm btn-ghost"
+                title="给 TA 发私信"
+              ><i class="bi bi-chat-dots" aria-hidden="true" /> 私信</RouterLink>
               <!-- 拉黑 / 举报收进「更多」，避免低频且带破坏性的操作和关注按钮抢视线 -->
               <CardActionMenu :items="moreMenuItems" @select="onMoreMenu" />
             </template>
