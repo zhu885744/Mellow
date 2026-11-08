@@ -55,7 +55,8 @@
       </div>
     </div>
 
-    <div class="layout-body">
+    <!-- is-no-right：右侧栏关闭时不再为它留一列空白，中栏直接吃掉那部分宽度 -->
+    <div class="layout-body" :class="{ 'is-no-right': !hasSidebar }">
       <!-- 左栏 - 站点信息 + 导航 -->
       <aside class="layout-left">
         <!-- 站点信息整块可点，回到首页（LOGO / 标题 / 描述都是品牌的一部分） -->
@@ -166,8 +167,8 @@
         <router-view />
       </main>
 
-      <!-- 右栏 - 个人信息卡片 -->
-      <aside class="layout-right">
+      <!-- 右栏 - 个人信息卡片（关闭侧边栏或没有模块时不渲染，避免占出一列空白） -->
+      <aside v-if="hasSidebar" class="layout-right">
         <SidebarRight />
       </aside>
     </div>
@@ -262,6 +263,7 @@ import MobileTabBar from '@/components/MobileTabBar.vue'
 import { call } from '@/api/request'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
+import { normalizeSidebarConfig } from '@/utils/sidebar'
 import { canEnterAdmin } from '@/utils/helper'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -305,6 +307,13 @@ const site = computed(() => {
     recordCode: c.police?.code || '',
     policeLink: c.police?.link || ''
   }
+})
+
+// 右侧栏是否真的要渲染：与 SidebarRight 内部判定保持一致
+// （后台关掉侧边栏、或一个模块都没配时，都不该在右侧留出一列空白）
+const hasSidebar = computed(() => {
+  const sidebar = normalizeSidebarConfig(siteStore.config?.sidebar)
+  return sidebar.enabled && sidebar.modules.length > 0
 })
 
 // 网站 LOGO 地址失效时不再展示，避免左栏顶部出现破图（换了地址自动重试）
@@ -466,6 +475,14 @@ onMounted(() => {
   grid-template-columns: var(--left-width) 1fr var(--right-width);
   gap: var(--gap);
   align-items: start;
+}
+
+/* 右侧栏关闭：只留左栏 + 中栏，中间内容区吃掉原本被空占的那 240px。
+   放在 min-width 里，免得覆盖下面平板 / 手机的两栏、单栏规则 */
+@media (min-width: 1025px) {
+  .layout-body.is-no-right {
+    grid-template-columns: var(--left-width) minmax(0, 1fr);
+  }
 }
 
 .layout-left {

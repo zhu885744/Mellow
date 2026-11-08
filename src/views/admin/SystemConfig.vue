@@ -6,7 +6,9 @@
         <div>
           <h2 class="block-title">系统配置</h2>
           <p class="block-desc">
-            网站信息、安全策略、认证、缓存、存储、短信等配置；修改后立即生效，无需重启（存储配置会自动重载）
+            网站信息、认证、缓存、存储、短信等配置；修改后立即生效，无需重启（存储配置会自动重载）。
+            密钥/限流/滑块与敏感词库、云端机审已移到
+            <RouterLink class="inline-link" to="/admin/security/policy">安全中心</RouterLink>
           </p>
         </div>
         <div class="head-actions">
@@ -56,210 +58,78 @@
             </button>
           </div>
 
-          <!-- ============ 安全 ============ -->
-          <template v-if="tab === 'security'">
-            <section class="card card-pad">
-              <header class="config-head">
-                <div>
-                  <h3 class="config-title">API KEY</h3>
-                  <p class="config-desc">开启后调用接口需携带有效密钥，密钥在「安全 → 接口密钥」中管理</p>
-                </div>
-              </header>
-              <div class="form-item">
-                <label class="form-label">启用校验</label>
-                <SelectMenu v-model="cfg.apiKey.value" variant="field" :options="ON_OFF" />
-                <p class="form-hint">
-                  开启时若没有任何可用密钥，系统会自动创建一个；
-                  「已停用 / 已过期」的密钥会被拒绝（在「安全 → 接口密钥」里管理状态与有效期）
-                </p>
-              </div>
-              <div class="form-item">
-                <label class="form-label">放行本站请求</label>
-                <SelectMenu v-model="cfg.apiKey.local" variant="field" :options="ON_OFF" />
-                <p class="form-hint">
-                  开启校验时，是否放行「本站来源」的请求（同源页面请求 / 本机·内网直连）——
-                  关闭后，打包进二进制的站内前端与后台都会 403（必须在反代里注入 i-api-key）
-                </p>
-                <p class="form-hint">
-                  <i class="bi bi-exclamation-triangle" />
-                  同源判定（Origin / Referer / Sec-Fetch-Site）可被脚本伪造，它挡的是扫描器与无脑爬虫，
-                  不是安全边界；需要强边界时请让后端只监听内网端口，由反代注入 i-api-key
-                </p>
-              </div>
-              <div class="config-foot">
-                <button class="btn btn-primary btn-sm" :disabled="isSaving('apiKey')" @click="saveApiKey">
-                  <i class="bi bi-check2" /> 保存
-                </button>
-              </div>
-            </section>
+          <!-- ============ 网站设置（站点信息 / 备案 / 协议 / 悬浮按钮）============ -->
+          <SiteSettingsForm v-if="tab === 'site'" />
+          <!-- 网站表单设置：自定义菜单 + 个性侧边栏的可视化布局编辑器 -->
+          <SiteLayoutForm v-else-if="tab === 'siteLayout'" />
 
-            <section class="card card-pad">
-              <header class="config-head">
-                <div>
-                  <h3 class="config-title">QPS 限流</h3>
-                  <p class="config-desc">限制接口访问频率：单接口与全局分别限流，超出阈值的请求会被拒绝</p>
-                </div>
-              </header>
-              <div class="form-grid">
-                <div class="form-item">
-                  <label class="form-label">启用限流</label>
-                  <SelectMenu v-model="cfg.qps.value" variant="field" :options="ON_OFF" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">单接口速率（次/秒）</label>
-                  <input v-model="cfg.qps.json.point" class="input" type="number" min="1" step="1" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">全局速率（次/秒）</label>
-                  <input v-model="cfg.qps.json.global" class="input" type="number" min="1" step="1" />
-                </div>
-              </div>
-              <div class="config-foot">
-                <button class="btn btn-primary btn-sm" :disabled="isSaving('qps')" @click="saveQps">
-                  <i class="bi bi-check2" /> 保存
-                </button>
-              </div>
-            </section>
-
-            <section class="card card-pad">
-              <header class="config-head">
-                <div>
-                  <h3 class="config-title">自动 IP 黑名单</h3>
-                  <p class="config-desc">
-                    触发 QPS 阈值达到指定次数后，自动把该 IP 加入黑名单；同时用于限制特定 IP 的接口访问频率
-                  </p>
-                </div>
-              </header>
-              <div class="form-grid">
-                <div class="form-item">
-                  <label class="form-label">启用自动封禁</label>
-                  <SelectMenu v-model="cfg.qpsBlock.value" variant="field" :options="ON_OFF" />
-                </div>
-                <div class="form-item">
-                  <label class="form-label">触发次数</label>
-                  <input v-model="cfg.qpsBlock.json.count" class="input" type="number" min="1" step="1" />
-                  <p class="form-hint">同一 IP 每 10 秒只记一次超限；低于 30 按 30 处理。手机 App / NAT 出口建议 200 以上</p>
-                </div>
-                <div class="form-item">
-                  <label class="form-label">统计窗口（秒，支持表达式）</label>
-                  <input v-model="cfg.qpsBlock.json.second" class="input" type="text" placeholder="如 60 * 60" />
-                  <p class="form-hint">窗口内累计达到「触发次数」才封禁，封禁时长按次数自动升级（1 小时 → 24 小时 → 7 天 → 永久）</p>
-                </div>
-              </div>
-              <div class="config-foot">
-                <button class="btn btn-primary btn-sm" :disabled="isSaving('qpsBlock')" @click="saveQpsBlock">
-                  <i class="bi bi-check2" /> 保存
-                </button>
-              </div>
-            </section>
-
-            <!-- 安全验证（滑块）：发送验证码防刷 + 敏感操作人机校验 -->
-            <section class="card card-pad">
-              <header class="config-head">
-                <div>
-                  <h3 class="config-title">安全验证（滑块）</h3>
-                  <p class="config-desc">
-                    给短信 / 邮件验证码与敏感操作加一层人机校验：命中时前台弹出滑块，
-                    拖动对齐后自动继续原来的请求，用户不需要重新提交表单
-                  </p>
-                </div>
-              </header>
-
-              <div class="form-item">
-                <label class="form-label">发送验证码防刷</label>
-                <SelectMenu v-model="cfg.captcha.send_code" variant="field" :options="ON_OFF" />
-                <p class="form-hint">
-                  开启后：同一手机号 / 邮箱 5 分钟内重复请求发送验证码时要求滑块（首次发送不受影响）
-                </p>
-              </div>
-
-              <div class="form-item">
-                <label class="form-label">敏感操作（勾选后每次提交都要求滑块）</label>
-                <div class="check-grid is-block">
-                  <label v-for="item in CAPTCHA_SCENE_OPTIONS" :key="item.key" class="check-line">
-                    <input v-model="cfg.captcha[item.key]" type="checkbox" :true-value="1" :false-value="0" />
-                    <span>
-                      {{ item.label }}
-                      <span class="group-key">{{ item.hint }}</span>
-                    </span>
-                  </label>
-                </div>
-                <p class="form-hint">
-                  滑块通过后 5 分钟内重试同一操作不会重复弹窗（例如密码输错后重试）；关闭则完全不影响原有流程
-                </p>
-              </div>
-
-              <div class="config-foot">
-                <button class="btn btn-primary btn-sm" :disabled="isSaving('captcha')" @click="saveCaptcha">
-                  <i class="bi bi-check2" /> 保存
-                </button>
-              </div>
-            </section>
-          </template>
-
-          <!-- ============ 网站设置（站点信息 / 导航 / 备案 / 协议 / 悬浮按钮）============ -->
-          <SiteSettingsForm v-else-if="tab === 'site'" />
-
-          <!-- ============ 内容配置（文章 / 动态 / 独立页面三份结构相同，组内分页切换）============ -->
-          <section v-else-if="CONTENT_KEYS[tab]" class="card card-pad">
-            <header class="config-head">
+          <!-- ============ 内容配置（文章 / 动态 / 独立页面三份结构相同，同一页并排对比）============ -->
+          <section v-if="tab === 'contentCfg'" class="content-config">
+            <div class="config-head">
               <div>
-                <h3 class="config-title">{{ CONTENT_KEYS[tab].title }}</h3>
+                <h3 class="config-title">内容配置</h3>
                 <p class="config-desc">
-                  编辑器、审核与评论开关；审核开启后，用户新发布的内容默认进入待审核
+                  文章、动态、独立页面三份配置结构相同：编辑器、审核与评论开关放在一起对比调整；
+                  审核开启后，用户新发布的内容默认进入待审核
                 </p>
-              </div>
-            </header>
-
-            <div class="form-grid">
-              <div class="form-item">
-                <label class="form-label">编辑器</label>
-                <SelectMenu
-                  v-model="cfg.content[CONTENT_KEYS[tab].key].editor"
-                  variant="field"
-                  :options="EDITOR_OPTIONS"
-                />
-                <p class="form-hint">Mellow 后台编辑器统一使用 Markdown，该值供其它端读取</p>
-              </div>
-              <div class="form-item">
-                <label class="form-label">内容审核</label>
-                <SelectMenu
-                  v-model="cfg.content[CONTENT_KEYS[tab].key].audit"
-                  variant="field"
-                  :options="ON_OFF"
-                />
-                <p class="form-hint">
-                  开启后，用户新发布的{{ CONTENT_KEYS[tab].name }}需管理员审核通过才对外可见；关闭则发布即通过。
-                  已存在的{{ CONTENT_KEYS[tab].name }}二次编辑保存不会被打回待审核
-                </p>
-              </div>
-              <div class="form-item">
-                <label class="form-label">允许评论</label>
-                <SelectMenu
-                  v-model="cfg.content[CONTENT_KEYS[tab].key].comment.allow"
-                  variant="field"
-                  :options="COMMENT_ALLOW_OPTIONS"
-                />
-                <p class="form-hint">设为「禁止」时覆盖内容自身设置，一律禁止</p>
-              </div>
-              <div class="form-item">
-                <label class="form-label">显示评论</label>
-                <SelectMenu
-                  v-model="cfg.content[CONTENT_KEYS[tab].key].comment.show"
-                  variant="field"
-                  :options="COMMENT_SHOW_OPTIONS"
-                />
-                <p class="form-hint">设为「隐藏」时覆盖内容自身设置，整块不展示</p>
               </div>
             </div>
-            <div class="config-foot">
-              <button
-                class="btn btn-primary btn-sm"
-                :disabled="isSaving(`content_${tab}`)"
-                @click="saveContent(tab)"
-              >
-                <i class="bi bi-check2" /> 保存{{ CONTENT_KEYS[tab].title }}
-              </button>
+
+            <div class="content-grid">
+              <article v-for="item in CONTENT_MODULES" :key="item.key" class="card card-pad content-card">
+                <header class="content-head">
+                  <span class="content-badge"><i :class="item.icon" /></span>
+                  <div>
+                    <h4 class="content-title">{{ item.title }}</h4>
+                    <p class="content-sub">{{ item.sub }}</p>
+                  </div>
+                </header>
+
+                <div class="form-item">
+                  <label class="form-label">编辑器</label>
+                  <SelectMenu v-model="cfg.content[item.key].editor" variant="field" :options="EDITOR_OPTIONS" />
+                  <p class="form-hint">Mellow 后台编辑器统一使用 Markdown，该值供其它端读取</p>
+                </div>
+
+                <div class="form-item">
+                  <label class="form-label">内容审核</label>
+                  <SelectMenu v-model="cfg.content[item.key].audit" variant="field" :options="ON_OFF" />
+                  <p class="form-hint">
+                    开启后，用户新发布的{{ item.name }}需审核通过才对外可见；关闭则发布即通过。
+                    已存在的{{ item.name }}二次编辑保存不会被打回待审核
+                  </p>
+                </div>
+
+                <div class="form-item">
+                  <label class="form-label">允许评论</label>
+                  <SelectMenu
+                    v-model="cfg.content[item.key].comment.allow"
+                    variant="field"
+                    :options="COMMENT_ALLOW_OPTIONS"
+                  />
+                  <p class="form-hint">设为「禁止」时覆盖内容自身设置，一律禁止</p>
+                </div>
+
+                <div class="form-item">
+                  <label class="form-label">显示评论</label>
+                  <SelectMenu
+                    v-model="cfg.content[item.key].comment.show"
+                    variant="field"
+                    :options="COMMENT_SHOW_OPTIONS"
+                  />
+                  <p class="form-hint">设为「隐藏」时覆盖内容自身设置，整块不展示</p>
+                </div>
+
+                <div class="config-foot">
+                  <button
+                    class="btn btn-primary btn-sm"
+                    :disabled="isSaving(`content_${item.tab}`)"
+                    @click="saveContent(item.tab)"
+                  >
+                    <i class="bi bi-check2" /> 保存{{ item.title }}
+                  </button>
+                </div>
+              </article>
             </div>
           </section>
 
@@ -316,244 +186,6 @@
               <button class="btn btn-primary btn-sm" :disabled="isSaving('comment')" @click="saveComment">
                 <i class="bi bi-check2" /> 保存
               </button>
-            </div>
-          </section>
-
-          <!-- ============ 全站敏感词库 ============ -->
-          <section v-else-if="tab === 'sensitive'" class="card card-pad">
-            <header class="config-head">
-              <div>
-                <h3 class="config-title">敏感词库</h3>
-                <p class="config-desc">独立 config/sensitive.toml：按场景分级处置，支持白名单与热更新</p>
-              </div>
-            </header>
-
-            <!-- 编辑模式切换：可视化表单 / TOML 源码 -->
-            <div class="mode-bar">
-              <button
-                class="btn btn-sm"
-                :class="{ 'btn-primary': cfg.sensitiveMode === 'form' }"
-                @click="cfg.sensitiveMode = 'form'"
-              >
-                <i class="bi bi-ui-checks" /> 可视化配置
-              </button>
-              <button
-                class="btn btn-sm"
-                :class="{ 'btn-primary': cfg.sensitiveMode === 'source' }"
-                @click="cfg.sensitiveMode = 'source'"
-              >
-                <i class="bi bi-code-slash" /> TOML 源码
-              </button>
-              <span class="form-hint is-inline">
-                两种模式各自保存；可视化保存会按模板重写文件，手写注释不保留
-              </span>
-            </div>
-
-            <template v-if="cfg.sensitiveMode === 'form'">
-              <div class="switch-row">
-                <div>
-                  <div class="form-label">启用词库</div>
-                  <p class="form-hint">关闭后所有场景直接放行，规则仍然保留</p>
-                </div>
-                <label class="switch">
-                  <input v-model="cfg.sensitive.enabled" type="checkbox" />
-                  <span class="switch-slider"></span>
-                </label>
-              </div>
-
-              <div class="form-grid">
-                <div class="form-item">
-                  <label class="form-label">缺省动作</label>
-                  <SelectMenu
-                    v-model="cfg.sensitive.default_action"
-                    variant="field"
-                    :options="SENSITIVE_ACTION_OPTIONS"
-                  />
-                  <p class="form-hint">规则未单独指定 action 时使用，建议保持「进审核」</p>
-                </div>
-                <div class="form-item">
-                  <label class="form-label">当前版本</label>
-                  <input class="input" :value="cfg.sensitive.version" readonly />
-                  <p class="form-hint">每次保存自动 +1，命中审计按此版本回溯误伤</p>
-                </div>
-              </div>
-
-              <!-- 白名单 -->
-              <header class="config-head config-head-sub">
-                <div class="rule-head">
-                  <div>
-                    <h3 class="config-title">白名单</h3>
-                    <p class="config-desc">命中即放行，优先于规则（官方公告、认证机构、业务模板）</p>
-                  </div>
-                  <button class="btn btn-sm" @click="addSensitiveRule('whitelist')">
-                    <i class="bi bi-plus-lg" /> 添加
-                  </button>
-                </div>
-              </header>
-
-              <p v-if="!cfg.sensitive.whitelist.length" class="form-hint">暂无白名单</p>
-              <div v-for="(rule, index) in cfg.sensitive.whitelist" :key="`whitelist-${index}`" class="rule-card">
-                <div class="rule-grid">
-                  <div class="form-item">
-                    <label class="form-label">词条</label>
-                    <input v-model="rule.word" class="input" maxlength="64" placeholder="如：官方公告" />
-                  </div>
-                  <div class="form-item">
-                    <label class="form-label">匹配方式</label>
-                    <SelectMenu v-model="rule.match" variant="field" :options="SENSITIVE_MATCH_OPTIONS" />
-                  </div>
-                </div>
-                <div class="form-item">
-                  <label class="form-label">生效场景</label>
-                  <div class="scene-chips">
-                    <button
-                      v-for="scene in SENSITIVE_SCENES"
-                      :key="scene.value"
-                      type="button"
-                      class="scene-chip"
-                      :class="{ 'is-active': rule.scenes.includes(scene.value) }"
-                      @click="toggleSensitiveScene(rule, scene.value)"
-                    >
-                      {{ scene.label }}
-                    </button>
-                    <span class="form-hint is-inline">不选 = 全部场景</span>
-                  </div>
-                </div>
-                <div class="rule-foot">
-                  <button class="btn btn-sm" @click="removeSensitiveRule('whitelist', index)">
-                    <i class="bi bi-trash3" /> 删除
-                  </button>
-                </div>
-              </div>
-
-              <!-- 词条规则 -->
-              <header class="config-head config-head-sub">
-                <div class="rule-head">
-                  <div>
-                    <h3 class="config-title">词条规则</h3>
-                    <p class="config-desc">按场景决定处置；同时命中多条时按动作权重 → 风险等级 → 词条长度择优</p>
-                  </div>
-                  <button class="btn btn-sm" @click="addSensitiveRule('rules')">
-                    <i class="bi bi-plus-lg" /> 添加
-                  </button>
-                </div>
-              </header>
-
-              <p v-if="!cfg.sensitive.rules.length" class="form-hint">暂无规则</p>
-              <div v-for="(rule, index) in cfg.sensitive.rules" :key="`rules-${index}`" class="rule-card">
-                <div class="rule-grid is-three">
-                  <div class="form-item">
-                    <label class="form-label">词条</label>
-                    <input v-model="rule.word" class="input" maxlength="64" placeholder="如：广告" />
-                  </div>
-                  <div class="form-item">
-                    <label class="form-label">处置动作</label>
-                    <SelectMenu v-model="rule.action" variant="field" :options="SENSITIVE_ACTION_OPTIONS" />
-                  </div>
-                  <div class="form-item">
-                    <label class="form-label">风险等级</label>
-                    <SelectMenu v-model="rule.level" variant="field" :options="SENSITIVE_LEVEL_OPTIONS" />
-                  </div>
-                </div>
-                <div class="form-grid">
-                  <div class="form-item">
-                    <label class="form-label">匹配方式</label>
-                    <SelectMenu v-model="rule.match" variant="field" :options="SENSITIVE_MATCH_OPTIONS" />
-                  </div>
-                  <div class="form-item">
-                    <label class="form-label">生效场景</label>
-                    <div class="scene-chips">
-                      <button
-                        v-for="scene in SENSITIVE_SCENES"
-                        :key="scene.value"
-                        type="button"
-                        class="scene-chip"
-                        :class="{ 'is-active': rule.scenes.includes(scene.value) }"
-                        @click="toggleSensitiveScene(rule, scene.value)"
-                      >
-                        {{ scene.label }}
-                      </button>
-                      <span class="form-hint is-inline">不选 = 全部场景</span>
-                    </div>
-                  </div>
-                </div>
-                <div class="rule-foot">
-                  <button class="btn btn-sm" @click="removeSensitiveRule('rules', index)">
-                    <i class="bi bi-trash3" /> 删除
-                  </button>
-                </div>
-              </div>
-            </template>
-
-            <div v-else class="form-item">
-              <label class="form-label">规则文件（TOML）</label>
-              <textarea
-                v-model="cfg.sensitiveContent"
-                class="textarea config-code"
-                rows="20"
-                spellcheck="false"
-              />
-              <p class="form-hint">
-                每条 [[rules]] 支持 word / action / scenes / level / match；
-                action 可选 block / limit / review / warn / log；[[whitelist]] 命中即放行。
-                保存前会做 TOML 语法校验，保存后立即热更新。
-              </p>
-            </div>
-
-            <div class="config-foot">
-              <button class="btn btn-primary btn-sm" :disabled="isSaving('sensitive')" @click="saveSensitive">
-                <i class="bi bi-check2" /> 保存
-              </button>
-              <button class="btn btn-sm" :disabled="isSaving('sensitive')" @click="rollbackSensitive">
-                <i class="bi bi-arrow-counterclockwise" /> 回滚上一次
-              </button>
-            </div>
-
-            <header class="config-head config-head-sub">
-              <div>
-                <h3 class="config-title">规则测试</h3>
-                <p class="config-desc">不写命中审计，只验证当前词库的判定结果</p>
-              </div>
-            </header>
-
-            <div class="form-grid">
-              <div class="form-item">
-                <label class="form-label">场景</label>
-                <SelectMenu v-model="cfg.sensitiveTest.scene" variant="field" :options="SENSITIVE_SCENES" />
-              </div>
-            </div>
-
-            <div class="form-item">
-              <label class="form-label">测试文本</label>
-              <textarea v-model="cfg.sensitiveTest.text" class="textarea" rows="3" placeholder="输入一段文本，检查会命中哪条规则" />
-            </div>
-
-            <div class="config-foot">
-              <button class="btn btn-sm" :disabled="isSaving('sensitive')" @click="runSensitiveTest">
-                <i class="bi bi-play-circle" /> 测试
-              </button>
-              <span v-if="cfg.sensitiveTest.result" class="form-hint">
-                动作：{{ SENSITIVE_ACTION_LABEL[cfg.sensitiveTest.result.action] || cfg.sensitiveTest.result.action }}
-                <template v-if="cfg.sensitiveTest.result.word"> · 命中：{{ cfg.sensitiveTest.result.word }}</template>
-                <template v-if="cfg.sensitiveTest.result.level"> · 等级：{{ cfg.sensitiveTest.result.level }}</template>
-                <template v-if="cfg.sensitiveTest.result.version"> · 版本：{{ cfg.sensitiveTest.result.version }}</template>
-              </span>
-            </div>
-
-            <header class="config-head config-head-sub">
-              <div>
-                <h3 class="config-title">近 7 天命中</h3>
-                <p class="config-desc">按场景 + 处置动作聚合；私信 / 聊天室不保存原文</p>
-              </div>
-            </header>
-
-            <p v-if="!cfg.sensitiveStats.length" class="form-hint">暂无命中记录</p>
-            <div
-              v-for="item in cfg.sensitiveStats"
-              :key="`${item.scene}-${item.action}`"
-              class="form-hint"
-            >
-              {{ sensitiveSceneLabel(item.scene) }} · {{ SENSITIVE_ACTION_LABEL[item.action] || item.action }}：{{ item.total }} 次
             </div>
           </section>
 
@@ -1674,16 +1306,16 @@
  * 系统配置（/admin/system）
  *
  * 配置来源分两类：
- * 1. config 表（key / value / json / text）—— 安全策略、注册开关；
+ * 1. config 表（key / value / json / text）—— 内容/评论/友链审核开关、注册开关；
  * 2. toml 文件（经 /api/toml 读写）—— 登录会话、缓存、存储、短信、通知、日志。
  *
+ * 已迁走的部分（本页不再维护，改到「安全中心」）：
+ * - 密钥校验 / QPS 限流 / 自动 IP 黑名单 / 滑块验证 → 安全与限流（/admin/security/policy）；
+ * - 敏感词库 / 云端内容机审 → 内容审核（/admin/security/content）。
+ *
  * 后端要点（app/api/controller/toml.go、app/api/middleware/*、app/model/config.go）：
- * - SYSTEM_API_KEY / SYSTEM_API_KEY_LOCAL / SYSTEM_QPS / SYSTEM_QPS_BLOCK /
- *   ALLOW_REGISTER 均为 config 表记录，value 是 "0"/"1" 字符串；
  * - QPS 自动封禁通知已并入统一邮件通知（SYSTEM_MAIL_NOTIFY 的 security.qps_ban 场景），
  *   不再有单独的 SYSTEM_QPS_NOTIFY；
- * - SYSTEM_CAPTCHA 只用 json（各场景滑块开关，见 app/model/captcha-config.go）：
- *   send_code 是「发送验证码 5 分钟内重复要滑块」的总开关，其余是登录/注册/改密/改绑/注销每次提交都要滑块的开关；
  * - ALLOW_REGISTER 另用 text 存「新用户默认权限组」的 ID 列表（如 "1,2"，空表示不分组），
  *   注册成功后由 Comm.auth() 读取（utils.Unity.Ids 按数字提取），把新用户写进对应 auth-group 的 uids；
  * - SYSTEM_MAIL_NOTIFY 是「统一邮件通知」记录（见 app/model/mail-notify.go）：
@@ -1701,11 +1333,7 @@
  *   分别由 article.go、moments.go、pages.go 的 config() 读取，audit 决定新建内容的默认审核态；
  *   评论配置 COMMENT 结构独立（allow / audit / rate_limit / max_length / require_chinese），
  *   由 comment.go 的 config("comment") 读取；
- * - 敏感词库**不在 config 表**：独立 config/sensitive.toml（[[rules]] / [[whitelist]]），
- *   读写走 /api/toml/sensitive，保存后热更新；支持规则测试与单步回滚；
- *   评论 / 文章 / 动态 / 私信 / 聊天室统一走 model.Sensitive 按场景判定；
  *   其余配置的 json 即配置本体，保存时整体覆盖；
- * - QPS_BLOCK 的 second 是表达式字符串（如 "60 * 60"），会自动封禁触发阈值的 IP；
  * - 密钥类字段读取时已脱敏为 `****` 串，**原样回传**即表示不修改（后端会还原真实值）；
  * - storage 不带 name 读取时不脱敏，因此这里按分组分别读取；
  *   [local] / [cos] 各支持 dir_rule（目录命名规则）与 file_rule（文件命名规则），
@@ -1718,6 +1346,8 @@ import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import SelectMenu from '@/components/SelectMenu.vue'
 import SiteSettingsForm from '@/components/admin/SiteSettingsForm.vue'
+// 自定义菜单 + 个性侧边栏的可视化布局编辑（原在网站设置里，2026-11 抽成独立分页）
+import SiteLayoutForm from '@/components/admin/SiteLayoutForm.vue'
 import { getConfig, getAllConfigs, saveSystemConfig, saveConfig } from '@/api/config'
 import { useSiteStore } from '@/stores/site'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
@@ -1730,11 +1360,6 @@ import {
   getTomlSms,
   getTomlCache,
   getTomlSession,
-  getTomlSensitive,
-  getTomlSensitiveStats,
-  saveTomlSensitive,
-  rollbackTomlSensitive,
-  testTomlSensitive,
   getStorageGroup
 } from '@/api/toml'
 import { toast } from '@/utils/toast'
@@ -1743,43 +1368,6 @@ import { toast } from '@/utils/toast'
 const ON_OFF = [
   { value: '1', label: '开启' },
   { value: '0', label: '关闭' }
-]
-
-// 敏感词场景（与后端 model.Scene* 一致）
-const SENSITIVE_SCENES = [
-  { value: 'comment', label: '评论' },
-  { value: 'article', label: '文章' },
-  { value: 'moment', label: '动态' },
-  { value: 'dm', label: '私信' },
-  { value: 'chat', label: '公共聊天室' }
-]
-
-// 命中审计里的动作文案
-const SENSITIVE_ACTION_LABEL = {
-  block: '拒绝',
-  limit: '限流拒绝',
-  review: '进审核',
-  warn: '提示放行',
-  log: '仅记录',
-  allow: '放行'
-}
-
-// 可视化表单的下拉选项（动作 / 等级 / 匹配方式）
-const SENSITIVE_ACTION_OPTIONS = [
-  { value: 'block', label: '拒绝（block）' },
-  { value: 'limit', label: '限流拒绝（limit）' },
-  { value: 'review', label: '进审核（review）' },
-  { value: 'warn', label: '提示后放行（warn）' },
-  { value: 'log', label: '仅记录（log）' }
-]
-const SENSITIVE_LEVEL_OPTIONS = [
-  { value: 'high', label: '高（high）' },
-  { value: 'medium', label: '中（medium）' },
-  { value: 'low', label: '低（low）' }
-]
-const SENSITIVE_MATCH_OPTIONS = [
-  { value: 'contains', label: '包含（contains）' },
-  { value: 'exact', label: '整段相等（exact）' }
 ]
 
 const CACHE_DRIVERS = [
@@ -1886,41 +1474,41 @@ const REGISTER_DOMAIN_OPTIONS = [
 ]
 
 // 侧边导航 = 「分组」，每项可用 tabs 声明组内分页（只有一项时分页自动隐藏）。
-// 分组规则：按管理动作归类 —— 登录注册、内容发布、用户互动、运行环境、通知渠道；
-// 目的：把 15 个平铺项收成 7 项，避免侧边导航过长。
+// 分组规则：按管理动作归类 —— 登录注册、内容发布（含评论 / 友链）、运行环境、通知渠道；
+// 目的：把十几个平铺项收成 6 项，避免侧边导航过长。
 // 说明：tab（当前页）始终存叶子 key，所以下面各配置区块的 v-if 判断不受分组影响。
 const modules = [
-  { key: 'site', label: '网站设置', icon: 'bi bi-globe2' },
+  // 网站设置：基础信息留在本页；自定义菜单 / 个性侧边栏已抽成可视化布局页（网站表单设置）
+  {
+    key: 'site',
+    label: '网站设置',
+    icon: 'bi bi-globe2',
+    tabs: [
+      { key: 'site', label: '网站设置', icon: 'bi bi-globe2' },
+      { key: 'siteLayout', label: '网站表单设置', icon: 'bi bi-layout-three-columns' }
+    ]
+  },
   {
     key: 'account',
     label: '账号与登录',
     icon: 'bi bi-person-badge',
     tabs: [
-      { key: 'security', label: '安全与限流', icon: 'bi bi-shield-lock' },
       { key: 'session', label: '登录会话', icon: 'bi bi-shield-check' },
       { key: 'register', label: '注册', icon: 'bi bi-person-plus' },
       { key: 'accountRule', label: '账号修改', icon: 'bi bi-person-vcard' },
       { key: 'oauth', label: '第三方登录', icon: 'bi bi-share' }
     ]
   },
+  // 内容配置：文章 / 动态 / 独立页面三份结构相同，合并到同一页并排对比（不再拆成三个分页）
+  // 原「互动配置」分组（评论 / 友链）并入这里：它们都是「内容发布之后」的规则，放一起更顺手
   {
-    key: 'content',
+    key: 'contentCfg',
     label: '内容配置',
     icon: 'bi bi-file-earmark-text',
     tabs: [
-      { key: 'article', label: '文章配置', icon: 'bi bi-file-earmark-text' },
-      { key: 'moments', label: '动态配置', icon: 'bi bi-chat-square-text' },
-      { key: 'pagesCfg', label: '独立页面配置', icon: 'bi bi-window' }
-    ]
-  },
-  {
-    key: 'interaction',
-    label: '互动配置',
-    icon: 'bi bi-chat-dots',
-    tabs: [
+      { key: 'contentCfg', label: '内容配置', icon: 'bi bi-file-earmark-text' },
       { key: 'comment', label: '评论配置', icon: 'bi bi-chat-dots' },
-      { key: 'links', label: '友链配置', icon: 'bi bi-link-45deg' },
-      { key: 'sensitive', label: '敏感词库', icon: 'bi bi-shield-check' }
+      { key: 'links', label: '友链配置', icon: 'bi bi-link-45deg' }
     ]
   },
   { key: 'decoration', label: '装扮', icon: 'bi bi-palette' },
@@ -1946,13 +1534,39 @@ const modules = [
   { key: 'defaults', label: '默认值设置', icon: 'bi bi-sliders' }
 ]
 
-// 内容配置的 key 与展示名（PAGE / ARTICLE / MOMENTS 三份结构相同）
-// name 用于审核开关等说明文案，避免把「文章配置」整串写进句子
-const CONTENT_KEYS = {
-  article: { key: 'ARTICLE', title: '文章配置', name: '文章' },
-  moments: { key: 'MOMENTS', title: '动态配置', name: '动态' },
-  pagesCfg: { key: 'PAGE', title: '独立页面配置', name: '独立页面' }
-}
+// 内容配置的三份配置（PAGE / ARTICLE / MOMENTS 结构相同）
+// - key   config 表的记录 key，也是 cfg.content 的下标
+// - tab   保存时用的 loading 标记后缀（content_article / content_moments / content_pagesCfg）
+// - name  审核开关等说明文案里的主体，避免把「文章配置」整串写进句子
+const CONTENT_MODULES = [
+  {
+    tab: 'article',
+    key: 'ARTICLE',
+    title: '文章配置',
+    name: '文章',
+    sub: '长文 / 投稿',
+    icon: 'bi bi-file-earmark-text'
+  },
+  {
+    tab: 'moments',
+    key: 'MOMENTS',
+    title: '动态配置',
+    name: '动态',
+    sub: '短动态 / 广场',
+    icon: 'bi bi-chat-square-text'
+  },
+  {
+    tab: 'pagesCfg',
+    key: 'PAGE',
+    title: '独立页面配置',
+    name: '独立页面',
+    sub: '单页 / 关于我',
+    icon: 'bi bi-window'
+  }
+]
+
+// tab key → 配置定义（保存时按 key 反查）
+const CONTENT_MODULE_BY_TAB = Object.fromEntries(CONTENT_MODULES.map((item) => [item.tab, item]))
 
 const EDITOR_OPTIONS = [
   { value: 'markdown', label: 'Markdown' },
@@ -1976,7 +1590,7 @@ const router = useRouter()
 
 // ===== 导航分组 =====
 // modules 是「导航分组」，每组用 tabs 声明组内分页（只有一项的组会自动隐藏分页行）。
-// tab（当前页）存的始终是叶子 key（site / security / jwt / article …），
+// tab（当前页）存的始终是叶子 key（site / contentCfg / comment / session …），
 // 因此各配置区块的 v-if="tab === 'xxx'" 判断不受分组影响，互不耦合：
 //   - 点侧边导航 → selectGroup()：落到该组第一个分页（组内已选中则保持不动）；
 //   - 点组内分页 → 直接改 tab。
@@ -1989,13 +1603,25 @@ modules.forEach((group) => {
   })
 })
 const LEAF_KEYS = Object.keys(LEAF_GROUP)
-const DEFAULT_TAB = 'security'
-const initialTab = LEAF_KEYS.includes(String(route.query.tab))
-  ? String(route.query.tab)
-  : // 兼容上一版的 ?tab=content&sub=moments 写法与旧的独立内容模块链接（?tab=moments 等）
-    LEAF_KEYS.includes(String(route.query.sub))
-    ? String(route.query.sub)
-    : DEFAULT_TAB
+// 默认落在「网站设置」：原来的默认页「安全与限流」已迁到安全中心（/admin/security/policy）
+const DEFAULT_TAB = 'site'
+
+// 旧的三个内容分页（?tab=article / moments / pagesCfg、?tab=content&sub=moments、?tab=content）
+// 已合并成「内容配置」一页，这里统一折算过去，老书签 / 老链接不会失效
+const LEGACY_TABS = {
+  content: 'contentCfg',
+  article: 'contentCfg',
+  moments: 'contentCfg',
+  pagesCfg: 'contentCfg'
+}
+
+function resolveTab(value) {
+  const legacy = LEGACY_TABS[String(value || '')]
+  if (legacy) return legacy
+  return LEAF_KEYS.includes(String(value)) ? String(value) : ''
+}
+
+const initialTab = resolveTab(route.query.tab) || resolveTab(route.query.sub) || DEFAULT_TAB
 const tab = ref(initialTab)
 // 当前分组（侧边导航高亮）与组内分页
 const activeGroup = computed(() => LEAF_GROUP[tab.value] || modules[0])
@@ -2014,7 +1640,7 @@ watch(tab, (value) => {
 watch(
   () => route.query.tab,
   (value) => {
-    const next = LEAF_KEYS.includes(String(value)) ? String(value) : DEFAULT_TAB
+    const next = resolveTab(value) || DEFAULT_TAB
     if (next !== tab.value) tab.value = next
   }
 )
@@ -2085,21 +1711,6 @@ const cfg = reactive({
   defaultAvatarsEnabled: true,
   // 图片上传压缩为 WebP：off 关闭 / optional 用户可选 / force 强制压缩
   uploadWebpMode: 'off',
-  apiKey: { value: '0', local: '1' },
-  qps: { value: '1', json: { point: 120, global: 600 } },
-  qpsBlock: { value: '0', json: { count: 200, second: '60 * 60' } },
-  // 安全验证（SYSTEM_CAPTCHA）：
-  // send_code 用下拉（"0"/"1"），其余场景用复选框（0/1），保存时统一归一为 0/1
-  captcha: {
-    send_code: '1',
-    login: 0,
-    code_login: 0,
-    register: 0,
-    reset_password: 0,
-    change_contact: 0,
-    change_account: 0,
-    destroy: 0
-  },
   // 注册设置（同属 ALLOW_REGISTER 一条记录）
   // - value     → value 字段：是否允许自行注册
   // - ids       → text 字段：新用户默认权限组 ID 列表
@@ -2145,18 +1756,6 @@ const cfg = reactive({
   links: {
     audit: '1'
   },
-  // 敏感词库（独立 config/sensitive.toml）：可视化表单 / TOML 源码两种模式
-  sensitiveMode: 'form',
-  sensitive: {
-    enabled: true,
-    default_action: 'review',
-    version: '1',
-    rules: [],
-    whitelist: []
-  },
-  sensitiveContent: '',
-  sensitiveTest: { scene: 'comment', text: '', result: null },
-  sensitiveStats: [],
   // 装扮配置（SYSTEM_DECORATION 一条记录，见 app/model/decoration.go）
   // - enabled         → json.enabled：总开关，关闭后前台不可佩戴任何装扮
   // - showInGoods     → json.show_in_goods：装扮分区是否显示在商城页
@@ -2379,32 +1978,6 @@ function readContentConfig(raw) {
   }
 }
 
-/**
- * 滑块验证场景（SYSTEM_CAPTCHA 的 json 字段，与后端 model/captcha-config.go 的场景键一一对应）
- * send_code 单独用一个下拉控制（它是防刷策略），其余是「敏感操作」开关
- */
-const CAPTCHA_SCENE_OPTIONS = [
-  { key: 'login', label: '密码登录', hint: '每次密码登录都要滑块' },
-  { key: 'code_login', label: '验证码登录', hint: '提交验证码登录时校验' },
-  { key: 'register', label: '注册', hint: '提交注册时校验，可挡批量注册脚本' },
-  { key: 'reset_password', label: '重置 / 找回密码', hint: '提交新密码时校验' },
-  { key: 'change_contact', label: '修改邮箱 / 手机号', hint: '提交验证码改绑时校验' },
-  { key: 'change_account', label: '修改账号', hint: '提交修改账号时校验（该接口没有发码阶段，命中即校验）' },
-  { key: 'destroy', label: '注销账户', hint: '提交注销验证时校验' }
-]
-
-// 安全验证配置：只认已知场景，缺失项按后端默认值兜底（send_code 默认开，其余默认关）
-function readCaptchaConfig(raw) {
-  const json = parseJson(raw?.json, {})
-  const fallback = (key) => (key === 'send_code' ? 1 : 0)
-
-  cfg.captcha.send_code = toText(json.send_code, '1')
-  CAPTCHA_SCENE_OPTIONS.forEach((item) => {
-    const value = json[item.key]
-    cfg.captcha[item.key] = Number(value === undefined || value === null ? fallback(item.key) : value) ? 1 : 0
-  })
-}
-
 // 注册配置（ALLOW_REGISTER）：value 是注册开关，text 是默认权限组，json 是扩展设置
 function readRegisterConfig(raw) {
   const json = parseJson(raw?.json, {})
@@ -2541,11 +2114,6 @@ async function loadConfigs() {
   })
   const read = (key) => configMap.get(key) || null
 
-  const apiKey = read('SYSTEM_API_KEY')
-  const apiKeyLocal = read('SYSTEM_API_KEY_LOCAL')
-  const qps = read('SYSTEM_QPS')
-  const block = read('SYSTEM_QPS_BLOCK')
-  const captcha = read('SYSTEM_CAPTCHA')
   const register = read('ALLOW_REGISTER')
   const account = read('SYSTEM_ACCOUNT_CHANGE')
   const article = read('ARTICLE')
@@ -2557,22 +2125,6 @@ async function loadConfigs() {
   const decoration = read('SYSTEM_DECORATION')
   const oauth = read('SYSTEM_OAUTH')
 
-  if (apiKey) cfg.apiKey.value = toText(apiKey.value, '0')
-  // 取不到时按「放行」处理：老库升级后这项由 InitConfig 补种为 "1"，
-  // 即使还没播种，也不该让站内前端被自己的密钥校验挡住
-  cfg.apiKey.local = apiKeyLocal ? toText(apiKeyLocal.value, '1') : '1'
-  if (qps) {
-    cfg.qps.value = toText(qps.value, '1')
-    cfg.qps.json = { point: 120, global: 600, ...parseJson(qps.json, {}) }
-  }
-  if (block) {
-    cfg.qpsBlock.value = toText(block.value, '0')
-    cfg.qpsBlock.json = { count: 200, second: '60 * 60', ...parseJson(block.json, {}) }
-  }
-  // 安全验证：配置不存在时保持默认值（send_code 开、敏感操作关）
-  if (captcha) {
-    readCaptchaConfig(captcha)
-  }
   if (register) {
     readRegisterConfig(register)
   }
@@ -2607,14 +2159,13 @@ async function loadConfigs() {
 }
 
 async function loadTomlAll() {
-  const [session, cache, sms, notification, log, sensitive, sensitiveStats] = await Promise.all([
+  // 敏感词库 / 云端机审不在本页：见「安全中心 → 内容审核」（/admin/security/content）
+  const [session, cache, sms, notification, log] = await Promise.all([
     getTomlSession().catch(() => null),
     getTomlCache().catch(() => null),
     getTomlSms().catch(() => null),
     getTomlNotification().catch(() => null),
-    getTomlLog().catch(() => null),
-    getTomlSensitive().catch(() => null),
-    getTomlSensitiveStats().catch(() => null)
+    getTomlLog().catch(() => null)
   ])
 
   // crypt 返回 { session: { expire } }；兼容老版本返回的内层结构
@@ -2669,10 +2220,6 @@ async function loadTomlAll() {
   }
 
   toml.notification.retention_days = Number(notification?.data?.retention_days || 30)
-
-  // 敏感词库来自独立 config/sensitive.toml（不在 config 表里）
-  applySensitivePayload(sensitive?.data)
-  cfg.sensitiveStats = Array.isArray(sensitiveStats?.data?.items) ? sensitiveStats.data.items : []
 
   const logData = log?.data || {}
   toml.log = {
@@ -2858,64 +2405,6 @@ async function saveConfigItem(key, payload, okText) {
   })
 }
 
-// 密钥校验卡片的两个开关一起保存（共用同一个「保存」按钮）
-// SYSTEM_API_KEY_LOCAL：开启校验时是否放行「本站来源」请求（同源页面 / 本机·内网直连）
-function saveApiKey() {
-  return withSaving('apiKey', async () => {
-    await saveSystemConfig({ key: 'SYSTEM_API_KEY', value: cfg.apiKey.value })
-    await saveSystemConfig({ key: 'SYSTEM_API_KEY_LOCAL', value: cfg.apiKey.local })
-    toast.success('已保存')
-  })
-}
-
-/**
- * 保存安全验证配置（SYSTEM_CAPTCHA）
- *
- * 只提交 json：滑块开关是纯策略配置，不需要 value / text 字段；
- * 保存后回读一次，保证「字符串 / 数字」口径与后端一致（后端统一按 0/1 处理）。
- */
-async function saveCaptcha() {
-  const setting = { send_code: Number(cfg.captcha.send_code) ? 1 : 0 }
-  CAPTCHA_SCENE_OPTIONS.forEach((item) => {
-    setting[item.key] = Number(cfg.captcha[item.key]) ? 1 : 0
-  })
-
-  await saveConfigItem('captcha', { key: 'SYSTEM_CAPTCHA', data: { json: setting } }, '已保存')
-
-  const fresh = await readConfig('SYSTEM_CAPTCHA')
-  if (fresh) readCaptchaConfig(fresh)
-}
-
-function saveQps() {
-  return saveConfigItem(
-    'qps',
-    {
-      key: 'SYSTEM_QPS',
-      data: {
-        value: cfg.qps.value,
-        json: { point: Number(cfg.qps.json.point), global: Number(cfg.qps.json.global) }
-      }
-    },
-    '已保存'
-  )
-}
-
-function saveQpsBlock() {
-  return saveConfigItem(
-    'qpsBlock',
-    {
-      key: 'SYSTEM_QPS_BLOCK',
-      data: {
-        value: cfg.qpsBlock.value,
-        json: { count: Number(cfg.qpsBlock.json.count), second: String(cfg.qpsBlock.json.second) }
-      }
-    },
-    '已保存'
-  )
-}
-
-
-
 /**
  * 保存统一邮件通知配置（SYSTEM_MAIL_NOTIFY）
  *
@@ -3076,7 +2565,7 @@ async function saveAccount() {
  * 保存后重新读取，避免把数字/字符串差异留在表单里。
  */
 async function saveContent(moduleKey) {
-  const target = CONTENT_KEYS[moduleKey]
+  const target = CONTENT_MODULE_BY_TAB[moduleKey]
   if (!target) return
   const item = cfg.content[target.key]
 
@@ -3125,151 +2614,6 @@ async function saveComment() {
     const fresh = await readConfig('COMMENT')
     if (fresh) cfg.comment.audit = readCommentConfig(fresh).audit
   })
-}
-
-/**
- * 保存敏感词库
- *
- * 可视化模式提交结构化 JSON，由后端按模板生成 TOML（校验 / 备份 / 版本自增 / 热更新一致）；
- * 源码模式提交原文，保留手写注释。两条路径失败都不落盘。
- */
-async function saveSensitive() {
-  if (cfg.sensitiveMode === 'source') {
-    if (!String(cfg.sensitiveContent || '').trim()) {
-      toast.warning('规则内容不能为空')
-      return
-    }
-
-    await withSaving('sensitive', async () => {
-      const res = await saveTomlSensitive({ content: cfg.sensitiveContent })
-      applySensitivePayload(res?.data)
-      toast.success('已保存并生效')
-      await refreshSensitiveStats()
-    })
-    return
-  }
-
-  // 表单模式：词条必填（后端也会拦，这里先给即时反馈）
-  for (const group of [cfg.sensitive.whitelist, cfg.sensitive.rules]) {
-    if (group.some((rule) => !String(rule.word || '').trim())) {
-      toast.warning('有规则还没填写词条')
-      return
-    }
-  }
-
-  await withSaving('sensitive', async () => {
-    const res = await saveTomlSensitive({
-      enabled: cfg.sensitive.enabled,
-      default_action: cfg.sensitive.default_action,
-      rules: cfg.sensitive.rules.map(pickSensitiveRule),
-      whitelist: cfg.sensitive.whitelist.map(pickSensitiveRule)
-    })
-    applySensitivePayload(res?.data)
-    toast.success('已保存并生效')
-    await refreshSensitiveStats()
-  })
-}
-
-/** 回滚到上一次保存前的词库 */
-async function rollbackSensitive() {
-  // 危险操作：会直接覆盖当前规则，先确认（与 Stats 页踢下线同一写法）
-  if (!window.confirm('确定回滚到上一次保存前的词库吗？当前编辑的内容会被覆盖。')) return
-
-  await withSaving('sensitive', async () => {
-    const res = await rollbackTomlSensitive()
-    applySensitivePayload(res?.data)
-    toast.success('已回滚')
-  })
-}
-
-/** 用后端返回的解析结果同时填充源码原文与可视化表单 */
-function applySensitivePayload(data) {
-  if (!data) return
-
-  cfg.sensitiveContent = String(data.content || '')
-  cfg.sensitive.enabled = Number(data.enabled) === 1
-  cfg.sensitive.default_action = String(data.default_action || 'review')
-  cfg.sensitive.version = String(data.version || '1')
-  cfg.sensitive.rules = normalizeSensitiveRules(data.rules)
-  cfg.sensitive.whitelist = normalizeSensitiveRules(data.whitelist)
-}
-
-/** 规则列表归一化：补全缺省值，避免表单控件拿到 undefined */
-function normalizeSensitiveRules(rows) {
-  if (!Array.isArray(rows)) return []
-
-  return rows.map((row) => ({
-    word: String(row?.word || ''),
-    action: String(row?.action || 'review'),
-    scenes: Array.isArray(row?.scenes) ? row.scenes.map(String) : [],
-    level: String(row?.level || 'medium'),
-    match: String(row?.match || 'contains')
-  }))
-}
-
-/** 提交前裁剪：只留后端认识的字段 */
-function pickSensitiveRule(rule) {
-  return {
-    word: String(rule.word || '').trim(),
-    action: rule.action,
-    scenes: rule.scenes,
-    level: rule.level,
-    match: rule.match
-  }
-}
-
-/** 新增一条规则（kind：rules / whitelist） */
-function addSensitiveRule(kind) {
-  cfg.sensitive[kind].push({
-    word: '',
-    action: 'review',
-    scenes: [],
-    level: 'medium',
-    match: 'contains'
-  })
-}
-
-/** 删除一条规则 */
-function removeSensitiveRule(kind, index) {
-  cfg.sensitive[kind].splice(index, 1)
-}
-
-/** 场景多选：点一下切换选中态（不选 = 全部场景） */
-function toggleSensitiveScene(rule, scene) {
-  const index = rule.scenes.indexOf(scene)
-  if (index >= 0) {
-    rule.scenes.splice(index, 1)
-    return
-  }
-  rule.scenes.push(scene)
-}
-
-/** 近 7 天命中统计 */
-async function refreshSensitiveStats() {
-  const stats = await getTomlSensitiveStats().catch(() => null)
-  cfg.sensitiveStats = Array.isArray(stats?.data?.items) ? stats.data.items : []
-}
-
-/** 用当前词库试跑一条文本 */
-async function runSensitiveTest() {
-  if (!String(cfg.sensitiveTest.text || '').trim()) {
-    toast.warning('请输入测试文本')
-    return
-  }
-
-  await withSaving('sensitive', async () => {
-    const res = await testTomlSensitive({
-      scene: cfg.sensitiveTest.scene,
-      text: cfg.sensitiveTest.text
-    })
-    cfg.sensitiveTest.result = res?.data?.decision || null
-  })
-}
-
-/** 场景文案 */
-function sensitiveSceneLabel(scene) {
-  const found = SENSITIVE_SCENES.find((item) => item.value === scene)
-  return found?.label || scene
 }
 
 /** 保存友链配置（LINKS）：目前只有审核开关 */
@@ -3449,6 +2793,14 @@ onMounted(loadAll)
   font-size: 12px;
   color: var(--text-muted);
 }
+.inline-link {
+  color: var(--link);
+  text-decoration: none;
+  border-bottom: 1px dashed currentColor;
+}
+.inline-link:hover {
+  color: var(--link-hover);
+}
 .head-actions {
   display: flex;
   align-items: center;
@@ -3512,6 +2864,61 @@ onMounted(loadAll)
   flex-direction: column;
   gap: 16px;
   min-width: 0;
+}
+
+/* ---------- 内容配置：文章 / 动态 / 独立页面并排 ---------- */
+.content-config {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+/* 三份配置结构相同，宽屏并排对比，窄屏自动折行成竖排 */
+.content-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(288px, 1fr));
+  gap: 16px;
+  align-items: stretch;
+}
+.content-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.content-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.content-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: var(--primary-deep);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+}
+.content-badge .bi {
+  font-size: 15px;
+}
+.content-title {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.content-sub {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+/* 保存按钮统一贴底，三张卡片高度对齐时更整齐 */
+.content-card .config-foot {
+  margin-top: auto;
 }
 
 /* 内容配置的内层分页（文章 / 动态 / 独立页面） */

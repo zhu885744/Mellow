@@ -328,7 +328,22 @@ const routes = [
         props: { section: 'security' },
         meta: { title: '安全中心' },
         children: [
-          { path: '', redirect: '/admin/security/rules' },
+          // 默认落在「内容审核」：敏感词库与云端机审是安全中心最常看的日常页面
+          { path: '', redirect: '/admin/security/content' },
+          // 内容审核：敏感词库 + 云端机审（原在「系统配置 → 互动配置」下，合并到安全域）
+          {
+            path: 'content',
+            name: 'admin-security-content',
+            component: () => import('@/views/admin/security/ContentSecurity.vue'),
+            meta: { title: '内容审核' }
+          },
+          // 安全与限流：密钥校验 / QPS / 自动封禁 / 滑块（原在「系统配置 → 账号与登录」下）
+          {
+            path: 'policy',
+            name: 'admin-security-policy',
+            component: () => import('@/views/admin/security/SecurityPolicy.vue'),
+            meta: { title: '安全与限流' }
+          },
           { path: 'rules', name: 'admin-auth-rules', component: () => import('@/views/admin/AuthRules.vue'), meta: { title: '权限规则' } },
           { path: 'group', name: 'admin-auth-group', component: () => import('@/views/admin/AuthGroup.vue'), meta: { title: '权限分组' } },
           { path: 'keys', name: 'admin-api-keys', component: () => import('@/views/admin/ApiKeys.vue'), meta: { title: '接口密钥' } },

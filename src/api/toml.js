@@ -59,8 +59,14 @@ export const rollbackTomlSensitive = () => testToml('sensitive-rollback')
 /** 用当前词库试跑一条文本：{ scene, text } → { decision } */
 export const testTomlSensitive = (data) => testToml('sensitive-test', data)
 
-/** 最近 7 天命中统计：{ days, items: [{ scene, action, total }] } */
-export const getTomlSensitiveStats = () => getToml('sensitive-stats')
+/**
+ * 命中统计：{ days, type, items: [{ scene, action, total }],
+ * dimensions: [{ type, label, total }], options: [{ type, label }] }
+ *
+ * @param {{ days?: number, type?: number }} params
+ *   days 统计天数（默认 7），type 机审维度（百度的 type，0 = 全部）
+ */
+export const getTomlSensitiveStats = (params = {}) => getToml('sensitive-stats', params)
 
 /** 短信配置（不带 name 时返回 drive + 各服务商，且已脱敏） */
 export const getTomlSms = () => getToml('sms')
@@ -85,3 +91,19 @@ export const getTomlSession = () => getToml('crypt')
  * @param {string} name local / cos / attachment
  */
 export const getStorageGroup = (name) => getToml('storage', { name })
+
+/**
+ * 云端内容审核（独立 config/audit.toml，AK/SK 存这里）
+ *
+ * 返回 { enabled, active, provider, baidu: { api_key, secret_key, text_strategy_id,
+ * image_strategy_id, timeout, workers, queue_size } }：
+ * - enabled 是配置里的开关，active 才是「凭据齐全、真正会生效」；
+ * - 凭据对管理员原样返回，表单直接回填即可。
+ */
+export const getTomlAudit = () => getToml('audit')
+
+/** 保存云端审核配置（服务端按模板重写 audit.toml 并热更新） */
+export const saveTomlAudit = (data) => saveToml('audit', data)
+
+/** 试跑一条文本：{ text } → { conclusion, words }（真实调用，会计费） */
+export const testTomlAudit = (data) => testToml('audit-test', data)

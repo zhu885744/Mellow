@@ -35,7 +35,7 @@
  *   友链管理  友链列表 / 友链分组
  *   系统配置  网站设置 / 主题配色
  *   聊天管理  私信会话 / 聊天审核 / 聊天室消息 / 禁言名单 / 聊天室设置
- *   安全中心  权限规则 / 权限分组 / 接口密钥 / IP 黑白名单 / QPS 预警 / 后台页面管理
+ *   安全中心  内容审核 / 安全与限流 / 权限规则 / 权限分组 / 接口密钥 / IP 黑白名单 / QPS 预警 / 后台页面管理
  *
  * 为什么单独抽一个文件：8 个分区的标签结构完全一致，只有数据不同，
  * 用一个组件 + 配置表，比复制 8 份 UI 好维护；以后加子功能只改这里和路由。
@@ -105,7 +105,11 @@ const HUB_TABS = {
     { label: '聊天室设置', to: '/admin/chat/settings', icon: 'bi bi-sliders' }
   ],
   security: [
-    { label: '权限规则', to: '/admin/security/rules', icon: 'bi bi-shield-check' },
+    // 内容审核：敏感词库 + 云端机审（同一条链路的本地快筛与云端兜底）
+    { label: '内容审核', to: '/admin/security/content', icon: 'bi bi-shield-check' },
+    // 安全与限流：密钥校验 / QPS / 自动封禁 / 滑块
+    { label: '安全与限流', to: '/admin/security/policy', icon: 'bi bi-speedometer' },
+    { label: '权限规则', to: '/admin/security/rules', icon: 'bi bi-diagram-3' },
     { label: '权限分组', to: '/admin/security/group', icon: 'bi bi-shield-lock' },
     { label: '接口密钥', to: '/admin/security/keys', icon: 'bi bi-key' },
     { label: 'IP 黑名单', to: '/admin/security/ip-black', icon: 'bi bi-slash-circle' },

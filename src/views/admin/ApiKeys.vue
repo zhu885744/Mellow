@@ -1,18 +1,18 @@
 <template>
   <div class="api-keys-admin">
-    <!-- 密钥校验状态：只读展示，开关本身在「系统设置 → 安全 → API KEY」里，这里给跳转 -->
+    <!-- 密钥校验状态：只读展示，开关本身在「安全中心 → 安全与限流」里，这里给跳转 -->
     <section class="card card-pad panel">
       <header class="panel-head">
         <div>
           <h2 class="block-title">密钥校验</h2>
           <p class="block-desc">
             开启后调用接口需携带有效密钥（请求头 <code>i-api-key</code> 或 query
-            <code>?i-api-key=</code>）；密钥在下方的列表里管理，开关本身在「系统设置 → 安全 → API KEY」里
+            <code>?i-api-key=</code>）；密钥在下方的列表里管理，开关本身在「安全中心 → 安全与限流」里
           </p>
         </div>
         <div class="head-actions">
-          <RouterLink to="/admin/system?tab=security" class="btn btn-primary btn-sm">
-            <i class="bi bi-sliders" /> 去系统设置修改
+          <RouterLink to="/admin/security/policy" class="btn btn-primary btn-sm">
+            <i class="bi bi-sliders" /> 去安全中心修改
           </RouterLink>
         </div>
       </header>

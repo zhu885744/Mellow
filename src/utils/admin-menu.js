@@ -125,6 +125,9 @@ export const ADMIN_MENU_GROUPS = [
         name: '安全中心',
         icon: 'bi bi-shield-lock',
         pages: [
+          '/admin/security',
+          // 内容审核（敏感词库 + 云端机审）、安全与限流（密钥 / QPS / 滑块）
+          '/admin/security/content', '/admin/security/policy',
           '/admin/auth/rules', '/admin/auth/group', '/admin/api/keys',
           '/admin/ip/black', '/admin/ip/white', '/admin/qps/warn',
           // 后台页面管理：维护菜单/页面权限点

@@ -69,10 +69,6 @@
           <i class="bi bi-box-arrow-left" />
           <span class="user-nav-text">返回前台</span>
         </RouterLink>
-        <RouterLink to="/admin" class="user-nav-item">
-          <i class="bi bi-shield-lock" />
-          <span class="user-nav-text">管理后台</span>
-        </RouterLink>
         <button type="button" class="user-logout" :disabled="loggingOut" @click="onLogout">
           <i class="bi bi-box-arrow-right" />
           <span class="user-nav-text">退出登录</span>
