@@ -202,7 +202,9 @@ const menuGroups = computed(() => [
       { path: '/user/notifications', name: '消息通知', icon: 'bi bi-bell', badge: notif.count > 0 ? notif.count : '' },
       // 私信：独立整屏页面（/messages，不套用户中心布局），这里只留入口；
       // 未读数来自 WebSocket 实时推送（见 stores/chat.js）
-      { path: '/messages', name: '私信', icon: 'bi bi-chat-dots', badge: chat.unread > 0 ? chat.unread : '' }
+      { path: '/messages', name: '私信', icon: 'bi bi-chat-dots', badge: chat.unread > 0 ? chat.unread : '' },
+      // 公共聊天室：整屏页面，全站用户都能发言，管理员可禁言 / 撤回 / 改资料
+      { path: '/room/1', name: '聊天室', icon: 'bi bi-people' }
     ]
   }
 ])

@@ -300,6 +300,13 @@ export const useChatStore = defineStore('chat', () => {
   function handleSocketMessage(payload) {
     if (!payload) return
 
+    // 公共聊天室：服务端全员广播的消息与各类事件（撤回 / 禁言 / 解禁 / 改资料）。
+    // 它不参与私信的未读与提醒逻辑，原样转给订阅者（房间页）自己处理。
+    if (String(payload.type || '').startsWith('room')) {
+      emitEvent({ type: 'room', event: payload })
+      return
+    }
+
     // 已读回执：对方读到了哪一条（只影响「我发出的消息」的已读标记）
     if (payload.type === 'chat_read') {
       const data = payload.data || {}
@@ -315,6 +322,13 @@ export const useChatStore = defineStore('chat', () => {
     if (payload.type === 'chat_revoke') {
       const revoked = payload.data
       if (revoked && revoked.id) emitEvent({ type: 'revoke', message: revoked })
+      return
+    }
+
+    // 删除：只删自己这一侧（服务端推给同一账号的其它在线设备），直接把气泡移除
+    if (payload.type === 'chat_delete') {
+      const id = Number(payload.data?.id || 0)
+      if (id > 0) emitEvent({ type: 'delete', id })
       return
     }
 

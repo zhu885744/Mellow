@@ -268,7 +268,7 @@
             <header class="config-head">
               <div>
                 <h3 class="config-title">评论配置</h3>
-                <p class="config-desc">评论开关、限流、内容校验与敏感词</p>
+                <p class="config-desc">评论开关、限流与内容校验（敏感词已独立为全站词库）</p>
               </div>
             </header>
 
@@ -305,31 +305,255 @@
                 <label class="form-label">必须包含中文</label>
                 <SelectMenu v-model="cfg.comment.require_chinese" variant="field" :options="ON_OFF" />
               </div>
-              <div class="form-item">
-                <label class="form-label">敏感词过滤</label>
-                <SelectMenu v-model="cfg.comment.sensitive_filter" variant="field" :options="ON_OFF" />
-              </div>
             </div>
 
             <p class="form-hint">
-              邮件通知（评论 / 回复）已统一到「邮件通知」模块管理，见其中的「评论互动」分组
+              敏感词过滤已独立为「敏感词库」，评论 / 文章 / 动态 / 私信 / 聊天室共用一份词表；
+              邮件通知（评论 / 回复）见「邮件通知」模块中的「评论互动」分组
             </p>
-
-            <div class="form-item">
-              <label class="form-label">敏感词</label>
-              <textarea
-                v-model="cfg.sensitiveText"
-                class="textarea"
-                rows="4"
-                placeholder="一行一个，也可用逗号分隔"
-              />
-              <p class="form-hint">命中任意一个词即拒绝该条评论</p>
-            </div>
 
             <div class="config-foot">
               <button class="btn btn-primary btn-sm" :disabled="isSaving('comment')" @click="saveComment">
                 <i class="bi bi-check2" /> 保存
               </button>
+            </div>
+          </section>
+
+          <!-- ============ 全站敏感词库 ============ -->
+          <section v-else-if="tab === 'sensitive'" class="card card-pad">
+            <header class="config-head">
+              <div>
+                <h3 class="config-title">敏感词库</h3>
+                <p class="config-desc">独立 config/sensitive.toml：按场景分级处置，支持白名单与热更新</p>
+              </div>
+            </header>
+
+            <!-- 编辑模式切换：可视化表单 / TOML 源码 -->
+            <div class="mode-bar">
+              <button
+                class="btn btn-sm"
+                :class="{ 'btn-primary': cfg.sensitiveMode === 'form' }"
+                @click="cfg.sensitiveMode = 'form'"
+              >
+                <i class="bi bi-ui-checks" /> 可视化配置
+              </button>
+              <button
+                class="btn btn-sm"
+                :class="{ 'btn-primary': cfg.sensitiveMode === 'source' }"
+                @click="cfg.sensitiveMode = 'source'"
+              >
+                <i class="bi bi-code-slash" /> TOML 源码
+              </button>
+              <span class="form-hint is-inline">
+                两种模式各自保存；可视化保存会按模板重写文件，手写注释不保留
+              </span>
+            </div>
+
+            <template v-if="cfg.sensitiveMode === 'form'">
+              <div class="switch-row">
+                <div>
+                  <div class="form-label">启用词库</div>
+                  <p class="form-hint">关闭后所有场景直接放行，规则仍然保留</p>
+                </div>
+                <label class="switch">
+                  <input v-model="cfg.sensitive.enabled" type="checkbox" />
+                  <span class="switch-slider"></span>
+                </label>
+              </div>
+
+              <div class="form-grid">
+                <div class="form-item">
+                  <label class="form-label">缺省动作</label>
+                  <SelectMenu
+                    v-model="cfg.sensitive.default_action"
+                    variant="field"
+                    :options="SENSITIVE_ACTION_OPTIONS"
+                  />
+                  <p class="form-hint">规则未单独指定 action 时使用，建议保持「进审核」</p>
+                </div>
+                <div class="form-item">
+                  <label class="form-label">当前版本</label>
+                  <input class="input" :value="cfg.sensitive.version" readonly />
+                  <p class="form-hint">每次保存自动 +1，命中审计按此版本回溯误伤</p>
+                </div>
+              </div>
+
+              <!-- 白名单 -->
+              <header class="config-head config-head-sub">
+                <div class="rule-head">
+                  <div>
+                    <h3 class="config-title">白名单</h3>
+                    <p class="config-desc">命中即放行，优先于规则（官方公告、认证机构、业务模板）</p>
+                  </div>
+                  <button class="btn btn-sm" @click="addSensitiveRule('whitelist')">
+                    <i class="bi bi-plus-lg" /> 添加
+                  </button>
+                </div>
+              </header>
+
+              <p v-if="!cfg.sensitive.whitelist.length" class="form-hint">暂无白名单</p>
+              <div v-for="(rule, index) in cfg.sensitive.whitelist" :key="`whitelist-${index}`" class="rule-card">
+                <div class="rule-grid">
+                  <div class="form-item">
+                    <label class="form-label">词条</label>
+                    <input v-model="rule.word" class="input" maxlength="64" placeholder="如：官方公告" />
+                  </div>
+                  <div class="form-item">
+                    <label class="form-label">匹配方式</label>
+                    <SelectMenu v-model="rule.match" variant="field" :options="SENSITIVE_MATCH_OPTIONS" />
+                  </div>
+                </div>
+                <div class="form-item">
+                  <label class="form-label">生效场景</label>
+                  <div class="scene-chips">
+                    <button
+                      v-for="scene in SENSITIVE_SCENES"
+                      :key="scene.value"
+                      type="button"
+                      class="scene-chip"
+                      :class="{ 'is-active': rule.scenes.includes(scene.value) }"
+                      @click="toggleSensitiveScene(rule, scene.value)"
+                    >
+                      {{ scene.label }}
+                    </button>
+                    <span class="form-hint is-inline">不选 = 全部场景</span>
+                  </div>
+                </div>
+                <div class="rule-foot">
+                  <button class="btn btn-sm" @click="removeSensitiveRule('whitelist', index)">
+                    <i class="bi bi-trash3" /> 删除
+                  </button>
+                </div>
+              </div>
+
+              <!-- 词条规则 -->
+              <header class="config-head config-head-sub">
+                <div class="rule-head">
+                  <div>
+                    <h3 class="config-title">词条规则</h3>
+                    <p class="config-desc">按场景决定处置；同时命中多条时按动作权重 → 风险等级 → 词条长度择优</p>
+                  </div>
+                  <button class="btn btn-sm" @click="addSensitiveRule('rules')">
+                    <i class="bi bi-plus-lg" /> 添加
+                  </button>
+                </div>
+              </header>
+
+              <p v-if="!cfg.sensitive.rules.length" class="form-hint">暂无规则</p>
+              <div v-for="(rule, index) in cfg.sensitive.rules" :key="`rules-${index}`" class="rule-card">
+                <div class="rule-grid is-three">
+                  <div class="form-item">
+                    <label class="form-label">词条</label>
+                    <input v-model="rule.word" class="input" maxlength="64" placeholder="如：广告" />
+                  </div>
+                  <div class="form-item">
+                    <label class="form-label">处置动作</label>
+                    <SelectMenu v-model="rule.action" variant="field" :options="SENSITIVE_ACTION_OPTIONS" />
+                  </div>
+                  <div class="form-item">
+                    <label class="form-label">风险等级</label>
+                    <SelectMenu v-model="rule.level" variant="field" :options="SENSITIVE_LEVEL_OPTIONS" />
+                  </div>
+                </div>
+                <div class="form-grid">
+                  <div class="form-item">
+                    <label class="form-label">匹配方式</label>
+                    <SelectMenu v-model="rule.match" variant="field" :options="SENSITIVE_MATCH_OPTIONS" />
+                  </div>
+                  <div class="form-item">
+                    <label class="form-label">生效场景</label>
+                    <div class="scene-chips">
+                      <button
+                        v-for="scene in SENSITIVE_SCENES"
+                        :key="scene.value"
+                        type="button"
+                        class="scene-chip"
+                        :class="{ 'is-active': rule.scenes.includes(scene.value) }"
+                        @click="toggleSensitiveScene(rule, scene.value)"
+                      >
+                        {{ scene.label }}
+                      </button>
+                      <span class="form-hint is-inline">不选 = 全部场景</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="rule-foot">
+                  <button class="btn btn-sm" @click="removeSensitiveRule('rules', index)">
+                    <i class="bi bi-trash3" /> 删除
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <div v-else class="form-item">
+              <label class="form-label">规则文件（TOML）</label>
+              <textarea
+                v-model="cfg.sensitiveContent"
+                class="textarea config-code"
+                rows="20"
+                spellcheck="false"
+              />
+              <p class="form-hint">
+                每条 [[rules]] 支持 word / action / scenes / level / match；
+                action 可选 block / limit / review / warn / log；[[whitelist]] 命中即放行。
+                保存前会做 TOML 语法校验，保存后立即热更新。
+              </p>
+            </div>
+
+            <div class="config-foot">
+              <button class="btn btn-primary btn-sm" :disabled="isSaving('sensitive')" @click="saveSensitive">
+                <i class="bi bi-check2" /> 保存
+              </button>
+              <button class="btn btn-sm" :disabled="isSaving('sensitive')" @click="rollbackSensitive">
+                <i class="bi bi-arrow-counterclockwise" /> 回滚上一次
+              </button>
+            </div>
+
+            <header class="config-head config-head-sub">
+              <div>
+                <h3 class="config-title">规则测试</h3>
+                <p class="config-desc">不写命中审计，只验证当前词库的判定结果</p>
+              </div>
+            </header>
+
+            <div class="form-grid">
+              <div class="form-item">
+                <label class="form-label">场景</label>
+                <SelectMenu v-model="cfg.sensitiveTest.scene" variant="field" :options="SENSITIVE_SCENES" />
+              </div>
+            </div>
+
+            <div class="form-item">
+              <label class="form-label">测试文本</label>
+              <textarea v-model="cfg.sensitiveTest.text" class="textarea" rows="3" placeholder="输入一段文本，检查会命中哪条规则" />
+            </div>
+
+            <div class="config-foot">
+              <button class="btn btn-sm" :disabled="isSaving('sensitive')" @click="runSensitiveTest">
+                <i class="bi bi-play-circle" /> 测试
+              </button>
+              <span v-if="cfg.sensitiveTest.result" class="form-hint">
+                动作：{{ SENSITIVE_ACTION_LABEL[cfg.sensitiveTest.result.action] || cfg.sensitiveTest.result.action }}
+                <template v-if="cfg.sensitiveTest.result.word"> · 命中：{{ cfg.sensitiveTest.result.word }}</template>
+                <template v-if="cfg.sensitiveTest.result.level"> · 等级：{{ cfg.sensitiveTest.result.level }}</template>
+                <template v-if="cfg.sensitiveTest.result.version"> · 版本：{{ cfg.sensitiveTest.result.version }}</template>
+              </span>
+            </div>
+
+            <header class="config-head config-head-sub">
+              <div>
+                <h3 class="config-title">近 7 天命中</h3>
+                <p class="config-desc">按场景 + 处置动作聚合；私信 / 聊天室不保存原文</p>
+              </div>
+            </header>
+
+            <p v-if="!cfg.sensitiveStats.length" class="form-hint">暂无命中记录</p>
+            <div
+              v-for="item in cfg.sensitiveStats"
+              :key="`${item.scene}-${item.action}`"
+              class="form-hint"
+            >
+              {{ sensitiveSceneLabel(item.scene) }} · {{ SENSITIVE_ACTION_LABEL[item.action] || item.action }}：{{ item.total }} 次
             </div>
           </section>
 
@@ -1475,9 +1699,12 @@
  *   manual 会把 status 置为 2（待审核），需管理员通过后才能登录；
  * - 内容配置 ARTICLE / MOMENTS / PAGE 结构相同（editor / audit / comment{allow,show}），
  *   分别由 article.go、moments.go、pages.go 的 config() 读取，audit 决定新建内容的默认审核态；
- *   评论配置 COMMENT 结构独立（allow / rate_limit / max_length / require_chinese /
- *   sensitive_filter / sensitive_words），由 comment.go 的 config("comment") 读取；
- *   这几份配置的 json 即配置本体，保存时整体覆盖；
+ *   评论配置 COMMENT 结构独立（allow / audit / rate_limit / max_length / require_chinese），
+ *   由 comment.go 的 config("comment") 读取；
+ * - 敏感词库**不在 config 表**：独立 config/sensitive.toml（[[rules]] / [[whitelist]]），
+ *   读写走 /api/toml/sensitive，保存后热更新；支持规则测试与单步回滚；
+ *   评论 / 文章 / 动态 / 私信 / 聊天室统一走 model.Sensitive 按场景判定；
+ *   其余配置的 json 即配置本体，保存时整体覆盖；
  * - QPS_BLOCK 的 second 是表达式字符串（如 "60 * 60"），会自动封禁触发阈值的 IP；
  * - 密钥类字段读取时已脱敏为 `****` 串，**原样回传**即表示不修改（后端会还原真实值）；
  * - storage 不带 name 读取时不脱敏，因此这里按分组分别读取；
@@ -1503,6 +1730,11 @@ import {
   getTomlSms,
   getTomlCache,
   getTomlSession,
+  getTomlSensitive,
+  getTomlSensitiveStats,
+  saveTomlSensitive,
+  rollbackTomlSensitive,
+  testTomlSensitive,
   getStorageGroup
 } from '@/api/toml'
 import { toast } from '@/utils/toast'
@@ -1511,6 +1743,43 @@ import { toast } from '@/utils/toast'
 const ON_OFF = [
   { value: '1', label: '开启' },
   { value: '0', label: '关闭' }
+]
+
+// 敏感词场景（与后端 model.Scene* 一致）
+const SENSITIVE_SCENES = [
+  { value: 'comment', label: '评论' },
+  { value: 'article', label: '文章' },
+  { value: 'moment', label: '动态' },
+  { value: 'dm', label: '私信' },
+  { value: 'chat', label: '公共聊天室' }
+]
+
+// 命中审计里的动作文案
+const SENSITIVE_ACTION_LABEL = {
+  block: '拒绝',
+  limit: '限流拒绝',
+  review: '进审核',
+  warn: '提示放行',
+  log: '仅记录',
+  allow: '放行'
+}
+
+// 可视化表单的下拉选项（动作 / 等级 / 匹配方式）
+const SENSITIVE_ACTION_OPTIONS = [
+  { value: 'block', label: '拒绝（block）' },
+  { value: 'limit', label: '限流拒绝（limit）' },
+  { value: 'review', label: '进审核（review）' },
+  { value: 'warn', label: '提示后放行（warn）' },
+  { value: 'log', label: '仅记录（log）' }
+]
+const SENSITIVE_LEVEL_OPTIONS = [
+  { value: 'high', label: '高（high）' },
+  { value: 'medium', label: '中（medium）' },
+  { value: 'low', label: '低（low）' }
+]
+const SENSITIVE_MATCH_OPTIONS = [
+  { value: 'contains', label: '包含（contains）' },
+  { value: 'exact', label: '整段相等（exact）' }
 ]
 
 const CACHE_DRIVERS = [
@@ -1650,7 +1919,8 @@ const modules = [
     icon: 'bi bi-chat-dots',
     tabs: [
       { key: 'comment', label: '评论配置', icon: 'bi bi-chat-dots' },
-      { key: 'links', label: '友链配置', icon: 'bi bi-link-45deg' }
+      { key: 'links', label: '友链配置', icon: 'bi bi-link-45deg' },
+      { key: 'sensitive', label: '敏感词库', icon: 'bi bi-shield-check' }
     ]
   },
   { key: 'decoration', label: '装扮', icon: 'bi bi-palette' },
@@ -1869,15 +2139,24 @@ const cfg = reactive({
     allow: '1',
     rate_limit: { enabled: '1', max_count: 5, time_window: 60 },
     max_length: 500,
-    require_chinese: '1',
-    sensitive_filter: '1'
+    require_chinese: '1'
   },
   // 友链配置（LINKS 一条记录）：目前只有审核开关
   links: {
     audit: '1'
   },
-  // 敏感词按「一行一个」编辑，保存时拆成数组
-  sensitiveText: '',
+  // 敏感词库（独立 config/sensitive.toml）：可视化表单 / TOML 源码两种模式
+  sensitiveMode: 'form',
+  sensitive: {
+    enabled: true,
+    default_action: 'review',
+    version: '1',
+    rules: [],
+    whitelist: []
+  },
+  sensitiveContent: '',
+  sensitiveTest: { scene: 'comment', text: '', result: null },
+  sensitiveStats: [],
   // 装扮配置（SYSTEM_DECORATION 一条记录，见 app/model/decoration.go）
   // - enabled         → json.enabled：总开关，关闭后前台不可佩戴任何装扮
   // - showInGoods     → json.show_in_goods：装扮分区是否显示在商城页
@@ -2162,12 +2441,11 @@ function readAccountConfig(raw) {
   cfg.account.requireVerify = toText(json.require_verify, '1')
 }
 
-// 评论配置（COMMENT）：结构独立，敏感词转成「一行一个」的文本便于编辑
+// 评论配置（COMMENT）：结构独立；敏感词已抽到 config/sensitive.toml
 // 邮件通知（评论 / 回复）不在这里：已统一到 SYSTEM_MAIL_NOTIFY 的 comment.notify / comment.reply
 function readCommentConfig(raw) {
   const json = parseJson(raw?.json, {})
   const rate = json.rate_limit && typeof json.rate_limit === 'object' ? json.rate_limit : {}
-  const words = Array.isArray(json.sensitive_words) ? json.sensitive_words : []
   return {
     // 缺省按「开启审核」处理：老配置里可能还没有该字段（与后端 contentAuditSwitch 口径一致）
     audit: toText(json.audit, '1'),
@@ -2178,9 +2456,7 @@ function readCommentConfig(raw) {
       time_window: Number(rate.time_window || 60)
     },
     max_length: Number(json.max_length || 500),
-    require_chinese: toText(json.require_chinese, '1'),
-    sensitive_filter: toText(json.sensitive_filter, '1'),
-    words
+    require_chinese: toText(json.require_chinese, '1')
   }
 }
 
@@ -2315,9 +2591,8 @@ async function loadConfigs() {
     cfg.comment.rate_limit = parsed.rate_limit
     cfg.comment.max_length = parsed.max_length
     cfg.comment.require_chinese = parsed.require_chinese
-    cfg.comment.sensitive_filter = parsed.sensitive_filter
-    cfg.sensitiveText = parsed.words.join('\n')
   }
+
   // 友链配置（LINKS）：缺省按「开启审核」处理，与后端 contentAuditSwitch 一致
   cfg.links.audit = links ? toText(parseJson(links.json, {}).audit, '1') : '1'
   if (mailNotify) {
@@ -2332,12 +2607,14 @@ async function loadConfigs() {
 }
 
 async function loadTomlAll() {
-  const [session, cache, sms, notification, log] = await Promise.all([
+  const [session, cache, sms, notification, log, sensitive, sensitiveStats] = await Promise.all([
     getTomlSession().catch(() => null),
     getTomlCache().catch(() => null),
     getTomlSms().catch(() => null),
     getTomlNotification().catch(() => null),
-    getTomlLog().catch(() => null)
+    getTomlLog().catch(() => null),
+    getTomlSensitive().catch(() => null),
+    getTomlSensitiveStats().catch(() => null)
   ])
 
   // crypt 返回 { session: { expire } }；兼容老版本返回的内层结构
@@ -2392,6 +2669,11 @@ async function loadTomlAll() {
   }
 
   toml.notification.retention_days = Number(notification?.data?.retention_days || 30)
+
+  // 敏感词库来自独立 config/sensitive.toml（不在 config 表里）
+  applySensitivePayload(sensitive?.data)
+  cfg.sensitiveStats = Array.isArray(sensitiveStats?.data?.items) ? sensitiveStats.data.items : []
+
   const logData = log?.data || {}
   toml.log = {
     on: !!logData.on,
@@ -2816,13 +3098,14 @@ async function saveContent(moduleKey) {
   })
 }
 
-/** 保存评论配置：敏感词按「一行一个 / 逗号分隔」解析成数组 */
+/**
+ * 保存评论配置
+ *
+ * 注意：敏感词已迁到独立的 config/sensitive.toml，这里不再写
+ * sensitive_filter / sensitive_words —— 评论提交时的校验统一走公共词库，
+ * 见 app/model/sensitive.go。
+ */
 async function saveComment() {
-  const words = String(cfg.sensitiveText || '')
-    .split(/[\n,，]/)
-    .map((w) => w.trim())
-    .filter(Boolean)
-
   await withSaving('comment', async () => {
     await saveSystemConfig({
       key: 'COMMENT',
@@ -2835,19 +3118,158 @@ async function saveComment() {
           time_window: Number(cfg.comment.rate_limit.time_window)
         },
         max_length: Number(cfg.comment.max_length),
-        require_chinese: Number(cfg.comment.require_chinese),
-        sensitive_filter: Number(cfg.comment.sensitive_filter),
-        sensitive_words: words
+        require_chinese: Number(cfg.comment.require_chinese)
       }
     })
     toast.success('已保存')
     const fresh = await readConfig('COMMENT')
-    if (fresh) {
-      const parsed = readCommentConfig(fresh)
-      cfg.comment.audit = parsed.audit
-      cfg.sensitiveText = parsed.words.join('\n')
-    }
+    if (fresh) cfg.comment.audit = readCommentConfig(fresh).audit
   })
+}
+
+/**
+ * 保存敏感词库
+ *
+ * 可视化模式提交结构化 JSON，由后端按模板生成 TOML（校验 / 备份 / 版本自增 / 热更新一致）；
+ * 源码模式提交原文，保留手写注释。两条路径失败都不落盘。
+ */
+async function saveSensitive() {
+  if (cfg.sensitiveMode === 'source') {
+    if (!String(cfg.sensitiveContent || '').trim()) {
+      toast.warning('规则内容不能为空')
+      return
+    }
+
+    await withSaving('sensitive', async () => {
+      const res = await saveTomlSensitive({ content: cfg.sensitiveContent })
+      applySensitivePayload(res?.data)
+      toast.success('已保存并生效')
+      await refreshSensitiveStats()
+    })
+    return
+  }
+
+  // 表单模式：词条必填（后端也会拦，这里先给即时反馈）
+  for (const group of [cfg.sensitive.whitelist, cfg.sensitive.rules]) {
+    if (group.some((rule) => !String(rule.word || '').trim())) {
+      toast.warning('有规则还没填写词条')
+      return
+    }
+  }
+
+  await withSaving('sensitive', async () => {
+    const res = await saveTomlSensitive({
+      enabled: cfg.sensitive.enabled,
+      default_action: cfg.sensitive.default_action,
+      rules: cfg.sensitive.rules.map(pickSensitiveRule),
+      whitelist: cfg.sensitive.whitelist.map(pickSensitiveRule)
+    })
+    applySensitivePayload(res?.data)
+    toast.success('已保存并生效')
+    await refreshSensitiveStats()
+  })
+}
+
+/** 回滚到上一次保存前的词库 */
+async function rollbackSensitive() {
+  // 危险操作：会直接覆盖当前规则，先确认（与 Stats 页踢下线同一写法）
+  if (!window.confirm('确定回滚到上一次保存前的词库吗？当前编辑的内容会被覆盖。')) return
+
+  await withSaving('sensitive', async () => {
+    const res = await rollbackTomlSensitive()
+    applySensitivePayload(res?.data)
+    toast.success('已回滚')
+  })
+}
+
+/** 用后端返回的解析结果同时填充源码原文与可视化表单 */
+function applySensitivePayload(data) {
+  if (!data) return
+
+  cfg.sensitiveContent = String(data.content || '')
+  cfg.sensitive.enabled = Number(data.enabled) === 1
+  cfg.sensitive.default_action = String(data.default_action || 'review')
+  cfg.sensitive.version = String(data.version || '1')
+  cfg.sensitive.rules = normalizeSensitiveRules(data.rules)
+  cfg.sensitive.whitelist = normalizeSensitiveRules(data.whitelist)
+}
+
+/** 规则列表归一化：补全缺省值，避免表单控件拿到 undefined */
+function normalizeSensitiveRules(rows) {
+  if (!Array.isArray(rows)) return []
+
+  return rows.map((row) => ({
+    word: String(row?.word || ''),
+    action: String(row?.action || 'review'),
+    scenes: Array.isArray(row?.scenes) ? row.scenes.map(String) : [],
+    level: String(row?.level || 'medium'),
+    match: String(row?.match || 'contains')
+  }))
+}
+
+/** 提交前裁剪：只留后端认识的字段 */
+function pickSensitiveRule(rule) {
+  return {
+    word: String(rule.word || '').trim(),
+    action: rule.action,
+    scenes: rule.scenes,
+    level: rule.level,
+    match: rule.match
+  }
+}
+
+/** 新增一条规则（kind：rules / whitelist） */
+function addSensitiveRule(kind) {
+  cfg.sensitive[kind].push({
+    word: '',
+    action: 'review',
+    scenes: [],
+    level: 'medium',
+    match: 'contains'
+  })
+}
+
+/** 删除一条规则 */
+function removeSensitiveRule(kind, index) {
+  cfg.sensitive[kind].splice(index, 1)
+}
+
+/** 场景多选：点一下切换选中态（不选 = 全部场景） */
+function toggleSensitiveScene(rule, scene) {
+  const index = rule.scenes.indexOf(scene)
+  if (index >= 0) {
+    rule.scenes.splice(index, 1)
+    return
+  }
+  rule.scenes.push(scene)
+}
+
+/** 近 7 天命中统计 */
+async function refreshSensitiveStats() {
+  const stats = await getTomlSensitiveStats().catch(() => null)
+  cfg.sensitiveStats = Array.isArray(stats?.data?.items) ? stats.data.items : []
+}
+
+/** 用当前词库试跑一条文本 */
+async function runSensitiveTest() {
+  if (!String(cfg.sensitiveTest.text || '').trim()) {
+    toast.warning('请输入测试文本')
+    return
+  }
+
+  await withSaving('sensitive', async () => {
+    const res = await testTomlSensitive({
+      scene: cfg.sensitiveTest.scene,
+      text: cfg.sensitiveTest.text
+    })
+    cfg.sensitiveTest.result = res?.data?.decision || null
+  })
+}
+
+/** 场景文案 */
+function sensitiveSceneLabel(scene) {
+  const found = SENSITIVE_SCENES.find((item) => item.value === scene)
+  return found?.label || scene
 }
 
 /** 保存友链配置（LINKS）：目前只有审核开关 */
@@ -3390,6 +3812,83 @@ onMounted(loadAll)
   margin-right: auto;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* 敏感词 TOML 原文编辑器 */
+.config-code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  tab-size: 2;
+}
+.config-head-sub {
+  margin-top: 22px;
+}
+
+/* 敏感词库：可视化规则编辑 */
+.mode-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.rule-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.rule-card {
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+}
+.rule-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 160px;
+  gap: 0 12px;
+}
+.rule-grid.is-three {
+  grid-template-columns: minmax(0, 1fr) 160px 160px;
+}
+.scene-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.scene-chip {
+  height: 26px;
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--text-soft);
+  background: var(--bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.scene-chip:hover {
+  border-color: var(--primary);
+}
+.scene-chip.is-active {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.rule-foot {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+@media (max-width: 900px) {
+  .rule-grid,
+  .rule-grid.is-three {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 900px) {

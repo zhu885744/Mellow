@@ -33,6 +33,35 @@ export const getTomlLog = () => getToml('log')
 /** 通知配置（消息保留天数） */
 export const getTomlNotification = () => getToml('notification')
 
+/**
+ * 全站敏感词库（独立 config/sensitive.toml）
+ *
+ * 返回 { enabled, default_action, version, rules, whitelist, content }：
+ * - rules / whitelist 是解析后的结构化结果，可视化表单直接用；
+ * - content 是文件原文，源码模式编辑用（表单保存会按模板重写，注释不保留）。
+ */
+export const getTomlSensitive = () => getToml('sensitive')
+
+/**
+ * 保存敏感词库（同一个接口，两种载荷）
+ *
+ * - { content: string }：TOML 原文，保留手写注释（「TOML 源码」模式）；
+ * - { enabled, default_action, rules, whitelist }：结构化数据，服务端按模板生成规范 TOML
+ *   （「可视化配置」模式，会重写文件、注释不保留）。
+ *
+ * 两条路径共用同一套校验 / 备份 / 版本自增 / 热更新，所以只占一个权限点。
+ */
+export const saveTomlSensitive = (data) => saveToml('sensitive', data)
+
+/** 回滚到上一次保存前的词库 */
+export const rollbackTomlSensitive = () => testToml('sensitive-rollback')
+
+/** 用当前词库试跑一条文本：{ scene, text } → { decision } */
+export const testTomlSensitive = (data) => testToml('sensitive-test', data)
+
+/** 最近 7 天命中统计：{ days, items: [{ scene, action, total }] } */
+export const getTomlSensitiveStats = () => getToml('sensitive-stats')
+
 /** 短信配置（不带 name 时返回 drive + 各服务商，且已脱敏） */
 export const getTomlSms = () => getToml('sms')
 

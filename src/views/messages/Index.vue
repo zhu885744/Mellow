@@ -99,6 +99,20 @@
       </label>
 
       <ul class="msg-conversations">
+        <!-- 公共聊天室：全站唯一的固定房间，不参与搜索过滤，始终置顶 -->
+        <li class="msg-room-entry">
+          <RouterLink to="/room/1" class="msg-room-card">
+            <span class="msg-room-avatar">
+              <i class="bi bi-people-fill" aria-hidden="true" />
+            </span>
+            <span class="msg-room-body">
+              <span class="msg-room-name">公共聊天室</span>
+              <span class="msg-room-desc">全站用户都在这里</span>
+            </span>
+            <i class="bi bi-chevron-right msg-room-arrow" aria-hidden="true" />
+          </RouterLink>
+        </li>
+
         <li v-for="item in filteredConversations" :key="item.id">
           <button
             type="button"
@@ -185,7 +199,12 @@
 
             <div v-else-if="row.type === 'system'" class="msg-system">{{ systemText(row.msg) }}</div>
 
-            <div v-else class="msg-row" :class="{ 'is-mine': isMine(row.msg) }">
+            <div
+              v-else
+              class="msg-row"
+              :class="{ 'is-mine': isMine(row.msg) }"
+              @contextmenu.prevent="openMessageMenu($event, row.msg)"
+            >
               <img
                 v-if="!isMine(row.msg)"
                 class="msg-row-avatar"
@@ -197,6 +216,14 @@
               />
               <div class="msg-row-main">
                 <div class="msg-bubble">
+                  <!-- 引用回复：展示被引用消息的快照（原消息撤回后依然可读） -->
+                  <div v-if="row.msg.quote" class="msg-quote" :title="quoteTitle(row.msg.quote)">
+                    <span class="msg-quote-name">{{ quoteName(row.msg.quote) }}</span>
+                    <span
+                      class="msg-quote-text"
+                      v-html="renderEmojiWithBreaks(quotePreview(row.msg.quote), { size: 16 })"
+                    />
+                  </div>
                   <img
                     v-if="row.msg.msg_type === 'image'"
                     class="msg-bubble-image"
@@ -239,10 +266,24 @@
         <footer class="msg-composer">
           <p v-if="!canSend" class="msg-blocked">
             <i class="bi bi-slash-circle" aria-hidden="true" />
-            你们之间存在拉黑关系，暂时无法发送私信
+            {{ blockedReason || '暂时无法发送私信' }}
           </p>
 
           <form v-else class="msg-composer-box" @submit.prevent="send">
+            <!-- 引用态：显示被引用消息的摘要，发送后自动清除 -->
+            <div v-if="quoteDraft" class="msg-quote-draft">
+              <div class="msg-quote-draft-body">
+                <span class="msg-quote-name">{{ quoteName(quoteDraft) }}</span>
+                <span
+                  class="msg-quote-text"
+                  v-html="renderEmojiWithBreaks(quotePreview(quoteDraft), { size: 16 })"
+                />
+              </div>
+              <button type="button" class="msg-icon-btn" title="取消引用" @click="clearQuote">
+                <i class="bi bi-x-lg" aria-hidden="true" />
+              </button>
+            </div>
+
             <div class="msg-tools">
               <!-- 表情：复用评论/动态同一个表情面板，插入的是 [emoji:url] 标记 -->
               <div class="msg-emoji-wrap">
@@ -309,6 +350,44 @@
         </RouterLink>
       </div>
     </section>
+
+    <!-- ==================== 消息右键菜单 ==================== -->
+    <div
+      v-if="messageMenu.open"
+      class="msg-menu-mask"
+      @click="closeMessageMenu"
+      @contextmenu.prevent="closeMessageMenu"
+    />
+    <div
+      v-if="messageMenu.open"
+      class="msg-menu"
+      role="menu"
+      :style="{ left: `${messageMenu.x}px`, top: `${messageMenu.y}px` }"
+    >
+      <button type="button" class="msg-menu-item" role="menuitem" @click="quoteMessage(messageMenu.msg)">
+        <i class="bi bi-quote" aria-hidden="true" />引用消息
+      </button>
+      <button
+        v-if="canRevoke(messageMenu.msg)"
+        type="button"
+        class="msg-menu-item"
+        role="menuitem"
+        @click="revokeFromMenu(messageMenu.msg)"
+      >
+        <i class="bi bi-arrow-counterclockwise" aria-hidden="true" />撤回消息
+      </button>
+      <button
+        type="button"
+        class="msg-menu-item is-danger"
+        role="menuitem"
+        @click="deleteFromMenu(messageMenu.msg)"
+      >
+        <i class="bi bi-trash3" aria-hidden="true" />删除消息
+      </button>
+      <button type="button" class="msg-menu-item" role="menuitem" @click="copyMessage(messageMenu.msg)">
+        <i class="bi bi-clipboard" aria-hidden="true" />复制
+      </button>
+    </div>
   </div>
 </template>
 
@@ -316,6 +395,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
+  deleteChatMessage,
   getChatStatus,
   listChatConversations,
   listChatMessages,
@@ -369,6 +449,10 @@ const hasMore = ref(false)
 const loadingHistory = ref(false)
 const online = ref(false)
 const canSend = ref(true)
+// 不能发送的原因（拉黑 / 未互关），由服务端返回，直接显示在输入区上方
+const blockedReason = ref('')
+// 当前引用中的消息（null = 不在引用态）
+const quoteDraft = ref(null)
 
 const draft = ref('')
 const sending = ref(false)
@@ -399,6 +483,9 @@ const desktopHint = computed(() => {
 })
 // 被拍一拍的抖动动画标记（600ms 后自动复位）
 const patting = ref(false)
+
+// 消息右键菜单：open / 坐标 / 目标消息
+const messageMenu = ref({ open: false, x: 0, y: 0, msg: null })
 
 const myUid = computed(() => Number(userStore.user?.id || 0))
 
@@ -438,8 +525,126 @@ function showReadState(msg) {
 const REVOKE_WINDOW = 120
 
 function canRevoke(msg) {
-  if (!isMine(msg) || msg.is_revoked || msg.msg_type === 'pat') return false
+  if (!msg || !isMine(msg) || msg.is_revoked || msg.msg_type === 'pat') return false
   return Date.now() / 1000 - Number(msg.create_time || 0) <= REVOKE_WINDOW
+}
+
+// ---------- 引用回复 ----------
+
+/**
+ * 被引用消息的展示名：自己 / 对方
+ *
+ * 兼容两种入参：消息里的 quote 快照（uid）与引用态里的整条消息（from_uid）。
+ */
+function quoteName(quote) {
+  if (!quote) return ''
+  const uid = Number(quote.uid ?? quote.from_uid ?? 0)
+  return uid === myUid.value
+    ? '我'
+    : target.value?.nickname || `用户 #${activeUid.value}`
+}
+
+/** 被引用消息的摘要：服务端已落快照，这里只做类型兜底 */
+function quotePreview(quote) {
+  if (!quote) return ''
+  if (quote.msg_type === 'image') return '[图片]'
+  if (quote.msg_type === 'pat') return '[拍一拍]'
+  return String(quote.content || '')
+}
+
+function quoteTitle(quote) {
+  return quotePreview(quote).replace(/\[emoji:[^\]]+\]/g, '[表情]')
+}
+
+function clearQuote() {
+  quoteDraft.value = null
+}
+
+// ---------- 消息右键菜单 ----------
+
+/** 打开右键菜单：坐标按视口夹紧，避免贴边时菜单跑出屏幕 */
+function openMessageMenu(event, msg) {
+  if (!msg?.id) return
+
+  const width = 148
+  const height = canRevoke(msg) ? 172 : 138
+  const x = Math.min(Number(event.clientX) || 0, window.innerWidth - width - 8)
+  const y = Math.min(Number(event.clientY) || 0, window.innerHeight - height - 8)
+
+  messageMenu.value = { open: true, x: Math.max(8, x), y: Math.max(8, y), msg }
+}
+
+function closeMessageMenu() {
+  if (!messageMenu.value.open) return
+  messageMenu.value = { ...messageMenu.value, open: false, msg: null }
+}
+
+function quoteMessage(msg) {
+  closeMessageMenu()
+  if (!msg?.id) return
+  quoteDraft.value = msg
+  nextTick(() => inputRef.value?.focus())
+}
+
+function revokeFromMenu(msg) {
+  closeMessageMenu()
+  revokeMessage(msg)
+}
+
+async function deleteFromMenu(msg) {
+  closeMessageMenu()
+  if (!msg?.id) return
+
+  try {
+    const res = await deleteChatMessage(msg.id)
+    if (res?.code !== 200) return
+
+    // 只删自己这一侧：本地直接移除，未读数由服务端下次校准时对齐
+    messages.value = messages.value.filter((item) => Number(item.id) !== Number(msg.id))
+    // 正在引用的就是这条：顺手取消引用，避免发出一个指向已删消息的引用
+    if (Number(quoteDraft.value?.id) === Number(msg.id)) quoteDraft.value = null
+    toast.success('已删除')
+  } catch {
+    /* 业务错误已由 request.js 统一 toast */
+  }
+}
+
+/** 复制：文本去掉 [emoji:url] 标记（否则复制出来是一串链接），图片复制地址 */
+async function copyMessage(msg) {
+  closeMessageMenu()
+  if (!msg) return
+
+  let text = ''
+  if (msg.is_revoked || msg.msg_type === 'pat') {
+    text = systemText(msg)
+  } else if (msg.msg_type === 'image') {
+    text = fullUrl(msg.content)
+  } else {
+    text = String(msg.content || '').replace(/\[emoji:[^\]]+\]/g, '[表情]')
+  }
+
+  if (!text) return
+
+  try {
+    await navigator.clipboard.writeText(text)
+    toast.success('已复制')
+  } catch {
+    // 非 HTTPS / 无剪贴板权限：退回 textarea + execCommand
+    const el = document.createElement('textarea')
+    el.value = text
+    el.setAttribute('readonly', '')
+    el.style.position = 'fixed'
+    el.style.opacity = '0'
+    document.body.appendChild(el)
+    el.select()
+    try {
+      document.execCommand('copy')
+      toast.success('已复制')
+    } catch {
+      toast.warning('复制失败，请手动选择文字')
+    }
+    document.body.removeChild(el)
+  }
 }
 
 // 系统提示（撤回 / 拍一拍）：不渲染气泡，居中灰字
@@ -625,6 +830,8 @@ async function loadMessages(beforeId = 0) {
     target.value = res.data?.target || target.value
     online.value = !!res.data?.online
     canSend.value = res.data?.can_send !== false
+    // 不能发的原因（拉黑 / 未互关）由服务端给出，避免前端各写一套文案
+    blockedReason.value = canSend.value ? '' : res.data?.can_send_tip || '暂时无法发送私信'
 
     if (beforeId) {
       // 翻历史时保持当前位置（新内容在顶部，不跳到底部）
@@ -660,6 +867,9 @@ async function openChat(uid) {
   messages.value = []
   hasMore.value = false
   canSend.value = true
+  blockedReason.value = ''
+  quoteDraft.value = null
+  closeMessageMenu()
 
   // 同步到地址栏：刷新 / 分享能直接落到这段对话
   if (String(route.query.to || '') !== String(uid)) {
@@ -673,6 +883,7 @@ async function openChat(uid) {
     const res = await getChatStatus(uid)
     if (res?.code === 200) {
       canSend.value = !!res.data?.can_send
+      blockedReason.value = canSend.value ? '' : res.data?.reason || '暂时无法发送私信'
       online.value = !!res.data?.online
     }
   } catch {
@@ -781,11 +992,13 @@ async function saveRead(uid) {
  * 发送统一走 HTTP：落库后再上屏，能拿到真实 id 用于去重，也能直接获得
  * 拉黑 / 超长等业务错误；服务端落库后会顺带通过 socket 推给在线的对方。
  */
-async function postMessage(content, msgType = 'text') {
+async function postMessage(content, msgType = 'text', quoteId = 0) {
   const res = await sendChatMessage({
     target_uid: activeUid.value,
     content,
     msg_type: msgType,
+    // 引用回复：只传被引用消息 id，摘要由服务端回查后落快照
+    quote_id: Number(quoteId) || 0,
     // 幂等键：网络抖动 / 连点重试时后端不会再插一条
     client_msg_id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
   })
@@ -831,9 +1044,12 @@ async function send() {
 
   sending.value = true
   try {
-    const message = await postMessage(content, 'text')
-    // 发送成功才清空输入：失败时保留内容，改完能直接重发
-    if (message) draft.value = ''
+    const message = await postMessage(content, 'text', quoteDraft.value?.id)
+    // 发送成功才清空输入：失败时保留内容（含引用态），改完能直接重发
+    if (message) {
+      draft.value = ''
+      clearQuote()
+    }
   } catch (err) {
     // 业务错误已由 request.js 统一 toast；403 = 拉黑关系，顺手禁用输入区
     if (err?.code === 403) canSend.value = false
@@ -981,9 +1197,11 @@ async function uploadAndSendImage(files) {
     }
 
     for (const url of urls) {
-      const message = await postMessage(url, 'image')
+      // 引用只挂在第一张上：成功发出后即消费掉，后面的图片按普通消息发送
+      const message = await postMessage(url, 'image', quoteDraft.value?.id)
       // 发送失败（业务错误已由 request.js toast）：不再继续发剩下的，避免连点一屏报错
       if (!message) break
+      clearQuote()
     }
   } catch {
     // 业务错误（超限 / 未登录等）已由 request.js toast；网络异常时这里补一条，
@@ -1085,7 +1303,24 @@ function onChatEvent(event) {
     // 撤回的若是最后一条，会话摘要要跟着回退
     clearTimeout(listTimer)
     listTimer = setTimeout(loadConversations, 400)
+    return
   }
+
+  // 同一账号在其它设备上删除了消息：本机也把它从当前会话移除
+  if (event.type === 'delete') {
+    if (!event.id) return
+    messages.value = messages.value.filter((item) => Number(item.id) !== Number(event.id))
+    if (Number(quoteDraft.value?.id) === Number(event.id)) quoteDraft.value = null
+  }
+}
+
+/** 菜单打开时按 Esc / 滚动页面 / 切走会话都要收起，避免浮在错误的位置 */
+function onMenuKeydown(e) {
+  if (e.key === 'Escape') closeMessageMenu()
+}
+
+function onMenuScroll() {
+  closeMessageMenu()
 }
 
 onMounted(async () => {
@@ -1104,6 +1339,9 @@ onMounted(async () => {
 
   unsubscribe = chatStore.onMessage(onPrivateMessage)
   unsubscribeEvent = chatStore.onEvent(onChatEvent)
+
+  document.addEventListener('keydown', onMenuKeydown)
+  window.addEventListener('scroll', onMenuScroll, true)
 })
 
 onBeforeUnmount(() => {
@@ -1115,6 +1353,8 @@ onBeforeUnmount(() => {
   clearTimeout(patTimer)
   if (unsubscribe) unsubscribe()
   if (unsubscribeEvent) unsubscribeEvent()
+  document.removeEventListener('keydown', onMenuKeydown)
+  window.removeEventListener('scroll', onMenuScroll, true)
 })
 
 // 地址栏变化（浏览器前进 / 后退、从作者主页再点一次「私信」）时同步当前会话
@@ -1355,6 +1595,63 @@ watch(
   overflow-y: auto;
   scrollbar-width: thin;
 }
+/* 公共聊天室入口：置顶一条，与下面的私信会话区分开 */
+.msg-room-entry {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.msg-room-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  color: inherit;
+  text-decoration: none;
+  border-radius: var(--radius);
+  transition: background-color var(--dur-fast) var(--ease);
+}
+.msg-room-card:hover {
+  background: var(--bg-muted);
+}
+.msg-room-avatar {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 19px;
+  color: var(--primary);
+  background: var(--accent-wash);
+  border: 1px solid var(--primary-soft);
+  border-radius: 50%;
+}
+.msg-room-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.msg-room-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.msg-room-desc {
+  font-size: 12px;
+  color: var(--text-light);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.msg-room-arrow {
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-light);
+}
+
 .msg-conv {
   display: flex;
   gap: 10px;
@@ -1682,6 +1979,44 @@ watch(
   white-space: pre-wrap;
 }
 
+/* 引用块：气泡内的浅色摘要，左侧竖线区分「这是被引用的内容」 */
+.msg-quote {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-bottom: 6px;
+  padding: 5px 9px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-soft);
+  background: var(--bg-muted);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-xs);
+  white-space: normal;
+}
+.msg-quote-name {
+  font-weight: 600;
+  color: var(--text-light);
+}
+.msg-quote-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  word-break: break-word;
+}
+/* 自己的气泡是主色底：引用块改成半透明白，避免浅灰在深色上糊成一片 */
+.msg-row.is-mine .msg-quote {
+  color: rgba(255, 255, 255, 0.82);
+  background: rgba(255, 255, 255, 0.14);
+  border-left-color: rgba(255, 255, 255, 0.65);
+}
+.msg-row.is-mine .msg-quote-name {
+  color: #fff;
+}
+
 /* 时间 / 撤回 / 已读：气泡下方的小字行 */
 .msg-meta {
   display: flex;
@@ -1725,6 +2060,7 @@ watch(
 }
 .msg-composer-box {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   gap: 6px;
   padding: 6px 6px 6px 8px;
@@ -1921,5 +2257,76 @@ watch(
     max-width: 200px;
     max-height: 200px;
   }
+}
+
+/* ==================== 引用态（输入框上方） ==================== */
+.msg-quote-draft {
+  flex-basis: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  margin-bottom: 2px;
+  background: var(--bg-muted);
+  border-left: 3px solid var(--primary);
+  border-radius: var(--radius-xs);
+}
+.msg-quote-draft-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ==================== 消息右键菜单 ==================== */
+.msg-menu-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+}
+.msg-menu {
+  position: fixed;
+  z-index: 61;
+  min-width: 148px;
+  padding: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+}
+.msg-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 34px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--text-soft);
+  text-align: left;
+  white-space: nowrap;
+  background: none;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), background-color var(--dur-fast) var(--ease);
+}
+.msg-menu-item:hover {
+  color: var(--text);
+  background: var(--bg-muted);
+}
+.msg-menu-item i {
+  font-size: 14px;
+  opacity: 0.9;
+}
+.msg-menu-item.is-danger {
+  color: var(--danger);
+}
+.msg-menu-item.is-danger:hover {
+  color: var(--danger);
+  background: var(--accent-soft);
 }
 </style>

@@ -70,14 +70,20 @@
                 title="用积分打赏 TA"
                 @click="openReward"
               ><i class="bi bi-coin" aria-hidden="true" /> 打赏</button>
-              <!-- 私信：落到用户中心的私信页并直接打开与 TA 的对话；
-                   拉黑关系下不展示（后端也会拦，见 model.UserBlocks.CanInteract） -->
+              <!-- 私信：落到用户中心的私信页并直接打开与 TA 的对话。
+                   拉黑关系下不展示；未互关时只展示禁用态（后端 ChatPermission 同样会拦）。
+                   未登录时保持可点，交给私信页的登录校验处理。 -->
               <RouterLink
-                v-if="!blocked"
+                v-if="!blocked && canDm"
                 :to="{ path: '/messages', query: { to: uid } }"
                 class="btn btn-sm btn-ghost"
                 title="给 TA 发私信"
               ><i class="bi bi-chat-dots" aria-hidden="true" /> 私信</RouterLink>
+              <span
+                v-else-if="!blocked"
+                class="btn btn-sm btn-ghost is-disabled"
+                title="仅互相关注的好友可以私信，关注并等 TA 回关后即可发送"
+              ><i class="bi bi-chat-dots" aria-hidden="true" /> 私信</span>
               <!-- 拉黑 / 举报收进「更多」，避免低频且带破坏性的操作和关注按钮抢视线 -->
               <CardActionMenu :items="moreMenuItems" @select="onMoreMenu" />
             </template>
@@ -569,6 +575,10 @@ function openReward() {
 // 可能认识的人：仅本人的主页展示
 const suggestions = ref([])
 const isSelf = computed(() => userStore.isLogged && Number(userStore.user?.id) === uid.value)
+
+// 私信门槛：私信默认只对互关好友开放（后端 model.ChatPermission 兜底）。
+// 未登录时保持可点，进私信页后再走登录校验。
+const canDm = computed(() => !userStore.isLogged || relation.value.mutual)
 
 // 关注按钮文案：互相关注 > 已关注 > 回关（对方关注了我，我还没回）> 关注
 const followButtonText = computed(() => {

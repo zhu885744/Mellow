@@ -34,6 +34,14 @@ const routes = [
       }
     ]
   },
+  // 公共聊天室：整屏页面，独立于所有布局（与私信页同一套骨架）
+  // 目前只有 id=1，路径仍带 id，方便以后扩展多房间
+  {
+    path: '/room/:id(\\d+)',
+    name: 'room',
+    component: () => import('@/views/room/Index.vue'),
+    meta: { auth: true, title: '聊天室' }
+  },
   // 私信：整屏聊天页，独立于所有布局（自己撑满视口，不带站点侧栏 / 页脚 / 手机底栏）
   // 与 /docs 同理，必须放在 `/` 之前 —— MainLayout 末尾有 `:key` 兜底路由
   {

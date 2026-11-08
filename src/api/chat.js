@@ -62,9 +62,18 @@ export const getChatStatus = (targetUid) =>
 
 /**
  * 发送私信
- * @param {object} data { target_uid, content, msg_type?: 'text'|'image', client_msg_id?: string }
+ * @param {object} data { target_uid, content, msg_type?: 'text'|'image', client_msg_id?: string, quote_id?: number }
  */
 export const sendChatMessage = (data) => call('chat', 'send', { method: 'POST', data })
+
+/**
+ * 删除一条消息（只对自己生效）
+ *
+ * 与撤回的区别：撤回会清空内容并通知对方，双方都看到「撤回了一条消息」；
+ * 删除只是把这条从自己的历史 / 未读数里藏起来，对方完全无感。
+ */
+export const deleteChatMessage = (msgId) =>
+  call('chat', 'delete', { method: 'POST', data: { msg_id: Number(msgId) } })
 
 // 把某人的消息标记为已读（服务端会给对方推 chat_read 回执）
 export const readChatMessages = (targetUid) =>
