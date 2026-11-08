@@ -755,7 +755,7 @@
                 <label class="form-label">默认权限组</label>
                 <div v-if="registerGroups.loading" class="is-loading is-inline"><span class="spinner" /> 加载权限组...</div>
                 <p v-else-if="!registerGroups.list.length" class="form-hint">
-                  暂无可用权限组：请先到「安全 → 权限组」创建，或确认当前账号有权访问权限组列表。
+                  暂无可用权限组：请先到「安全 → 权限分组」创建，或确认当前账号有权访问权限组列表。
                 </p>
                 <div v-else class="check-grid is-block">
                   <label v-for="g in registerGroups.list" :key="g.id" class="check-line">
@@ -2294,7 +2294,7 @@ async function withSaving(key, fn) {
     // 保存按钮是 @click 直接调用，不 catch 会在控制台抛 "Uncaught (in promise)"。
     // 403 额外给一条可操作的提示：新接口的权限点需要给当前账号的权限组勾选。
     if (err?.code === 403) {
-      toast.warning('当前账号没有这个权限点，请在「权限组」中勾选后重试（新接口需重启后端补录规则）')
+      toast.warning('当前账号没有这个权限点，请在「权限分组」中勾选后重试（新接口需重启后端补录规则）')
     }
     return false
   } finally {

@@ -622,7 +622,7 @@
       <div v-if="groups.fetching" class="is-loading"><span class="spinner" /> 加载权限组...</div>
 
       <div v-else-if="!groups.all.length" class="dialog-empty">
-        暂无可用权限组：请先到「权限组」页面创建，或确认当前账号有权访问权限组列表。
+        暂无可用权限组：请先到「权限分组」页面创建，或确认当前账号有权访问权限组列表。
       </div>
 
       <div v-else class="check-grid is-block">

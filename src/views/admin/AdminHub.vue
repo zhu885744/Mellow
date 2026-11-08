@@ -25,7 +25,7 @@
 /**
  * AdminHub - 后台「大功能 → 子功能」的容器
  *
- * 侧边栏只保留 15 个大功能入口，每个入口对应的页面用标签页承载子功能：
+ * 侧边栏只保留 16 个大功能入口，每个入口对应的页面用标签页承载子功能：
  *
  *   文章管理  文章列表 / 文章分类 / 撰写文章
  *   用户管理  用户列表 / 用户认证 / 认证类型 / 等级 / 经验 / 勋章
@@ -34,7 +34,8 @@
  *   独立页面  页面列表 / 撰写页面
  *   友链管理  友链列表 / 友链分组
  *   系统配置  网站设置 / 主题配色
- *   安全中心  权限规则 / 权限分组 / 接口密钥 / IP 黑白名单 / QPS 预警 / 后台页面
+ *   聊天管理  私信会话 / 聊天审核 / 聊天室消息 / 禁言名单 / 聊天室设置
+ *   安全中心  权限规则 / 权限分组 / 接口密钥 / IP 黑白名单 / QPS 预警 / 后台页面管理
  *
  * 为什么单独抽一个文件：8 个分区的标签结构完全一致，只有数据不同，
  * 用一个组件 + 配置表，比复制 8 份 UI 好维护；以后加子功能只改这里和路由。
@@ -96,6 +97,13 @@ const HUB_TABS = {
     { label: '网站设置', to: '/admin/system', icon: 'bi bi-gear' },
     { label: '主题配色', to: '/admin/system/theme', icon: 'bi bi-palette2' }
   ],
+  chat: [
+    { label: '私信会话', to: '/admin/chat/conversations', icon: 'bi bi-envelope-paper' },
+    { label: '聊天审核', to: '/admin/chat/moderation', icon: 'bi bi-shield-exclamation' },
+    { label: '聊天室消息', to: '/admin/chat/room', icon: 'bi bi-chat-square-text' },
+    { label: '禁言名单', to: '/admin/chat/mutes', icon: 'bi bi-mic-mute' },
+    { label: '聊天室设置', to: '/admin/chat/settings', icon: 'bi bi-sliders' }
+  ],
   security: [
     { label: '权限规则', to: '/admin/security/rules', icon: 'bi bi-shield-check' },
     { label: '权限分组', to: '/admin/security/group', icon: 'bi bi-shield-lock' },
@@ -103,7 +111,7 @@ const HUB_TABS = {
     { label: 'IP 黑名单', to: '/admin/security/ip-black', icon: 'bi bi-slash-circle' },
     { label: 'IP 白名单', to: '/admin/security/ip-white', icon: 'bi bi-check-circle' },
     { label: 'QPS 预警', to: '/admin/security/qps', icon: 'bi bi-speedometer2' },
-    { label: '后台页面', to: '/admin/security/pages', icon: 'bi bi-layout-text-window' }
+    { label: '后台页面管理', to: '/admin/security/pages', icon: 'bi bi-layout-text-window' }
   ]
 }
 

@@ -18,6 +18,17 @@ export const listChatConversations = (params = {}) =>
   call('chat', 'conversations', { method: 'GET', params: { limit: 50, ...params } })
 
 /**
+ * 互关好友列表（私信只对互关好友开放）
+ *
+ * 会话列表只有「聊过的人」，这里补上还没聊过的互关好友，
+ * 消息页合并展示后点一下就能开聊，不必再去对方主页点「私信」。
+ * 返回项：{ uid, user: { id, nickname, avatar, ... }, online }
+ * @param {object} [params] limit：最多返回人数（服务端上限 200）
+ */
+export const listChatFriends = (params = {}) =>
+  call('chat', 'friends', { method: 'GET', params: { limit: 200, ...params } })
+
+/**
  * 与某人的历史消息（游标分页）
  * @param {number} targetUid 对方用户 ID
  * @param {object} [params] before_id：取这个 id 之前的一页；limit：条数（默认 20，最大 50）
@@ -59,6 +70,8 @@ export const getChatUnread = () => call('chat', 'unread', { method: 'GET' })
 // 能否与某人私聊（作者主页的「发私信」按钮状态）
 export const getChatStatus = (targetUid) =>
   call('chat', 'status', { method: 'GET', params: { target_uid: Number(targetUid) } })
+
+
 
 /**
  * 发送私信

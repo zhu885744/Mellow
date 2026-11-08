@@ -5,9 +5,6 @@
       <header class="msg-sidebar-head">
         <div class="msg-sidebar-title">
           <span>私信</span>
-          <span v-if="chatStore.unread" class="msg-total-badge">
-            {{ chatStore.unread > 99 ? '99+' : chatStore.unread }}
-          </span>
         </div>
         <div class="msg-sidebar-actions">
           <!-- 提醒设置：提示音 / 右下角悬浮通知，偏好只存本机 -->
@@ -81,7 +78,7 @@
             </div>
           </div>
 
-          <button type="button" class="msg-icon-btn" title="刷新列表" @click="loadConversations">
+          <button type="button" class="msg-icon-btn" title="刷新列表" @click="refreshList">
             <i class="bi bi-arrow-clockwise" :class="{ 'is-spin': loadingList }" aria-hidden="true" />
           </button>
           <RouterLink to="/" class="msg-icon-btn" title="返回站点">
@@ -143,10 +140,38 @@
           </button>
         </li>
 
-        <li v-if="!loadingList && !filteredConversations.length" class="msg-list-empty">
+        <!-- 互关好友：还没聊过的人也直接列出来，点一下就能开聊 -->
+        <li v-for="item in filteredFriends" :key="`friend-${item.uid}`">
+          <button
+            type="button"
+            class="msg-conv"
+            :class="{ 'is-active': Number(item.uid) === Number(activeUid) }"
+            @click="openChat(item.uid)"
+          >
+            <span class="msg-conv-avatar">
+              <img
+                :src="item.user?.avatar || defaultAvatar"
+                :alt="item.user?.nickname || '用户头像'"
+                loading="lazy"
+              />
+              <i v-if="item.online" class="msg-presence" title="在线" />
+            </span>
+            <span class="msg-conv-body">
+              <span class="msg-conv-top">
+                <span class="msg-conv-name">{{ item.user?.nickname || `用户 #${item.uid}` }}</span>
+                <span class="msg-conv-tag">互关</span>
+              </span>
+              <span class="msg-conv-bottom">
+                <span class="msg-conv-text">互关好友，点一下就能开聊</span>
+              </span>
+            </span>
+          </button>
+        </li>
+
+        <li v-if="!loadingList && !filteredConversations.length && !filteredFriends.length" class="msg-list-empty">
           <i :class="keyword ? 'bi bi-search' : 'bi bi-chat-square-dots'" aria-hidden="true" />
-          <p>{{ keyword ? '没有匹配的会话' : '还没有私信' }}</p>
-          <span v-if="!keyword">在作者主页点「私信」就能开始聊天</span>
+          <p>{{ keyword ? '没有匹配的会话' : '还没有可以聊天的人' }}</p>
+          <span v-if="!keyword">互相关注后，好友会直接出现在这里</span>
         </li>
       </ul>
     </aside>
@@ -344,7 +369,7 @@
       <div v-else class="msg-placeholder">
         <div class="msg-placeholder-mark"><i class="bi bi-chat-dots" aria-hidden="true" /></div>
         <h2>选择一段对话</h2>
-        <p>从左侧挑一个会话，或者去作者主页点「私信」</p>
+        <p>从左侧挑一个会话或互关好友，直接开聊</p>
         <RouterLink to="/" class="msg-placeholder-link">
           返回站点<i class="bi bi-arrow-right-short" aria-hidden="true" />
         </RouterLink>
@@ -398,6 +423,7 @@ import {
   deleteChatMessage,
   getChatStatus,
   listChatConversations,
+  listChatFriends,
   listChatMessages,
   patChatUser,
   readChatMessages,
@@ -439,6 +465,8 @@ const defaultAvatar =
   'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><circle cx="40" cy="40" r="40" fill="%23e8e6dd"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" fill="%238a8a82" font-family="serif">用</text></svg>'
 
 const conversations = ref([])
+// 互关好友（私信只对互关好友开放）：补上「还没聊过」的人，点一下就能开聊
+const friends = ref([])
 const loadingList = ref(false)
 const keyword = ref('')
 
@@ -500,6 +528,21 @@ const filteredConversations = computed(() => {
   return conversations.value.filter((item) => {
     const name = String(item.user?.nickname || '').toLowerCase()
     return name.includes(kw) || String(item.other_uid).includes(kw)
+  })
+})
+
+// 还没聊过的互关好友：已经在会话列表里的不再重复显示（会话行有摘要 / 未读，信息更全）
+const friendOnlyRows = computed(() => {
+  const chatted = new Set(conversations.value.map((item) => Number(item.other_uid)))
+  return friends.value.filter((item) => !chatted.has(Number(item.uid)))
+})
+
+const filteredFriends = computed(() => {
+  const kw = keyword.value.trim().toLowerCase()
+  if (!kw) return friendOnlyRows.value
+  return friendOnlyRows.value.filter((item) => {
+    const name = String(item.user?.nickname || '').toLowerCase()
+    return name.includes(kw) || String(item.uid).includes(kw)
   })
 })
 
@@ -738,6 +781,27 @@ async function loadConversations() {
   } finally {
     loadingList.value = false
   }
+}
+
+/**
+ * 互关好友（私信只对互关好友开放，见后端 model.ChatPermission）
+ *
+ * 会话列表只包含「聊过的人」，所以这里单独拉一份互关好友：
+ * 已经在会话里的由会话行展示（有摘要、未读、时间），剩下的作为新入口列出来。
+ */
+async function loadFriends() {
+  if (!userStore.isLogged) return
+  try {
+    const res = await listChatFriends()
+    if (res?.code === 200) friends.value = res.data?.data || []
+  } catch {
+    // 好友列表失败不影响会话列表（只是少了「还没聊过」的入口），静默降级
+  }
+}
+
+/** 手动刷新：会话列表 + 互关好友一起更新 */
+async function refreshList() {
+  await Promise.all([loadConversations(), loadFriends()])
 }
 
 function scrollToBottom() {
@@ -1325,16 +1389,20 @@ function onMenuScroll() {
 
 onMounted(async () => {
   chatStore.start()
-  await loadConversations()
+  await Promise.all([loadConversations(), loadFriends()])
   // 角标以服务端为准：socket 的 +1 累加在断线重连 / 重复推送后可能偏高
   chatStore.refresh()
 
   const uid = Number(route.query.to || 0)
   if (uid > 0) {
     openChat(uid)
-  } else if (conversations.value.length) {
-    // 宽屏默认打开第一个会话（窄屏由 CSS 决定只显示一屏，这里打开也不会串屏）
-    if (window.innerWidth > 860) openChat(conversations.value[0].other_uid)
+  } else if (conversations.value.length || friendOnlyRows.value.length) {
+    // 宽屏默认打开第一行（有会话优先，否则第一个还没聊过的互关好友）；
+    // 窄屏由 CSS 决定只显示一屏，这里打开也不会串屏
+    if (window.innerWidth > 860) {
+      const first = conversations.value[0]?.other_uid || friendOnlyRows.value[0]?.uid
+      if (first) openChat(first)
+    }
   }
 
   unsubscribe = chatStore.onMessage(onPrivateMessage)
@@ -1717,6 +1785,17 @@ watch(
 }
 .msg-conv.is-active .msg-conv-name {
   color: var(--primary);
+}
+/* 互关标记：还没聊过的好友行右侧挂一个小标签，和真实会话区分开 */
+.msg-conv-tag {
+  flex-shrink: 0;
+  padding: 0 6px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 16px;
+  color: var(--primary);
+  background: var(--accent-soft);
+  border-radius: 999px;
 }
 .msg-conv-time {
   flex-shrink: 0;

@@ -64,6 +64,12 @@ export const useChatStore = defineStore('chat', () => {
   // 否则「标已读后的新请求」可能被一个更早发出、更晚返回的旧结果覆盖，
   // 表现就是角标数字清掉了又自己冒回来。
   let refreshSeq = 0
+  // 本地已经拿到更靠后的结论时（标已读返回的总数 / 本地先扣 / socket 累加），
+  // 把序号往前推一格：还在飞的那次 refresh 回来就对不上号、结果作废，
+  // 否则它会把刚清掉的数字按旧值又顶回去（观感就是「清完又冒出来」）。
+  function bumpRefreshSeq() {
+    refreshSeq += 1
+  }
   // 当前正在查看的会话（对方 uid，0 = 没在聊任何会话）
   //
   // 用户正盯着这段对话时收到新消息，不该让角标先 +1 再等已读接口把它减回去：
@@ -276,6 +282,7 @@ export const useChatStore = defineStore('chat', () => {
   function consumeUnread(count) {
     const value = Number(count) || 0
     if (value <= 0) return
+    bumpRefreshSeq()
     unread.value = Math.max(0, unread.value - value)
   }
 
@@ -289,6 +296,8 @@ export const useChatStore = defineStore('chat', () => {
   function setUnread(count) {
     const value = Number(count)
     if (!Number.isFinite(value) || value < 0) return
+    // 这是服务端在「刚标完已读」之后给的数，比任何更早发出的 refresh 都新
+    bumpRefreshSeq()
     unread.value = value
   }
 
@@ -350,6 +359,9 @@ export const useChatStore = defineStore('chat', () => {
     if (me && Number(message.to_uid) === me) {
       // 正在看的会话不计未读、也不提醒：页面会立刻把它标成已读
       if (peer !== viewingUid) {
+        // 这条消息是刚到的、更新的事实：早前发出的 refresh 未必算上它，
+        // 回来时别把这次 +1 抹掉
+        bumpRefreshSeq()
         unread.value += 1
         notifyIncoming(message, peer)
       }
