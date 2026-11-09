@@ -184,12 +184,19 @@ const pinnedItems = computed(() => buildAdminPinnedItems(user.value, authPagesSt
 
 const currentTitle = computed(() => route.meta?.title || '后台管理')
 
-// 权限守卫：没有后台页面权限的账号跳回首页
-// （判定见 utils/helper.js 的 canEnterAdmin：超级管理员 / 组 key=admin / 勾了任意后台页面；
-//   不能只认「组 key=admin」，否则非 admin 的运营组即使勾了部分页面也进不来）
-if (!canEnterAdmin(user.value)) {
-  router.replace('/')
-}
+// 权限守卫：
+// - 「能不能进后台」由 router 的 meta.requiresAdmin 拦截（会先回后端确认一次权限），
+//   这里不再用 setup 时的一次性判断 —— 那时 user 可能还没拉回来，判断没有意义；
+// - 这里只兜「已经进入后台、权限又被实时撤销」的情况：check-token 刷新后 user 变化，
+//   没有后台页面权限就退回首页。
+// （判定见 utils/helper.js 的 canEnterAdmin：超管 / 组 key=admin / 勾了任意后台页面）
+watch(
+  user,
+  (u) => {
+    if (u && !canEnterAdmin(u)) router.replace('/')
+  },
+  { immediate: true }
+)
 
 // 记录「最近访问」：把 /admin/article/edit/3、/admin/badges 这类子路由归一到一级菜单
 // （/admin/article、/admin/users），供概览页快捷跳转的「最近访问」使用

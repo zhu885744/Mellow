@@ -7,6 +7,9 @@
   <Lightbox />
   <!-- 全局滑块验证：发送验证码被判定为频繁时，由 request.js 的拦截器唤起（见 utils/captchaGate） -->
   <SliderCaptcha />
+  <!-- 全局「重新验证密码」弹窗：后台会话（scope=admin）失效时唤起（见 utils/adminSession），
+       同样挂全局，后台任何页面（含守卫里的预校验）都能弹出来 -->
+  <AdminUnlockDialog />
   <!-- 新消息悬浮通知（右下角）：同样挂全局，任何页面收到私信都能提示；
        是否弹出由 chat store 判断（后台标签页不弹、正在看的会话不弹），
        开关在消息页头部与用户中心「消息提醒」里。 -->
@@ -27,6 +30,7 @@ import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'
 import { applySiteAssets } from '@/utils/siteAssets'
 import SliderCaptcha from '@/components/SliderCaptcha.vue'
+import AdminUnlockDialog from '@/components/AdminUnlockDialog.vue'
 import Lightbox from '@/components/Lightbox.vue'
 import FloatButtons from '@/components/FloatButtons.vue'
 import ChatNotice from '@/components/ChatNotice.vue'

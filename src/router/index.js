@@ -1,4 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
+import { canEnterAdmin } from '@/utils/helper'
+import { toast } from '@/utils/toast'
 import { progressStart, progressDone } from '@/utils/progress'
 import { applyRouteTitle } from '@/utils/pageTitle'
 import { closeLightbox } from '@/utils/lightbox'
@@ -163,7 +165,9 @@ const routes = [
   {
     path: '/admin',
     component: () => import('@/views/admin/Layout.vue'),
-    meta: { auth: true },
+    // requiresAdmin：进入后台前必须回后端确认一次「有没有后台页面权限」，
+    // 只靠组件内的 setup 检查不够（localStorage 里的 user 可能是旧快照，也可能被手工改过）
+    meta: { auth: true, requiresAdmin: true },
     children: [
       { path: '', redirect: '/admin/dashboard' },
       { path: 'dashboard', name: 'admin-dashboard', component: () => import('@/views/admin/Dashboard.vue'), meta: { title: '概览' } },
@@ -410,15 +414,59 @@ const router = createRouter({
   }
 })
 
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, from, next) => {
   progressStart()
-  if (to.meta.auth) {
+
+  // 需要登录：本地没有登录态就直接去登录页（后端仍会再校验 token）
+  if (to.matched.some((r) => r.meta?.auth)) {
     const userStr = localStorage.getItem('blog_user')
     if (!userStr || userStr === 'null') {
       next({ name: 'login', query: { redirect: to.fullPath } })
       return
     }
   }
+
+  // 需要后台权限：必须以服务端返回的用户权限为准
+  //
+  // 之前只在 views/admin/Layout.vue 的 setup 里用 localStorage 里的 user 判断，
+  // 普通用户（权限组 pages 为空）能直接输 /admin 进入后台外壳：
+  // 缓存里的 user 可能是旧快照（曾被授权过），也可能被手工改过 result.auth.pages.hash。
+  if (to.matched.some((r) => r.meta?.requiresAdmin)) {
+    const entering = !from.matched.some((r) => r.meta?.requiresAdmin)
+
+    let allowed = false
+    try {
+      const { useUserStore } = await import('@/stores/user')
+      const userStore = useUserStore()
+
+      // 从后台外部进来时刷新一次权限；后台内部切页不重复请求
+      if (entering || !userStore.user) {
+        await userStore.checkLoginState().catch(() => null)
+      }
+      allowed = canEnterAdmin(userStore.user)
+    } catch {
+      // 校验链路本身出错时保守拒绝：没确认过的权限不放进后台
+      allowed = false
+    }
+
+    if (!allowed) {
+      toast.warning('当前账号没有后台权限')
+      next({ path: '/', replace: true })
+      return
+    }
+
+    // 有后台页面权限 ≠ 后台入口已解锁：后台是独立会话（cookie INIS_ADMIN_TOKEN），
+    // 必须重新输入一次密码才签发。会话失效时这里会弹密码框（见 utils/adminSession.js），
+    // 用户取消或密码不对则不进后台。
+    const { ensureAdminSession } = await import('@/utils/adminSession')
+    const unlocked = await ensureAdminSession()
+    if (!unlocked) {
+      toast.warning('未通过后台验证')
+      next({ path: '/', replace: true })
+      return
+    }
+  }
+
   next()
 })
 

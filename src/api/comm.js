@@ -153,3 +153,33 @@ export const logout = () =>
  */
 export const getSliderCaptcha = () =>
   call('comm', 'captcha', { method: 'GET', config: { silent: true, dedupe: false } })
+
+// ============================== 后台管理会话 ==============================
+//
+// 后台登录态与前台登录态是两条独立的会话：
+//   - 前台：cookie INIS_LOGIN_TOKEN（15 天，长期挂在浏览器上）
+//   - 后台：cookie INIS_ADMIN_TOKEN（默认 2 小时，HttpOnly，脚本读不到）
+// 后台会话必须由「有后台页面权限」的账号重新输入一次密码才能签发，
+// 因此前台 token 泄露（XSS / 共享电脑 / 代理日志）并不能直接进后台。
+
+/**
+ * 签发后台管理会话（需要已登录 + 重新输入密码）
+ * 成功后服务端写入 HttpOnly 的后台 cookie，前端不需要（也读不到）token 本体
+ */
+export const adminLogin = (password) =>
+  call('comm', 'admin-login', {
+    method: 'POST',
+    data: { password },
+    config: { silent: true, dedupe: false }
+  })
+
+/** 校验后台管理会话是否有效（失败返回 401 + auth:'admin'） */
+export const adminCheck = () =>
+  call('comm', 'admin-check', {
+    method: 'POST',
+    config: { silent: true, dedupe: false }
+  })
+
+/** 结束后台管理会话（只退后台，不影响前台登录态） */
+export const adminLogout = () =>
+  call('comm', 'admin-logout', { method: 'DELETE', config: { silent: true } })

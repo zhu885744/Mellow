@@ -198,8 +198,19 @@ function isGuestAuth(data, config) {
   return GUEST_MESSAGES.some((item) => message.includes(item))
 }
 
+/**
+ * 是否是「后台管理会话失效」（而不是前台登录态异常）
+ *
+ * 后端约定 auth:'admin' 放在响应体顶层（middleware/rule.go）。
+ * 这里兼容 data.auth：控制器若把 auth 塞进 data（base.json 的固定结构），
+ * 也要能被识别 —— 否则会被当成普通 401，把用户整体登出。
+ */
+function isAdminAuthRequired(data) {
+  return data?.auth === 'admin' || data?.data?.auth === 'admin'
+}
+
 service.interceptors.response.use(
-  (res) => {
+  async (res) => {
     const data = res.data
     if (res.config.responseType === 'blob') return res
 
@@ -216,6 +227,23 @@ service.interceptors.response.use(
       // __captchaRetried 用于防止「重放后仍被判频繁」时无限弹窗
       if (data.code === 428 && data.data?.need_captcha && !res.config?.__captchaRetried) {
         return retryWithSlider(res)
+      }
+      // 后台管理会话失效（scope=admin，见 app/api/middleware/rule.go）：
+      // 后台页面不共用前台登录态，这里弹密码框重新换一条管理会话，通过后重放原请求。
+      // 不走下面 401 那套「登出 + 弹窗」：前台登录态仍然有效，不该被一起清掉。
+      if (data.code === 401 && isAdminAuthRequired(data)) {
+        // 已经验证过一次还是 401：多半是 cookie 没存下来（浏览器禁用 / 跨域被拦），
+        // 再弹一次密码框也没用，直接说明原因
+        if (res.config?.__adminRetried) {
+          toast.error('后台验证未生效，请确认浏览器允许本站保存 cookie 后重试')
+          return Promise.reject({ ...data, code: data.code })
+        }
+        const { unlockAdminSession } = await import('@/utils/adminSession')
+        const unlocked = await unlockAdminSession(data.msg)
+        if (!unlocked) {
+          return Promise.reject({ ...data, code: data.code })
+        }
+        return service.request({ ...res.config, __adminRetried: true })
       }
       // 401/412 未登录或 token 失效：清理本地状态并弹窗提示
       // 若调用方传了 skipAuthLogout（如 check-token 需要拿到原始码做本地状态清理），
