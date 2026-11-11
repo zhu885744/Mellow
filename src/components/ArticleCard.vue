@@ -46,6 +46,7 @@ import { formatDate } from '@/utils/time'
 import { truncate, stripArticleMarkup } from '@/utils/helper'
 import EmojiText from '@/components/EmojiText.vue'
 import WearingBadge from '@/components/WearingBadge.vue'
+import { thumbUrl } from '@/utils/image'
 
 const props = defineProps({
   article: { type: Object, required: true },
@@ -61,11 +62,18 @@ const abstractText = computed(() =>
 )
 
 // 封面
+//
+// 卡片里的封面框只有 160×108（见下方 .article-cover），直接拉原图等于把
+// 上千像素的图下载 + 解码后缩到 1/10 显示 —— 列表一页十几张卡就是几十 MB 的浪费，
+// 也是首屏卡顿的主要来源。这里按 2 倍图（320px）取缩略图，
+// 图床不支持时 thumbUrl 会原样返回，不影响外链图与本地资源。
+const COVER_WIDTH = 320
+
 const cover = computed(() => {
   const c = props.article.covers
   if (!c) return ''
-  if (Array.isArray(c)) return c[0] || ''
-  return String(c).split(',')[0] || ''
+  const first = Array.isArray(c) ? c[0] || '' : String(c).split(',')[0] || ''
+  return first ? thumbUrl(first.trim(), COVER_WIDTH) : ''
 })
 
 // 分组（后端返回对象）

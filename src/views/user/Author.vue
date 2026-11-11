@@ -101,21 +101,22 @@
         <p class="hero-desc">{{ profile.description || '这个人很懒，什么都没留下' }}</p>
 
         <!-- 认证 / 个人网站：做成轻量胶囊，避免和签名抢行 -->
-        <div v-if="cert || (website && website.url)" class="hero-chips">
+        <div v-if="cert || websiteUrl" class="hero-chips">
           <!-- 认证信息：默认只展示认证名称 + 后台填写的认证说明（认证领域不对外展示） -->
           <span v-if="cert" class="hero-chip">
             <i class="bi bi-patch-check-fill" :style="{ color: certIconColor }" aria-hidden="true" />
             <span class="hero-chip-strong">{{ cert.title }}</span>
             <span v-if="cert.description" class="hero-chip-desc">{{ cert.description }}</span>
           </span>
+          <!-- 个人网站：地址经 safeUrl 过滤，非法协议不生成链接（退化为纯文本胶囊） -->
           <a
-            v-if="website && website.url"
+            v-if="websiteUrl"
             class="hero-chip hero-chip-link"
-            :href="website.url"
+            :href="websiteUrl"
             target="_blank"
             rel="noopener noreferrer"
           >
-            <i class="bi bi-link-45deg" aria-hidden="true" /> {{ website.name || website.url }}
+            <i class="bi bi-link-45deg" aria-hidden="true" /> {{ website.name || websiteUrl }}
           </a>
         </div>
 
@@ -468,6 +469,7 @@ import { toast } from '@/utils/toast'
 import { renderEmoji } from '@/utils/emoji'
 import { thumbUrl } from '@/utils/image'
 import EmptyState from '@/components/EmptyState.vue'
+import { safeUrl } from '@/utils/url'
 
 const route = useRoute()
 const router = useRouter()
@@ -497,7 +499,12 @@ onBeforeUnmount(() => {
 })
 
 // 个人网站（来自 json.website，用户在「个人资料」页设置）
+//
+// 这里必须再过一遍协议白名单：资料页只在输入框上校验了 ^https?://，
+// 直接调接口提交 `javascript:` 就能绕过，而这是别人主页上的链接，
+// 点一下就等于在本站域下执行脚本（token 存在可读 cookie 里）。
 const website = computed(() => (profile.value?.json && profile.value.json.website) || null)
+const websiteUrl = computed(() => safeUrl(website.value?.url))
 
 // 头像框（来自 json.frame，佩戴头像框时由服务端回写；frame_animated 为动效开关）
 const frame = computed(() => (profile.value?.json && profile.value.json.frame) || '')

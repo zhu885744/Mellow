@@ -50,6 +50,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSiteStore } from '@/stores/site'
 import { openLightbox } from '@/utils/lightbox'
 import { useThemeStore } from '@/stores/theme'
+import { safeUrl } from '@/utils/url'
 
 const siteStore = useSiteStore()
 const themeStore = useThemeStore()
@@ -89,7 +90,9 @@ function onButtonClick(btn) {
     return
   }
   if (btn.url) {
-    window.open(btn.url, '_blank', 'noopener')
+    // 后台配置的跳转地址：协议不在白名单（javascript: 等）时不做任何跳转
+    const url = safeUrl(btn.url)
+    if (url) window.open(url, '_blank', 'noopener')
   }
 }
 

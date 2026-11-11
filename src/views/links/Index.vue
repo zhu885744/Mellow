@@ -66,7 +66,7 @@
           <a
             v-for="link in (g.list || [])"
             :key="link.id"
-            :href="link.url"
+            :href="safeUrl(link.url) || undefined"
             target="_blank"
             rel="noopener"
             class="link-card"
@@ -207,6 +207,7 @@ import { call } from '@/api/request'
 import { cache } from '@/utils/cache'
 import { renderMarkdown } from '@/utils/markdown'
 import { sanitizeHtml } from '@/utils/html'
+import { safeUrl } from '@/utils/url'
 import { toast } from '@/utils/toast'
 
 // 优化后的默认头像（渐变背景+白色文字）

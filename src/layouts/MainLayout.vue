@@ -128,7 +128,7 @@
             <template v-for="(item, i) in customMenus" :key="'menu-' + i">
               <a
                 v-if="item.external"
-                :href="item.url"
+                :href="safeUrl(item.url) || undefined"
                 target="_blank"
                 rel="noopener noreferrer"
                 class="nav-item"
@@ -217,7 +217,7 @@
               <i class="bi bi-patch-check" aria-hidden="true" />
               <a
                 v-if="site.copyLink"
-                :href="site.copyLink"
+                :href="safeUrl(site.copyLink) || undefined"
                 target="_blank"
                 rel="noopener noreferrer"
               >{{ site.copyCode }}</a>
@@ -227,7 +227,7 @@
               <i class="bi bi-shield-check" aria-hidden="true" />
               <a
                 v-if="site.policeLink"
-                :href="site.policeLink"
+                :href="safeUrl(site.policeLink) || undefined"
                 target="_blank"
                 rel="noopener noreferrer"
               >{{ site.policeCode }}</a>
@@ -265,6 +265,7 @@ import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
 import { normalizeSidebarConfig } from '@/utils/sidebar'
 import { canEnterAdmin } from '@/utils/helper'
+import { safeUrl } from '@/utils/url'
 import { useRouter, useRoute } from 'vue-router'
 
 const userStore = useUserStore()

@@ -170,7 +170,7 @@
               <span class="meta-text is-author" :title="authorTitle(item)">
                 <i class="bi bi-person" /> {{ authorName(item) }}
               </span>
-              <a class="link-url" :href="item.url || '#'" target="_blank" rel="noopener noreferrer" :title="item.url">
+              <a class="link-url" :href="safeUrl(item.url) || undefined" target="_blank" rel="noopener noreferrer" :title="item.url">
                 <i class="bi bi-box-arrow-up-right" /> {{ item.url || '—' }}
               </a>
               <span class="meta-text"><i class="bi bi-clock" /> {{ timeText(item) }}</span>
@@ -427,6 +427,7 @@ import {
 import { fromNow } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
+import { safeUrl } from '@/utils/url'
 
 const pageSize = ref(PAGE_SIZE_DEFAULT)
 

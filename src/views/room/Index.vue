@@ -13,7 +13,12 @@
 
       <div class="room-title">
         <h1>{{ room.name || '公共聊天室' }}</h1>
-        <p>{{ room.description || '全站用户都在这里，随便聊点什么' }}</p>
+        <p>
+          <span class="room-desc">{{ room.description || '全站用户都在这里，随便聊点什么' }}</span>
+          <button type="button" class="room-online" @click="memberOpen = true">
+            <i class="bi bi-broadcast" aria-hidden="true" />{{ onlineCount }} 人在线
+          </button>
+        </p>
       </div>
 
       <div class="room-actions">
@@ -110,7 +115,31 @@
         <i class="bi bi-mic-mute" aria-hidden="true" />{{ muteTip }}
       </p>
 
-      <form v-else class="room-composer-box" @submit.prevent="send">
+      <template v-else>
+        <!-- 有人正在输入：只在有人打字时出现，4 秒无新上报自动消失 -->
+        <p v-if="typingText" class="room-typing">
+          <i class="bi bi-three-dots" aria-hidden="true" />{{ typingText }}
+        </p>
+
+        <form class="room-composer-box" @submit.prevent="send">
+        <!-- @ 选人：输入 @ 或点工具栏的 @ 按钮弹出，只列在线成员 -->
+        <div
+          v-if="mentionOpen && mentionCandidates.length"
+          class="room-mention"
+          @mousedown.prevent
+        >
+          <p class="room-mention-title">选择要 @ 的人</p>
+          <button
+            v-for="item in mentionCandidates"
+            :key="item.uid"
+            type="button"
+            class="room-mention-item"
+            @click="pickMention(item)"
+          >
+            <i class="bi bi-at" aria-hidden="true" />{{ item.name }}
+          </button>
+        </div>
+
         <!-- 引用态：显示被引用消息的摘要，发送后自动清除 -->
         <div v-if="quoteDraft" class="room-quote-draft">
           <div class="room-quote-draft-body">
@@ -132,6 +161,15 @@
             </button>
             <EmojiPicker v-model="emojiOpen" @select="insertEmoji" />
           </div>
+
+          <button
+            type="button"
+            class="room-icon-btn"
+            title="提到某人"
+            @click="openMention"
+          >
+            <i class="bi bi-at" aria-hidden="true" />
+          </button>
 
           <button
             type="button"
@@ -158,8 +196,9 @@
           class="room-input"
           rows="1"
           maxlength="2000"
-          placeholder="说点什么…"
-          @keydown.enter.exact.prevent="send"
+          placeholder="说点什么…（输入 @ 可以提到在线的人）"
+          @keydown="onInputKeydown"
+          @input="onInput"
           @paste="onPaste"
         />
 
@@ -167,6 +206,7 @@
           <i :class="sending ? 'bi bi-arrow-repeat is-spin' : 'bi bi-arrow-up-short'" aria-hidden="true" />
         </button>
       </form>
+      </template>
     </footer>
 
     <!-- ==================== 管理面板（仅超级管理员） ==================== -->
@@ -294,6 +334,39 @@
           <button type="button" class="room-btn" @click="mute(userPanel.uid, 1440)">禁言 1 天</button>
           <button type="button" class="room-btn room-btn-danger" @click="mute(userPanel.uid, 0)">永久禁言</button>
         </div>
+      </div>
+    </div>
+
+    <!-- ==================== 在线成员 ==================== -->
+    <div v-if="memberOpen" class="room-modal">
+      <div class="room-modal-mask" @click="memberOpen = false" />
+      <div class="room-modal-card room-member-card">
+        <header class="room-member-head">
+          <span>在线成员（{{ onlineMembers.length }}）</span>
+          <button type="button" class="room-icon-btn" title="关闭" @click="memberOpen = false">
+            <i class="bi bi-x-lg" aria-hidden="true" />
+          </button>
+        </header>
+
+        <ul class="room-member-list">
+          <li v-for="item in onlineMembers" :key="item.uid" class="room-member-row">
+            <span class="room-member-avatar">{{ (item.name || '?').slice(0, 1) }}</span>
+            <span class="room-member-name">
+              {{ item.name }}
+              <em v-if="item.uid === me" class="room-member-self">我</em>
+            </span>
+            <button
+              v-if="item.uid !== me"
+              type="button"
+              class="room-btn room-btn-sm"
+              @click="mentionMember(item)"
+            >@ TA</button>
+          </li>
+
+          <li v-if="!onlineMembers.length" class="room-tip">暂时没有其他人在线</li>
+        </ul>
+
+        <p class="room-tip">这里只统计已登录用户；多设备登录只算一个人。</p>
       </div>
     </div>
 
@@ -437,7 +510,42 @@ const clearInfo = ref({ days: 3, last_time: 0, last_count: 0, next_time: 0 })
 // 管理员点某条消息头像后弹出的用户操作
 const userPanel = ref(null)
 
+// 在线成员面板
+const memberOpen = ref(false)
+
+// @ 选人：mentionKeyword 是 @ 后面已经输入的部分，用来过滤候选
+const mentionOpen = ref(false)
+const mentionKeyword = ref('')
+// 这条消息要提醒的人（只存 uid，正文里已经有 @昵称）
+const mentionUids = ref([])
+
+// 正在输入的人（uid → { name }）：4 秒没有新上报就移除
+const typers = ref(new Map())
+const typingTimers = new Map()
+
 const me = computed(() => Number(userStore.user?.id || 0))
+
+// 在线成员来自 chat store 的 status 广播（已按 uid 去重，不含访客）
+const onlineMembers = computed(() => chatStore.presence.users)
+const onlineCount = computed(() => onlineMembers.value.length)
+
+/** @ 候选：排除自己，按已输入的关键字过滤，最多 8 个 */
+const mentionCandidates = computed(() => {
+  const kw = mentionKeyword.value.trim().toLowerCase()
+  return onlineMembers.value
+    .filter((item) => Number(item.uid) !== me.value)
+    .filter((item) => !kw || String(item.name || '').toLowerCase().includes(kw))
+    .slice(0, 8)
+})
+
+/** 输入状态文案：一个人直接念名字，多个人只报数量，避免占满一行 */
+const typingText = computed(() => {
+  const names = [...typers.value.values()].map((item) => item.name).filter(Boolean)
+  if (!names.length) return ''
+  if (names.length === 1) return `${names[0]} 正在输入…`
+  return `${names[0]} 等 ${names.length} 人正在输入…`
+})
+
 const muteTip = computed(() => {
   if (!muted.value) return ''
   if (mutedUntil.value > 0) return `你已被禁言，${formatTime(mutedUntil.value)} 解除`
@@ -600,7 +708,10 @@ async function copyMessage(msg) {
 }
 
 function onMenuKeydown(e) {
-  if (e.key === 'Escape') closeMessageMenu()
+  if (e.key !== 'Escape') return
+  closeMessageMenu()
+  mentionOpen.value = false
+  memberOpen.value = false
 }
 
 function onMenuScroll() {
@@ -768,6 +879,91 @@ async function syncMessages() {
   }
 }
 
+// ---------- @ 提及 ----------
+
+/** 输入时：上报「正在输入」，并判断是否要弹出 @ 候选 */
+function onInput() {
+  if (muted.value) return
+
+  chatStore.sendRoomTyping()
+
+  const el = inputRef.value
+  const pos = el?.selectionStart ?? draft.value.length
+  const before = draft.value.slice(0, pos)
+  const match = before.match(/@([^\s@]*)$/)
+
+  mentionOpen.value = Boolean(match)
+  mentionKeyword.value = match ? match[1] : ''
+}
+
+/** 工具栏的 @ 按钮：不输入也能选人 */
+function openMention() {
+  if (muted.value) return
+  mentionKeyword.value = ''
+  mentionOpen.value = true
+  nextTick(() => inputRef.value?.focus())
+}
+
+/** 选中某人：把光标处的 @关键词 替换成「@昵称 」 */
+function pickMention(member) {
+  const uid = Number(member?.uid) || 0
+  if (uid <= 0) return
+
+  const el = inputRef.value
+  const value = draft.value
+  const pos = el?.selectionStart ?? value.length
+  const before = value.slice(0, pos)
+  const at = before.lastIndexOf('@')
+
+  // 只有「光标前紧跟着 @关键词」才替换这一段；从按钮打开的则插在光标处
+  const start = at >= 0 && !/\s/.test(before.slice(at + 1)) ? at : pos
+  const inserted = `@${member.name} `
+
+  draft.value = value.slice(0, start) + inserted + value.slice(pos)
+  if (!mentionUids.value.includes(uid)) mentionUids.value.push(uid)
+
+  mentionOpen.value = false
+  mentionKeyword.value = ''
+
+  nextTick(() => {
+    el?.focus()
+    const next = start + inserted.length
+    el?.setSelectionRange(next, next)
+  })
+}
+
+/** 成员面板点「@ TA」：先关面板再插入，否则面板会盖住输入框 */
+function mentionMember(member) {
+  memberOpen.value = false
+  pickMention(member)
+}
+
+/**
+ * 输入框键盘处理
+ *
+ * @ 面板打开时，回车 / Tab 先选中第一个候选；否则回车发送。
+ * e.isComposing 是中文输入法正在组字，这时回车是「选字」，不能当成发送。
+ */
+function onInputKeydown(e) {
+  if (mentionOpen.value) {
+    if ((e.key === 'Enter' || e.key === 'Tab') && mentionCandidates.value.length) {
+      e.preventDefault()
+      pickMention(mentionCandidates.value[0])
+      return
+    }
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      mentionOpen.value = false
+      return
+    }
+  }
+
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault()
+    send()
+  }
+}
+
 // ---------- 发送 ----------
 
 async function postMessage(content, msgType = 'text', quoteId = 0) {
@@ -776,6 +972,8 @@ async function postMessage(content, msgType = 'text', quoteId = 0) {
     msg_type: msgType,
     // 引用回复：只传被引用消息 id，摘要由服务端回查后落快照
     quote_id: Number(quoteId) || 0,
+    // @提及只对文本生效：图片消息里没有 @昵称 可以核对
+    mention_uids: msgType === 'text' ? [...mentionUids.value] : [],
     // 幂等键：连点 / 重试都只会落一条
     client_msg_id: `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
   })
@@ -799,6 +997,9 @@ async function send() {
     if (message) {
       draft.value = ''
       clearQuote()
+      // @ 名单属于这一条消息：发出去就清掉，否则下一条会被误提醒
+      mentionUids.value = []
+      mentionOpen.value = false
     }
   } catch {
     /* 错误已由 request.js 提示 */
@@ -1084,11 +1285,43 @@ async function unmute(uid) {
 
 let unsubscribeEvent = null
 
+/** 记一条「某人正在输入」，4 秒无新上报自动移除 */
+function noteTyping(uid) {
+  const key = Number(uid) || 0
+  if (key <= 0 || key === me.value) return
+
+  const name = onlineMembers.value.find((item) => Number(item.uid) === key)?.name || `用户 #${key}`
+  typers.value.set(key, { name })
+
+  clearTimeout(typingTimers.get(key))
+  typingTimers.set(
+    key,
+    setTimeout(() => {
+      typers.value.delete(key)
+      typingTimers.delete(key)
+    }, 4000)
+  )
+}
+
 function onRoomEvent(payload = {}) {
   // 断线重连：按本地最大 seq 补齐断网期间的消息，顺便刷新禁言状态
   if (payload.type === 'reconnect') {
     syncMessages()
     loadInfo()
+    return
+  }
+
+  // 有人正在输入（聊天室广播）：前端自己按 uid 过滤掉自己
+  if (payload.type === 'typing') {
+    noteTyping(payload.fromUid)
+    return
+  }
+
+  // 有人 @ 我：在房间里就直接提示并把角标清掉（已经看到了）
+  if (payload.type === 'mention') {
+    if (Number(payload.item?.from_uid) === me.value) return
+    chatStore.clearRoomMentions()
+    toast.info('有人在聊天室提到了你')
     return
   }
 
@@ -1099,6 +1332,13 @@ function onRoomEvent(payload = {}) {
 
   if (type === 'room') {
     if (mergeMessages([data])) scrollToBottom()
+    // 消息已经到了，对应的「正在输入」就该收掉
+    const uid = Number(data.uid) || 0
+    if (uid > 0 && typers.value.has(uid)) {
+      typers.value.delete(uid)
+      clearTimeout(typingTimers.get(uid))
+      typingTimers.delete(uid)
+    }
     return
   }
 
@@ -1150,9 +1390,18 @@ let infoTimer = null
 
 onMounted(async () => {
   chatStore.start()
+  // 进了房间就说明已经看到 @：把私信列表入口上的红点清掉
+  chatStore.clearRoomMentions()
+  // 房间里被 @ 由本页 toast 提示，不再重复弹右下角浮层
+  chatStore.setViewingRoom(true)
   await Promise.all([loadInfo(), loadHistory(0)])
   unsubscribeEvent = chatStore.onEvent(onRoomEvent)
-  infoTimer = setInterval(loadInfo, 60 * 1000)
+  // 后台标签页不刷新：这个轮询只是为了「禁言到点自动解除」，
+  // 页面不可见时刷新没有意义（用户看不到），还会占一个连接与一次 QPS 计数
+  infoTimer = setInterval(() => {
+    if (typeof document !== 'undefined' && document.hidden) return
+    loadInfo()
+  }, 60 * 1000)
 
   // 菜单打开时按 Esc / 滚动页面都要收起，避免浮在错误的位置
   document.addEventListener('keydown', onMenuKeydown)
@@ -1161,7 +1410,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   if (unsubscribeEvent) unsubscribeEvent()
+  chatStore.setViewingRoom(false)
   clearInterval(infoTimer)
+  typingTimers.forEach((timer) => clearTimeout(timer))
+  typingTimers.clear()
   document.removeEventListener('keydown', onMenuKeydown)
   window.removeEventListener('scroll', onMenuScroll, true)
 })
@@ -1246,12 +1498,38 @@ onBeforeUnmount(() => {
   text-overflow: ellipsis;
 }
 .room-title p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 2px 0 0;
   font-size: 12px;
   color: var(--text-light);
   overflow: hidden;
   white-space: nowrap;
+}
+.room-desc {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
   text-overflow: ellipsis;
+}
+/* 在线人数：点开成员面板，也是 @ 选人的入口之一 */
+.room-online {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 8px;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--primary);
+  background: var(--accent-soft);
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.room-online:hover {
+  background: var(--accent-wash);
 }
 .room-actions {
   display: flex;
@@ -1518,6 +1796,7 @@ onBeforeUnmount(() => {
   border-top: 1px solid var(--border);
 }
 .room-composer-box {
+  position: relative;
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -1603,6 +1882,123 @@ onBeforeUnmount(() => {
   background: var(--accent-wash);
   border-radius: var(--radius);
 }
+/* 有人正在输入：一行灰字，出现 / 消失都不推挤输入框太多 */
+.room-typing {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 6px;
+  padding-left: 4px;
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+/* @ 选人面板：挂在输入框上方，不遮挡输入内容 */
+.room-mention {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: calc(100% + 6px);
+  max-height: 220px;
+  overflow-y: auto;
+  padding: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  z-index: 1600;
+}
+.room-mention-title {
+  margin: 2px 6px 6px;
+  font-size: 11px;
+  color: var(--text-light);
+}
+.room-mention-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 7px 8px;
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.room-mention-item:hover {
+  background: var(--bg-muted);
+}
+.room-mention-item i {
+  color: var(--primary);
+}
+
+/* 在线成员面板 */
+.room-member-card {
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100%);
+  max-height: min(70vh, 560px);
+  padding: 0;
+  overflow: hidden;
+}
+.room-member-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid var(--border-soft);
+}
+.room-member-list {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 6px 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+.room-member-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px;
+  border-radius: var(--radius);
+}
+.room-member-row:hover {
+  background: var(--bg-muted);
+}
+.room-member-avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  flex-shrink: 0;
+  font-size: 13px;
+  color: var(--text-soft);
+  background: var(--accent-wash);
+  border-radius: 50%;
+}
+.room-member-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.room-member-self {
+  margin-left: 6px;
+  font-style: normal;
+  font-size: 10px;
+  color: var(--primary);
+}
+.room-member-card .room-tip {
+  padding: 0 14px 12px;
+}
 
 /* ==================== 管理抽屉 ==================== */
 .room-admin {
@@ -1626,7 +2022,7 @@ onBeforeUnmount(() => {
   flex-direction: column;
   background: var(--bg-card);
   border-left: 1px solid var(--border);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
 }
 .room-admin-head {
   display: flex;
@@ -1758,7 +2154,7 @@ onBeforeUnmount(() => {
   background: var(--bg-card);
   border: 1px solid var(--border-soft);
   border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
 }
 .room-modal-user {
   display: flex;

@@ -145,8 +145,8 @@
             <div class="placard-dialog-foot">
               <span class="placard-dialog-date">{{ formatDate(activePlacard.create_time) }}</span>
               <a
-                v-if="activePlacard.url"
-                :href="activePlacard.url"
+                v-if="placardUrl(activePlacard)"
+                :href="placardUrl(activePlacard)"
                 :target="placardLinkTarget(activePlacard)"
                 :rel="placardLinkTarget(activePlacard) === '_blank' ? 'noopener' : null"
                 class="btn btn-primary btn-sm"
@@ -180,6 +180,7 @@ import { call } from '@/api/request'
 import { placardTypeLabel, placardTypeColor, placardTypeStyle } from '@/utils/placard'
 import { formatDate } from '@/utils/time'
 import { toast } from '@/utils/toast'
+import { safeUrl } from '@/utils/url'
 
 const loading = ref(false)
 const placards = ref([])
@@ -316,10 +317,16 @@ function placardLinkTarget(p) {
   return p?.target === '_self' ? '_self' : '_blank'
 }
 
+// 公告跳转地址：后台填写，仍走协议白名单 —— 后台富文本/输入框被塞进
+// `javascript:` 时不会变成「点一下就执行」的按钮；非法地址直接不渲染链接
+function placardUrl(p) {
+  return safeUrl(p?.url)
+}
+
 // _self 且为站内路径时走路由跳转，避免整页刷新；外链交由浏览器默认行为处理
 function onPlacardLinkClick(e, p) {
   if (placardLinkTarget(p) !== '_self') return
-  const url = p?.url || ''
+  const url = placardUrl(p)
   // 排除协议相对地址（//example.com）与带协议的绝对地址
   if (!url.startsWith('/') || url.startsWith('//')) return
   e.preventDefault()

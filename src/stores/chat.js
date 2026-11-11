@@ -12,6 +12,9 @@ const ACK_DELAY = 800
 // 只存本机：这是「这台设备要不要响 / 要不要弹」的偏好，不需要同步到账号
 const ALERT_KEY = 'mellow_chat_alert'
 
+// 「正在输入」上报间隔（毫秒）：服务端还有 1.5s 的兜底节流
+const TYPING_INTERVAL = 3000
+
 /**
  * 私信（用户私聊）实时通道
  *
@@ -36,6 +39,21 @@ export const useChatStore = defineStore('chat', () => {
   const connected = ref(false)
   // 最近一条收到的消息
   const incoming = ref(null)
+
+  // 在线成员快照（服务端 status 广播，已按 uid 去重）
+  //
+  // 聊天室的「N 人在线」、@ 选人面板都读这里：
+  // 服务端的在线列表是按连接算的（多端会重复），这里统一收敛成「一个人一条」。
+  const presence = ref({ count: 0, users: [] })
+
+  // 聊天室里我被 @ 的次数（私信列表的房间入口显示红点，进房间清零）
+  const roomMentions = ref(0)
+
+  // 免打扰的会话（对方 uid 集合）
+  //
+  // 只影响提醒，不影响未读：免打扰的会话照常累加角标，
+  // 否则用户会以为消息没收到。
+  const mutedPeers = ref(new Set())
 
   // 订阅者：聊天页打开时挂一个，用来把新消息追加到当前对话
   const listeners = new Set()
@@ -75,6 +93,11 @@ export const useChatStore = defineStore('chat', () => {
   // 用户正盯着这段对话时收到新消息，不该让角标先 +1 再等已读接口把它减回去：
   // 那一下跳动很像「数字清不掉」。页面进入/退出会话时通过 setViewing 同步这里。
   let viewingUid = 0
+  // 是否正停留在聊天室页面
+  //
+  // 在房间里被 @ 时页面自己会 toast，不必再弹右下角浮层（会重复提示）；
+  // 但页面切到后台时仍要发系统通知，否则用户完全错过。
+  let viewingRoom = false
 
   // 每个会话（键 = 对方 uid）已收到的最大 seq / 已上报 ACK 的最大 seq
   //
@@ -140,6 +163,9 @@ export const useChatStore = defineStore('chat', () => {
    * 注意后台不再播 Web Audio：系统通知自己带提示音，两处一起响会很吵。
    */
   function notifyIncoming(message, peerUid) {
+    // 免打扰的会话只累计未读，不出声、不弹任何提示
+    if (isPeerMuted(peerUid)) return
+
     const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
 
     if (hidden) {
@@ -185,6 +211,61 @@ export const useChatStore = defineStore('chat', () => {
     }
 
     if (key === 'sound' && next) playNoticeSound()
+  }
+
+  // ---------- 免打扰 / 在线成员 ----------
+
+  /** 用会话列表刷新「哪些会话被免打扰」（列表加载 / 设置变更后调用） */
+  function setMutedPeers(uids) {
+    const next = new Set()
+    ;(uids || []).forEach((uid) => {
+      const value = Number(uid) || 0
+      if (value > 0) next.add(value)
+    })
+    mutedPeers.value = next
+  }
+
+  function isPeerMuted(uid) {
+    return mutedPeers.value.has(Number(uid) || 0)
+  }
+
+  /** 进房间时清掉 @ 角标 */
+  function clearRoomMentions() {
+    roomMentions.value = 0
+  }
+
+  // ---------- 正在输入 ----------
+
+  // 每个会话上次上报的时间：同一个人连续打字时，3 秒内只发一次
+  const typingSentAt = new Map()
+  let roomTypingAt = 0
+
+  /**
+   * 上报「我正在给某人打字」
+   *
+   * 服务端只转发、不落库，丢了无所谓，所以连不上时直接忽略，
+   * 不必退回 HTTP（多一次往返去告诉对方「我在打字」很不划算）。
+   */
+  function sendTyping(peerUid) {
+    const key = Number(peerUid) || 0
+    if (key <= 0 || !client) return
+
+    const now = Date.now()
+    if (now - (typingSentAt.get(key) || 0) < TYPING_INTERVAL) return
+    typingSentAt.set(key, now)
+
+    client.send({ type: 'typing', to: `user_${key}` })
+  }
+
+  /** 上报「我正在聊天室打字」（广播给房间内所有人，前端按 uid 过滤自己） */
+  function sendRoomTyping() {
+    if (!client) return
+
+    const now = Date.now()
+    if (now - roomTypingAt < TYPING_INTERVAL) return
+    roomTypingAt = now
+
+    client.send({ type: 'typing', room: 1 })
   }
 
   // ---------- 送达确认（ACK） ----------
@@ -306,8 +387,69 @@ export const useChatStore = defineStore('chat', () => {
     viewingUid = Number(peerUid) || 0
   }
 
+  /** 告知是否停留在聊天室（房间里被 @ 由页面自己提示，避免重复弹窗） */
+  function setViewingRoom(value) {
+    viewingRoom = !!value
+  }
+
   function handleSocketMessage(payload) {
     if (!payload) return
+
+    // 在线成员快照：服务端节流后广播给所有人（含访客）
+    if (payload.type === 'status') {
+      const content = payload.content || {}
+      const users = Array.isArray(content.online_users) ? content.online_users : []
+      const seen = new Map()
+
+      users.forEach((item) => {
+        const uid = Number(item?.uid || 0)
+        // uid 为 0 是未登录访客；同一个人的多台设备只保留一条
+        if (uid <= 0 || seen.has(uid)) return
+        seen.set(uid, {
+          uid,
+          name: item.name || `用户 #${uid}`,
+          lastActive: Number(item.last_active) || 0
+        })
+      })
+
+      presence.value = {
+        count: Number(content.online_count) || users.length,
+        users: [...seen.values()]
+      }
+      return
+    }
+
+    // 对方正在输入：纯瞬时状态，由页面自己定时清除（这里不维护超时）
+    if (payload.type === 'chat_typing') {
+      const fromUid = Number(payload.data?.from_uid || 0)
+      if (fromUid > 0) emitEvent({ type: 'typing', fromUid })
+      return
+    }
+
+    // 聊天室里有人 @ 我：累计角标 + 走与私信同一套提醒通道
+    // （页面在后台时由 ChatNotice 转成系统通知，前台走右下角浮层）
+    if (payload.type === 'chat_mention') {
+      const item = payload.data || {}
+      roomMentions.value += 1
+
+      const uid = Number(item.from_uid || 0)
+      if (uid > 0) {
+        const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
+        const notice = { kind: 'room', peerUid: uid, preview: String(item.preview || '') }
+
+        if (hidden) {
+          // 页面不可见（包括停在房间里但切走了标签页）：走系统通知
+          if (alert.desktop) emitNotice({ ...notice, background: true })
+        } else if (!viewingRoom) {
+          if (alert.sound) playNoticeSound()
+          if (alert.toast) emitNotice({ ...notice, background: false })
+          else if (alert.desktop) emitNotice({ ...notice, background: true })
+        }
+      }
+
+      emitEvent({ type: 'mention', item })
+      return
+    }
 
     // 公共聊天室：服务端全员广播的消息与各类事件（撤回 / 禁言 / 解禁 / 改资料）。
     // 它不参与私信的未读与提醒逻辑，原样转给订阅者（房间页）自己处理。
@@ -412,8 +554,14 @@ export const useChatStore = defineStore('chat', () => {
     // 水位属于「当前登录用户」，换人登录必须清掉，否则会把上一个人的 seq 当成本地进度
     receivedSeq.clear()
     ackedSeq.clear()
+    typingSentAt.clear()
+    roomTypingAt = 0
+    mutedPeers.value = new Set()
+    presence.value = { count: 0, users: [] }
+    roomMentions.value = 0
     hasOpened = false
     viewingUid = 0
+    viewingRoom = false
     connected.value = false
     unread.value = 0
     incoming.value = null
@@ -438,9 +586,22 @@ export const useChatStore = defineStore('chat', () => {
     setUnread,
     // 正在查看的会话：这段对话的新消息不计入角标
     setViewing,
+    // 是否停留在聊天室（房间里不重复弹 @ 通知）
+    setViewingRoom,
     // 消息提醒偏好（提示音 / 悬浮通知）与订阅
     alert,
     setAlert,
-    onNotice
+    onNotice,
+    // 在线成员快照（聊天室的在线人数 / 成员列表 / @ 选人）
+    presence,
+    // 聊天室 @ 角标
+    roomMentions,
+    clearRoomMentions,
+    // 免打扰的会话
+    setMutedPeers,
+    isPeerMuted,
+    // 正在输入（私聊 / 聊天室）
+    sendTyping,
+    sendRoomTyping
   }
 })

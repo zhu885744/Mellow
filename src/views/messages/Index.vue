@@ -106,6 +106,10 @@
               <span class="msg-room-name">公共聊天室</span>
               <span class="msg-room-desc">全站用户都在这里</span>
             </span>
+            <!-- 有人在聊天室 @ 我：进房间前先在入口上标出来，否则这条提醒就飘走了 -->
+            <span v-if="chatStore.roomMentions" class="msg-room-badge">
+              {{ chatStore.roomMentions > 99 ? '99+' : chatStore.roomMentions }}
+            </span>
             <i class="bi bi-chevron-right msg-room-arrow" aria-hidden="true" />
           </RouterLink>
         </li>
@@ -116,6 +120,7 @@
             class="msg-conv"
             :class="{ 'is-active': Number(item.other_uid) === Number(activeUid) }"
             @click="openChat(item.other_uid)"
+            @contextmenu.prevent="openConvMenu($event, item.other_uid)"
           >
             <span class="msg-conv-avatar">
               <img
@@ -127,7 +132,9 @@
             </span>
             <span class="msg-conv-body">
               <span class="msg-conv-top">
+                <i v-if="item.pinned" class="bi bi-pin-angle-fill msg-conv-flag" title="已置顶" aria-hidden="true" />
                 <span class="msg-conv-name">{{ item.user?.nickname || `用户 #${item.other_uid}` }}</span>
+                <i v-if="item.muted" class="bi bi-bell-slash msg-conv-mute" title="免打扰" aria-hidden="true" />
                 <time class="msg-conv-time">{{ shortTime(item.last_time) }}</time>
               </span>
               <span class="msg-conv-bottom">
@@ -190,8 +197,8 @@
           </RouterLink>
           <span v-else class="msg-peer-name">用户 #{{ activeUid }}</span>
 
-          <span class="msg-peer-status" :class="{ 'is-online': online }">
-            <i aria-hidden="true" />{{ online ? '在线' : '离线' }}
+          <span class="msg-peer-status" :class="{ 'is-online': online || peerTyping }">
+            <i aria-hidden="true" />{{ peerTyping ? '正在输入…' : online ? '在线' : '离线' }}
           </span>
 
           <div class="msg-chat-actions">
@@ -203,6 +210,16 @@
               @click="sendPat"
             >
               <i class="bi bi-hand-index-thumb" aria-hidden="true" />
+            </button>
+
+            <!-- 会话设置：置顶 / 免打扰（只影响自己） -->
+            <button
+              type="button"
+              class="msg-icon-btn"
+              title="会话设置"
+              @click="openConvMenuFromHeader($event)"
+            >
+              <i class="bi bi-three-dots" aria-hidden="true" />
             </button>
           </div>
         </header>
@@ -351,6 +368,7 @@
               maxlength="2000"
               placeholder="发消息…"
               @keydown.enter.exact.prevent="send"
+              @input="onDraftInput"
               @paste="onPaste"
             />
 
@@ -375,6 +393,29 @@
         </RouterLink>
       </div>
     </section>
+
+    <!-- ==================== 会话设置菜单（置顶 / 免打扰） ==================== -->
+    <div
+      v-if="convMenu.open"
+      class="msg-menu-mask"
+      @click="closeConvMenu"
+      @contextmenu.prevent="closeConvMenu"
+    />
+    <div
+      v-if="convMenu.open"
+      class="msg-menu"
+      role="menu"
+      :style="{ left: `${convMenu.x}px`, top: `${convMenu.y}px` }"
+    >
+      <button type="button" class="msg-menu-item" role="menuitem" @click="toggleConvPref('pinned')">
+        <i :class="convMenuRow?.pinned ? 'bi bi-pin-angle' : 'bi bi-pin-angle-fill'" aria-hidden="true" />
+        {{ convMenuRow?.pinned ? '取消置顶' : '置顶会话' }}
+      </button>
+      <button type="button" class="msg-menu-item" role="menuitem" @click="toggleConvPref('muted')">
+        <i :class="convMenuRow?.muted ? 'bi bi-bell' : 'bi bi-bell-slash'" aria-hidden="true" />
+        {{ convMenuRow?.muted ? '开启提醒' : '消息免打扰' }}
+      </button>
+    </div>
 
     <!-- ==================== 消息右键菜单 ==================== -->
     <div
@@ -429,6 +470,7 @@ import {
   readChatMessages,
   revokeChatMessage,
   sendChatMessage,
+  setChatPref,
   syncChatMessages
 } from '@/api/chat'
 import { useChatStore } from '@/stores/chat'
@@ -514,6 +556,16 @@ const patting = ref(false)
 
 // 消息右键菜单：open / 坐标 / 目标消息
 const messageMenu = ref({ open: false, x: 0, y: 0, msg: null })
+
+// 会话设置菜单（置顶 / 免打扰）：open / 坐标 / 目标会话的对方 uid
+const convMenu = ref({ open: false, x: 0, y: 0, uid: 0 })
+const convMenuRow = computed(
+  () => conversations.value.find((item) => Number(item.other_uid) === Number(convMenu.value.uid)) || null
+)
+
+// 对方正在输入（收到 chat_typing 后 4 秒自动消失，不需要服务端再发「停止」）
+const peerTyping = ref(false)
+let typingTimer = null
 
 const myUid = computed(() => Number(userStore.user?.id || 0))
 
@@ -775,6 +827,8 @@ async function loadConversations() {
       conversations.value = (res.data?.data || []).map((item) =>
         Number(item.other_uid) === Number(activeUid.value) ? { ...item, unread: 0 } : item
       )
+      // 免打扰名单要跟着列表刷新：换设备 / 多端修改后，本机的提醒策略才对得上
+      syncMutedPeers()
     }
   } catch {
     // 错误提示已由 request.js 统一 toast，这里只保证界面不卡在 loading
@@ -802,6 +856,79 @@ async function loadFriends() {
 /** 手动刷新：会话列表 + 互关好友一起更新 */
 async function refreshList() {
   await Promise.all([loadConversations(), loadFriends()])
+}
+
+// ---------- 会话设置（置顶 / 免打扰） ----------
+
+/** 会话排序：置顶优先，其余按最后消息时间倒序（与服务端一致，改完不必重拉整个列表） */
+function sortConversations() {
+  conversations.value = [...conversations.value].sort((a, b) => {
+    if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1
+    return Number(b.last_time || 0) - Number(a.last_time || 0)
+  })
+}
+
+/** 把免打扰名单同步给 chat store：响铃 / 悬浮通知 / 桌面通知据此抑制 */
+function syncMutedPeers() {
+  chatStore.setMutedPeers(
+    conversations.value.filter((item) => item.muted).map((item) => item.other_uid)
+  )
+}
+
+function openConvMenu(event, uid) {
+  const targetUid = Number(uid) || 0
+  if (targetUid <= 0) return
+
+  const width = 180
+  const height = 96
+  const x = Math.min(Number(event.clientX) || 0, window.innerWidth - width - 8)
+  const y = Math.min(Number(event.clientY) || 0, window.innerHeight - height - 8)
+
+  convMenu.value = { open: true, x: Math.max(8, x), y: Math.max(8, y), uid: targetUid }
+}
+
+/** 顶栏的「⋯」：菜单挂在按钮正下方，比鼠标坐标更可预期 */
+function openConvMenuFromHeader(event) {
+  const rect = event.currentTarget.getBoundingClientRect()
+  openConvMenu({ clientX: rect.right - 16, clientY: rect.bottom + 6 }, activeUid.value)
+}
+
+function closeConvMenu() {
+  if (!convMenu.value.open) return
+  convMenu.value = { ...convMenu.value, open: false }
+}
+
+async function toggleConvPref(key) {
+  const uid = Number(convMenu.value.uid) || 0
+  const row = conversations.value.find((item) => Number(item.other_uid) === uid)
+  closeConvMenu()
+  if (!row) return
+
+  const next = !row[key]
+
+  try {
+    const res = await setChatPref({ target_uid: uid, [key]: next })
+    if (res?.code !== 200) return
+
+    // 以服务端返回为准（可能因为并发点击与本地预期不同）
+    row[key] = typeof res.data?.[key] === 'boolean' ? res.data[key] : next
+    sortConversations()
+    syncMutedPeers()
+
+    if (key === 'pinned') {
+      toast.success(row[key] ? '已置顶' : '已取消置顶')
+    } else {
+      toast.success(row[key] ? '已开启免打扰' : '已开启提醒')
+    }
+  } catch {
+    /* 业务错误已由 request.js 提示 */
+  }
+}
+
+/** 输入时上报「正在输入」（store 内部已按 3 秒节流，服务端再兜一层） */
+function onDraftInput() {
+  if (!activeUid.value || !canSend.value) return
+  chatStore.sendTyping(activeUid.value)
 }
 
 function scrollToBottom() {
@@ -933,6 +1060,7 @@ async function openChat(uid) {
   canSend.value = true
   blockedReason.value = ''
   quoteDraft.value = null
+  resetTyping()
   closeMessageMenu()
 
   // 同步到地址栏：刷新 / 分享能直接落到这段对话
@@ -959,6 +1087,8 @@ function closeChat() {
   // 关掉会话也算「看过了」：把待上报的已读立刻发出，否则列表/角标会残留一个未读
   flushRead()
   chatStore.setViewing(0)
+  resetTyping()
+  closeConvMenu()
 
   activeUid.value = 0
   target.value = null
@@ -1333,10 +1463,17 @@ function onPrivateMessage(message) {
   listTimer = setTimeout(loadConversations, 400)
 }
 
+/** 清掉「正在输入」提示（切会话 / 关页面时必须清，否则会挂在下一段对话上） */
+function resetTyping() {
+  clearTimeout(typingTimer)
+  typingTimer = null
+  peerTyping.value = false
+}
+
 /**
- * 已读 / 撤回事件（由服务端通过 socket 推来）
+ * 已读 / 撤回 / 输入状态等事件（由服务端通过 socket 推来）
  *
- * 和普通消息分开：这两类不改未读数，只改当前会话里的气泡状态。
+ * 和普通消息分开：这些不改未读数，只改当前会话里的气泡 / 提示状态。
  */
 function onChatEvent(event) {
   if (!event) return
@@ -1347,6 +1484,19 @@ function onChatEvent(event) {
     chatStore.refresh()
     clearTimeout(listTimer)
     listTimer = setTimeout(loadConversations, 300)
+    return
+  }
+
+  // 对方正在输入：只认当前会话，4 秒没有新上报就自动消失
+  if (event.type === 'typing') {
+    if (Number(event.fromUid) !== Number(activeUid.value)) return
+
+    peerTyping.value = true
+    clearTimeout(typingTimer)
+    typingTimer = setTimeout(() => {
+      typingTimer = null
+      peerTyping.value = false
+    }, 4000)
     return
   }
 
@@ -1380,11 +1530,14 @@ function onChatEvent(event) {
 
 /** 菜单打开时按 Esc / 滚动页面 / 切走会话都要收起，避免浮在错误的位置 */
 function onMenuKeydown(e) {
-  if (e.key === 'Escape') closeMessageMenu()
+  if (e.key !== 'Escape') return
+  closeMessageMenu()
+  closeConvMenu()
 }
 
 function onMenuScroll() {
   closeMessageMenu()
+  closeConvMenu()
 }
 
 onMounted(async () => {
@@ -1419,6 +1572,7 @@ onBeforeUnmount(() => {
   chatStore.setViewing(0)
   clearTimeout(listTimer)
   clearTimeout(patTimer)
+  clearTimeout(typingTimer)
   if (unsubscribe) unsubscribe()
   if (unsubscribeEvent) unsubscribeEvent()
   document.removeEventListener('keydown', onMenuKeydown)
@@ -1737,6 +1891,29 @@ watch(
 }
 .msg-conv.is-active {
   background: var(--accent-soft);
+}
+/* 置顶 / 免打扰标记：只做视觉提示，不占额外一行 */
+.msg-conv-flag {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--primary);
+}
+.msg-conv-mute {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-light);
+}
+.msg-room-badge {
+  flex-shrink: 0;
+  min-width: 18px;
+  padding: 0 5px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  color: #fff;
+  background: var(--danger, #e5484d);
+  border-radius: 999px;
 }
 .msg-conv-avatar {
   position: relative;

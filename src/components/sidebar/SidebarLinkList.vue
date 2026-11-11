@@ -10,16 +10,27 @@
   >
     <ul v-if="items.length" class="link-list">
       <li v-for="(item, index) in items" :key="item.id || index" class="link-item">
-        <RouterLink v-if="!isExternal(item.url)" :to="item.url" class="link-row">
+        <RouterLink v-if="linkHref(item) && !isExternal(item)" :to="linkHref(item)" class="link-row">
           <i v-if="item.icon" :class="item.icon" class="link-icon" aria-hidden="true" />
           <span class="link-name">{{ item.name }}</span>
           <i class="bi bi-chevron-right link-arrow" aria-hidden="true" />
         </RouterLink>
-        <a v-else :href="item.url" class="link-row" target="_blank" rel="noopener noreferrer">
+        <a
+          v-else-if="linkHref(item)"
+          :href="linkHref(item)"
+          class="link-row"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           <i v-if="item.icon" :class="item.icon" class="link-icon" aria-hidden="true" />
           <span class="link-name">{{ item.name }}</span>
           <i class="bi bi-box-arrow-up-right link-arrow" aria-hidden="true" />
         </a>
+        <!-- 地址协议不合法（如 javascript:）：只显示名称，不生成可点击链接 -->
+        <span v-else class="link-row">
+          <i v-if="item.icon" :class="item.icon" class="link-icon" aria-hidden="true" />
+          <span class="link-name">{{ item.name }}</span>
+        </span>
       </li>
     </ul>
     <p v-else class="link-empty">{{ emptyText }}</p>
@@ -28,6 +39,7 @@
 
 <script setup>
 import SidebarCard from './SidebarCard.vue'
+import { safeUrl } from '@/utils/url'
 
 /** 侧边栏「自定义链接」模块：图标 + 名称 + 链接，站内走路由、站外新窗口 */
 defineProps({
@@ -42,8 +54,12 @@ defineProps({
   emptyText: { type: String, default: '暂无链接' }
 })
 
-function isExternal(url) {
-  return /^https?:\/\//i.test(url || '')
+function linkHref(item) {
+  return safeUrl(item?.url)
+}
+
+function isExternal(item) {
+  return /^([a-z][a-z0-9+.-]*:|\/\/)/i.test(linkHref(item))
 }
 </script>
 

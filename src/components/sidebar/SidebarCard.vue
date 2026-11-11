@@ -8,12 +8,12 @@
       </h3>
 
       <div class="sb-extra">
-        <RouterLink v-if="moreUrl && !isExternal" :to="moreUrl" class="sb-more">
+        <RouterLink v-if="moreHref && !isExternal" :to="moreHref" class="sb-more">
           {{ moreText || '更多' }} <i class="bi bi-arrow-right" aria-hidden="true" />
         </RouterLink>
         <a
-          v-else-if="moreUrl"
-          :href="moreUrl"
+          v-else-if="moreHref"
+          :href="moreHref"
           class="sb-more"
           target="_blank"
           rel="noopener noreferrer"
@@ -42,6 +42,7 @@
 
 <script setup>
 import { computed, ref } from 'vue'
+import { safeUrl } from '@/utils/url'
 
 /**
  * 侧边栏卡片外壳
@@ -65,7 +66,10 @@ const props = defineProps({
 const STORAGE_PREFIX = 'mellow_sidebar_collapsed:'
 
 const hasHeader = computed(() => !props.flat && (Boolean(props.title) || Boolean(props.icon) || props.collapsible))
-const isExternal = computed(() => /^https?:\/\//i.test(props.moreUrl || ''))
+// 「更多」入口同样出自后台配置：先过协议白名单（非法协议返回空串，整个入口不渲染），
+// 带协议或协议相对的走新窗口，其余仍交给 router —— 与原口径一致
+const moreHref = computed(() => safeUrl(props.moreUrl))
+const isExternal = computed(() => /^([a-z][a-z0-9+.-]*:|\/\/)/i.test(moreHref.value))
 
 const collapsed = ref(readCollapsed(props.defaultCollapsed))
 

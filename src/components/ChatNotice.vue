@@ -20,6 +20,7 @@
 
         <div class="chat-notice-body">
           <div class="chat-notice-top">
+            <span v-if="item.kind === 'room'" class="chat-notice-tag">聊天室</span>
             <span class="chat-notice-name">{{ item.nickname || `用户 #${item.peerUid}` }}</span>
             <span v-if="item.count > 1" class="chat-notice-count">{{ item.count }} 条</span>
           </div>
@@ -73,8 +74,16 @@ const DESKTOP_COUNT_WINDOW = 60 * 1000
 let seq = 0
 let unsubscribe = null
 
-/** 消息内容摘要：图片/拍一拍特殊处理，表情标记还原成「[表情]」 */
-function previewOf(message) {
+/**
+ * 通知内容：私信按消息类型取摘要；聊天室 @ 只带一小段正文预览
+ *
+ * 两者共用同一套浮层 / 桌面通知，靠 payload.kind 区分（默认就是私信）。
+ */
+function previewOf(message, kind = 'dm', preview = '') {
+  if (kind === 'room') {
+    const text = String(preview || '').replace(/\s+/g, ' ').trim()
+    return `@你：${text || '在聊天室里提到了你'}`
+  }
   if (!message) return ''
   if (message.msg_type === 'image') return '[图片]'
   if (message.msg_type === 'pat') return '拍了拍你'
@@ -128,37 +137,40 @@ async function ensureUser(uid) {
 }
 
 /** 补昵称与头像，失败就先用「用户 #id」顶着 */
-async function fillUser(uid) {
+async function fillUser(uid, kind) {
   const user = await ensureUser(uid)
   if (!user) return
 
-  const item = list.value.find((row) => row.peerUid === uid)
+  const item = list.value.find((row) => row.peerUid === uid && row.kind === kind)
   if (!item) return
   item.nickname = user.nickname || ''
   item.avatar = user.avatar || ''
 }
 
-function pushNotice({ peerUid, message } = {}) {
+function pushNotice({ peerUid, message, kind = 'dm', preview = '' } = {}) {
   const uid = Number(peerUid) || 0
-  if (!uid || !message) return
+  if (!uid) return
+  // 私信必须有消息体；聊天室 @ 只有一段正文预览
+  if (kind !== 'room' && !message) return
 
-  const preview = previewOf(message)
+  const text = previewOf(message, kind, preview)
 
   // 同一个人还在屏幕上：合并成一条，累加条数并重置倒计时
-  const exist = list.value.find((item) => item.peerUid === uid)
+  const exist = list.value.find((item) => item.peerUid === uid && item.kind === kind)
   if (exist) {
     exist.count += 1
-    exist.preview = preview
+    exist.preview = text
     schedule(exist)
     return
   }
 
   const item = {
     key: `notice-${Date.now()}-${(seq += 1)}`,
+    kind,
     peerUid: uid,
     nickname: '',
     avatar: '',
-    preview,
+    preview: text,
     count: 1
   }
 
@@ -170,7 +182,7 @@ function pushNotice({ peerUid, message } = {}) {
   }
 
   schedule(item)
-  fillUser(uid)
+  fillUser(uid, kind)
 }
 
 /**
@@ -179,9 +191,10 @@ function pushNotice({ peerUid, message } = {}) {
  * 同一个人用固定 tag：后一条会替换前一条，不会在系统通知中心堆成一列。
  * 头像要绝对地址，站内相对路径先补全域名，否则系统拿不到图。
  */
-async function notifyDesktop({ peerUid, message } = {}) {
+async function notifyDesktop({ peerUid, message, kind = 'dm', preview = '' } = {}) {
   const uid = Number(peerUid) || 0
-  if (!uid || !message) return
+  if (!uid) return
+  if (kind !== 'room' && !message) return
 
   const user = await ensureUser(uid)
   const name = user?.nickname || `用户 #${uid}`
@@ -190,22 +203,27 @@ async function notifyDesktop({ peerUid, message } = {}) {
   // 同一会话连续来消息：系统通知只保留最新一条（靠 tag 替换），
   // 条数自己数，写进正文，用户才知道「不止这一条」
   const now = Date.now()
-  const prev = desktopState.get(uid)
+  const key = `${kind}-${uid}`
+  const prev = desktopState.get(key)
   const count = prev && now - prev.at < DESKTOP_COUNT_WINDOW ? prev.count + 1 : 1
-  desktopState.set(uid, { count, at: now })
+  desktopState.set(key, { count, at: now })
 
-  const preview = previewOf(message)
-  const body = count > 1 ? `${preview}（${count} 条新消息）` : preview
+  const text = previewOf(message, kind, preview)
+  const body = count > 1 ? `${text}（${count} 条）` : text
 
   showDesktopNotice({
-    title: `私信 · ${name}`,
+    title: kind === 'room' ? `聊天室 · ${name}` : `私信 · ${name}`,
     body,
     icon: avatar,
-    tag: `mellow-chat-${uid}`,
+    tag: `mellow-${kind}-${uid}`,
     // 用户关掉提示音时让系统通知也静音：系统侧的声音不受 Web Audio 开关控制
     silent: !chatStore.alert.sound,
     onClick: () => {
-      desktopState.delete(uid)
+      desktopState.delete(key)
+      if (kind === 'room') {
+        router.push('/room/1').catch(() => {})
+        return
+      }
       router.push({ path: '/messages', query: { to: String(uid) } }).catch(() => {})
     }
   })
@@ -223,8 +241,15 @@ function handleNotice(payload) {
 
 function openChat(item) {
   const uid = Number(item?.peerUid) || 0
+  const kind = item?.kind || 'dm'
   remove(item?.key)
   if (!uid) return
+
+  // 聊天室 @ 直接回房间；私信跳到对应会话
+  if (kind === 'room') {
+    router.push('/room/1').catch(() => {})
+    return
+  }
 
   // 已经在「和这个人的会话」里就什么都不用做（push 到同一位置会被 vue-router 忽略）
   router.push({ path: '/messages', query: { to: String(uid) } }).catch(() => {})
@@ -330,6 +355,15 @@ onBeforeUnmount(() => {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+}
+/* 「聊天室」小标签：和私信通知区分开，点进去是房间而不是会话 */
+.chat-notice-tag {
+  flex-shrink: 0;
+  padding: 1px 6px;
+  font-size: 10px;
+  color: var(--text-soft);
+  background: var(--bg-muted);
+  border-radius: 999px;
 }
 .chat-notice-count {
   flex-shrink: 0;

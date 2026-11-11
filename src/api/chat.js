@@ -67,6 +67,16 @@ export const ackChatMessages = (targetUid, seq) =>
 // 我的私信未读总数
 export const getChatUnread = () => call('chat', 'unread', { method: 'GET' })
 
+/**
+ * 会话偏好：置顶 / 免打扰（只影响自己那一侧的视图）
+ *
+ * - pinned：会话列表排到最前；
+ * - muted ：新消息照常计未读，但不响提示音、不弹悬浮 / 桌面通知。
+ * 两个字段可只传一个，未传的保持原值。
+ * @param {object} data { target_uid, pinned?: boolean, muted?: boolean }
+ */
+export const setChatPref = (data) => call('chat', 'pref', { method: 'PUT', data })
+
 // 能否与某人私聊（作者主页的「发私信」按钮状态）
 export const getChatStatus = (targetUid) =>
   call('chat', 'status', { method: 'GET', params: { target_uid: Number(targetUid) } })

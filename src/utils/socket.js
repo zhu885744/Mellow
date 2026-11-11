@@ -15,12 +15,18 @@ import { TOKEN_NAME } from '@/api/request'
  *                                                                     ← 仅推送给管理员
  *   { type: 'kicked', content: '…' }                                   ← 被管理员踢下线（服务端随后断连）
  *   { type: 'single' | 'private' | 'broadcast', ... }                  ← 聊天 / 通知类
+ *   { type: 'chat_typing', data: { from_uid } }                        ← 对方正在输入（私聊）
+ *   { type: 'room_typing', data: { uid } }                             ← 有人在聊天室输入（全员广播）
+ *   { type: 'chat_mention', data: { room_id, message_id, from_uid, preview } }
+ *                                                                     ← 聊天室里有人 @ 我
  *
  * 可发送的消息：
  *   { type: 'ping' }                                   ← 心跳
  *   { type: 'auth', token }                            ← 连接后认领登录身份
  *   { type: 'ack', data: { target_uid, seq } }         ← 私信送达确认（批量，seq 即消息 id）
  *   { type: 'read', data: { target_uid, seq } }        ← 私信已读水位（可选，正常走 HTTP）
+ *   { type: 'typing', to: 'user_<uid>' }               ← 告诉对方「我在打字」（私聊，服务端 1.5s 节流）
+ *   { type: 'typing', room: 1 }                        ← 告诉聊天室「我在打字」
  *   { type: 'kick', to: '<client_id>' }                 ← 断开某个连接（仅管理员，服务端会校验身份）
  *
  * 两个关键点：

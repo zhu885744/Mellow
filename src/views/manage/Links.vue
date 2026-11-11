@@ -21,7 +21,7 @@
         <img :src="item.avatar || defaultAvatar" class="link-avatar" alt="avatar" loading="lazy" />
         <div class="link-main">
           <div class="link-name-row">
-            <a :href="item.url" target="_blank" rel="noopener" class="link-name">{{ item.nickname || '未命名' }}</a>
+            <a :href="safeUrl(item.url) || undefined" target="_blank" rel="noopener" class="link-name">{{ item.nickname || '未命名' }}</a>
             <span class="link-status" :class="statusClass(item.audit)">{{ statusText(item.audit) }}</span>
           </div>
           <div class="link-url">{{ host(item.url) }}</div>
@@ -102,6 +102,7 @@ import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'
 import { toast } from '@/utils/toast'
+import { safeUrl } from '@/utils/url'
 
 const defaultAvatar = 'data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80"><defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23667eea;stop-opacity:1" /><stop offset="100%" style="stop-color:%23764ba2;stop-opacity:1" /></linearGradient></defs><circle cx="40" cy="40" r="40" fill="url(%23grad)"/><text x="50%25" y="55%25" text-anchor="middle" font-size="36" font-family="sans-serif" fill="white">友</text></svg>'
 
