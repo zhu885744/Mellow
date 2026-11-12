@@ -360,16 +360,16 @@
               />
             </div>
 
-            <textarea
+            <!-- contenteditable：表情在输入框里直接显示成图片，存储仍是 [emoji:url] 纯文本 -->
+            <ChatEmojiInput
               ref="inputRef"
               v-model="draft"
               class="msg-input"
-              rows="1"
-              maxlength="2000"
+              :maxlength="2000"
               placeholder="发消息…"
-              @keydown.enter.exact.prevent="send"
               @input="onDraftInput"
-              @paste="onPaste"
+              @send="send"
+              @files="uploadAndSendImage"
             />
 
             <button
@@ -482,6 +482,7 @@ import { getFullUrl, renderEmojiWithBreaks } from '@/utils/emoji'
 import { uploadAttachments } from '@/api/attachment'
 import { useDesktopNotice } from '@/composables/useDesktopNotice'
 import EmojiPicker from '@/components/EmojiPicker.vue'
+import ChatEmojiInput from '@/components/ChatEmojiInput.vue'
 
 /**
  * 私信（独立页面，路由 /messages）
@@ -1330,23 +1331,20 @@ function applyReadReceipt(byUid, lastMsgId) {
  * 服务端按普通文本存储，不改表结构。
  */
 function insertEmoji(text) {
-  const el = inputRef.value
-  const value = draft.value
+  const editor = inputRef.value
+  const value = String(text || '')
 
-  if (!el) {
-    draft.value = value + text
+  if (!editor) {
+    draft.value += value
     return
   }
 
-  const start = el.selectionStart ?? value.length
-  const end = el.selectionEnd ?? value.length
-  draft.value = value.slice(0, start) + text + value.slice(end)
-
-  nextTick(() => {
-    el.focus()
-    const pos = start + text.length
-    el.setSelectionRange(pos, pos)
-  })
+  // 表情要在输入框里显示成图片，走编辑器的 insertEmoji；颜文字等纯文本按普通文字插入
+  if (value.startsWith('[emoji:')) {
+    editor.insertEmoji(value.slice(7, -1))
+    return
+  }
+  editor.insertText(value)
 }
 
 function pickImage() {
@@ -1416,18 +1414,7 @@ function onFilesPicked(event) {
   uploadAndSendImage(files)
 }
 
-// 直接 Ctrl+V 粘贴截图：聊天里最顺手的图片入口
-function onPaste(event) {
-  const items = Array.from(event.clipboardData?.items || [])
-  const files = items
-    .filter((item) => item.kind === 'file' && String(item.type).startsWith('image/'))
-    .map((item) => item.getAsFile())
-    .filter(Boolean)
-
-  if (!files.length) return
-  event.preventDefault()
-  uploadAndSendImage(files)
-}
+// 直接 Ctrl+V 粘贴截图：由 ChatEmojiInput 识别后抛 @files（那里同时负责纯文本粘贴）
 
 // ---------- 实时消息 ----------
 let unsubscribe = null
@@ -2345,8 +2332,10 @@ watch(
   bottom: calc(100% + 8px);
   z-index: 3200;
 }
-/* 窄屏：面板按视口宽度铺开，从左侧补回偏移 */
-@media (max-width: 640px) {
+/* 窄屏：面板按视口宽度铺开，从左侧补回偏移
+   断点与 EmojiPicker 内部的手机端样式（768px）保持一致，
+   否则 641~768 区间面板会退化成「只有按钮那么宽」的一条竖条 */
+@media (max-width: 768px) {
   .msg-emoji-wrap :deep(.emoji-picker-panel) {
     left: -8px;
     right: auto;

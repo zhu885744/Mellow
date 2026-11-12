@@ -134,6 +134,7 @@
             :key="item.uid"
             type="button"
             class="room-mention-item"
+            @mousedown.prevent
             @click="pickMention(item)"
           >
             <i class="bi bi-at" aria-hidden="true" />{{ item.name }}
@@ -190,16 +191,18 @@
           />
         </div>
 
-        <textarea
+        <!-- 用 contenteditable 承载编辑：表情在输入框里直接显示成图片，
+             存储格式仍是 [emoji:url] 纯文本（见 components/ChatEmojiInput.vue） -->
+        <ChatEmojiInput
           ref="inputRef"
           v-model="draft"
           class="room-input"
-          rows="1"
-          maxlength="2000"
-          placeholder="说点什么…（输入 @ 可以提到在线的人）"
+          :maxlength="2000"
+          placeholder="说点什么…"
           @keydown="onInputKeydown"
           @input="onInput"
-          @paste="onPaste"
+          @send="send"
+          @files="uploadAndSendImages"
         />
 
         <button type="submit" class="room-send" :disabled="sending || !draft.trim()" title="发送">
@@ -365,8 +368,6 @@
 
           <li v-if="!onlineMembers.length" class="room-tip">暂时没有其他人在线</li>
         </ul>
-
-        <p class="room-tip">这里只统计已登录用户；多设备登录只算一个人。</p>
       </div>
     </div>
 
@@ -440,6 +441,7 @@ import { fromNow, formatTime } from '@/utils/time'
 import { openLightbox } from '@/utils/lightbox'
 import { getFullUrl, renderEmojiWithBreaks } from '@/utils/emoji'
 import EmojiPicker from '@/components/EmojiPicker.vue'
+import ChatEmojiInput from '@/components/ChatEmojiInput.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 
 /**
@@ -887,9 +889,8 @@ function onInput() {
 
   chatStore.sendRoomTyping()
 
-  const el = inputRef.value
-  const pos = el?.selectionStart ?? draft.value.length
-  const before = draft.value.slice(0, pos)
+  // 输入框是 contenteditable，拿光标前的纯文本而不是 selectionStart
+  const before = inputRef.value?.textBeforeCaret?.() || ''
   const match = before.match(/@([^\s@]*)$/)
 
   mentionOpen.value = Boolean(match)
@@ -909,27 +910,27 @@ function pickMention(member) {
   const uid = Number(member?.uid) || 0
   if (uid <= 0) return
 
-  const el = inputRef.value
-  const value = draft.value
-  const pos = el?.selectionStart ?? value.length
-  const before = value.slice(0, pos)
-  const at = before.lastIndexOf('@')
+  const editor = inputRef.value
+  if (!editor) return
 
-  // 只有「光标前紧跟着 @关键词」才替换这一段；从按钮打开的则插在光标处
-  const start = at >= 0 && !/\s/.test(before.slice(at + 1)) ? at : pos
+  const before = editor.textBeforeCaret() || ''
+  const at = before.lastIndexOf('@')
+  // 只有「光标前紧跟着 @关键词」才替换这一段；从按钮打开的直接插在光标处
+  const typed = at >= 0 && !/\s/.test(before.slice(at + 1))
   const inserted = `@${member.name} `
 
-  draft.value = value.slice(0, start) + inserted + value.slice(pos)
+  if (typed) {
+    editor.replaceBeforeCaret(before.length - at, inserted)
+  } else {
+    editor.insertText(inserted)
+  }
+
   if (!mentionUids.value.includes(uid)) mentionUids.value.push(uid)
 
   mentionOpen.value = false
   mentionKeyword.value = ''
 
-  nextTick(() => {
-    el?.focus()
-    const next = start + inserted.length
-    el?.setSelectionRange(next, next)
-  })
+  nextTick(() => editor.focus())
 }
 
 /** 成员面板点「@ TA」：先关面板再插入，否则面板会盖住输入框 */
@@ -1032,24 +1033,26 @@ function applyRevoke(message) {
   messages.value[index] = { ...messages.value[index], ...message, is_revoked: 1, content: '' }
 }
 
+/**
+ * 表情面板回填
+ *
+ * 表情在输入框里要显示成图片而不是 [emoji:url] 短代码，
+ * 所以走编辑器的 insertEmoji；颜文字之类的纯文本仍按普通文字插入。
+ */
 function insertEmoji(text) {
-  const el = inputRef.value
-  const value = draft.value
+  const editor = inputRef.value
+  const value = String(text || '')
 
-  if (!el) {
-    draft.value = value + text
+  if (!editor) {
+    draft.value += value
     return
   }
 
-  const start = el.selectionStart ?? value.length
-  const end = el.selectionEnd ?? value.length
-  draft.value = value.slice(0, start) + text + value.slice(end)
-
-  nextTick(() => {
-    el.focus()
-    const pos = start + text.length
-    el.setSelectionRange(pos, pos)
-  })
+  if (value.startsWith('[emoji:')) {
+    editor.insertEmoji(value.slice(7, -1))
+    return
+  }
+  editor.insertText(value)
 }
 
 function pickImage() {
@@ -1111,16 +1114,7 @@ function onFilesPicked(event) {
   uploadAndSendImages(files)
 }
 
-function onPaste(event) {
-  const files = Array.from(event.clipboardData?.items || [])
-    .filter((item) => item.kind === 'file' && String(item.type).startsWith('image/'))
-    .map((item) => item.getAsFile())
-    .filter(Boolean)
-
-  if (!files.length) return
-  event.preventDefault()
-  uploadAndSendImages(files)
-}
+// 粘贴图片由 ChatEmojiInput 统一识别后抛 @files，这里不再自己监听 paste
 
 // ---------- 管理 ----------
 
@@ -1825,6 +1819,23 @@ onBeforeUnmount(() => {
   bottom: calc(100% + 8px);
   z-index: 3200;
 }
+/*
+ * 手机端：表情按钮本身只有 30px 宽，若面板以 .room-emoji-wrap 为定位参照，
+ * width:100% 就只有按钮那么窄 —— 面板会被挤成贴边的一条竖条，表情一行一个。
+ * 这里让 wrap 退出定位，面板改为相对 .room-composer-box（已 position: relative）铺满输入框宽度。
+ */
+@media (max-width: 768px) {
+  .room-emoji-wrap {
+    position: static;
+  }
+  .room-emoji-wrap :deep(.emoji-picker-panel) {
+    left: 0;
+    right: 0;
+    width: auto;
+    min-width: 0;
+    max-width: none;
+  }
+}
 .room-input {
   flex: 1;
   min-width: 0;
@@ -2196,8 +2207,12 @@ onBeforeUnmount(() => {
   .room-head {
     padding: 10px 12px;
   }
-  .room-title p {
+  /* 手机端只收起简介：在线人数是成员面板 / @ 选人的入口，不能一起藏掉 */
+  .room-desc {
     display: none;
+  }
+  .room-title p {
+    margin-top: 3px;
   }
   .room-body {
     padding: 14px 12px 6px;
