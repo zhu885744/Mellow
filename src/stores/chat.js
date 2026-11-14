@@ -238,7 +238,8 @@ export const useChatStore = defineStore('chat', () => {
 
   // 每个会话上次上报的时间：同一个人连续打字时，3 秒内只发一次
   const typingSentAt = new Map()
-  let roomTypingAt = 0
+  // 按房间分别节流：多群切换时不该被上一个群的 3 秒窗口挡住
+  const roomTypingAt = new Map()
 
   /**
    * 上报「我正在给某人打字」
@@ -257,15 +258,21 @@ export const useChatStore = defineStore('chat', () => {
     client.send({ type: 'typing', to: `user_${key}` })
   }
 
-  /** 上报「我正在聊天室打字」（广播给房间内所有人，前端按 uid 过滤自己） */
-  function sendRoomTyping() {
+  /**
+   * 上报「我正在某个聊天室打字」
+   *
+   * 带 room_id：服务端据此只推给该群成员（公共大厅仍是全员广播），
+   * 否则在 A 群打字会让 B 群的人看到「有人在输入」。
+   */
+  function sendRoomTyping(roomId = 1) {
     if (!client) return
 
+    const id = Number(roomId) || 1
     const now = Date.now()
-    if (now - roomTypingAt < TYPING_INTERVAL) return
-    roomTypingAt = now
+    if (now - (roomTypingAt.get(id) || 0) < TYPING_INTERVAL) return
+    roomTypingAt.set(id, now)
 
-    client.send({ type: 'typing', room: 1 })
+    client.send({ type: 'typing', room: 1, room_id: id })
   }
 
   // ---------- 送达确认（ACK） ----------
@@ -435,7 +442,13 @@ export const useChatStore = defineStore('chat', () => {
       const uid = Number(item.from_uid || 0)
       if (uid > 0) {
         const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden'
-        const notice = { kind: 'room', peerUid: uid, preview: String(item.preview || '') }
+        // roomId：多群之后 @ 提醒必须能跳回「被 @ 的那个群」，不能一律进大厅
+        const notice = {
+          kind: 'room',
+          peerUid: uid,
+          roomId: Number(item.room_id || 1) || 1,
+          preview: String(item.preview || '')
+        }
 
         if (hidden) {
           // 页面不可见（包括停在房间里但切走了标签页）：走系统通知
@@ -543,6 +556,24 @@ export const useChatStore = defineStore('chat', () => {
     refresh()
   }
 
+  /**
+   * 立刻重连（页面发现长时间没有连接时调用）
+   *
+   * utils/socket.js 自己也会在失败后低速重试、在回到前台时唤醒，
+   * 这里是给「用户明确感知到没连上」的场景一个即时入口，不必等下一轮。
+   */
+  function reconnect() {
+    const userStore = useUserStore()
+    if (!userStore.isLogged) return
+    if (!client) {
+      start()
+      return
+    }
+    // 被管理员踢下线是明确的处置结果，不能被自动重连悄悄撤销
+    if (client.state === 'kicked') return
+    client.reconnect()
+  }
+
   /** 断开连接并清空未读（退出登录时调用） */
   function stop() {
     if (client) {
@@ -555,7 +586,7 @@ export const useChatStore = defineStore('chat', () => {
     receivedSeq.clear()
     ackedSeq.clear()
     typingSentAt.clear()
-    roomTypingAt = 0
+    roomTypingAt.clear()
     mutedPeers.value = new Set()
     presence.value = { count: 0, users: [] }
     roomMentions.value = 0
@@ -576,6 +607,8 @@ export const useChatStore = defineStore('chat', () => {
     refresh,
     start,
     stop,
+    // 立即重连（长时间未连上时页面主动调用）
+    reconnect,
     // 送达确认（聊天页加载完历史 / 收到消息后调用）
     ack,
     // 本地已知的最大 seq：重连补拉的 after_seq

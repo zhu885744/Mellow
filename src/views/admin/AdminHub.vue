@@ -101,6 +101,7 @@ const HUB_TABS = {
     { label: '私信会话', to: '/admin/chat/conversations', icon: 'bi bi-envelope-paper' },
     { label: '聊天审核', to: '/admin/chat/moderation', icon: 'bi bi-shield-exclamation' },
     { label: '聊天室消息', to: '/admin/chat/room', icon: 'bi bi-chat-square-text' },
+    { label: '群聊管理', to: '/admin/chat/groups', icon: 'bi bi-people' },
     { label: '禁言名单', to: '/admin/chat/mutes', icon: 'bi bi-mic-mute' },
     { label: '聊天室设置', to: '/admin/chat/settings', icon: 'bi bi-sliders' }
   ],

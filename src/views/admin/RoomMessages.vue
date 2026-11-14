@@ -165,7 +165,8 @@ function quotePreview(quote) {
 async function load() {
   loading.value = true
   try {
-    const res = await listRoomMessages({ limit: PAGE_SIZE })
+    // 后台这个页只审公共大厅（id=1）；自建群的消息在「群聊管理」里逐个查看
+    const res = await listRoomMessages(1, { limit: PAGE_SIZE })
     const rows = res.data?.data || []
     // 接口是正序（旧 → 新），后台按「最新在上」展示
     list.value = rows.slice().reverse()
@@ -189,7 +190,7 @@ async function loadMore() {
 
   loadingMore.value = true
   try {
-    const res = await listRoomMessages({ limit: PAGE_SIZE, before_id: last.id })
+    const res = await listRoomMessages(1, { limit: PAGE_SIZE, before_id: last.id })
     const rows = (res.data?.data || []).slice().reverse()
     const seen = new Set(list.value.map((item) => Number(item.id)))
     list.value.push(...rows.filter((item) => !seen.has(Number(item.id))))

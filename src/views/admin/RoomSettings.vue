@@ -193,7 +193,8 @@ async function saveInfo() {
 
   savingInfo.value = true
   try {
-    const res = await updateRoom({
+    // 这个页面只改公共大厅（id=1），群聊资料由群主在自己房间的管理面板改
+    const res = await updateRoom(1, {
       name: info.name.trim(),
       description: info.description.trim(),
       avatar: info.avatar.trim()

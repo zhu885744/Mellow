@@ -135,7 +135,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -342,7 +342,43 @@ async function onClick(n) {
   if (link) router.push(link)
 }
 
-onMounted(load)
+// 通知不走长连接（只靠查询接口，见 app/model/notification.go），
+// 所以页面停留期间必须自己再拉一次，否则新通知要刷新页面才出现。
+// 只在第一页、且页面可见时轮询：翻页看历史时不该把用户拽回第一页。
+const POLL_INTERVAL = 30000
+let pollTimer = null
+
+function startPolling() {
+  if (pollTimer) return
+  pollTimer = setInterval(() => {
+    if (document.visibilityState !== 'visible') return
+    if (page.value !== 1 || loading.value) return
+    load()
+  }, POLL_INTERVAL)
+}
+
+function stopPolling() {
+  clearInterval(pollTimer)
+  pollTimer = null
+}
+
+/** 回到前台立刻补一次（后台期间的定时器通常被浏览器限流甚至暂停） */
+function onVisible() {
+  if (document.visibilityState !== 'visible') return
+  if (page.value === 1) load()
+  else notif.refresh()
+}
+
+onMounted(() => {
+  load()
+  startPolling()
+  document.addEventListener('visibilitychange', onVisible)
+})
+
+onBeforeUnmount(() => {
+  stopPolling()
+  document.removeEventListener('visibilitychange', onVisible)
+})
 </script>
 
 <style scoped>

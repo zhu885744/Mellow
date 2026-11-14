@@ -17,6 +17,7 @@
     "highlight.js": "^11.9.0",
     "markdown-it": "^14.0.0",
     "pinia": "^2.1.7",
+    "qrcode": "^1.5.4",
     "vue": "^3.4.21",
     "vue-router": "^4.3.0"
   },

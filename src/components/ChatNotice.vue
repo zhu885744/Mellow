@@ -191,7 +191,7 @@ function pushNotice({ peerUid, message, kind = 'dm', preview = '' } = {}) {
  * 同一个人用固定 tag：后一条会替换前一条，不会在系统通知中心堆成一列。
  * 头像要绝对地址，站内相对路径先补全域名，否则系统拿不到图。
  */
-async function notifyDesktop({ peerUid, message, kind = 'dm', preview = '' } = {}) {
+async function notifyDesktop({ peerUid, message, kind = 'dm', preview = '', roomId = 1 } = {}) {
   const uid = Number(peerUid) || 0
   if (!uid) return
   if (kind !== 'room' && !message) return
@@ -221,10 +221,10 @@ async function notifyDesktop({ peerUid, message, kind = 'dm', preview = '' } = {
     onClick: () => {
       desktopState.delete(key)
       if (kind === 'room') {
-        router.push('/room/1').catch(() => {})
+        router.push(`/chat/room/${Number(roomId) || 1}`).catch(() => {})
         return
       }
-      router.push({ path: '/messages', query: { to: String(uid) } }).catch(() => {})
+      router.push(`/chat/${uid}`).catch(() => {})
     }
   })
 }
@@ -245,14 +245,14 @@ function openChat(item) {
   remove(item?.key)
   if (!uid) return
 
-  // 聊天室 @ 直接回房间；私信跳到对应会话
+  // 聊天室 @ 直接回「被提到的那个群」；私信跳到对应会话
   if (kind === 'room') {
-    router.push('/room/1').catch(() => {})
+    router.push(`/chat/room/${Number(item?.roomId) || 1}`).catch(() => {})
     return
   }
 
-  // 已经在「和这个人的会话」里就什么都不用做（push 到同一位置会被 vue-router 忽略）
-  router.push({ path: '/messages', query: { to: String(uid) } }).catch(() => {})
+  // 已经在「和这个人的会话里」就什么都不用做（push 到同一位置会被 vue-router 忽略）
+  router.push(`/chat/${uid}`).catch(() => {})
 }
 
 onMounted(() => {

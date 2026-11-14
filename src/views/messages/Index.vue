@@ -1,7 +1,9 @@
 <template>
-  <div class="msg-app" :class="{ 'is-chat': !!activeUid }">
+  <div class="msg-app is-embedded" :class="{ 'is-chat': !!activeUid }">
     <!-- ==================== 会话列表 ==================== -->
-    <aside class="msg-sidebar">
+    <!-- 私信与群聊的列表已上移到 /chat 的统一左栏（views/chat/Layout.vue），
+         这里只为「单独复用本组件」保留结构；在 /chat 路由下 embedded=true，整块不渲染 -->
+    <aside v-if="!embedded" class="msg-sidebar">
       <header class="msg-sidebar-head">
         <div class="msg-sidebar-title">
           <span>私信</span>
@@ -96,15 +98,15 @@
       </label>
 
       <ul class="msg-conversations">
-        <!-- 公共聊天室：全站唯一的固定房间，不参与搜索过滤，始终置顶 -->
+        <!-- 群聊入口：公共大厅 + 用户自建的群，不参与搜索过滤，始终置顶 -->
         <li class="msg-room-entry">
-          <RouterLink to="/room/1" class="msg-room-card">
+          <RouterLink to="/room" class="msg-room-card">
             <span class="msg-room-avatar">
               <i class="bi bi-people-fill" aria-hidden="true" />
             </span>
             <span class="msg-room-body">
-              <span class="msg-room-name">公共聊天室</span>
-              <span class="msg-room-desc">全站用户都在这里</span>
+              <span class="msg-room-name">群聊</span>
+              <span class="msg-room-desc">公共大厅与大家建的群</span>
             </span>
             <!-- 有人在聊天室 @ 我：进房间前先在入口上标出来，否则这条提醒就飘走了 -->
             <span v-if="chatStore.roomMentions" class="msg-room-badge">
@@ -375,10 +377,11 @@
             <button
               type="submit"
               class="msg-send"
-              title="发送"
+              title="发送（Enter）"
               :disabled="sending || !draft.trim()"
             >
-              <i :class="sending ? 'bi bi-arrow-repeat is-spin' : 'bi bi-arrow-up-short'" aria-hidden="true" />
+              <i v-if="sending" class="bi bi-arrow-repeat is-spin" aria-hidden="true" />
+              <template v-else>发送</template>
             </button>
           </form>
         </footer>
@@ -513,6 +516,11 @@ const friends = ref([])
 const loadingList = ref(false)
 const keyword = ref('')
 
+// 在 /chat 的统一布局里只渲染聊天区，左栏由父级承担
+const embedded = true
+
+// 当前会话由路由参数决定：/chat/:uid（刷新、分享、前进后退都能落到同一段对话）
+// 这里保持 0，初始化与路由变化都走 openChat()，避免出现「有 uid 但没加载消息」
 const activeUid = ref(0)
 const target = ref(null)
 const messages = ref([])
@@ -1064,9 +1072,9 @@ async function openChat(uid) {
   resetTyping()
   closeMessageMenu()
 
-  // 同步到地址栏：刷新 / 分享能直接落到这段对话
-  if (String(route.query.to || '') !== String(uid)) {
-    router.replace({ query: { ...route.query, to: String(uid) } })
+  // 同步到地址栏：/chat/:uid，刷新 / 分享都能直接落到这段对话
+  if (String(route.params.uid || '') !== String(uid)) {
+    router.replace(`/chat/${uid}`)
   }
 
   await loadMessages(0)
@@ -1094,9 +1102,13 @@ function closeChat() {
   activeUid.value = 0
   target.value = null
   messages.value = []
-  const query = { ...route.query }
-  delete query.to
-  router.replace({ query })
+  // 回到统一列表（窄屏下就是左栏；宽屏右栏显示空态）
+  //
+  // 保留 panel：从「联系人」里点进来的，返回时应当回到联系人面板而不是消息面板。
+  // ?to=<uid> 这类一次性的直达参数不保留，避免回去又被弹进这段对话。
+  if (String(route.path) !== '/chat') {
+    router.replace({ path: '/chat', query: route.query.panel ? { panel: route.query.panel } : {} })
+  }
 }
 
 let readTimer = null
@@ -1515,6 +1527,57 @@ function onChatEvent(event) {
   }
 }
 
+// ---------- 断线兜底 ----------
+//
+// 实时消息全靠 /socket 推送：长连接一旦断掉（代理重启、切网、休眠唤醒），
+// 页面就再也不会自己更新，只能刷新 —— 这正是「不刷新就不显示」的根源。
+// 这里在「未连上」时按固定间隔补拉，连上后立刻停掉，不白白耗请求。
+const FALLBACK_INTERVAL = 15000
+let fallbackTimer = null
+
+function startFallback() {
+  if (fallbackTimer || !userStore.isLogged) return
+  fallbackTimer = setInterval(() => {
+    // 页面切到后台时不拉：既省流量，也避免回来时一堆并发
+    if (document.visibilityState !== 'visible') return
+    loadConversations()
+    // 当前会话按本地最大 seq 增量补拉，只取缺的那几条
+    if (activeUid.value) syncMessages(activeUid.value)
+    chatStore.refresh()
+  }, FALLBACK_INTERVAL)
+}
+
+function stopFallback() {
+  clearInterval(fallbackTimer)
+  fallbackTimer = null
+}
+
+/** 按当前连接状态决定兜底轮询的启停 */
+function syncFallback() {
+  if (!userStore.isLogged || chatStore.connected) {
+    stopFallback()
+    return
+  }
+  startFallback()
+}
+
+/** 回到前台：先补连一次，再把消息与列表对齐（离开期间可能积了几条） */
+function onVisible() {
+  if (document.visibilityState !== 'visible') return
+  if (!chatStore.connected) chatStore.reconnect()
+  loadConversations()
+  if (activeUid.value) syncMessages(activeUid.value)
+}
+
+// 掉线后主动重连，并交给兜底轮询接管
+watch(
+  () => chatStore.connected,
+  (open) => {
+    if (!open) chatStore.reconnect()
+    syncFallback()
+  }
+)
+
 /** 菜单打开时按 Esc / 滚动页面 / 切走会话都要收起，避免浮在错误的位置 */
 function onMenuKeydown(e) {
   if (e.key !== 'Escape') return
@@ -1527,28 +1590,39 @@ function onMenuScroll() {
   closeConvMenu()
 }
 
+// 路由变化即切换会话：从列表点另一条（/chat/2）走这里；
+// 回到 /chat 时清空右栏（窄屏就是退回列表）
+watch(
+  () => route.params.uid,
+  (value) => {
+    const uid = Number(value) || 0
+    if (!uid) {
+      if (activeUid.value) closeChat()
+      return
+    }
+    if (uid !== activeUid.value) openChat(uid)
+  }
+)
+
 onMounted(async () => {
   chatStore.start()
   await Promise.all([loadConversations(), loadFriends()])
   // 角标以服务端为准：socket 的 +1 累加在断线重连 / 重复推送后可能偏高
   chatStore.refresh()
 
-  const uid = Number(route.query.to || 0)
-  if (uid > 0) {
-    openChat(uid)
-  } else if (conversations.value.length || friendOnlyRows.value.length) {
-    // 宽屏默认打开第一行（有会话优先，否则第一个还没聊过的互关好友）；
-    // 窄屏由 CSS 决定只显示一屏，这里打开也不会串屏
-    if (window.innerWidth > 860) {
-      const first = conversations.value[0]?.other_uid || friendOnlyRows.value[0]?.uid
-      if (first) openChat(first)
-    }
-  }
+  // 会话由路由决定：/chat/:uid。`/chat` 时右栏保持空态，
+  // 不再「自动打开第一条」——列表里点哪个才开哪个，避免刚进来就误标记已读。
+  const uid = Number(route.params.uid || 0)
+  if (uid > 0) openChat(uid)
 
   unsubscribe = chatStore.onMessage(onPrivateMessage)
   unsubscribeEvent = chatStore.onEvent(onChatEvent)
 
+  // 进页面时如果长连接还没就绪，先用轮询顶上，连上后自动停
+  syncFallback()
+
   document.addEventListener('keydown', onMenuKeydown)
+  document.addEventListener('visibilitychange', onVisible)
   window.addEventListener('scroll', onMenuScroll, true)
 })
 
@@ -1562,7 +1636,9 @@ onBeforeUnmount(() => {
   clearTimeout(typingTimer)
   if (unsubscribe) unsubscribe()
   if (unsubscribeEvent) unsubscribeEvent()
+  stopFallback()
   document.removeEventListener('keydown', onMenuKeydown)
+  document.removeEventListener('visibilitychange', onVisible)
   window.removeEventListener('scroll', onMenuScroll, true)
 })
 
@@ -1580,12 +1656,25 @@ watch(
 <style scoped>
 /* ==================== 页面骨架：撑满视口，不带任何布局组件 ==================== */
 .msg-app {
+  /* 与 /chat 布局、群聊页共用同一套 QQ 风配色（局部变量，不影响站点其它页面） */
+  --chat-blue: var(--primary);
+  --chat-panel: var(--bg);
+  --chat-line: var(--border-soft);
+
   display: flex;
   height: 100vh;
   height: 100dvh;
   overflow: hidden;
   color: var(--text);
   background: var(--bg);
+}
+
+/* 嵌在 /chat 布局里：不要自己占满视口，交给父级的 flex 决定宽度 */
+.msg-app.is-embedded {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
 }
 
 /* ==================== 左栏：会话列表 ==================== */
@@ -2016,17 +2105,17 @@ watch(
   min-height: 0;
   display: flex;
   flex-direction: column;
-  background: var(--bg);
+  background: var(--chat-panel);
 }
 .msg-chat-head {
   display: flex;
   align-items: center;
   gap: 10px;
-  height: 62px;
+  height: 60px;
   flex-shrink: 0;
-  padding: 0 18px;
+  padding: 0 20px;
   background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--chat-line);
 }
 .msg-back {
   display: none;
@@ -2189,24 +2278,23 @@ watch(
   align-items: flex-end;
 }
 .msg-bubble {
-  padding: 10px 14px;
+  padding: 8px 12px;
   font-size: 14px;
   line-height: 1.7;
   color: var(--text);
   background: var(--bg-card);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-lg);
-  border-top-left-radius: var(--radius-xs);
+  border: 0;
+  border-radius: 8px;
+  border-top-left-radius: 2px;
   box-shadow: var(--shadow-sm);
   word-break: break-word;
   white-space: pre-wrap;
 }
 .msg-row.is-mine .msg-bubble {
   color: #fff;
-  background: var(--primary);
-  border-color: var(--primary);
-  border-top-left-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-xs);
+  background: var(--chat-blue);
+  border-radius: 8px;
+  border-top-right-radius: 2px;
   box-shadow: none;
 }
 .msg-bubble-image {
@@ -2297,9 +2385,9 @@ watch(
 /* ==================== 输入区 ==================== */
 .msg-composer {
   flex-shrink: 0;
-  padding: 10px 18px calc(12px + env(safe-area-inset-bottom));
+  padding: 10px 20px calc(12px + env(safe-area-inset-bottom));
   background: var(--bg-card);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--chat-line);
 }
 .msg-composer-box {
   display: flex;
@@ -2307,13 +2395,13 @@ watch(
   align-items: flex-end;
   gap: 6px;
   padding: 6px 6px 6px 8px;
-  background: var(--bg);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--chat-line);
+  border-radius: 8px;
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .msg-composer-box:focus-within {
-  border-color: var(--primary);
+  border-color: var(--chat-blue);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .msg-tools {
@@ -2363,17 +2451,19 @@ watch(
   color: var(--text-light);
 }
 .msg-send {
-  width: 36px;
-  height: 36px;
+  min-width: 64px;
+  height: 34px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  padding: 0 18px;
+  font-family: inherit;
+  font-size: 13px;
   color: #fff;
-  background: var(--primary);
+  background: var(--chat-blue);
   border: 0;
-  border-radius: 50%;
+  border-radius: 6px;
   cursor: pointer;
   transition: filter var(--dur-fast) var(--ease), opacity var(--dur-fast) var(--ease);
 }

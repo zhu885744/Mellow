@@ -75,7 +75,7 @@
                    未登录时保持可点，交给私信页的登录校验处理。 -->
               <RouterLink
                 v-if="!blocked && canDm"
-                :to="{ path: '/messages', query: { to: uid } }"
+                :to="`/chat/${uid}`"
                 class="btn btn-sm btn-ghost"
                 title="给 TA 发私信"
               ><i class="bi bi-chat-dots" aria-hidden="true" /> 私信</RouterLink>

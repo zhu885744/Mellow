@@ -1,8 +1,9 @@
 <template>
-  <div class="room-app">
+  <div class="room-chat">
     <!-- ==================== 顶部：房间资料 ==================== -->
     <header class="room-head">
-      <RouterLink to="/messages" class="room-icon-btn" title="返回私信">
+      <!-- 窄屏（单栏）才需要返回；桌面端用左栏列表切换 -->
+      <RouterLink to="/chat" class="room-icon-btn room-back" title="返回消息列表">
         <i class="bi bi-chevron-left" aria-hidden="true" />
       </RouterLink>
 
@@ -12,11 +13,17 @@
       </span>
 
       <div class="room-title">
-        <h1>{{ room.name || '公共聊天室' }}</h1>
+        <h1>
+          {{ room.name || '公共聊天室' }}
+          <span v-if="isPublicRoom" class="room-badge">大厅</span>
+          <span v-else-if="myRole === 2" class="room-badge">群主</span>
+          <span v-else-if="myRole === 1" class="room-badge">管理员</span>
+        </h1>
         <p>
           <span class="room-desc">{{ room.description || '全站用户都在这里，随便聊点什么' }}</span>
           <button type="button" class="room-online" @click="memberOpen = true">
-            <i class="bi bi-broadcast" aria-hidden="true" />{{ onlineCount }} 人在线
+            <i class="bi bi-broadcast" aria-hidden="true" />
+            {{ isPublicRoom ? `${onlineCount} 人在线` : `${memberCount} 位成员` }}
           </button>
         </p>
       </div>
@@ -25,14 +32,34 @@
         <span v-if="muted" class="room-mute-tag" :title="muteTip">
           <i class="bi bi-mic-mute" aria-hidden="true" />已禁言
         </span>
-        <button v-if="isAdmin" type="button" class="room-btn" @click="openAdmin">
+        <button v-if="canModerate" type="button" class="room-btn" @click="openAdmin">
           <i class="bi bi-sliders2" aria-hidden="true" />管理
         </button>
-        <RouterLink to="/" class="room-icon-btn" title="返回站点">
-          <i class="bi bi-box-arrow-up-left" aria-hidden="true" />
-        </RouterLink>
+        <button
+          v-if="!isPublicRoom && joined && myRole !== 2"
+          type="button"
+          class="room-btn"
+          @click="leave"
+        >
+          <i class="bi bi-box-arrow-right" aria-hidden="true" />退出
+        </button>
       </div>
     </header>
+
+    <!-- 群公告：有公告时才出现，点击弹出全文（长公告不再撑高聊天区） -->
+    <section
+      v-if="room.notice"
+      class="room-notice"
+      role="button"
+      tabindex="0"
+      title="查看群公告"
+      @click="noticeOpen = true"
+      @keydown.enter.prevent="noticeOpen = true"
+    >
+      <i class="bi bi-megaphone" aria-hidden="true" />
+      <span>{{ room.notice }}</span>
+      <i class="bi bi-arrows-angle-expand room-notice-more" aria-hidden="true" />
+    </section>
 
     <!-- ==================== 消息 ==================== -->
     <div ref="bodyRef" class="room-body">
@@ -51,6 +78,11 @@
       <template v-for="row in rows" :key="row.key">
         <div v-if="row.type === 'day'" class="room-day"><span>{{ row.label }}</span></div>
 
+        <!-- 撤回：与参考图一致，整行居中提示，不占气泡 -->
+        <div v-else-if="row.msg.is_revoked === 1" class="room-revoked">
+          {{ revokeText(row.msg) }}
+        </div>
+
         <div
           v-else
           class="room-msg"
@@ -60,7 +92,7 @@
           <button
             type="button"
             class="room-msg-avatar"
-            :title="isAdmin && !isMine(row.msg) ? '管理该用户' : ''"
+            :title="canModerate && !isMine(row.msg) ? '管理该用户' : ''"
             @click="onAvatarClick(row.msg)"
           >
             <img :src="avatarOf(row.msg)" :alt="nameOf(row.msg)" loading="lazy" />
@@ -78,29 +110,24 @@
               >撤回</button>
             </div>
 
-            <div class="room-bubble" :class="{ 'is-revoked': row.msg.is_revoked === 1 }">
-              <template v-if="row.msg.is_revoked === 1">
-                该消息已被{{ Number(row.msg.revoke_uid) === Number(row.msg.uid) ? '' : '管理员' }}撤回
-              </template>
-              <template v-else>
-                <!-- 引用回复：展示被引用消息的快照（原消息撤回后依然可读） -->
-                <div v-if="row.msg.quote" class="room-quote" :title="quoteTitle(row.msg.quote)">
-                  <span class="room-quote-name">{{ quoteName(row.msg.quote) }}</span>
-                  <span
-                    class="room-quote-text"
-                    v-html="renderEmojiWithBreaks(quotePreview(row.msg.quote), { size: 16 })"
-                  />
-                </div>
-                <img
-                  v-if="row.msg.msg_type === 'image'"
-                  class="room-image"
-                  :src="fullUrl(row.msg.content)"
-                  alt="图片消息"
-                  loading="lazy"
-                  @click="openLightbox([fullUrl(row.msg.content)])"
+            <div class="room-bubble">
+              <!-- 引用回复：展示被引用消息的快照（原消息撤回后依然可读） -->
+              <div v-if="row.msg.quote" class="room-quote" :title="quoteTitle(row.msg.quote)">
+                <span class="room-quote-name">{{ quoteName(row.msg.quote) }}</span>
+                <span
+                  class="room-quote-text"
+                  v-html="renderEmojiWithBreaks(quotePreview(row.msg.quote), { size: 16 })"
                 />
-                <span v-else class="room-text" v-html="renderEmojiWithBreaks(row.msg.content, { size: 22 })" />
-              </template>
+              </div>
+              <img
+                v-if="row.msg.msg_type === 'image'"
+                class="room-image"
+                :src="fullUrl(row.msg.content)"
+                alt="图片消息"
+                loading="lazy"
+                @click="openLightbox([fullUrl(row.msg.content)])"
+              />
+              <span v-else class="room-text" v-html="renderEmojiWithBreaks(row.msg.content, { size: 22 })" />
             </div>
           </div>
         </div>
@@ -111,7 +138,27 @@
 
     <!-- ==================== 输入 ==================== -->
     <footer class="room-composer">
-      <p v-if="muted" class="room-blocked">
+      <!-- 非成员：先加入才能看消息、发言 -->
+      <div v-if="!joined" class="room-join">
+        <p>
+          <i class="bi bi-lock" aria-hidden="true" />
+          {{ Number(room.join_type) === 1 ? '该聊天室需要群主审批后加入' : Number(room.join_type) === 2 ? '该聊天室仅限邀请加入' : '加入后即可查看消息并参与聊天' }}
+        </p>
+        <input
+          v-if="Number(room.join_type) === 1"
+          v-model="joinMessage"
+          maxlength="120"
+          placeholder="申请留言（可选）"
+        />
+        <button
+          type="button"
+          class="room-btn room-btn-primary"
+          :disabled="joinPending || Number(room.join_type) === 2"
+          @click="join"
+        >{{ joinPending ? '等待群主审批…' : Number(room.join_type) === 2 ? '仅限邀请' : '申请加入' }}</button>
+      </div>
+
+      <p v-else-if="muted" class="room-blocked">
         <i class="bi bi-mic-mute" aria-hidden="true" />{{ muteTip }}
       </p>
 
@@ -205,12 +252,48 @@
           @files="uploadAndSendImages"
         />
 
-        <button type="submit" class="room-send" :disabled="sending || !draft.trim()" title="发送">
-          <i :class="sending ? 'bi bi-arrow-repeat is-spin' : 'bi bi-arrow-up-short'" aria-hidden="true" />
+        <button type="submit" class="room-send" :disabled="sending || !draft.trim()" title="发送（Enter）">
+          <i v-if="sending" class="bi bi-arrow-repeat is-spin" aria-hidden="true" />
+          <template v-else>发送</template>
         </button>
       </form>
       </template>
     </footer>
+
+    <!-- ==================== 右侧：群公告 / 群成员（宽屏显示，QQ NT 布局） ==================== -->
+    <aside class="room-aside">
+      <section class="room-aside-block">
+        <header class="room-aside-head">
+          <span>群公告</span>
+          <button v-if="canManage" type="button" class="room-aside-link" @click="openNoticeEditor">
+            编辑
+          </button>
+        </header>
+        <p
+          class="room-aside-text"
+          :class="{ 'is-clickable': !!room.notice }"
+          :title="room.notice ? '查看群公告' : ''"
+          @click="room.notice && (noticeOpen = true)"
+        >{{ room.notice || '暂无公告' }}</p>
+      </section>
+
+      <section class="room-aside-block is-grow">
+        <header class="room-aside-head">
+          <span>{{ isPublicRoom ? '在线成员' : '群成员' }} {{ memberRows.length }}</span>
+          <button type="button" class="room-aside-link" @click="memberOpen = true">查看全部</button>
+        </header>
+
+        <ul class="room-aside-members">
+          <li v-for="item in memberRows.slice(0, 30)" :key="item.uid" class="room-aside-member">
+            <span class="room-aside-avatar">{{ (item.name || '?').slice(0, 1) }}</span>
+            <span class="room-aside-name">{{ item.name }}</span>
+            <em v-if="item.uid === me" class="room-role-tag">我</em>
+            <em v-else-if="item.role" class="room-role-tag">{{ item.roleName }}</em>
+          </li>
+          <li v-if="!memberRows.length" class="room-aside-empty">还没有成员</li>
+        </ul>
+      </section>
+    </aside>
 
     <!-- ==================== 管理面板（仅超级管理员） ==================== -->
     <div v-if="adminOpen" class="room-admin">
@@ -226,20 +309,53 @@
 
         <div class="room-admin-tabs">
           <button
+            v-if="canManage"
             type="button"
             :class="['room-admin-tab', { 'is-active': adminTab === 'profile' }]"
             @click="adminTab = 'profile'"
           >房间资料</button>
+          <button
+            v-if="canManage"
+            type="button"
+            :class="['room-admin-tab', { 'is-active': adminTab === 'notice' }]"
+            @click="adminTab = 'notice'"
+          >群公告</button>
+          <button
+            v-if="!isPublicRoom"
+            type="button"
+            :class="['room-admin-tab', { 'is-active': adminTab === 'members' }]"
+            @click="adminTab = 'members'; loadMembers()"
+          >成员{{ members.length ? ` (${members.length})` : '' }}</button>
+          <button
+            v-if="!isPublicRoom && canModerate"
+            type="button"
+            :class="['room-admin-tab', { 'is-active': adminTab === 'requests' }]"
+            @click="adminTab = 'requests'; loadRequests()"
+          >申请{{ requests.length ? ` (${requests.length})` : '' }}</button>
           <button
             type="button"
             :class="['room-admin-tab', { 'is-active': adminTab === 'mutes' }]"
             @click="switchMutes"
           >禁言名单{{ mutes.length ? ` (${mutes.length})` : '' }}</button>
           <button
+            v-if="isPublicRoom"
             type="button"
             :class="['room-admin-tab', { 'is-active': adminTab === 'clear' }]"
             @click="switchClear"
           >自动清空</button>
+        </div>
+
+        <!-- 解散是不可逆操作：单独放在 tab 下方，避免和「保存」挨着误点 -->
+        <div v-if="canManage && !isPublicRoom" class="room-admin-danger">
+          <button
+            type="button"
+            class="room-btn room-btn-danger"
+            :disabled="dissolving"
+            @click="dissolve"
+          >
+            <i class="bi bi-trash3" aria-hidden="true" />{{ dissolving ? '解散中…' : '解散聊天室' }}
+          </button>
+          <span>解散后成员与申请都会被清空，消息不再对成员可见</span>
         </div>
 
         <div v-if="adminTab === 'profile'" class="room-admin-body">
@@ -264,6 +380,16 @@
             </div>
           </label>
 
+          <label v-if="!isPublicRoom" class="room-field">
+            <span>入群方式</span>
+            <SelectMenu
+              v-model="form.join_type"
+              variant="field"
+              :options="joinTypeOptions"
+              placeholder="请选择入群方式"
+            />
+          </label>
+
           <div class="room-admin-actions">
             <button type="button" class="room-btn" :disabled="avatarUploading" @click="pickAvatar">
               <i :class="avatarUploading ? 'bi bi-arrow-repeat is-spin' : 'bi bi-upload'" aria-hidden="true" />
@@ -277,6 +403,74 @@
           <input ref="avatarInput" class="room-file" type="file" accept="image/*" @change="onAvatarPicked" />
         </div>
 
+        <div v-else-if="adminTab === 'notice'" class="room-admin-body">
+          <label class="room-field">
+            <span>群公告</span>
+            <textarea
+              v-model="noticeDraft"
+              rows="5"
+              maxlength="500"
+              placeholder="最多 500 个字，留空即清除公告"
+            />
+          </label>
+
+          <p class="room-tip">公告会展示在房间顶部，所有成员可见（不会推送新的消息提醒）。</p>
+
+          <div class="room-admin-actions">
+            <button type="button" class="room-btn room-btn-primary" @click="saveNotice">发布公告</button>
+          </div>
+        </div>
+
+        <div v-else-if="adminTab === 'members'" class="room-admin-body">
+          <div v-if="canModerate" class="room-invite">
+            <div class="room-invite-row">
+              <input v-model="inviteUid" type="number" min="1" placeholder="用户 ID" />
+              <button type="button" class="room-btn room-btn-primary" :disabled="inviting" @click="invite">
+                {{ inviting ? '邀请中…' : '邀请' }}
+              </button>
+            </div>
+            <button type="button" class="room-invite-link" @click="inviteOpen = true">
+              <i class="bi bi-qr-code" aria-hidden="true" />链接 / 二维码邀请
+            </button>
+          </div>
+
+          <div v-for="item in members" :key="item.uid" class="room-mute-row">
+            <img class="room-mute-avatar" :src="avatarOfUser({ avatar: item.avatar })" alt="" loading="lazy" />
+            <span class="room-mute-name">
+              {{ item.name }}
+              <em v-if="item.role" class="room-role-tag">{{ item.roleName }}</em>
+            </span>
+            <button
+              v-if="canManage && item.role !== 2 && item.uid !== me"
+              type="button"
+              class="room-btn room-btn-sm"
+              @click="toggleRole(item)"
+            >{{ item.role === 1 ? '撤销管理' : '设为管理' }}</button>
+            <button
+              v-if="canModerate && item.role !== 2 && item.uid !== me"
+              type="button"
+              class="room-btn room-btn-sm room-btn-danger"
+              @click="removeMember(item)"
+            >移出</button>
+          </div>
+
+          <p v-if="!members.length" class="room-tip">还没有成员</p>
+        </div>
+
+        <div v-else-if="adminTab === 'requests'" class="room-admin-body">
+          <div v-for="item in requests" :key="item.id" class="room-mute-row">
+            <img class="room-mute-avatar" :src="avatarOfUser({ avatar: item.avatar })" alt="" loading="lazy" />
+            <span class="room-mute-name">
+              {{ item.name }}
+              <em>{{ item.message || '未填写留言' }}</em>
+            </span>
+            <button type="button" class="room-btn room-btn-sm room-btn-primary" @click="handleRequest(item, true)">通过</button>
+            <button type="button" class="room-btn room-btn-sm" @click="handleRequest(item, false)">拒绝</button>
+          </div>
+
+          <p v-if="!requests.length" class="room-tip">没有待处理的入群申请</p>
+        </div>
+
         <div v-else-if="adminTab === 'mutes'" class="room-admin-body">
           <div v-for="item in mutes" :key="item.uid" class="room-mute-row">
             <img class="room-mute-avatar" :src="avatarOfUser(item.user)" alt="" loading="lazy" />
@@ -288,7 +482,7 @@
           <p v-if="!mutes.length" class="room-tip">当前没有被禁言的用户</p>
         </div>
 
-        <div v-else class="room-admin-body">
+        <div v-else-if="adminTab === 'clear'" class="room-admin-body">
           <label class="room-field">
             <span>清空间隔</span>
             <SelectMenu
@@ -336,6 +530,12 @@
           <button type="button" class="room-btn" @click="mute(userPanel.uid, 60)">禁言 1 小时</button>
           <button type="button" class="room-btn" @click="mute(userPanel.uid, 1440)">禁言 1 天</button>
           <button type="button" class="room-btn room-btn-danger" @click="mute(userPanel.uid, 0)">永久禁言</button>
+          <button
+            v-if="canModerate && !isPublicRoom"
+            type="button"
+            class="room-btn room-btn-danger"
+            @click="removeMember({ uid: userPanel.uid, name: userPanel.nickname }); userPanel = null"
+          >移出聊天室</button>
         </div>
       </div>
     </div>
@@ -345,31 +545,68 @@
       <div class="room-modal-mask" @click="memberOpen = false" />
       <div class="room-modal-card room-member-card">
         <header class="room-member-head">
-          <span>在线成员（{{ onlineMembers.length }}）</span>
+          <span>
+            {{ isPublicRoom ? `在线成员（${memberRows.length}）` : `群成员（${memberRows.length}）` }}
+          </span>
           <button type="button" class="room-icon-btn" title="关闭" @click="memberOpen = false">
             <i class="bi bi-x-lg" aria-hidden="true" />
           </button>
         </header>
 
         <ul class="room-member-list">
-          <li v-for="item in onlineMembers" :key="item.uid" class="room-member-row">
+          <li v-for="item in memberRows" :key="item.uid" class="room-member-row">
             <span class="room-member-avatar">{{ (item.name || '?').slice(0, 1) }}</span>
             <span class="room-member-name">
               {{ item.name }}
               <em v-if="item.uid === me" class="room-member-self">我</em>
+              <em v-else-if="item.role" class="room-role-tag">{{ item.roleName }}</em>
             </span>
             <button
-              v-if="item.uid !== me"
+              v-if="item.uid !== me && !muted"
               type="button"
               class="room-btn room-btn-sm"
               @click="mentionMember(item)"
             >@ TA</button>
           </li>
 
-          <li v-if="!onlineMembers.length" class="room-tip">暂时没有其他人在线</li>
+          <li v-if="!memberRows.length" class="room-tip">
+            {{ isPublicRoom ? '暂时没有其他人在线' : '还没有成员' }}
+          </li>
         </ul>
       </div>
     </div>
+
+    <!-- ==================== 群公告弹窗 ==================== -->
+    <!-- 点顶部公告条 / 右侧公告栏打开：长公告在弹窗里滚动，不再挤压聊天区 -->
+    <div v-if="noticeOpen" class="room-modal">
+      <div class="room-modal-mask" @click="noticeOpen = false" />
+      <div class="room-modal-card room-notice-card">
+        <header class="room-notice-head">
+          <span>
+            <i class="bi bi-megaphone-fill" aria-hidden="true" />
+            群公告
+          </span>
+          <button type="button" class="room-icon-btn" title="关闭" @click="noticeOpen = false">
+            <i class="bi bi-x-lg" aria-hidden="true" />
+          </button>
+        </header>
+
+        <div class="room-notice-body">{{ room.notice || '暂无公告' }}</div>
+
+        <footer v-if="canManage" class="room-notice-foot">
+          <button type="button" class="room-btn" @click="editNotice">编辑公告</button>
+        </footer>
+      </div>
+    </div>
+
+    <!-- ==================== 邀请（链接 / 二维码） ==================== -->
+    <InviteDialog
+      v-if="inviteOpen"
+      :room-id="roomId"
+      :room-name="room.name || '群聊'"
+      @close="inviteOpen = false"
+      @share="shareInvite"
+    />
 
     <!-- ==================== 消息右键菜单 ==================== -->
     <div
@@ -419,17 +656,29 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import InviteDialog from './InviteDialog.vue'
 import {
+  addRoomMember,
+  announceRoom,
   deleteRoomMessage,
+  dissolveRoom,
   getRoomAutoClear,
   getRoomInfo,
+  handleRoomRequest,
+  joinRoom,
+  leaveRoom,
+  listRoomMembers,
   listRoomMessages,
   listRoomMutes,
+  listRoomRequests,
+  markRoomRead,
   muteRoomUser,
+  removeRoomMember,
   revokeRoomMessage,
   saveRoomAutoClear,
   sendRoomMessage,
+  setRoomMemberRole,
   unmuteRoomUser,
   updateRoom
 } from '@/api/room'
@@ -459,6 +708,7 @@ import SelectMenu from '@/components/SelectMenu.vue'
  *     前端的 is_admin 只用来决定「按钮要不要显示」，真正的校验在后端。
  */
 const route = useRoute()
+const router = useRouter()
 const userStore = useUserStore()
 const chatStore = useChatStore()
 
@@ -470,8 +720,30 @@ const hasMore = ref(false)
 const loading = ref(false)
 
 const isAdmin = ref(false)
+const isModerator = ref(false)
 const muted = ref(false)
 const mutedUntil = ref(0)
+
+// 群聊身份：joined 是否成员 / myRole -1 非成员 0 成员 1 管理员 2 群主
+const joined = ref(true)
+const myRole = ref(-1)
+const isPublicRoom = computed(() => roomId.value === 1)
+const canManage = computed(() => isAdmin.value)
+const canModerate = computed(() => isModerator.value)
+const memberCount = computed(() => Number(room.value.member_count) || 0)
+
+// 成员 / 申请 / 公告 / 解散
+const members = ref([])
+const requests = ref([])
+const noticeOpen = ref(false)
+const noticeDraft = ref('')
+const dissolving = ref(false)
+const joinMessage = ref('')
+const joinPending = ref(false)
+// 邀请入群：按用户 id 拉人，或生成链接 / 二维码
+const inviteUid = ref('')
+const inviting = ref(false)
+const inviteOpen = ref(false)
 
 const draft = ref('')
 const sending = ref(false)
@@ -494,7 +766,7 @@ const mutes = ref([])
 const saving = ref(false)
 const avatarUploading = ref(false)
 const avatarInput = ref(null)
-const form = ref({ name: '', description: '', avatar: '' })
+const form = ref({ name: '', description: '', avatar: '', join_type: 0 })
 
 // 自动清空：默认 3 天（72 小时），其余选项与后端 model.RoomAutoClearOptions 对齐
 const clearOptions = [
@@ -530,6 +802,25 @@ const me = computed(() => Number(userStore.user?.id || 0))
 // 在线成员来自 chat store 的 status 广播（已按 uid 去重，不含访客）
 const onlineMembers = computed(() => chatStore.presence.users)
 const onlineCount = computed(() => onlineMembers.value.length)
+
+// 成员面板：大厅看在线的（全员隐式成员），自建群看后端返回的成员表
+const memberRows = computed(() =>
+  isPublicRoom.value
+    ? onlineMembers.value
+    : members.value.map((item) => ({
+        uid: item.uid,
+        name: item.name,
+        role: item.role,
+        roleName: item.roleName
+      }))
+)
+
+// 入群方式（与后端 model.ChatRoomJoin* 常量对齐）
+const joinTypeOptions = [
+  { value: 0, label: '自由加入' },
+  { value: 1, label: '需要审批' },
+  { value: 2, label: '仅限邀请' }
+]
 
 /** @ 候选：排除自己，按已输入的关键字过滤，最多 8 个 */
 const mentionCandidates = computed(() => {
@@ -580,10 +871,17 @@ function avatarOf(msg) {
   return avatarOfUser(msg.user)
 }
 
-/** 本人 2 分钟内可撤回；管理员对任何未撤回消息都可撤回（与后端规则一致） */
+/** 撤回提示文案：本人撤回 / 别人撤回 / 被管理员撤回 */
+function revokeText(msg) {
+  const bySelf = Number(msg.revoke_uid || 0) === Number(msg.uid || 0)
+  if (bySelf) return isMine(msg) ? '你撤回了一条消息' : `${nameOf(msg)} 撤回了一条消息`
+  return `${nameOf(msg)} 的一条消息被管理员撤回`
+}
+
+/** 本人 2 分钟内可撤回；群主 / 群管理员 / 超级管理员对任何未撤回消息都可撤回 */
 function canRevoke(msg) {
   if (!msg || msg.is_revoked === 1) return false
-  if (isAdmin.value) return true
+  if (canModerate.value) return true
   if (!isMine(msg)) return false
   return Date.now() / 1000 - Number(msg.create_time || 0) <= 120
 }
@@ -660,7 +958,7 @@ async function deleteFromMenu(msg) {
   if (!msg?.id) return
 
   try {
-    const res = await deleteRoomMessage(msg.id)
+    const res = await deleteRoomMessage(roomId.value, msg.id)
     if (res?.code !== 200) return
 
     messages.value = messages.value.filter((item) => Number(item.id) !== Number(msg.id))
@@ -810,22 +1108,230 @@ function mergeMessages(list) {
 
 async function loadInfo() {
   try {
-    const res = await getRoomInfo()
+    const res = await getRoomInfo(roomId.value)
     if (res?.code !== 200) return
 
     room.value = res.data?.room || {}
     isAdmin.value = !!res.data?.is_admin
+    isModerator.value = !!res.data?.is_moderator
     muted.value = !!res.data?.muted
     mutedUntil.value = Number(res.data?.muted_until || 0)
+    joined.value = res.data?.room?.joined !== false
+    myRole.value = Number(res.data?.room?.my_role ?? -1)
 
     form.value = {
       name: room.value.name || '',
       description: room.value.description || '',
-      avatar: room.value.avatar || ''
+      avatar: room.value.avatar || '',
+      join_type: Number(room.value.join_type) || 0
+    }
+    noticeDraft.value = room.value.notice || ''
+
+    // 非成员：不拉历史，页面显示「加入」引导
+    if (!joined.value) return
+
+    loadMembers()
+    if (canModerate.value) loadRequests()
+  } catch {
+    /* 错误已由 request.js 提示 */
+  }
+}
+
+/** 成员列表：自建群走后端，公共大厅用在线成员（socket 广播） */
+async function loadMembers() {
+  if (isPublicRoom.value) return
+  try {
+    const res = await listRoomMembers(roomId.value)
+    if (res?.code !== 200) return
+    members.value = (res.data?.data || []).map((item) => ({
+      uid: Number(item.uid),
+      name: item.user?.nickname || `用户 #${item.uid}`,
+      avatar: item.user?.avatar || '',
+      role: Number(item.role) || 0,
+      roleName: item.role_name || '成员'
+    }))
+  } catch {
+    /* 非成员 / 权限不足，request.js 已提示 */
+  }
+}
+
+/** 待审的入群申请（群主 / 管理员） */
+async function loadRequests() {
+  if (isPublicRoom.value) return
+  try {
+    const res = await listRoomRequests(roomId.value)
+    if (res?.code !== 200) return
+    requests.value = (res.data?.data || []).map((item) => ({
+      id: Number(item.id),
+      uid: Number(item.uid),
+      name: item.user?.nickname || `用户 #${item.uid}`,
+      avatar: item.user?.avatar || '',
+      message: item.message || '',
+      createTime: Number(item.create_time) || 0
+    }))
+  } catch {
+    /* 权限不足已提示 */
+  }
+}
+
+/** 加入群聊：自由加入直接进；需审批的提示等待 */
+async function join() {
+  try {
+    const res = await joinRoom(roomId.value, joinMessage.value.trim())
+    if (res?.code !== 200) return
+
+    if (res.data?.joined) {
+      joined.value = true
+      joinPending.value = false
+      toast.success('已加入聊天室')
+      await loadInfo()
+      await loadHistory(0)
+    } else {
+      joinPending.value = true
+      toast.info('申请已提交，等待群主审批')
     }
   } catch {
     /* 错误已由 request.js 提示 */
   }
+}
+
+/** 退群：群主不能退（后端会拦），前端提前提示 */
+async function leave() {
+  if (myRole.value === 2) {
+    toast.warning('群主不能退出，请先解散聊天室')
+    return
+  }
+  if (!window.confirm('确定退出这个聊天室吗？')) return
+
+  try {
+    const res = await leaveRoom(roomId.value)
+    if (res?.code !== 200) return
+    toast.success('已退出聊天室')
+    router.push('/chat')
+  } catch {
+    /* 错误已由 request.js 提示 */
+  }
+}
+
+/** 解散群聊（群主 / 超级管理员） */
+async function dissolve() {
+  if (dissolving.value) return
+  if (!window.confirm('解散后成员与申请都会清空，确定解散吗？')) return
+
+  dissolving.value = true
+  try {
+    const res = await dissolveRoom(roomId.value)
+    if (res?.code !== 200) return
+    toast.success('聊天室已解散')
+    router.push('/chat')
+  } catch {
+    /* 错误已由 request.js 提示 */
+  } finally {
+    dissolving.value = false
+  }
+}
+
+/** 从公告弹窗直接进编辑：先关弹窗，再打开管理面板的公告 tab */
+function editNotice() {
+  noticeOpen.value = false
+  openNoticeEditor()
+}
+
+/** 从右侧公告栏直接进入编辑（打开管理面板并定位到公告 tab） */
+function openNoticeEditor() {
+  noticeDraft.value = room.value.notice || ''
+  adminTab.value = 'notice'
+  adminOpen.value = true
+}
+
+/** 发布 / 清除群公告 */
+async function saveNotice() {
+  try {
+    const res = await announceRoom(roomId.value, noticeDraft.value.trim())
+    if (res?.code !== 200) return
+    room.value = { ...room.value, ...(res.data || {}) }
+    toast.success(noticeDraft.value.trim() ? '公告已发布' : '公告已清除')
+    adminTab.value = 'notice'
+  } catch {
+    /* 错误已由 request.js 提示 */
+  }
+}
+
+/** 审批入群申请 */
+async function handleRequest(item, approve) {
+  try {
+    const res = await handleRoomRequest(roomId.value, item.id, approve)
+    if (res?.code !== 200) return
+    requests.value = requests.value.filter((row) => row.id !== item.id)
+    toast.success(approve ? '已通过申请' : '已拒绝申请')
+    if (approve) loadMembers()
+  } catch {
+    /* 错误已由 request.js 提示 */
+  }
+}
+
+/** 邀请成员（按用户 id）：群主 / 管理员可用，「仅邀请」的群靠它进人 */
+async function invite() {
+  const uid = Number(inviteUid.value)
+  if (!uid || inviting.value) {
+    toast.warning('请输入要邀请的用户 ID')
+    return
+  }
+
+  inviting.value = true
+  try {
+    const res = await addRoomMember(roomId.value, uid)
+    if (res?.code !== 200) return
+    inviteUid.value = ''
+    toast.success('已邀请加入')
+    loadMembers()
+  } catch {
+    /* 错误已由 request.js 提示 */
+  } finally {
+    inviting.value = false
+  }
+}
+
+/** 把邀请链接填进输入框，方便直接发到群里或私聊 */
+function shareInvite(url) {
+  if (!url) return
+  draft.value = draft.value ? `${draft.value} ${url}` : url
+  nextTick(() => inputRef.value?.focus?.())
+  toast.success('邀请链接已填入输入框')
+}
+
+/** 移出成员 */
+async function removeMember(item) {
+  if (!window.confirm(`确定把「${item.name}」移出聊天室吗？`)) return
+  try {
+    const res = await removeRoomMember(roomId.value, item.uid)
+    if (res?.code !== 200) return
+    members.value = members.value.filter((row) => row.uid !== item.uid)
+    toast.success('已移出')
+  } catch {
+    /* 错误已由 request.js 提示 */
+  }
+}
+
+/** 设置 / 撤销群管理员（只有群主能操作） */
+async function toggleRole(item) {
+  const next = item.role === 1 ? 0 : 1
+  try {
+    const res = await setRoomMemberRole(roomId.value, item.uid, next)
+    if (res?.code !== 200) return
+    item.role = next
+    item.roleName = next === 1 ? '管理员' : '成员'
+    toast.success(next === 1 ? '已设为管理员' : '已取消管理员')
+  } catch {
+    /* 错误已由 request.js 提示 */
+  }
+}
+
+/** 上报已读水位（列表页未读数用；失败静默） */
+function reportRead() {
+  if (isPublicRoom.value || !joined.value) return
+  const last = maxSeq(messages.value)
+  if (last > 0) markRoomRead(roomId.value, last).catch(() => {})
 }
 
 // 历史 / 补拉的代次：自动清空发生后 +1，让在途请求的旧结果直接作废，
@@ -839,7 +1345,10 @@ async function loadHistory(beforeId = 0) {
   const epoch = historyEpoch
 
   try {
-    const res = await listRoomMessages(beforeId ? { before_id: beforeId } : {})
+    const res = await listRoomMessages(
+      roomId.value,
+      beforeId ? { before_id: beforeId } : {}
+    )
     if (res?.code !== 200) return
     if (epoch !== historyEpoch) return
 
@@ -852,6 +1361,8 @@ async function loadHistory(beforeId = 0) {
     } else {
       messages.value = list
       scrollToBottom()
+      // 拉到最新一页就算读过了：列表页的未读数据此归零
+      reportRead()
     }
 
     hasMore.value = !!res.data?.has_more
@@ -868,7 +1379,7 @@ async function syncMessages() {
   const epoch = historyEpoch
 
   for (let page = 0; page < 5; page += 1) {
-    const res = await listRoomMessages({ after_seq: cursor, limit: 50 })
+    const res = await listRoomMessages(roomId.value, { after_seq: cursor, limit: 50 })
     if (res?.code !== 200) return
     if (epoch !== historyEpoch) return
 
@@ -879,6 +1390,8 @@ async function syncMessages() {
     cursor = Number(res.data?.last_seq) || cursor
     if (!res.data?.has_more) break
   }
+
+  reportRead()
 }
 
 // ---------- @ 提及 ----------
@@ -887,7 +1400,7 @@ async function syncMessages() {
 function onInput() {
   if (muted.value) return
 
-  chatStore.sendRoomTyping()
+  chatStore.sendRoomTyping(roomId.value)
 
   // 输入框是 contenteditable，拿光标前的纯文本而不是 selectionStart
   const before = inputRef.value?.textBeforeCaret?.() || ''
@@ -968,7 +1481,7 @@ function onInputKeydown(e) {
 // ---------- 发送 ----------
 
 async function postMessage(content, msgType = 'text', quoteId = 0) {
-  const res = await sendRoomMessage({
+  const res = await sendRoomMessage(roomId.value, {
     content,
     msg_type: msgType,
     // 引用回复：只传被引用消息 id，摘要由服务端回查后落快照
@@ -1013,7 +1526,7 @@ async function revoke(msg) {
   if (!canRevoke(msg)) return
 
   try {
-    const res = await revokeRoomMessage(msg.id)
+    const res = await revokeRoomMessage(roomId.value, msg.id)
     if (res?.code !== 200) return
     applyRevoke(res.data)
     toast.success('已撤回')
@@ -1125,7 +1638,9 @@ function openAdmin() {
     avatar: room.value.avatar || ''
   }
   adminOpen.value = true
-  adminTab.value = 'profile'
+  // 群管理员没有「资料 / 公告」权限，直接落到禁言名单，避免打开是空面板
+  adminTab.value = canManage.value ? 'profile' : 'mutes'
+  if (!canManage.value) loadMutes()
 }
 
 function switchMutes() {
@@ -1135,7 +1650,7 @@ function switchMutes() {
 
 async function loadMutes() {
   try {
-    const res = await listRoomMutes()
+    const res = await listRoomMutes(roomId.value)
     if (res?.code === 200) mutes.value = res.data?.data || []
   } catch {
     /* 权限不足等错误已由 request.js 提示 */
@@ -1188,10 +1703,12 @@ async function saveRoom() {
 
   saving.value = true
   try {
-    const res = await updateRoom({
+    const res = await updateRoom(roomId.value, {
       name,
       description: form.value.description.trim(),
-      avatar: form.value.avatar.trim()
+      avatar: form.value.avatar.trim(),
+      // 大厅的入群方式固定为自由加入，后端会忽略这个字段
+      join_type: Number(form.value.join_type ?? room.value.join_type ?? 0)
     })
     if (res?.code !== 200) return
 
@@ -1239,9 +1756,9 @@ async function onAvatarPicked(event) {
   }
 }
 
-/** 管理员点消息头像：打开禁言操作浮层 */
+/** 群管理点消息头像：打开禁言 / 移出操作浮层 */
 function onAvatarClick(msg) {
-  if (!isAdmin.value || isMine(msg) || msg.is_revoked === 1) return
+  if (!canModerate.value || isMine(msg) || msg.is_revoked === 1) return
   userPanel.value = {
     uid: Number(msg.uid),
     nickname: nameOf(msg),
@@ -1251,7 +1768,7 @@ function onAvatarClick(msg) {
 
 async function mute(uid, minutes) {
   try {
-    const res = await muteRoomUser(uid, minutes)
+    const res = await muteRoomUser(roomId.value, uid, minutes)
     if (res?.code !== 200) return
 
     toast.success(minutes > 0 ? `已禁言 ${minutes} 分钟` : '已永久禁言')
@@ -1265,7 +1782,7 @@ async function mute(uid, minutes) {
 
 async function unmute(uid) {
   try {
-    const res = await unmuteRoomUser(uid)
+    const res = await unmuteRoomUser(roomId.value, uid)
     if (res?.code !== 200) return
 
     mutes.value = mutes.value.filter((item) => Number(item.uid) !== Number(uid))
@@ -1314,6 +1831,8 @@ function onRoomEvent(payload = {}) {
   // 有人 @ 我：在房间里就直接提示并把角标清掉（已经看到了）
   if (payload.type === 'mention') {
     if (Number(payload.item?.from_uid) === me.value) return
+    // 别的群 @ 我：不在这里提示（列表页负责），避免进 A 群弹出 B 群的提醒
+    if (Number(payload.item?.room_id || 1) !== roomId.value) return
     chatStore.clearRoomMentions()
     toast.info('有人在聊天室提到了你')
     return
@@ -1324,8 +1843,22 @@ function onRoomEvent(payload = {}) {
   const data = event?.data
   if (!type || !data) return
 
+  // 多群：只处理当前房间的事件（大厅事件可能不带 room_id，按 1 处理）
+  const eventRoomId = Number(data.room_id || data.id || 1)
+  if (eventRoomId !== roomId.value) return
+
+  // 有人在当前群打字（服务端按 room_id 分发，前端再按 uid 过滤自己）
+  if (type === 'room_typing') {
+    noteTyping(Number(data.uid))
+    return
+  }
+
   if (type === 'room') {
-    if (mergeMessages([data])) scrollToBottom()
+    if (!joined.value) return
+    if (mergeMessages([data])) {
+      scrollToBottom()
+      reportRead()
+    }
     // 消息已经到了，对应的「正在输入」就该收掉
     const uid = Number(data.uid) || 0
     if (uid > 0 && typers.value.has(uid)) {
@@ -1352,6 +1885,44 @@ function onRoomEvent(payload = {}) {
 
   if (type === 'room_update') {
     room.value = { ...room.value, ...data }
+    return
+  }
+
+  // 群公告：顶部公告条就地刷新
+  if (type === 'room_announce') {
+    room.value = { ...room.value, ...data }
+    return
+  }
+
+  // 群成员变化：刷新成员 / 申请面板（群主与管理员才有的列表）
+  if (type === 'room_member_join' || type === 'room_member_leave' || type === 'room_member_remove') {
+    loadMembers()
+    // 自己被移出：立刻退出页面
+    if (type === 'room_member_remove' && Number(data.uid) === me.value) {
+      toast.warning('你已被移出该聊天室')
+      router.push('/chat')
+    }
+    return
+  }
+
+  if (type === 'room_member_role') {
+    loadMembers()
+    return
+  }
+
+  // 新的入群申请：提醒群主 / 管理员处理
+  if (type === 'room_join_request') {
+    if (canModerate.value) {
+      loadRequests()
+      toast.info('有新的入群申请')
+    }
+    return
+  }
+
+  // 群被解散：成员页面统一退回列表
+  if (type === 'room_dissolve') {
+    toast.warning('该聊天室已解散')
+    router.push('/chat')
     return
   }
 
@@ -1388,7 +1959,9 @@ onMounted(async () => {
   chatStore.clearRoomMentions()
   // 房间里被 @ 由本页 toast 提示，不再重复弹右下角浮层
   chatStore.setViewingRoom(true)
-  await Promise.all([loadInfo(), loadHistory(0)])
+  // 先拿房间与成员身份：非成员不拉历史（后端会 403，前端也少一次无谓请求）
+  await loadInfo()
+  if (joined.value) await loadHistory(0)
   unsubscribeEvent = chatStore.onEvent(onRoomEvent)
   // 后台标签页不刷新：这个轮询只是为了「禁言到点自动解除」，
   // 页面不可见时刷新没有意义（用户看不到），还会占一个连接与一次 QPS 计数
@@ -1415,14 +1988,49 @@ onBeforeUnmount(() => {
 
 <style scoped>
 /* 整屏页面：与私信页同一套骨架，但群聊内容居中收窄，长行更好读 */
-.room-app {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  height: 100dvh;
+/* 右栏：由 /chat 布局撑开，自身不再占满视口（否则会和左栏叠在一起）
+   配色仿 QQ NT：浅灰蓝聊天底 + 白色气泡，局部变量，不影响站点其它页面 */
+.room-chat {
+  /* 映射站点语义 token：跟随主题与暗色模式，不写死颜色 */
+  --chat-blue: var(--primary);
+  --chat-panel: var(--bg);
+  --chat-line: var(--border-soft);
+  --chat-weak: var(--text-light);
+
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 264px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "head head"
+    "notice notice"
+    "body aside"
+    "composer aside";
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
   overflow: hidden;
   color: var(--text);
-  background: var(--bg);
+  background: var(--chat-panel);
+}
+.room-head {
+  grid-area: head;
+}
+.room-notice {
+  grid-area: notice;
+}
+.room-body {
+  grid-area: body;
+}
+.room-composer {
+  grid-area: composer;
+}
+.room-aside {
+  grid-area: aside;
+}
+
+/* 桌面端左栏已有列表，返回按钮只在窄屏出现 */
+.room-back {
+  display: none;
 }
 
 /* ==================== 顶部 ==================== */
@@ -1431,9 +2039,9 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 12px;
   flex-shrink: 0;
-  padding: 12px 18px;
+  padding: 12px 20px;
   background: var(--bg-card);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--chat-line);
 }
 .room-icon-btn {
   width: 32px;
@@ -1516,14 +2124,14 @@ onBeforeUnmount(() => {
   padding: 1px 8px;
   font-family: inherit;
   font-size: 11px;
-  color: var(--primary);
-  background: var(--accent-soft);
+  color: var(--chat-blue);
+  background: var(--accent-wash);
   border: 0;
   border-radius: 999px;
   cursor: pointer;
 }
 .room-online:hover {
-  background: var(--accent-wash);
+  background: var(--accent-soft);
 }
 .room-actions {
   display: flex;
@@ -1587,7 +2195,8 @@ onBeforeUnmount(() => {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 20px max(18px, calc((100% - 900px) / 2)) 10px;
+  padding: 18px max(18px, calc((100% - 900px) / 2)) 10px;
+  background: var(--chat-panel);
   scrollbar-width: thin;
 }
 .room-tip {
@@ -1622,9 +2231,8 @@ onBeforeUnmount(() => {
   color: var(--text-light);
 }
 .room-day span {
-  padding: 2px 10px;
-  background: var(--bg-muted);
-  border-radius: 999px;
+  padding: 0;
+  background: transparent;
 }
 
 .room-msg {
@@ -1699,25 +2307,25 @@ onBeforeUnmount(() => {
   color: var(--danger);
 }
 
+/* QQ NT：别人白气泡（左上角小圆角），自己蓝气泡（右上角小圆角） */
 .room-bubble {
-  padding: 10px 14px;
+  padding: 8px 12px;
   font-size: 14px;
-  line-height: 1.75;
+  line-height: 1.7;
   color: var(--text);
   background: var(--bg-card);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-lg);
-  border-top-left-radius: var(--radius-xs);
+  border: 0;
+  border-radius: 8px;
+  border-top-left-radius: 2px;
   box-shadow: var(--shadow-sm);
   word-break: break-word;
   white-space: pre-wrap;
 }
 .room-msg.is-mine .room-bubble {
   color: #fff;
-  background: var(--primary);
-  border-color: var(--primary);
-  border-top-left-radius: var(--radius-lg);
-  border-bottom-right-radius: var(--radius-xs);
+  background: var(--chat-blue);
+  border-radius: 8px;
+  border-top-right-radius: 2px;
   box-shadow: none;
 }
 .room-bubble.is-revoked {
@@ -1787,7 +2395,7 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   padding: 10px max(18px, calc((100% - 900px) / 2)) calc(12px + env(safe-area-inset-bottom));
   background: var(--bg-card);
-  border-top: 1px solid var(--border);
+  border-top: 1px solid var(--chat-line);
 }
 .room-composer-box {
   position: relative;
@@ -1796,13 +2404,13 @@ onBeforeUnmount(() => {
   align-items: flex-end;
   gap: 6px;
   padding: 6px 6px 6px 8px;
-  background: var(--bg);
-  border: 1px solid var(--border-soft);
-  border-radius: var(--radius-lg);
+  background: var(--bg-card);
+  border: 1px solid var(--chat-line);
+  border-radius: 8px;
   transition: border-color var(--dur-fast) var(--ease), box-shadow var(--dur-fast) var(--ease);
 }
 .room-composer-box:focus-within {
-  border-color: var(--primary);
+  border-color: var(--chat-blue);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
 .room-tools {
@@ -1855,18 +2463,30 @@ onBeforeUnmount(() => {
   color: var(--text-light);
 }
 .room-send {
-  width: 36px;
-  height: 36px;
+  min-width: 64px;
+  height: 34px;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  padding: 0 18px;
+  font-size: 13px;
+  font-family: inherit;
   color: #fff;
-  background: var(--primary);
+  background: var(--chat-blue);
   border: 0;
-  border-radius: 50%;
+  border-radius: 6px;
   cursor: pointer;
+  transition: opacity var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease);
+}
+.room-send:hover:not(:disabled) {
+  background: var(--primary-deep);
+}
+.room-send:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.room-send:active:not(:disabled) {
+  transform: scale(0.97);
 }
 .room-send:disabled {
   opacity: 0.4;
@@ -1947,11 +2567,12 @@ onBeforeUnmount(() => {
 }
 
 /* 在线成员面板 */
-.room-member-card {
+/* 双类选择器：.room-modal-card 的 padding 定义在文件末尾，单类规则会被它盖掉 */
+.room-modal-card.room-member-card {
   display: flex;
   flex-direction: column;
-  width: min(420px, 100%);
-  max-height: min(70vh, 560px);
+  width: min(340px, 100%);
+  max-height: min(70vh, 480px);
   padding: 0;
   overflow: hidden;
 }
@@ -1959,24 +2580,29 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 14px;
-  font-size: 14px;
+  padding: 10px 12px 10px 14px;
+  font-size: 13px;
   font-weight: 600;
   border-bottom: 1px solid var(--border-soft);
+}
+.room-member-head .room-icon-btn {
+  width: 26px;
+  height: 26px;
+  font-size: 13px;
 }
 .room-member-list {
   flex: 1;
   min-height: 0;
   margin: 0;
-  padding: 6px 8px;
+  padding: 4px 6px 6px;
   overflow-y: auto;
   list-style: none;
 }
 .room-member-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 7px 8px;
+  gap: 8px;
+  padding: 5px 8px;
   border-radius: var(--radius);
 }
 .room-member-row:hover {
@@ -1985,10 +2611,10 @@ onBeforeUnmount(() => {
 .room-member-avatar {
   display: grid;
   place-items: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   flex-shrink: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-soft);
   background: var(--accent-wash);
   border-radius: 50%;
@@ -2008,7 +2634,332 @@ onBeforeUnmount(() => {
   color: var(--primary);
 }
 .room-member-card .room-tip {
-  padding: 0 14px 12px;
+  padding: 8px 12px 10px;
+  font-size: 12px;
+}
+
+/* ==================== 多群：公告 / 徽标 / 加入引导 ==================== */
+.room-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 1.6;
+  color: var(--chat-blue);
+  vertical-align: middle;
+  background: var(--accent-soft);
+  border-radius: 4px;
+}
+.room-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 18px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-soft);
+  cursor: pointer;
+  background: var(--accent-wash);
+  border-bottom: 1px solid var(--border-soft);
+  transition: background 0.12s;
+}
+/* 只是一个「预览条」：点击后到弹窗里看全文，所以给个可点的反馈 */
+.room-notice:hover,
+.room-notice:focus-visible {
+  background: var(--accent-soft);
+}
+.room-notice i {
+  margin-top: 2px;
+  color: var(--primary);
+}
+.room-notice span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.room-notice .room-notice-more {
+  flex-shrink: 0;
+  margin-top: 3px;
+  font-size: 10px;
+  color: var(--chat-text-weak);
+}
+
+/* ==================== 群公告弹窗 ==================== */
+/* 双类选择器：.room-modal-card 的 padding 定义在文件末尾，单类规则会被它盖掉 */
+.room-modal-card.room-notice-card {
+  display: flex;
+  flex-direction: column;
+  width: min(420px, 100%);
+  max-height: min(70vh, 520px);
+  padding: 0;
+  overflow: hidden;
+}
+.room-notice-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 14px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  border-bottom: 1px solid var(--border-soft);
+}
+.room-notice-head span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.room-notice-head i {
+  font-size: 12px;
+  color: var(--primary);
+}
+.room-notice-body {
+  flex: 1;
+  min-height: 0;
+  padding: 14px 16px 18px;
+  overflow-y: auto;
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--text-soft);
+  /* 公告是用户手写的多行文本：保留换行，超长链接也要能折行 */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.room-notice-foot {
+  display: flex;
+  justify-content: flex-end;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.room-join {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 18px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+.room-join p {
+  flex: 1 1 100%;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.room-join input {
+  flex: 1;
+  min-width: 160px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  outline: none;
+}
+.room-join input:focus {
+  border-color: var(--primary);
+}
+.room-revoked {
+  margin: 12px auto;
+  font-size: 12px;
+  color: var(--text-light);
+  text-align: center;
+}
+
+/* ==================== 右侧栏：群公告 / 群成员 ==================== */
+.room-aside {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 14px 14px 10px;
+  overflow: hidden;
+  background: var(--bg-card);
+  border-left: 1px solid var(--chat-line);
+}
+.room-aside-block {
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--chat-line);
+}
+.room-aside-block.is-grow {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  margin-bottom: 0;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+.room-aside-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.room-aside-link {
+  padding: 0;
+  font-family: inherit;
+  font-size: 11.5px;
+  color: var(--chat-blue);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.room-aside-text {
+  max-height: 132px;
+  margin: 0;
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.75;
+  color: var(--text-soft);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+/* 有公告时右侧这块也是「点开看全文」的入口（与顶部公告条同一个弹窗） */
+.room-aside-text.is-clickable {
+  cursor: pointer;
+}
+.room-aside-text.is-clickable:hover {
+  color: var(--text);
+}
+.room-aside-members {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+.room-aside-member {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 4px;
+  border-radius: 6px;
+}
+.room-aside-member:hover {
+  background: var(--chat-panel);
+}
+.room-aside-avatar {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-soft);
+  background: var(--bg-muted);
+  border-radius: 50%;
+}
+.room-aside-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.room-aside-empty {
+  padding: 18px 0;
+  font-size: 11.5px;
+  color: var(--chat-weak);
+  text-align: center;
+}
+@media (max-width: 1180px) {
+  .room-chat {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "head"
+      "notice"
+      "body"
+      "composer";
+  }
+  .room-aside {
+    display: none;
+  }
+}
+.room-role-tag {
+  margin-left: 6px;
+  padding: 0 5px;
+  font-style: normal;
+  font-size: 10px;
+  color: var(--primary);
+  background: var(--accent-wash);
+  border-radius: 4px;
+}
+.room-admin-danger {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.room-admin-danger span {
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+.room-mute-name em {
+  display: block;
+  margin-top: 2px;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-soft);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.room-invite {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.room-invite-row {
+  display: flex;
+  gap: 8px;
+}
+.room-invite input {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-muted);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius);
+  outline: none;
+}
+.room-invite input:focus {
+  border-color: var(--primary);
+}
+.room-invite-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 0;
+  font-size: 12.5px;
+  color: var(--primary);
+  background: var(--accent-wash);
+  border-radius: var(--radius);
+}
+.room-invite-link:hover {
+  background: var(--accent-ring);
 }
 
 /* ==================== 管理抽屉 ==================== */
@@ -2204,6 +3155,9 @@ onBeforeUnmount(() => {
 
 /* 窄屏 */
 @media (max-width: 860px) {
+  .room-back {
+    display: inline-flex;
+  }
   .room-head {
     padding: 10px 12px;
   }

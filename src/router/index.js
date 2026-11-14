@@ -36,21 +36,48 @@ const routes = [
       }
     ]
   },
-  // 公共聊天室：整屏页面，独立于所有布局（与私信页同一套骨架）
-  // 目前只有 id=1，路径仍带 id，方便以后扩展多房间
+  // 消息中心：私信 + 群聊共用一份左栏列表（/chat）
+  // 右栏是子路由：/chat/:uid 私信，/chat/room/:id 群聊；/chat 无选中时显示空态。
+  // 窄屏下变成单栏（有选中只看聊天，没有只看列表）。
   {
-    path: '/room/:id(\\d+)',
-    name: 'room',
-    component: () => import('@/views/room/Index.vue'),
-    meta: { auth: true, title: '聊天室' }
+    path: '/chat',
+    component: () => import('@/views/chat/Layout.vue'),
+    meta: { auth: true, title: '消息' },
+    children: [
+      {
+        path: 'room/:id(\\d+)',
+        name: 'room',
+        component: () => import('@/views/room/Index.vue'),
+        meta: { auth: true, title: '群聊' }
+      },
+      {
+        path: ':uid(\\d+)',
+        name: 'chat-dm',
+        component: () => import('@/views/messages/Index.vue'),
+        meta: { auth: true, title: '私信' }
+      }
+    ]
   },
-  // 私信：整屏聊天页，独立于所有布局（自己撑满视口，不带站点侧栏 / 页脚 / 手机底栏）
-  // 与 /docs 同理，必须放在 `/` 之前 —— MainLayout 末尾有 `:key` 兜底路由
+  // 群邀请落地页：链接与二维码都指向 /join/<code>
+  // 未登录由守卫带到登录页，登录后带 redirect 回到这里
+  {
+    path: '/join/:code([A-Za-z0-9]+)',
+    name: 'room-join',
+    component: () => import('@/views/room/Join.vue'),
+    meta: { auth: true, title: '加入群聊' }
+  },
+  // 旧地址兼容：/messages?to=1、/room/1、/room 都跳到 /chat 下的对应页面
   {
     path: '/messages',
-    name: 'messages',
-    component: () => import('@/views/messages/Index.vue'),
-    meta: { auth: true, title: '私信' }
+    redirect: (to) => (to.query.to ? `/chat/${to.query.to}` : '/chat')
+  },
+  {
+    path: '/room',
+    redirect: '/chat'
+  },
+  {
+    path: '/room/:id(\\d+)',
+    redirect: (to) => `/chat/room/${to.params.id}`
   },
   {
     path: '/',
@@ -134,9 +161,12 @@ const routes = [
       // 我的认证：按后台配置的认证类型提交申请、查看审核进度与已通过的认证信息
       { path: 'verification', name: 'user-verification', component: () => import('@/views/user/Verification.vue') },
       { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
-      // 私信已独立成 /messages（整屏聊天页）：旧地址保留重定向，
+      // 消息已合并为 /chat：旧地址保留重定向，
       // 书签、站内旧链接、?to=<uid> 直达参数都不会失效
-      { path: 'messages', redirect: (to) => ({ path: '/messages', query: to.query }) },
+      {
+        path: 'messages',
+        redirect: (to) => (to.query.to ? `/chat/${to.query.to}` : '/chat')
+      },
       // 拉黑与举报：我的拉黑列表（可解除）+ 我提交的举报与处理进展（可撤回）
       { path: 'blocks', name: 'user-blocks', component: () => import('@/views/user/Blocks.vue') },
       // 站点配置（管理员）：已迁至后台 /admin/system 的「网站设置」模块，旧地址保留为重定向
@@ -287,6 +317,7 @@ const routes = [
           { path: 'conversations', name: 'admin-chat-conversations', component: () => import('@/views/admin/ChatConversations.vue'), meta: { title: '私信会话' } },
           { path: 'moderation', name: 'admin-chat-moderation', component: () => import('@/views/admin/ChatModeration.vue'), meta: { title: '聊天审核' } },
           { path: 'room', name: 'admin-chat-room', component: () => import('@/views/admin/RoomMessages.vue'), meta: { title: '聊天室消息' } },
+          { path: 'groups', name: 'admin-chat-groups', component: () => import('@/views/admin/RoomGroups.vue'), meta: { title: '群聊管理' } },
           { path: 'mutes', name: 'admin-chat-mutes', component: () => import('@/views/admin/RoomMutes.vue'), meta: { title: '禁言名单' } },
           { path: 'settings', name: 'admin-chat-settings', component: () => import('@/views/admin/RoomSettings.vue'), meta: { title: '聊天室设置' } }
         ]

@@ -43,8 +43,15 @@ const RECONNECT_DELAYS = [1000, 2000, 3000, 5000, 8000, 13000, 20000]
 // 应用层心跳间隔（毫秒）
 const PING_INTERVAL = 30000
 
-// 连续失败上限：达到后停止自动重连（状态转为 failed），交由调用方手动重连
+// 连续失败上限：达到后转入低速重试（状态 failed），不再按退避表高频重试
 const MAX_ATTEMPTS = 8
+
+// 低速重试间隔（毫秒）
+//
+// 失败不等于永久放弃：反向代理重启、切 Wi-Fi / 蜂窝、休眠唤醒之后，
+// 连接必须能自己回来。否则用户看到的现象就是「消息不再实时，
+// 必须刷新页面才恢复」——那正是客户端最常见的投诉。
+const SLOW_RETRY_INTERVAL = 30000
 
 /** 读取登录 token（与 api/request.js 同一约定：cookie 优先，回退 localStorage） */
 function readToken() {
@@ -113,21 +120,30 @@ export function createSocketClient(options = {}) {
   let state = 'closed'
   let warned = false
 
-  /** 连续失败达到上限后停止自动重连（状态转为 failed，等调用方手动 reconnect）
+  /** 连续失败达到上限后转入低速重试（状态 failed）
    *  目的：配置/代理有问题时不要无限重试刷屏（浏览器每个失败连接都会打一条错误），
-   *  同时保留短暂抖动（后端重启等）内的自愈能力。 */
+   *  但也不能就此放弃 —— 每 30 秒再试一轮，成功后自动回到正常退避。 */
   function failOut() {
     setState('failed')
-    if (warned) return
-    warned = true
-    console.warn(
-      `[socket] 连续 ${MAX_ATTEMPTS} 次连接失败，已停止自动重连：${socketUrl()}\n` +
-        '常见原因：① 反向代理未放通 /socket 的 WebSocket 升级（Upgrade / Connection: upgrade）；' +
-        '② 本地开发未在 vite.config.js 里代理 /socket；' +
-        '③ socketUri / VITE_SOCKET 指向了错误地址。\n' +
-        '排查：浏览器控制台若报 "Unexpected response code: 200/404"，基本就是 ①②；' +
-        '修好后点页面上的「重新连接」，或刷新页面。'
-    )
+    if (!warned) {
+      warned = true
+      console.warn(
+        `[socket] 连续 ${MAX_ATTEMPTS} 次连接失败，转入 ${SLOW_RETRY_INTERVAL / 1000}s 低速重试：${socketUrl()}\n` +
+          '常见原因：① 反向代理未放通 /socket 的 WebSocket 升级（Upgrade / Connection: upgrade）；' +
+          '② 本地开发未在 vite.config.js 里代理 /socket；' +
+          '③ socketUri / VITE_SOCKET 指向了错误地址。\n' +
+          '排查：浏览器控制台若报 "Unexpected response code: 200/404"，基本就是 ①②；' +
+          '修好后点页面上的「重新连接」即可，不必刷新。'
+      )
+    }
+
+    clearTimeout(timer)
+    timer = setTimeout(() => {
+      if (manual) return
+      // 新一轮从最短退避重新开始：恢复网络后应当立刻可用
+      attempt = 0
+      connect()
+    }, SLOW_RETRY_INTERVAL)
   }
 
   function setState(next) {
@@ -245,6 +261,7 @@ export function createSocketClient(options = {}) {
     manual = true
     clearTimeout(timer)
     stopPing()
+    detachWake()
     if (ws) {
       try {
         ws.close()
@@ -254,6 +271,40 @@ export function createSocketClient(options = {}) {
       ws = null
     }
     setState('closed')
+  }
+
+  /**
+   * 立刻重试一次（不等退避计时）
+   *
+   * 手机锁屏、切走标签页、Wi-Fi 与蜂窝互切，长连接经常是「悄无声息」地断掉：
+   * 对端已经消失，但 onclose 要等系统回收才触发。这些场景下主动补一次，
+   * 用户回到页面就能立刻恢复实时消息。
+   */
+  function wake() {
+    if (manual) return
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) return
+    clearTimeout(timer)
+    attempt = 0
+    warned = false
+    connect()
+  }
+
+  function onVisibilityChange() {
+    if (document.visibilityState === 'visible') wake()
+  }
+
+  // 监听网络恢复与「回到前台」：这两个时机是先于用户操作的，
+  // 早一步连上，用户点进来的第一眼就能看到新消息
+  const hasDom = typeof window !== 'undefined' && typeof document !== 'undefined'
+  if (hasDom) {
+    window.addEventListener('online', wake)
+    document.addEventListener('visibilitychange', onVisibilityChange)
+  }
+
+  function detachWake() {
+    if (!hasDom) return
+    window.removeEventListener('online', wake)
+    document.removeEventListener('visibilitychange', onVisibilityChange)
   }
 
   return {
