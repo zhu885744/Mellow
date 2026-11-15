@@ -306,7 +306,7 @@ const routes = [
       // ==================== 消息通知 ====================
       { path: 'message', name: 'admin-message', component: () => import('@/views/admin/Message.vue'), meta: { title: '消息管理' } },
       // ==================== 聊天管理 ====================
-      // 私信 / 公共聊天室：命中词库的留证审核（chat-moderation）+ 聊天室运营（room）
+      // 私信 / 公共群聊：命中词库的留证审核（chat-moderation）+ 群聊运营（room）
       {
         path: 'chat',
         component: () => import('@/views/admin/AdminHub.vue'),
@@ -316,10 +316,10 @@ const routes = [
           { path: '', redirect: '/admin/chat/conversations' },
           { path: 'conversations', name: 'admin-chat-conversations', component: () => import('@/views/admin/ChatConversations.vue'), meta: { title: '私信会话' } },
           { path: 'moderation', name: 'admin-chat-moderation', component: () => import('@/views/admin/ChatModeration.vue'), meta: { title: '聊天审核' } },
-          { path: 'room', name: 'admin-chat-room', component: () => import('@/views/admin/RoomMessages.vue'), meta: { title: '聊天室消息' } },
+          { path: 'room', name: 'admin-chat-room', component: () => import('@/views/admin/RoomMessages.vue'), meta: { title: '群聊消息' } },
           { path: 'groups', name: 'admin-chat-groups', component: () => import('@/views/admin/RoomGroups.vue'), meta: { title: '群聊管理' } },
           { path: 'mutes', name: 'admin-chat-mutes', component: () => import('@/views/admin/RoomMutes.vue'), meta: { title: '禁言名单' } },
-          { path: 'settings', name: 'admin-chat-settings', component: () => import('@/views/admin/RoomSettings.vue'), meta: { title: '聊天室设置' } }
+          { path: 'settings', name: 'admin-chat-settings', component: () => import('@/views/admin/RoomSettings.vue'), meta: { title: '群聊设置' } }
         ]
       },
       // ==================== 举报管理 ====================

@@ -78,7 +78,7 @@ export const ADMIN_MENU_GROUPS = [
         pages: ['/admin/message']
       },
       {
-        // 聊天管理：私信 / 公共聊天室的命中留证审核 + 聊天室消息、禁言、资料
+        // 聊天管理：私信 / 公共群聊的命中留证审核 + 群聊消息、禁言、资料
         path: '/admin/chat',
         name: '聊天管理',
         icon: 'bi bi-chat-square-dots',

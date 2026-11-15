@@ -83,7 +83,7 @@
             </span>
             <span class="chat-item-body">
               <span class="chat-item-top">
-                <strong>{{ publicRoom.name || '公共聊天室' }}</strong>
+                <strong>{{ publicRoom.name || '公共群聊' }}</strong>
                 <em class="chat-item-tag">大厅</em>
               </span>
               <span class="chat-item-bottom">
@@ -438,7 +438,7 @@ const rows = computed(() => {
 const hallVisible = computed(() => {
   const kw = keyword.value.trim().toLowerCase()
   if (!kw) return true
-  return String(publicRoom.value.name || '公共聊天室').toLowerCase().includes(kw)
+  return String(publicRoom.value.name || '公共群聊').toLowerCase().includes(kw)
 })
 
 const totalUnread = computed(() => {
@@ -522,7 +522,7 @@ async function loadFriends() {
 
 function openCreate() {
   if (!canCreate.value.allowed) {
-    toast.warning(canCreate.value.reason || '暂时不能创建聊天室')
+    toast.warning(canCreate.value.reason || '暂时不能创建群聊')
     return
   }
   form.value = { name: '', description: '', join_type: 0 }

@@ -6,7 +6,7 @@
         <div>
           <h2 class="block-title">添加禁言</h2>
           <p class="block-desc">
-            一次禁言同时作用于私信与公共聊天室（与现有禁言体系同一张表）；管理员之间不能互相禁言，到期自动解除
+            一次禁言同时作用于私信与公共群聊（与现有禁言体系同一张表）；管理员之间不能互相禁言，到期自动解除
           </p>
         </div>
         <button class="btn btn-ghost btn-sm" :disabled="loading" title="刷新名单" aria-label="刷新名单" @click="load">
@@ -113,7 +113,7 @@
             <td class="cell-act">
               <button
                 class="btn btn-ghost btn-sm"
-                title="解除该用户的私信 + 聊天室禁言"
+                title="解除该用户的私信 + 群聊禁言"
                 aria-label="解除禁言"
                 :disabled="busy"
                 @click="askUnmute(item)"
@@ -142,12 +142,12 @@
  * 禁言名单（/admin/chat/mutes）
  *
  * 复用现有禁言体系（app/model/chat_room.go 的 ChatRoomMutes）：
- *   - 聊天室禁言：room_id = PublicRoomId(1)；
+ *   - 群聊禁言：room_id = PublicRoomId(1)；
  *   - 私信禁言：room_id = ChatMuteDM(0)；
  * 一次禁言写两条记录，两处一起失效，解除也在这里一次解开。
  *
  * 后台走 chat-admin 的权限点（chat-admin/mutes、mute、unmute），
- * 不要求超级管理员；聊天室页面的「管理」面板仍用 room/mute（仅超管）。
+ * 不要求超级管理员；群聊页面的「管理」面板仍用 room/mute（仅超管）。
  */
 import { ref, reactive, computed, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -172,7 +172,7 @@ const durationOptions = [
 const scopeOptions = [
   { value: '', label: '全部范围' },
   { value: 'dm', label: '私信' },
-  { value: 'room', label: '聊天室' }
+  { value: 'room', label: '群聊' }
 ]
 
 const list = ref([])
@@ -186,7 +186,7 @@ const form = reactive({ uid: '', minutes: 60, reason: '' })
 const confirm = reactive({ visible: false, title: '解除禁言', message: '', loading: false, target: null })
 
 function scopeName(value) {
-  return value === 'room' ? '聊天室' : '私信'
+  return value === 'room' ? '群聊' : '私信'
 }
 
 function untilText(until) {
@@ -248,7 +248,7 @@ async function submitMute() {
   muting.value = true
   try {
     await muteChatUser(uid, Number(form.minutes) || 0, form.reason.trim())
-    toast.success(Number(form.minutes) === 0 ? '已永久禁言（私信 + 聊天室）' : '已禁言（私信 + 聊天室）')
+    toast.success(Number(form.minutes) === 0 ? '已永久禁言（私信 + 群聊）' : '已禁言（私信 + 群聊）')
     form.uid = ''
     form.reason = ''
     await load()
@@ -261,7 +261,7 @@ async function submitMute() {
 
 function askUnmute(item) {
   confirm.target = item
-  confirm.message = `确定解除「${item.user?.nickname || `用户 #${item.uid}`}」的禁言吗？私信与聊天室会同时恢复。`
+  confirm.message = `确定解除「${item.user?.nickname || `用户 #${item.uid}`}」的禁言吗？私信与群聊会同时恢复。`
   confirm.visible = true
 }
 

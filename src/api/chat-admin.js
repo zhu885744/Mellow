@@ -36,7 +36,7 @@ export const listAdminChatMessages = (conversationId, params = {}) =>
 /**
  * 撤回一条消息（不限时间 / 不限发送者）
  *
- * scene=dm（默认）撤回私信，scene=chat 撤回聊天室消息（后者走 room_revoke 广播，
+ * scene=dm（默认）撤回私信，scene=chat 撤回群聊消息（后者走 room_revoke 广播，
  * 所有人立刻看到「已撤回」）。撤回只清内容并置标记，不做物理删除。
  */
 export const revokeAdminChatMessage = (msgId, scene = 'dm') =>
@@ -45,7 +45,7 @@ export const revokeAdminChatMessage = (msgId, scene = 'dm') =>
 /**
  * 禁言用户（minutes=0 永久）
  *
- * 复用现有禁言体系：一次同时写「私信」与「聊天室」两条记录，
+ * 复用现有禁言体系：一次同时写「私信」与「群聊」两条记录，
  * 两处一起失效，解除也从同一个「禁言名单」里操作。
  */
 export const muteChatUser = (uid, minutes, reason = '') =>
@@ -55,8 +55,8 @@ export const muteChatUser = (uid, minutes, reason = '') =>
   })
 
 /**
- * 生效中的禁言名单（私信 + 聊天室）
- * @param {object} [params] scope：'' 全部 / dm 私信 / room 聊天室
+ * 生效中的禁言名单（私信 + 群聊）
+ * @param {object} [params] scope：'' 全部 / dm 私信 / room 群聊
  */
 export const listChatMutes = (params = {}) =>
   call('chat-admin', 'mutes', { method: 'GET', params })

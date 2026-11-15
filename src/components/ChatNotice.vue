@@ -20,7 +20,7 @@
 
         <div class="chat-notice-body">
           <div class="chat-notice-top">
-            <span v-if="item.kind === 'room'" class="chat-notice-tag">聊天室</span>
+            <span v-if="item.kind === 'room'" class="chat-notice-tag">群聊</span>
             <span class="chat-notice-name">{{ item.nickname || `用户 #${item.peerUid}` }}</span>
             <span v-if="item.count > 1" class="chat-notice-count">{{ item.count }} 条</span>
           </div>
@@ -75,14 +75,14 @@ let seq = 0
 let unsubscribe = null
 
 /**
- * 通知内容：私信按消息类型取摘要；聊天室 @ 只带一小段正文预览
+ * 通知内容：私信按消息类型取摘要；群聊 @ 只带一小段正文预览
  *
  * 两者共用同一套浮层 / 桌面通知，靠 payload.kind 区分（默认就是私信）。
  */
 function previewOf(message, kind = 'dm', preview = '') {
   if (kind === 'room') {
     const text = String(preview || '').replace(/\s+/g, ' ').trim()
-    return `@你：${text || '在聊天室里提到了你'}`
+    return `@你：${text || '在群聊里提到了你'}`
   }
   if (!message) return ''
   if (message.msg_type === 'image') return '[图片]'
@@ -150,7 +150,7 @@ async function fillUser(uid, kind) {
 function pushNotice({ peerUid, message, kind = 'dm', preview = '' } = {}) {
   const uid = Number(peerUid) || 0
   if (!uid) return
-  // 私信必须有消息体；聊天室 @ 只有一段正文预览
+  // 私信必须有消息体；群聊 @ 只有一段正文预览
   if (kind !== 'room' && !message) return
 
   const text = previewOf(message, kind, preview)
@@ -212,7 +212,7 @@ async function notifyDesktop({ peerUid, message, kind = 'dm', preview = '', room
   const body = count > 1 ? `${text}（${count} 条）` : text
 
   showDesktopNotice({
-    title: kind === 'room' ? `聊天室 · ${name}` : `私信 · ${name}`,
+    title: kind === 'room' ? `群聊 · ${name}` : `私信 · ${name}`,
     body,
     icon: avatar,
     tag: `mellow-${kind}-${uid}`,
@@ -245,7 +245,7 @@ function openChat(item) {
   remove(item?.key)
   if (!uid) return
 
-  // 聊天室 @ 直接回「被提到的那个群」；私信跳到对应会话
+  // 群聊 @ 直接回「被提到的那个群」；私信跳到对应会话
   if (kind === 'room') {
     router.push(`/chat/room/${Number(item?.roomId) || 1}`).catch(() => {})
     return
@@ -356,7 +356,7 @@ onBeforeUnmount(() => {
   white-space: nowrap;
   text-overflow: ellipsis;
 }
-/* 「聊天室」小标签：和私信通知区分开，点进去是房间而不是会话 */
+/* 「群聊」小标签：和私信通知区分开，点进去是房间而不是会话 */
 .chat-notice-tag {
   flex-shrink: 0;
   padding: 1px 6px;

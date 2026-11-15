@@ -316,7 +316,7 @@
           <div class="card-head">
             <div>
               <h3 class="card-title">命中统计</h3>
-              <p class="card-desc">按机审维度与场景聚合；私信 / 聊天室不保存原文</p>
+              <p class="card-desc">按机审维度与场景聚合；私信 / 群聊不保存原文</p>
             </div>
             <div class="head-filters">
               <SelectMenu v-model="cfg.sensitiveDays" variant="field" :options="SENSITIVE_STATS_DAYS" />
@@ -563,7 +563,7 @@ const SENSITIVE_SCENES = [
   { value: 'article', label: '文章' },
   { value: 'moment', label: '动态' },
   { value: 'dm', label: '私信' },
-  { value: 'chat', label: '公共聊天室' }
+  { value: 'chat', label: '公共群聊' }
 ]
 
 // 命中审计里的动作文案

@@ -4,7 +4,7 @@
     <section class="card card-pad">
       <header class="panel-head">
         <div>
-          <h2 class="block-title">聊天室资料</h2>
+          <h2 class="block-title">群聊资料</h2>
           <p class="block-desc">名称 / 简介 / 头像会实时广播给正在聊天的用户（无需刷新页面）</p>
         </div>
         <button class="btn btn-ghost btn-sm" :disabled="loadingInfo" title="重新读取" aria-label="重新读取" @click="loadInfo">
@@ -14,21 +14,21 @@
 
       <div v-if="denied" class="denied-bar">
         <i class="bi bi-slash-circle" aria-hidden="true" />
-        仅超级管理员可以修改聊天室（当前账号只能查看）
+        仅超级管理员可以修改群聊（当前账号只能查看）
       </div>
 
       <div v-if="loadingInfo" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else class="form-grid">
         <div class="field">
-          <span class="field-label">聊天室名称<span class="field-hint">最多 30 字</span></span>
+          <span class="field-label">群聊名称<span class="field-hint">最多 30 字</span></span>
           <input v-model="info.name" class="field-input" type="text" maxlength="30" :disabled="denied" />
         </div>
 
         <div class="field">
           <span class="field-label">头像地址<span class="field-hint">留空使用默认图标，仅支持 http(s) 或站内附件地址</span></span>
           <div class="avatar-field">
-            <img class="avatar-preview" :src="avatarPreview" alt="聊天室头像预览" />
+            <img class="avatar-preview" :src="avatarPreview" alt="群聊头像预览" />
             <input
               v-model="info.avatar"
               class="field-input"
@@ -108,7 +108,7 @@
 
 <script setup>
 /**
- * 聊天室设置（/admin/chat/settings）
+ * 群聊设置（/admin/chat/settings）
  *
  * 后端（app/api/controller/room.go、app/model/chat_room.go）：
  * - GET  room/info：房间资料（名称 / 简介 / 头像 / 状态）；
@@ -187,7 +187,7 @@ async function loadInfo() {
 
 async function saveInfo() {
   if (!info.name.trim()) {
-    toast.warning('聊天室名称不能为空')
+    toast.warning('群聊名称不能为空')
     return
   }
 
@@ -205,7 +205,7 @@ async function saveInfo() {
       info.description = room.description || ''
       info.avatar = room.avatar || ''
       info.update_time = Number(room.update_time) || info.update_time
-      toast.success('聊天室资料已更新')
+      toast.success('群聊资料已更新')
     }
   } catch {
     /* 拦截器已提示（名称超长 / 头像地址不合法等） */

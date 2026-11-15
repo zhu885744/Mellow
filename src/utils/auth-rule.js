@@ -130,7 +130,7 @@ export const AUTH_RULE_MODULES = {
   chat: { label: '私信', icon: 'bi bi-chat-dots' },
   'chat-admin': { label: '聊天管理', icon: 'bi bi-shield-exclamation' },
   'chat-moderation': { label: '聊天审核', icon: 'bi bi-shield-exclamation' },
-  room: { label: '公共聊天室', icon: 'bi bi-people' },
+  room: { label: '公共群聊', icon: 'bi bi-people' },
   integral: { label: '积分', icon: 'bi bi-coin' },
   goods: { label: '积分商城', icon: 'bi bi-shop' },
   decoration: { label: '装扮', icon: 'bi bi-gem' },

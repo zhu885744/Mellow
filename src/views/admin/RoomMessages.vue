@@ -3,9 +3,9 @@
     <section class="card card-pad">
       <header class="panel-head">
         <div>
-          <h2 class="block-title">聊天室消息</h2>
+          <h2 class="block-title">群聊消息</h2>
           <p class="block-desc">
-            公共聊天室的最近消息（全员同一条时间线）；发现违规可直接撤回，撤回后所有人都会看到「已撤回」
+            公共群聊的最近消息（全员同一条时间线）；发现违规可直接撤回，撤回后所有人都会看到「已撤回」
           </p>
         </div>
         <div class="head-actions">
@@ -34,7 +34,7 @@
       <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
 
       <div v-else-if="!filteredList.length" class="empty-row">
-        <EmptyState :icon="keyword ? 'bi bi-search' : 'bi bi-chat-dots'" :text="keyword ? '没有匹配的消息' : '聊天室还没有消息'" />
+        <EmptyState :icon="keyword ? 'bi bi-search' : 'bi bi-chat-dots'" :text="keyword ? '没有匹配的消息' : '群聊还没有消息'" />
       </div>
 
       <ul v-else class="msg-list">
@@ -101,7 +101,7 @@
 
 <script setup>
 /**
- * 聊天室消息（/admin/chat/room）
+ * 群聊消息（/admin/chat/room）
  *
  * 后端：
  * - GET  room/messages：最近消息，before_id 往前翻页（返回正序，任何登录用户可读）；

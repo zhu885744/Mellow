@@ -5,7 +5,7 @@
         <div>
           <h2 class="block-title">群聊管理</h2>
           <p class="block-desc">
-            公共大厅与用户自建的聊天室：查看群主与成员数、发布或清除公告、解散违规群聊
+            公共大厅与用户自建的群聊：查看群主与成员数、发布或清除公告、解散违规群聊
           </p>
         </div>
 
@@ -24,8 +24,8 @@
             v-model="keyword"
             class="search-input"
             type="search"
-            placeholder="搜索聊天室名称…"
-            aria-label="搜索聊天室名称"
+            placeholder="搜索群聊名称…"
+            aria-label="搜索群聊名称"
             @keyup.enter="reload"
           />
         </div>
@@ -41,7 +41,7 @@
       <div v-else-if="!list.length" class="empty-row">
         <EmptyState
           :icon="keyword ? 'bi bi-search' : 'bi bi-people'"
-          :text="keyword ? '没有匹配的聊天室' : '还没有聊天室'"
+          :text="keyword ? '没有匹配的群聊' : '还没有群聊'"
         />
       </div>
 
@@ -280,7 +280,7 @@ async function runConfirm() {
     const res = await dissolveRoom(item.id)
     if (res?.code !== 200) return
 
-    toast.success('聊天室已解散')
+    toast.success('群聊已解散')
     list.value = list.value.filter((row) => row.id !== item.id)
     total.value = Math.max(0, total.value - 1)
     confirm.visible = false

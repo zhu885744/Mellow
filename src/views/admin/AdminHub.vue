@@ -34,7 +34,7 @@
  *   独立页面  页面列表 / 撰写页面
  *   友链管理  友链列表 / 友链分组
  *   系统配置  网站设置 / 主题配色
- *   聊天管理  私信会话 / 聊天审核 / 聊天室消息 / 禁言名单 / 聊天室设置
+ *   聊天管理  私信会话 / 聊天审核 / 群聊消息 / 禁言名单 / 群聊设置
  *   安全中心  内容审核 / 安全与限流 / 权限规则 / 权限分组 / 接口密钥 / IP 黑白名单 / QPS 预警 / 后台页面管理
  *
  * 为什么单独抽一个文件：8 个分区的标签结构完全一致，只有数据不同，
@@ -100,10 +100,10 @@ const HUB_TABS = {
   chat: [
     { label: '私信会话', to: '/admin/chat/conversations', icon: 'bi bi-envelope-paper' },
     { label: '聊天审核', to: '/admin/chat/moderation', icon: 'bi bi-shield-exclamation' },
-    { label: '聊天室消息', to: '/admin/chat/room', icon: 'bi bi-chat-square-text' },
+    { label: '群聊消息', to: '/admin/chat/room', icon: 'bi bi-chat-square-text' },
     { label: '群聊管理', to: '/admin/chat/groups', icon: 'bi bi-people' },
     { label: '禁言名单', to: '/admin/chat/mutes', icon: 'bi bi-mic-mute' },
-    { label: '聊天室设置', to: '/admin/chat/settings', icon: 'bi bi-sliders' }
+    { label: '群聊设置', to: '/admin/chat/settings', icon: 'bi bi-sliders' }
   ],
   security: [
     // 内容审核：敏感词库 + 云端机审（同一条链路的本地快筛与云端兜底）

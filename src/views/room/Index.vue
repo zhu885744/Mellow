@@ -14,7 +14,7 @@
 
       <div class="room-title">
         <h1>
-          {{ room.name || '公共聊天室' }}
+          {{ room.name || '公共群聊' }}
           <span v-if="isPublicRoom" class="room-badge">大厅</span>
           <span v-else-if="myRole === 2" class="room-badge">群主</span>
           <span v-else-if="myRole === 1" class="room-badge">管理员</span>
@@ -142,7 +142,7 @@
       <div v-if="!joined" class="room-join">
         <p>
           <i class="bi bi-lock" aria-hidden="true" />
-          {{ Number(room.join_type) === 1 ? '该聊天室需要群主审批后加入' : Number(room.join_type) === 2 ? '该聊天室仅限邀请加入' : '加入后即可查看消息并参与聊天' }}
+          {{ Number(room.join_type) === 1 ? '该群聊需要群主审批后加入' : Number(room.join_type) === 2 ? '该群聊仅限邀请加入' : '加入后即可查看消息并参与聊天' }}
         </p>
         <input
           v-if="Number(room.join_type) === 1"
@@ -301,7 +301,7 @@
 
       <aside class="room-admin-panel">
         <header class="room-admin-head">
-          <span>聊天室管理</span>
+          <span>群聊管理</span>
           <button type="button" class="room-icon-btn" title="关闭" @click="adminOpen = false">
             <i class="bi bi-x-lg" aria-hidden="true" />
           </button>
@@ -353,7 +353,7 @@
             :disabled="dissolving"
             @click="dissolve"
           >
-            <i class="bi bi-trash3" aria-hidden="true" />{{ dissolving ? '解散中…' : '解散聊天室' }}
+            <i class="bi bi-trash3" aria-hidden="true" />{{ dissolving ? '解散中…' : '解散群聊' }}
           </button>
           <span>解散后成员与申请都会被清空，消息不再对成员可见</span>
         </div>
@@ -494,7 +494,7 @@
           </label>
 
           <p class="room-tip">
-            到期后服务端会直接删除公共聊天室的全部消息（物理删除，无法恢复）。
+            到期后服务端会直接删除公共群聊的全部消息（物理删除，无法恢复）。
             默认每 3 天（72 小时）清空一次。
           </p>
 
@@ -535,7 +535,7 @@
             type="button"
             class="room-btn room-btn-danger"
             @click="removeMember({ uid: userPanel.uid, name: userPanel.nickname }); userPanel = null"
-          >移出聊天室</button>
+          >移出群聊</button>
         </div>
       </div>
     </div>
@@ -694,7 +694,7 @@ import ChatEmojiInput from '@/components/ChatEmojiInput.vue'
 import SelectMenu from '@/components/SelectMenu.vue'
 
 /**
- * 公共聊天室（/room/1）
+ * 公共群聊（/room/1）
  *
  * 与私信页的关系：
  *   - 复用同一套视觉与输入体验（表情 / 图片 / 粘贴上传），但群聊没有「已读 / 未读」，
@@ -767,6 +767,21 @@ const saving = ref(false)
 const avatarUploading = ref(false)
 const avatarInput = ref(null)
 const form = ref({ name: '', description: '', avatar: '', join_type: 0 })
+
+/**
+ * 资料表单回显：加载房间信息 / 打开管理面板都走这里
+ *
+ * 只有一个来源，字段才不会漏 —— 之前 openAdmin 里手写了一份 form，
+ * 少了 join_type，表现就是「设置过入群方式，刷新或重开面板后下拉又变回请选择」。
+ */
+function fillForm() {
+  form.value = {
+    name: room.value.name || '',
+    description: room.value.description || '',
+    avatar: room.value.avatar || '',
+    join_type: Number(room.value.join_type) || 0
+  }
+}
 
 // 自动清空：默认 3 天（72 小时），其余选项与后端 model.RoomAutoClearOptions 对齐
 const clearOptions = [
@@ -1119,12 +1134,9 @@ async function loadInfo() {
     joined.value = res.data?.room?.joined !== false
     myRole.value = Number(res.data?.room?.my_role ?? -1)
 
-    form.value = {
-      name: room.value.name || '',
-      description: room.value.description || '',
-      avatar: room.value.avatar || '',
-      join_type: Number(room.value.join_type) || 0
-    }
+    // 面板开着时不回填：loadInfo 每 60 秒轮询一次，回填会把用户正在编辑的内容冲掉；
+    // 打开面板那一刻 openAdmin 已经按最新 room 回显过了
+    if (!adminOpen.value) fillForm()
     noticeDraft.value = room.value.notice || ''
 
     // 非成员：不拉历史，页面显示「加入」引导
@@ -1183,7 +1195,7 @@ async function join() {
     if (res.data?.joined) {
       joined.value = true
       joinPending.value = false
-      toast.success('已加入聊天室')
+      toast.success('已加入群聊')
       await loadInfo()
       await loadHistory(0)
     } else {
@@ -1198,15 +1210,15 @@ async function join() {
 /** 退群：群主不能退（后端会拦），前端提前提示 */
 async function leave() {
   if (myRole.value === 2) {
-    toast.warning('群主不能退出，请先解散聊天室')
+    toast.warning('群主不能退出，请先解散群聊')
     return
   }
-  if (!window.confirm('确定退出这个聊天室吗？')) return
+  if (!window.confirm('确定退出这个群聊吗？')) return
 
   try {
     const res = await leaveRoom(roomId.value)
     if (res?.code !== 200) return
-    toast.success('已退出聊天室')
+    toast.success('已退出群聊')
     router.push('/chat')
   } catch {
     /* 错误已由 request.js 提示 */
@@ -1222,7 +1234,7 @@ async function dissolve() {
   try {
     const res = await dissolveRoom(roomId.value)
     if (res?.code !== 200) return
-    toast.success('聊天室已解散')
+    toast.success('群聊已解散')
     router.push('/chat')
   } catch {
     /* 错误已由 request.js 提示 */
@@ -1302,7 +1314,7 @@ function shareInvite(url) {
 
 /** 移出成员 */
 async function removeMember(item) {
-  if (!window.confirm(`确定把「${item.name}」移出聊天室吗？`)) return
+  if (!window.confirm(`确定把「${item.name}」移出群聊吗？`)) return
   try {
     const res = await removeRoomMember(roomId.value, item.uid)
     if (res?.code !== 200) return
@@ -1632,11 +1644,7 @@ function onFilesPicked(event) {
 // ---------- 管理 ----------
 
 function openAdmin() {
-  form.value = {
-    name: room.value.name || '',
-    description: room.value.description || '',
-    avatar: room.value.avatar || ''
-  }
+  fillForm()
   adminOpen.value = true
   // 群管理员没有「资料 / 公告」权限，直接落到禁言名单，避免打开是空面板
   adminTab.value = canManage.value ? 'profile' : 'mutes'
@@ -1697,7 +1705,7 @@ async function saveRoom() {
 
   const name = form.value.name.trim()
   if (!name) {
-    toast.warning('聊天室名称不能为空')
+    toast.warning('群聊名称不能为空')
     return
   }
 
@@ -1822,7 +1830,7 @@ function onRoomEvent(payload = {}) {
     return
   }
 
-  // 有人正在输入（聊天室广播）：前端自己按 uid 过滤掉自己
+  // 有人正在输入（群聊广播）：前端自己按 uid 过滤掉自己
   if (payload.type === 'typing') {
     noteTyping(payload.fromUid)
     return
@@ -1834,7 +1842,7 @@ function onRoomEvent(payload = {}) {
     // 别的群 @ 我：不在这里提示（列表页负责），避免进 A 群弹出 B 群的提醒
     if (Number(payload.item?.room_id || 1) !== roomId.value) return
     chatStore.clearRoomMentions()
-    toast.info('有人在聊天室提到了你')
+    toast.info('有人在群聊提到了你')
     return
   }
 
@@ -1899,7 +1907,7 @@ function onRoomEvent(payload = {}) {
     loadMembers()
     // 自己被移出：立刻退出页面
     if (type === 'room_member_remove' && Number(data.uid) === me.value) {
-      toast.warning('你已被移出该聊天室')
+      toast.warning('你已被移出该群聊')
       router.push('/chat')
     }
     return
@@ -1921,7 +1929,7 @@ function onRoomEvent(payload = {}) {
 
   // 群被解散：成员页面统一退回列表
   if (type === 'room_dissolve') {
-    toast.warning('该聊天室已解散')
+    toast.warning('该群聊已解散')
     router.push('/chat')
     return
   }
@@ -1933,7 +1941,7 @@ function onRoomEvent(payload = {}) {
     hasMore.value = false
     clearQuote()
     loadHistory(0)
-    toast.info('聊天室记录已自动清空')
+    toast.info('群聊记录已自动清空')
     return
   }
 

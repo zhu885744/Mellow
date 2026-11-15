@@ -1,7 +1,7 @@
 import { call } from './request'
 
 /**
- * 聊天室（公共大厅 id=1 + 用户自建群聊）
+ * 群聊（公共大厅 id=1 + 用户自建群聊）
  *
  * 后端：app/api/controller/room.go（模块 room，全部 type=login）。
  * 实时消息走同一个 WebSocket：服务端按房间扇出

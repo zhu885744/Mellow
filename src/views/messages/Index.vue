@@ -108,7 +108,7 @@
               <span class="msg-room-name">群聊</span>
               <span class="msg-room-desc">公共大厅与大家建的群</span>
             </span>
-            <!-- 有人在聊天室 @ 我：进房间前先在入口上标出来，否则这条提醒就飘走了 -->
+            <!-- 有人在群聊 @ 我：进房间前先在入口上标出来，否则这条提醒就飘走了 -->
             <span v-if="chatStore.roomMentions" class="msg-room-badge">
               {{ chatStore.roomMentions > 99 ? '99+' : chatStore.roomMentions }}
             </span>
@@ -1893,7 +1893,7 @@ watch(
   overflow-y: auto;
   scrollbar-width: thin;
 }
-/* 公共聊天室入口：置顶一条，与下面的私信会话区分开 */
+/* 公共群聊入口：置顶一条，与下面的私信会话区分开 */
 .msg-room-entry {
   margin-bottom: 6px;
   padding-bottom: 6px;

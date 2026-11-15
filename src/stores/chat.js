@@ -42,11 +42,11 @@ export const useChatStore = defineStore('chat', () => {
 
   // 在线成员快照（服务端 status 广播，已按 uid 去重）
   //
-  // 聊天室的「N 人在线」、@ 选人面板都读这里：
+  // 群聊的「N 人在线」、@ 选人面板都读这里：
   // 服务端的在线列表是按连接算的（多端会重复），这里统一收敛成「一个人一条」。
   const presence = ref({ count: 0, users: [] })
 
-  // 聊天室里我被 @ 的次数（私信列表的房间入口显示红点，进房间清零）
+  // 群聊里我被 @ 的次数（私信列表的房间入口显示红点，进房间清零）
   const roomMentions = ref(0)
 
   // 免打扰的会话（对方 uid 集合）
@@ -93,7 +93,7 @@ export const useChatStore = defineStore('chat', () => {
   // 用户正盯着这段对话时收到新消息，不该让角标先 +1 再等已读接口把它减回去：
   // 那一下跳动很像「数字清不掉」。页面进入/退出会话时通过 setViewing 同步这里。
   let viewingUid = 0
-  // 是否正停留在聊天室页面
+  // 是否正停留在群聊页面
   //
   // 在房间里被 @ 时页面自己会 toast，不必再弹右下角浮层（会重复提示）；
   // 但页面切到后台时仍要发系统通知，否则用户完全错过。
@@ -259,7 +259,7 @@ export const useChatStore = defineStore('chat', () => {
   }
 
   /**
-   * 上报「我正在某个聊天室打字」
+   * 上报「我正在某个群聊打字」
    *
    * 带 room_id：服务端据此只推给该群成员（公共大厅仍是全员广播），
    * 否则在 A 群打字会让 B 群的人看到「有人在输入」。
@@ -394,7 +394,7 @@ export const useChatStore = defineStore('chat', () => {
     viewingUid = Number(peerUid) || 0
   }
 
-  /** 告知是否停留在聊天室（房间里被 @ 由页面自己提示，避免重复弹窗） */
+  /** 告知是否停留在群聊（房间里被 @ 由页面自己提示，避免重复弹窗） */
   function setViewingRoom(value) {
     viewingRoom = !!value
   }
@@ -433,7 +433,7 @@ export const useChatStore = defineStore('chat', () => {
       return
     }
 
-    // 聊天室里有人 @ 我：累计角标 + 走与私信同一套提醒通道
+    // 群聊里有人 @ 我：累计角标 + 走与私信同一套提醒通道
     // （页面在后台时由 ChatNotice 转成系统通知，前台走右下角浮层）
     if (payload.type === 'chat_mention') {
       const item = payload.data || {}
@@ -464,7 +464,7 @@ export const useChatStore = defineStore('chat', () => {
       return
     }
 
-    // 公共聊天室：服务端全员广播的消息与各类事件（撤回 / 禁言 / 解禁 / 改资料）。
+    // 公共群聊：服务端全员广播的消息与各类事件（撤回 / 禁言 / 解禁 / 改资料）。
     // 它不参与私信的未读与提醒逻辑，原样转给订阅者（房间页）自己处理。
     if (String(payload.type || '').startsWith('room')) {
       emitEvent({ type: 'room', event: payload })
@@ -619,21 +619,21 @@ export const useChatStore = defineStore('chat', () => {
     setUnread,
     // 正在查看的会话：这段对话的新消息不计入角标
     setViewing,
-    // 是否停留在聊天室（房间里不重复弹 @ 通知）
+    // 是否停留在群聊（房间里不重复弹 @ 通知）
     setViewingRoom,
     // 消息提醒偏好（提示音 / 悬浮通知）与订阅
     alert,
     setAlert,
     onNotice,
-    // 在线成员快照（聊天室的在线人数 / 成员列表 / @ 选人）
+    // 在线成员快照（群聊的在线人数 / 成员列表 / @ 选人）
     presence,
-    // 聊天室 @ 角标
+    // 群聊 @ 角标
     roomMentions,
     clearRoomMentions,
     // 免打扰的会话
     setMutedPeers,
     isPeerMuted,
-    // 正在输入（私聊 / 聊天室）
+    // 正在输入（私聊 / 群聊）
     sendTyping,
     sendRoomTyping
   }

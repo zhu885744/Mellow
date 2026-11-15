@@ -6,7 +6,7 @@
         <div>
           <h2 class="block-title">聊天审核</h2>
           <p class="block-desc">
-            私信 / 公共聊天室命中词库时自动留证（只存命中片段，不含整条消息）；确认违规后到「私信会话」/「聊天室消息」
+            私信 / 公共群聊命中词库时自动留证（只存命中片段，不含整条消息）；确认违规后到「私信会话」/「群聊消息」
             撤回，或到「用户管理」处理账号
           </p>
         </div>
@@ -318,7 +318,7 @@
         </label>
 
         <label class="punish-field">
-          <span>禁言（私信 + 聊天室同时生效）</span>
+          <span>禁言（私信 + 群聊同时生效）</span>
           <SelectMenu v-model="punish.muteMinutes" :options="punishOptions" />
         </label>
 
@@ -334,7 +334,7 @@
         </label>
 
         <p class="punish-hint">
-          禁言后该用户不能发私信、也不能在聊天室发言；到期自动解除，也可到「禁言名单」提前解除。
+          禁言后该用户不能发私信、也不能在群聊发言；到期自动解除，也可到「禁言名单」提前解除。
         </p>
       </div>
     </ConfirmDialog>
@@ -382,7 +382,7 @@ const tabs = [
 const sceneOptions = [
   { value: '', label: '全部场景' },
   { value: 'dm', label: '私信' },
-  { value: 'chat', label: '公共聊天室' }
+  { value: 'chat', label: '公共群聊' }
 ]
 
 const actionOptions = [
@@ -428,7 +428,7 @@ const confirm = reactive({
 const statCards = computed(() => [
   { label: '待处理', value: stats.pending, icon: 'bi bi-exclamation-circle', color: 'var(--danger)', pick: () => switchHandled('0') },
   { label: '私信命中', value: stats.dm, icon: 'bi bi-envelope-fill', color: 'var(--primary)', pick: () => pickScene('dm') },
-  { label: '聊天室命中', value: stats.chat, icon: 'bi bi-people-fill', color: 'var(--warning)', pick: () => pickScene('chat') },
+  { label: '群聊命中', value: stats.chat, icon: 'bi bi-people-fill', color: 'var(--warning)', pick: () => pickScene('chat') },
   { label: '已处理', value: stats.handled, icon: 'bi bi-check2-circle', color: 'var(--success)', pick: () => switchHandled('1') }
 ])
 
@@ -447,7 +447,7 @@ const emptyText = computed(() => {
 
 // ---------- 展示辅助 ----------
 function sceneLabel(scene) {
-  return scene === 'chat' ? '聊天室' : '私信'
+  return scene === 'chat' ? '群聊' : '私信'
 }
 
 function actionLabel(action) {
@@ -687,7 +687,7 @@ const punishTip = computed(() => {
   const rec = punish.record
   if (!rec) return ''
   const who = rec.nickname || `用户 #${rec.uid}`
-  return `正在处置「${who}」在${sceneLabel(rec.scene)}里命中的记录，勾选要执行的动作后确认（禁言会同时作用于私信与聊天室）。`
+  return `正在处置「${who}」在${sceneLabel(rec.scene)}里命中的记录，勾选要执行的动作后确认（禁言会同时作用于私信与群聊）。`
 })
 
 function askPunish(item) {
