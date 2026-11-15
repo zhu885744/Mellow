@@ -699,14 +699,14 @@ onBeforeUnmount(() => {
 .feed :deep(div.skeleton-article) {
   padding: 20px;
   margin-bottom: 16px;
-  border-bottom: none;
+  /* 与文章 / 动态卡片同一套：浅描边 + 轻阴影 */
+  border: 1px solid var(--border-soft);
   background: var(--bg-card);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
-/* MomentItem 自带的描边卡片，统一成同一套观感（描边改透明、补同款阴影） */
+/* MomentItem 自带浅描边卡片：只补一层同款阴影，描边保留（跟随后台配色的 --line-soft） */
 .feed :deep(.moment-card) {
-  border-color: transparent;
   box-shadow: var(--shadow-sm);
 }
 

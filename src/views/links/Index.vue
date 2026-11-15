@@ -886,7 +886,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   gap: 14px;
   padding: 12px;
   margin-bottom: 14px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius);
   background: var(--bg);
 }

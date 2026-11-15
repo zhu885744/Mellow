@@ -1307,7 +1307,7 @@ onMounted(() => {
 .edit-owner {
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border-soft);
 }
 /* 表单里的行内提示（驳回原因旁的「作者可见」） */
 .form-hint-inline {

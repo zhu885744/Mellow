@@ -90,7 +90,7 @@ const tip = computed(() => {
 .scope-badge.is-author {
   color: var(--text-soft);
   background: var(--bg-alt);
-  border-color: var(--border);
+  border-color: var(--border-soft);
   border-style: dashed;
 }
 </style>

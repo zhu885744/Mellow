@@ -132,7 +132,7 @@ async function pay() {
   gap: 12px;
   margin: 16px 0;
   padding: 18px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-lg);
   background: var(--bg-alt);
 }

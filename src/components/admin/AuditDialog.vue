@@ -121,7 +121,7 @@ function onCancel() {
 .audit-owner {
   margin-bottom: 12px;
   padding-bottom: 10px;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border-soft);
 }
 .audit-reason {
   display: block;

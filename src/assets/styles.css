@@ -9,6 +9,9 @@
  *    password / connection / address，不使用 cat- / deco- / notif- / attach- / cfg- / proj- 等。
  * 5. 外部约定类名保持原样：Bootstrap Icons 的 bi / bi-*、markdown 渲染容器的 markdown-body，
  *    以及 utils/markdown.js 生成的 markdown-media / markdown-file 系列。
+ * 6. 描边一律走 token，不写死颜色：主分隔线与控件描边用 --border（= --line），
+ *    卡片边、虚线等更弱的分隔用 --border-soft（= --line-soft）。后台「主题配色」改的是
+ *    这两个 token，写死颜色或拿 --border 画虚线都会让自定义配色失效。
  */
 
 /* ========== 设计 Token ==========
@@ -116,8 +119,8 @@
   --dur-slow: 300ms;
   --ease: cubic-bezier(0.165, 0.84, 0.44, 1);
 
-  /* 三栏布局 */
-  --left-width: 200px;
+  /* 布局：顶部吸顶导航 + 正文单列 / 正文 + 右侧栏 */
+  --header-h: 64px;
   --right-width: 240px;
   --content-max: 1180px;
   --gap: 24px;
@@ -712,7 +715,7 @@ h1, h2, h3 {
 }
 .divider-dashed {
   background: none;
-  border-top: 1px dashed var(--border);
+  border-top: 1px dashed var(--border-soft);
 }
 
 /* ========== 加载 / 空 ========== */
@@ -801,8 +804,13 @@ h1, h2, h3 {
 /* ========== 响应式 ========== */
 @media (max-width: 1024px) {
   :root {
-    --left-width: 180px;
     --right-width: 220px;
+  }
+}
+/* 手机端顶部导航收窄一档（与 MainLayout 的手机断点一致） */
+@media (max-width: 640px) {
+  :root {
+    --header-h: 56px;
   }
 }
 @media (max-width: 768px) {

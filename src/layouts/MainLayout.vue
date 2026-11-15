@@ -1,91 +1,26 @@
 <template>
   <div class="layout">
-    <!-- 移动端顶栏（仅手机端显示） -->
-    <div class="mobile-topbar">
-      <!-- 设置了 LOGO 就只显示 LOGO；没设置、或URL失效时退回纯文字 -->
-      <router-link to="/" class="mobile-brand" title="返回首页">
-        <img
-          v-if="site.avatar && !logoFailed"
-          class="mobile-brand-logo"
-          :src="site.avatar"
-          :alt="site.title"
-          loading="lazy"
-          @error="logoFailed = true"
-        />
-        <span v-else class="mobile-brand-text">{{ site.title }}</span>
-      </router-link>
-      <div class="mobile-actions">
-        <!-- 搜索入口：手机端左栏（含搜索按钮）整块被隐藏，这里是唯一的入口 -->
-        <button
-          type="button"
-          class="mobile-search"
-          aria-label="搜索"
-          title="搜索"
-          @click="openSearch"
-        >
-          <i class="bi bi-search" aria-hidden="true" />
-        </button>
-        <button
-          class="mobile-search"
-          :class="userStore.isLogged ? 'btn-primary' : 'btn-ghost'"
-          @click="onCheckinClick"
-        >
-          <i class="bi bi-calendar-check" />
-        </button>
-        <router-link
-          v-if="!userStore.isLogged"
-          to="/auth/login"
-          class="btn btn-sm btn-primary"
-        >登录</router-link>
-        <router-link
-          v-else
-          :to="userStore.user?.id ? `/author/${userStore.user.id}` : '/user'"
-          class="mobile-user"
-          :title="userStore.user?.nickname || '我的'"
-        >
-          <img
-            v-if="userStore.user?.avatar"
-            :src="userStore.user.avatar"
-            class="mobile-avatar"
-            alt="头像"
-            loading="lazy"
-          />
-          <span v-else class="mobile-user-fallback">我的</span>
-        </router-link>
-      </div>
-    </div>
-
-    <!-- is-no-right：右侧栏关闭时不再为它留一列空白，中栏直接吃掉那部分宽度 -->
-    <div class="layout-body" :class="{ 'is-no-right': !hasSidebar }">
-      <!-- 左栏 - 站点信息 + 导航 -->
-      <aside class="layout-left">
-        <!-- 站点信息整块可点，回到首页（LOGO / 标题 / 描述都是品牌的一部分） -->
-        <router-link to="/" class="site-card" title="返回首页">
-          <!-- 网站 LOGO（后台「网站设置 → 网站 LOGO」，对应配置里的 avatar 字段）
-               配了 LOGO 就只显示 LOGO（标题/描述已在图片里，不再重复）；
-               没配、或地址失效时退回「标题 + 描述」的文字版 -->
+    <!-- 顶部导航栏（吸顶）：品牌 + 横排导航 + 快捷操作
+         布局约定：导航不再放左侧栏，正文单列铺满；右侧栏（SidebarRight）保留在内容右侧 -->
+    <header class="site-header">
+      <div class="header-inner">
+        <!-- 品牌区：配了 LOGO 就只显示 LOGO（标题/描述已在图片里），否则退回「标题 + 描述」 -->
+        <router-link to="/" class="site-brand" title="返回首页">
           <img
             v-if="site.avatar && !logoFailed"
-            class="site-card-logo"
+            class="brand-logo"
             :src="site.avatar"
             :alt="site.title"
             loading="eager"
             @error="logoFailed = true"
           />
           <template v-else>
-            <div class="site-card-title">{{ site.title }}</div>
-            <div class="site-card-subtitle">{{ site.description }}</div>
+            <span class="brand-title">{{ site.title }}</span>
           </template>
         </router-link>
 
-        <!-- 全局搜索（独立页面 /search，Ctrl+K 可直达） -->
-        <router-link to="/search" class="btn btn-ghost btn-sm btn-block" active-class="is-active">
-          <i class="bi bi-search" />
-          <span>搜索</span>
-          <kbd class="search-kbd">Ctrl K</kbd>
-        </router-link>
-
-        <nav class="site-nav">
+        <!-- 横排导航：手机端隐藏（导航由底部 Tab Bar 接管） -->
+        <nav class="header-nav" aria-label="主导航">
           <!-- 未配置自定义菜单：显示默认导航 -->
           <template v-if="!customMenus.length">
             <router-link to="/" exact-active-class="is-active" class="nav-item">
@@ -148,21 +83,107 @@
               </router-link>
             </template>
           </template>
-
-          <!-- 管理后台入口：始终保留（有任意后台页面权限即显示，不受自定义菜单影响） -->
-          <router-link
-            v-if="canEnterAdmin(userStore.user)"
-            to="/admin"
-            active-class="is-active"
-            class="nav-item"
-          >
-            <i class="bi bi-gear-wide-connected"></i>
-            <span class="nav-zh">管理</span>
-          </router-link>
         </nav>
-      </aside>
 
-      <!-- 中栏 - 内容 -->
+        <div class="header-actions">
+          <!-- 搜索：独立页面 /search，Ctrl/⌘ + K 直达 -->
+          <button
+            type="button"
+            class="header-icon"
+            aria-label="搜索"
+            title="搜索（Ctrl K）"
+            @click="openSearch"
+          >
+            <i class="bi bi-search" aria-hidden="true" />
+          </button>
+          <!-- 签到：独立页面 /checkin -->
+          <button
+            type="button"
+            class="header-icon"
+            aria-label="每日签到"
+            title="每日签到"
+            @click="onCheckinClick"
+          >
+            <i class="bi bi-calendar-check" aria-hidden="true" />
+          </button>
+          <router-link
+            v-if="!userStore.isLogged"
+            to="/auth/login"
+            class="btn btn-sm btn-primary"
+          >登录</router-link>
+          <!-- 已登录：头像点开下拉（我的主页 / 修改资料 / 创作中心 / 管理后台 / 退出登录） -->
+          <div v-else ref="userMenuRef" class="user-menu">
+            <button
+              type="button"
+              class="header-avatar"
+              :class="{ 'is-open': userMenuOpen }"
+              :title="userStore.user?.nickname || '我的'"
+              aria-haspopup="menu"
+              :aria-expanded="userMenuOpen"
+              @click="toggleUserMenu"
+            >
+              <img
+                v-if="userStore.user?.avatar"
+                :src="userStore.user.avatar"
+                class="header-avatar-img"
+                alt="头像"
+                loading="lazy"
+              />
+              <span v-else class="header-avatar-fallback">我的</span>
+            </button>
+
+            <Transition name="user-menu-pop">
+              <div v-if="userMenuOpen" class="user-menu-panel" role="menu">
+                <!-- 头部只放昵称与等级，菜单项才是操作入口 -->
+                <div class="user-menu-head">
+                  <span class="user-menu-name">{{ userStore.user?.nickname || '我的账号' }}</span>
+                  <span v-if="userLevel" class="user-menu-hint">Lv.{{ userLevel }}</span>
+                </div>
+
+                <router-link :to="profileLink" class="user-menu-item" role="menuitem" @click="closeUserMenu">
+                  <i class="bi bi-person" />
+                  <span>我的主页</span>
+                </router-link>
+                <router-link to="/user/profile" class="user-menu-item" role="menuitem" @click="closeUserMenu">
+                  <i class="bi bi-pencil-square" />
+                  <span>修改资料</span>
+                </router-link>
+                <router-link to="/manage" class="user-menu-item" role="menuitem" @click="closeUserMenu">
+                  <i class="bi bi-grid-1x2" />
+                  <span>创作中心</span>
+                </router-link>
+                <router-link
+                  v-if="canEnterAdmin(userStore.user)"
+                  to="/admin"
+                  class="user-menu-item"
+                  role="menuitem"
+                  @click="closeUserMenu"
+                >
+                  <i class="bi bi-gear-wide-connected" />
+                  <span>管理后台</span>
+                </router-link>
+
+                <div class="user-menu-divider" />
+                <button
+                  type="button"
+                  class="user-menu-item is-danger"
+                  role="menuitem"
+                  :disabled="loggingOut"
+                  @click="onLogout"
+                >
+                  <i class="bi bi-box-arrow-right" />
+                  <span>{{ loggingOut ? '退出中…' : '退出登录' }}</span>
+                </button>
+              </div>
+            </Transition>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- is-no-right：右侧栏关闭时不再为它留一列空白，正文直接吃掉那部分宽度 -->
+    <div class="layout-body" :class="{ 'is-no-right': !hasSidebar }">
+      <!-- 正文 - 内容（单列，铺满「内容 + 右侧栏」之间剩下的宽度） -->
       <main class="layout-main">
         <router-view />
       </main>
@@ -264,7 +285,7 @@ import { call } from '@/api/request'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'
 import { normalizeSidebarConfig } from '@/utils/sidebar'
-import { canEnterAdmin } from '@/utils/helper'
+import { canEnterAdmin, pickUserLevel } from '@/utils/helper'
 import { safeUrl } from '@/utils/url'
 import { useRouter, useRoute } from 'vue-router'
 
@@ -287,9 +308,60 @@ function onGlobalKey(e) {
     e.preventDefault()
     openSearch()
   }
+  // Esc 收起头像下拉（与 CardActionMenu 的交互习惯保持一致）
+  if (e.key === 'Escape') closeUserMenu()
 }
-onMounted(() => window.addEventListener('keydown', onGlobalKey))
-onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
+
+// ---------- 头像下拉菜单 ----------
+// 头像不再直跳个人主页：默认主页在「我的主页」项里，其余是常用入口 + 退出登录。
+// 关闭时机三处：点面板外（pointerdown）、按 Esc、路由变化（点了菜单项）。
+const userMenuOpen = ref(false)
+const userMenuRef = ref(null)
+const loggingOut = ref(false)
+
+// 我的主页：有 uid 就去作者主页，取不到就退回用户中心
+const profileLink = computed(() => {
+  const id = userStore.user?.id
+  return id ? `/author/${id}` : '/user'
+})
+
+// 等级展示用统一取值（result.level.current / users_rating 两种结构都兼容）
+const userLevel = computed(() => pickUserLevel(userStore.user))
+
+function toggleUserMenu() {
+  userMenuOpen.value = !userMenuOpen.value
+}
+function closeUserMenu() {
+  userMenuOpen.value = false
+}
+
+function onDocPointerDown(e) {
+  if (!userMenuOpen.value) return
+  if (userMenuRef.value && !userMenuRef.value.contains(e.target)) closeUserMenu()
+}
+
+// 退出登录：清登录态 / token / 跳首页都在 store 里完成，这里只管防连点
+async function onLogout() {
+  closeUserMenu()
+  if (loggingOut.value) return
+  loggingOut.value = true
+  try {
+    await userStore.logout()
+  } finally {
+    loggingOut.value = false
+  }
+}
+
+watch(() => route.path, closeUserMenu)
+
+onMounted(() => {
+  window.addEventListener('keydown', onGlobalKey)
+  document.addEventListener('pointerdown', onDocPointerDown)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', onGlobalKey)
+  document.removeEventListener('pointerdown', onDocPointerDown)
+})
 
 // 站点信息（来自 /api/config/one?key=Mellow_functions，由 site store 统一去重缓存）
 const pages = ref([])
@@ -415,17 +487,93 @@ onMounted(() => {
   background: var(--bg);
 }
 
-/* 移动端顶栏（默认隐藏，仅手机端显示） */
-.mobile-topbar {
+/* ==================== 顶部导航栏 ==================== */
+/* 吸顶：滚动时导航一直可见；半透明 + 高斯模糊，正文从下面穿过时不糊住视线 */
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-soft);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 0 24px;
+  height: var(--header-h);
+}
+
+/* 品牌区：LOGO 或「标题 + 描述」，整块可点回首页 */
+.site-brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  flex-shrink: 0;
+  color: inherit;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+.site-brand:hover {
+  opacity: 0.82;
+}
+.brand-logo {
+  display: block;
+  height: 32px;
+  width: auto;
+  max-width: 160px;
+  object-fit: contain;
+  align-self: center;
+}
+.brand-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.brand-subtitle {
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 横排导航：超出宽度时横向滚动（不换行，免得吸顶栏高度跳动）
+   align-self: stretch 让导航条撑满顶栏高度，当前页下划线正好贴在顶栏底边 */
+.header-nav {
+  display: flex;
+  align-self: stretch;
+  align-items: stretch;
+  gap: 2px;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.header-nav::-webkit-scrollbar {
+  width: 0;
+  height: 0;
   display: none;
 }
-.mobile-actions {
+
+.header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
-/* 移动端顶栏的搜索按钮：与右侧头像等尺寸（30×30），保持一行三个控件不挤 */
-.mobile-search {
+/* 顶栏圆形图标按钮（搜索 / 签到）：30×30，与右侧头像同尺寸 */
+.header-icon {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -442,17 +590,20 @@ onMounted(() => {
   -webkit-tap-highlight-color: transparent;
   transition: color 0.15s, border-color 0.15s;
 }
-.mobile-search:hover,
-.mobile-search:active {
+.header-icon:hover,
+.header-icon:active,
+.header-icon.is-on {
   color: var(--primary);
   border-color: var(--primary);
 }
-.mobile-user {
+.header-avatar {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 30px;
   height: 30px;
+  padding: 0;
+  flex-shrink: 0;
   border-radius: 50%;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -460,104 +611,143 @@ onMounted(() => {
   color: var(--text-soft);
   font-size: 12px;
   text-decoration: none;
-  flex-shrink: 0;
+  cursor: pointer;
+  transition: border-color var(--dur) var(--ease);
 }
-.mobile-avatar {
+.header-avatar:hover,
+.header-avatar.is-open {
+  border-color: var(--primary);
+}
+.header-avatar-img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
+/* ---------- 头像下拉菜单 ---------- */
+.user-menu {
+  position: relative;
+  /* display:flex 不是多余的：里面的按钮是 inline-flex，直接塞进块级 div 会按基线排版，
+     容器底部多出一截行高（约 3px），导致头像比左右两个图标按钮高半个行距、看着没对齐 */
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+.user-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  /* 顶栏 z-index 是 200，面板要压住正文与侧栏 */
+  z-index: 220;
+  min-width: 172px;
+  padding: 6px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+/* 昵称 + 等级：只做身份标识，不可点 */
+.user-menu-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+.user-menu-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.user-menu-hint {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-light);
+  font-family: var(--font-mono);
+}
+.user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--text-soft);
+  text-align: left;
+  white-space: nowrap;
+  text-decoration: none;
+  background: none;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
+}
+.user-menu-item:hover {
+  color: var(--text);
+  background: var(--bg-muted);
+}
+.user-menu-item i {
+  font-size: 14px;
+  opacity: 0.9;
+}
+.user-menu-item.is-danger {
+  color: var(--danger);
+}
+.user-menu-item.is-danger:hover {
+  color: var(--danger);
+  background: var(--accent-soft);
+}
+.user-menu-item:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.user-menu-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--border-soft);
+}
+/* 展开动画：轻微下滑 + 淡入 */
+.user-menu-pop-enter-active,
+.user-menu-pop-leave-active {
+  transition: opacity 0.14s ease, transform 0.14s ease;
+}
+.user-menu-pop-enter-from,
+.user-menu-pop-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
+}
+
+/* 正文区：内容单列 + 右侧栏；右侧栏关闭时内容吃掉那一列 */
 .layout-body {
   max-width: var(--content-max);
   margin: 0 auto;
-  padding: 32px 24px 64px;
+  padding: 28px 24px 64px;
   display: grid;
-  grid-template-columns: var(--left-width) 1fr var(--right-width);
+  grid-template-columns: minmax(0, 1fr) var(--right-width);
   gap: var(--gap);
   align-items: start;
 }
-
-/* 右侧栏关闭：只留左栏 + 中栏，中间内容区吃掉原本被空占的那 240px。
-   放在 min-width 里，免得覆盖下面平板 / 手机的两栏、单栏规则 */
-@media (min-width: 1025px) {
-  .layout-body.is-no-right {
-    grid-template-columns: var(--left-width) minmax(0, 1fr);
-  }
+.layout-body.is-no-right {
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.layout-left {
-  position: sticky;
-  top: 32px;
-}
-
-.site-card {
-  /* 整块是「返回首页」的链接：吃掉默认下划线与链接色，保持原样 */
-  display: block;
-  padding: 24px 0 32px;
-  text-align: center;
-  /*
-   * 这里原本有一条 border-bottom 作为「品牌区 / 导航区」的分割线，
-   * 但紧挨着它下面就是带完整描边的搜索按钮，两者叠在一起看起来就是
-   * 「搜索框上方多出一条横线」。由于搜索按钮本身已经有边框区分区域，
-   * 这条分割线是冗余的，去掉。
-   */
-  color: inherit;
-  text-decoration: none;
-  transition: opacity 0.2s;
-}
-.site-card:hover {
-  opacity: 0.82;
-}
-/* 网站 LOGO：配了 LOGO 时它就是左栏顶部唯一内容（不再显示标题/描述）
-   方形图标按 96px 展示，横向 LOGO 自动缩到栏宽内，不裁切 */
-.site-card-logo {
-  display: block;
-  margin: 0 auto;
-  max-width: 100%;
-  max-height: 96px;
-  width: auto;
-  height: auto;
-  object-fit: contain;
-}
-.site-card-title {
-  font-family: var(--font-serif);
-  font-size: 26px;
-  font-weight: 600;
-  color: var(--text);
-  letter-spacing: 2px;
-  margin-bottom: 6px;
-}
-.site-card-subtitle {
-  font-size: 12px;
-  color: var(--text-muted);
-  letter-spacing: 1px;
-}
-
-.search-kbd {
-  margin-left: auto;
-  padding: 1px 6px;
-  font-size: 11px;
-  color: var(--text-light);
-  border: 1px solid var(--border);
-  border-bottom-width: 2px;
-  border-radius: 4px;
-  background: var(--bg-soft);
-  font-family: var(--font-mono);
-}
-
-.site-nav {
-  display: flex;
-  flex-direction: column;
-  margin: 24px 0;
-}
+/* 顶栏导航项：撑满顶栏高度，当前页用朱砂下划线标记（与页脚链接同一套高亮语言） */
 .nav-item {
-  padding: 9px 14px;
-  text-align: center;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  flex-shrink: 0;
   color: var(--text-soft);
   font-size: 14px;
-  position: relative;
-  border-radius: var(--radius-sm);
+  white-space: nowrap;
   transition: color 0.2s, background 0.2s;
 }
 .nav-item:hover {
@@ -567,27 +757,20 @@ onMounted(() => {
 .nav-item.is-active {
   color: var(--primary);
   font-weight: 600;
-  background: var(--accent-soft);
 }
-/* 侧栏搜索按钮（btn-ghost）没有 is-active 样式，进入 /search 后与导航项同款高亮 */
-.btn-ghost.is-active {
-  color: var(--primary);
-  background: var(--accent-soft);
+.nav-item.is-active::after {
+  content: '';
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  background: var(--primary);
+  border-radius: 2px;
 }
 /* 自定义菜单项的前置图标（bootstrap-icons） */
 .nav-item .bi {
   margin-right: 6px;
-}
-.nav-item.is-active::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 3px;
-  height: 14px;
-  background: var(--primary);
-  border-radius: 2px;
 }
 
 .layout-main {
@@ -751,68 +934,46 @@ onMounted(() => {
 }
 .layout-right {
   position: sticky;
-  top: 32px;
+  /* 吸顶导航的高度 + 一点呼吸距离，滚动时不会被顶栏压住 */
+  top: calc(var(--header-h) + 20px);
 }
 
-/* 响应式 - 平板 */
+/* 响应式 - 平板：收起右侧栏，正文单列 */
 @media (max-width: 1024px) {
   .layout-body {
-    grid-template-columns: var(--left-width) 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .layout-right {
+    display: none;
+  }
+  /* 导航项更容易挤，收紧间距；描述先让位给导航 */
+  .header-inner {
+    gap: 14px;
+  }
+  .brand-subtitle {
     display: none;
   }
 }
 
 /* 响应式 - 手机 */
 @media (max-width: 640px) {
-  .mobile-topbar {
-    position: sticky;
-    top: 0;
-    z-index: 200;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    padding: 10px 16px;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border-soft);
-    backdrop-filter: blur(8px);
-  }
-  .mobile-brand {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: var(--font-serif);
-    font-size: 17px;
-    font-weight: 600;
-    color: var(--text);
-    letter-spacing: 1px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    min-width: 0;
-    /* 顶栏品牌也是「返回首页」的链接 */
-    text-decoration: none;
-  }
-  /* 没配 LOGO 时的文字版标题：父级是 flex，省略号要写在自身才生效 */
-  .mobile-brand-text {
-    min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-  }
-  /* 网站 LOGO：移动端顶栏的品牌图标*/
-  .mobile-brand-logo {
-    width: auto;
-    height: 32px;
-    max-width: 140px;
-    flex-shrink: 0;
-    object-fit: contain;
-  }
-  /* 手机端隐藏左栏（导航由顶栏 + 底部 Tab Bar 接管） */
-  .layout-left {
+  /* 手机端导航交给底部 Tab Bar，顶栏只留品牌 + 操作 */
+  .header-nav {
     display: none;
+  }
+  .header-inner {
+    padding: 0 16px;
+  }
+  .brand-title {
+    font-size: 17px;
+  }
+  /* 极窄屏：品牌让位给操作按钮，避免「签到 / 登录」被挤出屏幕 */
+  .site-brand {
+    flex-shrink: 1;
+    overflow: hidden;
+  }
+  .brand-logo {
+    max-width: min(140px, 42vw);
   }
   /* 手机端页脚：保留备案号一行（品牌 / 快捷链接 / 版权 / Powered by 收起），
      底部留出固定 Tab Bar 的高度，避免备案号被挡住 */
@@ -843,14 +1004,11 @@ onMounted(() => {
     display: none;
   }
   .layout-body {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
     /* 底部让位交给页脚（手机端页脚始终渲染，且位于最后一个元素）：
        这里只留一点间距，避免内容与备案号之间出现大段空白 */
     padding: 16px 16px calc(16px + env(safe-area-inset-bottom));
   }
   /* 底部 Tab Bar 的定位样式已随组件移到 components/MobileTabBar.vue */
-  .nav-item.is-active::before {
-    display: none;
-  }
 }
 </style>

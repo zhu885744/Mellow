@@ -1471,7 +1471,7 @@ onMounted(() => {
 .deliver-content {
   padding: 14px;
   background: var(--bg-muted);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius);
   font-size: 14px;
   line-height: 1.6;

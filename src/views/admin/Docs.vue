@@ -1046,7 +1046,7 @@ onMounted(async () => {
   font-size: 12px;
   color: var(--text-muted);
   background: var(--bg-alt);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
 }
 /* 批量操作栏（选中后出现） */

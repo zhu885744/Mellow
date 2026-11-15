@@ -321,7 +321,7 @@ async function onConfirm() {
 .reward-tip {
   margin: 10px 0 0;
   padding-top: 10px;
-  border-top: 1px dashed var(--border);
+  border-top: 1px dashed var(--border-soft);
   font-size: 12px;
   line-height: 1.6;
   color: var(--text-light);

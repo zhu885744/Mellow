@@ -122,21 +122,21 @@
                 <!-- 纯色 -->
                 <ColorPicker
                   v-if="token.type === 'color'"
-                  :model-value="form[currentMode][token.key]"
+                  :model-value="tokenValue(token)"
                   @update:model-value="setToken(token.key, $event)"
                 />
 
                 <!-- 纯色或渐变 -->
                 <GradientEditor
                   v-else-if="token.type === 'paint'"
-                  :model-value="form[currentMode][token.key]"
+                  :model-value="tokenValue(token)"
                   @update:model-value="setToken(token.key, $event)"
                 />
 
                 <!-- 阴影 -->
                 <ShadowEditor
                   v-else-if="token.type === 'shadow'"
-                  :model-value="form[currentMode][token.key]"
+                  :model-value="tokenValue(token)"
                   @update:model-value="setToken(token.key, $event)"
                 />
 
@@ -144,8 +144,8 @@
                 <div v-else class="length-field">
                   <input
                     class="input token-text"
-                    :class="{ 'is-invalid': !!form[currentMode][token.key] && !lengthValid(form[currentMode][token.key]) }"
-                    :value="form[currentMode][token.key]"
+                    :class="{ 'is-invalid': !!tokenValue(token) && !lengthValid(tokenValue(token)) }"
+                    :value="tokenValue(token)"
                     type="text"
                     placeholder="10px / 0.6rem"
                     spellcheck="false"
@@ -358,6 +358,11 @@ function applySettings(settings, markSaved = true) {
     if (!form.dark[token.key]) form.dark[token.key] = defaults.value.dark?.[token.key] || ''
   })
 
+  // 圆角只保留一套：以浅色为准，旧数据里深色残留的不同值在这里统一收敛
+  tokens.value.forEach((token) => {
+    if (token.shared) form.dark[token.key] = form.light[token.key]
+  })
+
   const base = lengthNumber(form.light.radius) || lengthNumber(form.dark.radius) || 10
   quickRadius.value = base
 
@@ -388,7 +393,26 @@ async function load() {
 }
 
 // ---------- 编辑 ----------
+// 圆角（shape 组）与明暗模式无关：读的时候统一取浅色那份，写的时候两套一起写，
+// 这样在深色 tab 里看到的、改的都是同一套圆角，不会出现「深色圆角跟浅色不一致」。
+function isSharedToken(token) {
+  return !!token?.shared
+}
+
+function tokenValue(token) {
+  if (isSharedToken(token)) {
+    return form.light[token.key] || form.dark[token.key] || ''
+  }
+  return form[currentMode.value][token.key]
+}
+
 function setToken(key, value) {
+  const token = tokens.value.find((item) => item.key === key)
+  if (isSharedToken(token)) {
+    form.light[key] = value
+    form.dark[key] = value
+    return
+  }
   form[currentMode.value][key] = value
 }
 
@@ -432,12 +456,18 @@ function lengthValid(value) {
 
 function applyQuickRadius() {
   const base = Math.max(0, Math.round(Number(quickRadius.value) || 0))
-  const values = form[currentMode.value]
-  values['radius-xs'] = `${Math.max(0, base - 4)}px`
-  values['radius-sm'] = `${Math.max(0, base - 2)}px`
-  values['radius'] = `${base}px`
-  values['radius-lg'] = `${base + 4}px`
-  values['radius-xl'] = `${base + 8}px`
+  // 圆角共用一套：两套模式同时写，切换 tab 不会看到不同结果
+  const radius = {
+    'radius-xs': `${Math.max(0, base - 4)}px`,
+    'radius-sm': `${Math.max(0, base - 2)}px`,
+    radius: `${base}px`,
+    'radius-lg': `${base + 4}px`,
+    'radius-xl': `${base + 8}px`
+  }
+  Object.keys(radius).forEach((key) => {
+    form.light[key] = radius[key]
+    form.dark[key] = radius[key]
+  })
 }
 
 // ---------- 自定义变量 ----------

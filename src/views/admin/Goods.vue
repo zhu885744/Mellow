@@ -1863,7 +1863,7 @@ onMounted(() => {
   margin-bottom: 16px;
   padding: 12px 14px;
   background: var(--bg-muted);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius);
 }
 .ship-address-head {

@@ -315,7 +315,7 @@ async function onFilesChange(e) {
   font-size: 11.5px;
   color: var(--text-light);
   background: var(--bg-alt);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
   cursor: pointer;
 }

@@ -458,7 +458,7 @@ function clear() {
   justify-content: center;
   gap: 4px;
   height: 30px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-muted);

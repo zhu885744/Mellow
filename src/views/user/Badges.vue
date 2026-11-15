@@ -762,7 +762,7 @@ onMounted(load)
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   color: var(--text-light);
   font-size: 15px;
 }

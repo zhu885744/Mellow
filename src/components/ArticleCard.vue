@@ -110,7 +110,7 @@ function goDetail() {
 <style scoped>
 .article-item {
   padding: 20px 0;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border-soft);
 }
 .article-item:last-child {
   border-bottom: none;

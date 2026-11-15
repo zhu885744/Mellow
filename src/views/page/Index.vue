@@ -395,7 +395,7 @@ onMounted(load)
   margin: 0 0 16px;
   padding: 10px 14px;
   font-size: 13px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius);
 }
 .audit-banner.is-audit {
@@ -421,8 +421,8 @@ onMounted(load)
   gap: 12px;
   justify-content: center;
   padding: 16px 0;
-  border-top: 1px dashed var(--border);
-  border-bottom: 1px dashed var(--border);
+  border-top: 1px dashed var(--border-soft);
+  border-bottom: 1px dashed var(--border-soft);
 }
 .like-btn {
   position: relative;

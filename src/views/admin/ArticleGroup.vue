@@ -1131,7 +1131,7 @@ onMounted(load)
   gap: 1px;
   font-size: 10px;
   color: var(--text-light);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: all 0.2s;

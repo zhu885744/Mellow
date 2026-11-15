@@ -242,7 +242,7 @@ function onCancel() {
   padding-bottom: 10px;
   font-size: 13px;
   color: var(--text-soft);
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border-soft);
 }
 .report-reason-label,
 .report-detail-label {
@@ -388,7 +388,7 @@ function onCancel() {
   align-items: center;
   justify-content: center;
   gap: 2px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
   background: var(--bg-muted);
   color: var(--text-muted);

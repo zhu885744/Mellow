@@ -502,7 +502,7 @@ onMounted(load)
   font-size: 12px;
   color: var(--text-muted);
   background: var(--bg-alt);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
 }
 

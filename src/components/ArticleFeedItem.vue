@@ -387,11 +387,13 @@ watch(
 </script>
 
 <style scoped>
-/* 与 MomentItem 同款卡片：阴影而不是描边，间距一致 */
+/* 与 MomentItem / 全站 .card 同款：浅描边 + 轻阴影
+   描边用 --border-soft（主题里的「浅描边」），后台改配色时卡片边会跟着变 */
 .feed-article {
   padding: 20px;
   margin-bottom: 16px;
   background: var(--bg-card);
+  border: 1px solid var(--border-soft);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.2s;
@@ -542,7 +544,8 @@ watch(
   row-gap: 8px;
   margin-top: 12px;
   padding-top: 10px;
-  border-top: 1px dashed var(--border);
+  /* 虚线属于「更弱的分隔」，取 --border-soft（--line-soft），与动态卡片一致 */
+  border-top: 1px dashed var(--border-soft);
   font-size: 13px;
   color: var(--text-muted);
 }

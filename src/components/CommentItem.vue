@@ -452,7 +452,7 @@ function submitReply() {
   display: flex;
   gap: 12px;
   padding: 16px 0;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border-soft);
 }
 .comment-item:last-child {
   border-bottom: none;
@@ -532,7 +532,7 @@ function submitReply() {
   border-radius: 3px;
   background: var(--bg-muted);
   color: var(--text-muted);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
 }
 /* 时间 + 设备：独占一行，显示在昵称下面 */
 .comment-meta {
@@ -593,7 +593,7 @@ function submitReply() {
   line-height: 1.6;
   color: var(--text-muted);
   background: var(--bg-muted);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
 }
 .comment-content-link {

@@ -220,7 +220,7 @@ defineExpose({
   color: var(--text-light);
   text-align: center;
   background: var(--bg-alt);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
 }
 .cf-card {

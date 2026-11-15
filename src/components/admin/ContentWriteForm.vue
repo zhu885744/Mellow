@@ -1018,7 +1018,7 @@ onBeforeRouteLeave(() => {
   width: 90px;
   padding: 2px 8px;
   font-size: 12px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text);
@@ -1075,7 +1075,7 @@ onBeforeRouteLeave(() => {
   gap: 4px;
   font-size: 12px;
   color: var(--text-light);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius);
   cursor: pointer;
   transition: all 0.2s;

@@ -341,7 +341,7 @@ async function submit() {
 .edit-owner {
   margin-bottom: 10px;
   padding-bottom: 8px;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border-soft);
 }
 
 .edit-images {

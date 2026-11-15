@@ -952,9 +952,10 @@ watch(() => userStore.user, (nu) => {
   height: 100%;
   object-fit: cover;
 }
-/* 未设置封面：虚线框 + 说明，明确会回落到主题色渐变 */
+/* 未设置封面：虚线框 + 说明，明确会回落到主题色渐变（虚线用更弱的浅描边） */
 .cover-preview.is-empty {
   border-style: dashed;
+  border-color: var(--border-soft);
 }
 .cover-empty {
   display: flex;

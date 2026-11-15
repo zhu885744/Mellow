@@ -523,7 +523,7 @@ onUnmounted(() => {
   margin: 0 0 16px;
   padding: 10px 14px;
   font-size: 13px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius);
 }
 .audit-banner.is-draft {
@@ -554,8 +554,8 @@ onUnmounted(() => {
   gap: 8px;
   justify-content: center;
   padding: 16px 0;
-  border-top: 1px dashed var(--border);
-  border-bottom: 1px dashed var(--border);
+  border-top: 1px dashed var(--border-soft);
+  border-bottom: 1px dashed var(--border-soft);
 }
 /* 计数跟在文字后面，比原来的「点赞 (3)」省地方，窄屏也不容易换行 */
 .action-text {

@@ -629,7 +629,7 @@ defineExpose({ load })
   gap: 8px;
   padding: 8px 12px;
   font-size: 13px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm, 4px);
   background: var(--bg-muted);
 }
@@ -703,7 +703,7 @@ defineExpose({ load })
   font-size: 13px;
   color: var(--text-muted);
   background: var(--bg-alt);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-lg);
 }
 .comment-closed .bi {

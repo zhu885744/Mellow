@@ -769,7 +769,7 @@ onUnmounted(() => {
   display: flex;
   gap: 10px;
   padding: 12px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
   background: var(--bg-muted);
   color: var(--text-muted);

@@ -947,7 +947,7 @@ onMounted(load)
   text-align: center;
   color: var(--text-light, var(--text-muted));
   background: var(--bg-card);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
 }
 
@@ -1030,7 +1030,7 @@ onMounted(load)
   margin-top: 4px;
   color: var(--text-light, var(--text-muted));
   background: transparent;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   cursor: default;
 }
 .nav-icon {
@@ -1260,7 +1260,7 @@ onMounted(load)
   text-align: center;
   color: var(--text-light, var(--text-muted));
   background: var(--bg-muted);
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius-sm);
 }
 .sk-chips {

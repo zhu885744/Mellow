@@ -21,7 +21,7 @@ defineProps({
   display: flex;
   gap: 16px;
   padding: 20px 0;
-  border-bottom: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border-soft);
 }
 .skeleton-article:last-child {
   border-bottom: none;

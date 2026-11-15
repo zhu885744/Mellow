@@ -2011,7 +2011,7 @@ watch(suggestions, () => nextTick(updateSuggestScroll), { immediate: true })
   gap: 10px;
   margin: 12px 0 2px;
   padding: 8px 10px;
-  border: 1px dashed var(--border);
+  border: 1px dashed var(--border-soft);
   border-radius: var(--radius);
   background: var(--bg-muted);
   color: var(--text-muted);
