@@ -7,7 +7,7 @@
           <h2 class="block-title">消息管理</h2>
           <p class="block-desc">
             {{ currentView.desc }}
-            <RouterLink to="/user/notifications" class="panel-link">
+            <RouterLink to="/notifications" class="panel-link">
               个人消息请到「用户中心 → 消息通知」查看
             </RouterLink>
           </p>
@@ -358,7 +358,7 @@ import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
  *  1. 群发短消息：发给全体用户的短消息（uid=0，全站只存一条记录）：发送、编辑、撤回、恢复、彻底删除、清空回收站
  *  2. 全部通知：全站所有通知（群发短消息 + 发给指定用户的消息 + 评论/点赞/收藏/关注等自动通知）：
  *     查看接收用户与已读状态，按类型 / 标题筛选，编辑（短消息）、撤回、恢复、彻底删除
- * 个人消息（当前账号收到的通知）不在此页处理，请到用户中心「消息通知」页（/user/notifications）。
+ * 个人消息（当前账号收到的通知）不在此页处理，请到用户中心「消息通知」页（/notifications）。
  *
  * 交互约定：
  * - 统计卡可点击，等价于点对应的筛选标签（active 高亮当前筛选）

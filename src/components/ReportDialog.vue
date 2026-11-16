@@ -275,7 +275,7 @@ function onCancel() {
 }
 /*
  * chip 视觉：全局没有 .chip（项目里每个用到的地方都在自己 scoped 里声明一份，
- * 见 views/goods/Index.vue、views/user/Notifications.vue），这里必须自带，
+ * 见 views/goods/Index.vue、views/notifications/Index.vue），这里必须自带，
  * 否则按钮点得动但没有任何选中反馈（表现就是「点了没反应」）。
  */
 .chip {

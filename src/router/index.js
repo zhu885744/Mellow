@@ -39,22 +39,28 @@ const routes = [
   // 消息中心：私信 + 群聊共用一份左栏列表（/chat）
   // 右栏是子路由：/chat/:uid 私信，/chat/room/:id 群聊；/chat 无选中时显示空态。
   // 窄屏下变成单栏（有选中只看聊天，没有只看列表）。
+  //
+  // 游客可进：列表里只展示公共大厅，群聊页只读（输入框换成「请登录」提示）。
+  // 只读接口 room/list、room/info、room/messages 是 type=common（见 app/model/auth-rules.go），
+  // 私信子路由 /chat/:uid 仍然要登录。
   {
     path: '/chat',
     component: () => import('@/views/chat/Layout.vue'),
-    meta: { auth: true, title: '消息' },
+    meta: { title: '消息' },
     children: [
       {
         path: 'room/:id(\\d+)',
         name: 'room',
         component: () => import('@/views/room/Index.vue'),
-        meta: { auth: true, title: '群聊' }
+        meta: { title: '群聊' }
       },
       {
+        // 私信不强制登录：游客直接访问 /chat/2 时，页面里显示「登录后即可查看私信」
+        // 的引导（去登录 / 先进公共大厅），而不是被守卫一把甩到登录页
         path: ':uid(\\d+)',
         name: 'chat-dm',
         component: () => import('@/views/messages/Index.vue'),
-        meta: { auth: true, title: '私信' }
+        meta: { title: '私信' }
       }
     ]
   },
@@ -109,6 +115,15 @@ const routes = [
       // 搜索 / 签到：原先是弹窗，现改为独立页面（支持 /search?q=xxx&scope=article 直达）
       { path: 'search', name: 'search', component: () => import('@/views/Search.vue') },
       { path: 'checkin', name: 'checkin', component: () => import('@/views/Checkin.vue') },
+      // 消息通知：从用户中心独立出来，不再套 /user 的侧边导航，改为挂在 MainLayout 下
+      // —— 这样站点的顶部导航与手机底部 Tab Bar 都会正常显示。
+      // 旧地址 /user/notifications 保留重定向。
+      {
+        path: 'notifications',
+        name: 'notifications',
+        component: () => import('@/views/notifications/Index.vue'),
+        meta: { auth: true, title: '消息通知' }
+      },
       // 勋章馆 / 佩戴榜：公开的荣誉墙（按稀有度分组，带持有人数与正在佩戴的用户）
       { path: 'badges', name: 'badges', component: () => import('@/views/badge/Index.vue') },
       { path: 'goods', name: 'goods', component: () => import('@/views/goods/Index.vue') },
@@ -160,7 +175,8 @@ const routes = [
       { path: 'badges', name: 'user-badges', component: () => import('@/views/user/Badges.vue') },
       // 我的认证：按后台配置的认证类型提交申请、查看审核进度与已通过的认证信息
       { path: 'verification', name: 'user-verification', component: () => import('@/views/user/Verification.vue') },
-      { path: 'notifications', name: 'user-notifications', component: () => import('@/views/user/Notifications.vue') },
+      // 消息通知已独立为 /notifications（挂在站点布局下，不带用户中心侧栏），旧地址保留重定向
+      { path: 'notifications', redirect: '/notifications' },
       // 消息已合并为 /chat：旧地址保留重定向，
       // 书签、站内旧链接、?to=<uid> 直达参数都不会失效
       {

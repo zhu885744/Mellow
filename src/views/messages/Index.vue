@@ -187,7 +187,18 @@
 
     <!-- ==================== 聊天窗口 ==================== -->
     <section class="msg-chat">
-      <template v-if="activeUid">
+      <!-- 游客：私信要登录后才能看。这里给明确引导，而不是把人直接甩去登录页 -->
+      <div v-if="isGuest" class="msg-placeholder">
+        <div class="msg-placeholder-mark"><i class="bi bi-person-lock" aria-hidden="true" /></div>
+        <h2>登录后即可查看私信</h2>
+        <p>私信只对互相关注的好友开放，未登录也可以先逛公共群聊</p>
+        <div class="msg-guest-actions">
+          <button type="button" class="msg-guest-btn is-primary" @click="requireLogin()">去登录</button>
+          <RouterLink to="/chat/room/1" class="msg-guest-btn">进入公共大厅</RouterLink>
+        </div>
+      </div>
+
+      <template v-else-if="activeUid">
         <header class="msg-chat-head">
           <button type="button" class="msg-icon-btn msg-back" title="返回会话列表" @click="closeChat">
             <i class="bi bi-chevron-left" aria-hidden="true" />
@@ -518,6 +529,15 @@ const keyword = ref('')
 
 // 在 /chat 的统一布局里只渲染聊天区，左栏由父级承担
 const embedded = true
+
+// 游客：/chat/:uid 不再强制登录，页面里给一条引导（去登录 / 先进公共大厅）
+const isGuest = computed(() => !userStore.isLogged)
+
+/** 游客点了「去登录」：带上回跳地址，登录后还能回到这段会话 */
+function requireLogin() {
+  if (userStore.isLogged) return
+  router.push({ name: 'login', query: { redirect: route.fullPath } })
+}
 
 // 当前会话由路由参数决定：/chat/:uid（刷新、分享、前进后退都能落到同一段对话）
 // 这里保持 0，初始化与路由变化都走 openChat()，避免出现「有 uid 但没加载消息」
@@ -1595,6 +1615,9 @@ function onMenuScroll() {
 watch(
   () => route.params.uid,
   (value) => {
+    // 游客没有会话可开：页面显示的是登录引导，不必发请求
+    if (isGuest.value) return
+
     const uid = Number(value) || 0
     if (!uid) {
       if (activeUid.value) closeChat()
@@ -1605,6 +1628,9 @@ watch(
 )
 
 onMounted(async () => {
+  // 游客：只渲染登录引导，跳过所有需要登录的初始化请求
+  if (isGuest.value) return
+
   chatStore.start()
   await Promise.all([loadConversations(), loadFriends()])
   // 角标以服务端为准：socket 的 +1 累加在断线重连 / 重复推送后可能偏高
@@ -1646,6 +1672,8 @@ onBeforeUnmount(() => {
 watch(
   () => route.query.to,
   (value) => {
+    if (isGuest.value) return
+
     const uid = Number(value || 0)
     if (uid > 0 && uid !== Number(activeUid.value)) openChat(uid)
     if (!uid) closeChat()
@@ -2545,6 +2573,45 @@ watch(
 }
 .msg-placeholder-link:hover {
   color: var(--primary-deep);
+}
+
+/* 游客引导：两个出口并排（去登录 / 进公共大厅） */
+.msg-guest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-top: 10px;
+}
+.msg-guest-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  padding: 0 16px;
+  font-family: inherit;
+  font-size: 12.5px;
+  color: var(--text-soft);
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: 999px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease), border-color var(--dur-fast) var(--ease);
+}
+.msg-guest-btn:hover {
+  color: var(--primary);
+  border-color: var(--primary-soft);
+}
+.msg-guest-btn.is-primary {
+  color: #fff;
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.msg-guest-btn.is-primary:hover {
+  color: #fff;
+  background: var(--primary-deep);
+  border-color: var(--primary-deep);
 }
 
 /* 旋转（加载中） */

@@ -138,8 +138,17 @@
 
     <!-- ==================== 输入 ==================== -->
     <footer class="room-composer">
+      <!-- 游客：消息照常可看，发言 / 加入要先登录 -->
+      <div v-if="isGuest" class="room-join">
+        <p>
+          <i class="bi bi-person-lock" aria-hidden="true" />
+          登录后即可参与聊天
+        </p>
+        <button type="button" class="room-btn room-btn-primary" @click="requireLogin()">去登录</button>
+      </div>
+
       <!-- 非成员：先加入才能看消息、发言 -->
-      <div v-if="!joined" class="room-join">
+      <div v-else-if="!joined" class="room-join">
         <p>
           <i class="bi bi-lock" aria-hidden="true" />
           {{ Number(room.join_type) === 1 ? '该群聊需要群主审批后加入' : Number(room.join_type) === 2 ? '该群聊仅限邀请加入' : '加入后即可查看消息并参与聊天' }}
@@ -622,7 +631,7 @@
       :style="{ left: `${messageMenu.x}px`, top: `${messageMenu.y}px` }"
     >
       <button
-        v-if="messageMenu.msg?.is_revoked !== 1"
+        v-if="!isGuest && messageMenu.msg?.is_revoked !== 1"
         type="button"
         class="room-menu-item"
         role="menuitem"
@@ -640,6 +649,7 @@
         <i class="bi bi-arrow-counterclockwise" aria-hidden="true" />撤回消息
       </button>
       <button
+        v-if="!isGuest"
         type="button"
         class="room-menu-item is-danger"
         role="menuitem"
@@ -813,6 +823,8 @@ const typers = ref(new Map())
 const typingTimers = new Map()
 
 const me = computed(() => Number(userStore.user?.id || 0))
+// 游客：可以只读浏览公共大厅（后端 room/info、room/messages 是 common），发言 / 加入要先登录
+const isGuest = computed(() => !userStore.isLogged)
 
 // 在线成员来自 chat store 的 status 广播（已按 uid 去重，不含访客）
 const onlineMembers = computed(() => chatStore.presence.users)
@@ -1139,6 +1151,9 @@ async function loadInfo() {
     if (!adminOpen.value) fillForm()
     noticeDraft.value = room.value.notice || ''
 
+    // 游客：成员 / 申请面板都要登录才有意义，跳过这些必然 401 的请求
+    if (isGuest.value) return
+
     // 非成员：不拉历史，页面显示「加入」引导
     if (!joined.value) return
 
@@ -1186,8 +1201,20 @@ async function loadRequests() {
   }
 }
 
+/** 游客点了需要登录的动作：提示一句并带上回跳地址去登录页 */
+function requireLogin(message = '请先登录') {
+  if (userStore.isLogged) return false
+  // 模板里若写成 @click="requireLogin"，传进来的是 PointerEvent 而不是文案，
+  // 直接透给 toast 会弹成 [object PointerEvent]；这里兜一层，只认字符串。
+  toast.warning(typeof message === 'string' ? message : '请先登录')
+  router.push({ name: 'login', query: { redirect: route.fullPath } })
+  return true
+}
+
 /** 加入群聊：自由加入直接进；需审批的提示等待 */
 async function join() {
+  if (requireLogin('请先登录后再加入群聊')) return
+
   try {
     const res = await joinRoom(roomId.value, joinMessage.value.trim())
     if (res?.code !== 200) return
@@ -1352,6 +1379,13 @@ let historyEpoch = 0
 
 async function loadHistory(beforeId = 0) {
   if (loading.value) return
+
+  // 游客只能读公共大厅：自建群的历史要登录 + 成员身份，别发必然 401 的请求
+  if (isGuest.value && !isPublicRoom.value) {
+    messages.value = []
+    return
+  }
+
   loading.value = true
 
   const epoch = historyEpoch

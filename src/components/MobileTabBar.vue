@@ -91,18 +91,18 @@ const tabs = computed(() => [
   // 发布按钮：不直接跳转，点击展开「发文章 / 发动态」面板
   { key: 'publish', to: '/manage/posts/write', icon: 'bi-plus-circle-fill', label: '', ariaLabel: '发布', needLogin: true, highlight: true, action: 'publish' },
   // badge 响应式取消息未读数
-  { key: 'notif', to: '/user/notifications', icon: 'bi-bell-fill', label: '消息', needLogin: true, badge: unreadBadge.value },
+  { key: 'notif', to: '/notifications', icon: 'bi-bell-fill', label: '消息', needLogin: true, badge: unreadBadge.value },
   // 「我的」进用户中心聚合页；个人主页从页内昵称进入（/author/:id）
   { key: 'mine', to: '/user', icon: 'bi-person-fill', label: '我的', needLogin: true }
 ])
 
 // 当前选中的 tab（唯一）：取「匹配得最具体」的那个。
 //
-// 为什么不能只做前缀匹配：「我的」的 to 是 /user，而「消息」的页面 /user/notifications
-// 正好落在它下面 —— 单看 startsWith 会让「消息」和「我的」同时高亮。
+// 不能只判前缀：「我的」的 to 是 /user，用户中心各子页（/user/integral 等）都落在它下面，
+// 需要保持「我的」高亮；而「消息」现在是独立页面 /notifications，只按自身命中。
 // 规则：先看精确命中（带 exact 的 tab，如首页），否则在命中的 tab 里取 to 最长的一个：
-//   /user/notifications → 消息（19 字符）胜过 我的（5 字符）
-//   /user/integral      → 只有 我的 命中，所以用户中心各子页仍保持「我的」选中
+//   /notifications → 消息
+//   /user/integral → 我的
 const activeKey = computed(() => {
   const p = route.path
   let best = null

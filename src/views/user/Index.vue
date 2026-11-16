@@ -54,7 +54,7 @@
       </section>
 
       <!-- 未读消息 -->
-      <RouterLink to="/user/notifications" class="my-notice">
+      <RouterLink to="/notifications" class="my-notice">
         <span class="my-notice-icon">
           <i class="bi bi-bell-fill" aria-hidden="true" />
           <em v-if="notifCount > 0" class="my-notice-dot" />
@@ -230,7 +230,7 @@ const CATALOGUE = [
   { key: 'badges', name: '我的勋章', icon: 'bi bi-award', to: '/user/badges' },
   { key: 'verification', name: '我的认证', icon: 'bi bi-patch-check', to: '/user/verification' },
   { key: 'goods', name: '积分商城', icon: 'bi bi-shop', to: '/goods' },
-  { key: 'notifications', name: '消息通知', icon: 'bi bi-bell', to: '/user/notifications' },
+  { key: 'notifications', name: '消息通知', icon: 'bi bi-bell', to: '/notifications' },
   { key: 'blocks', name: '拉黑与举报', icon: 'bi bi-shield-slash', to: '/user/blocks' },
   { key: 'checkin', name: '每日签到', icon: 'bi bi-calendar-check', to: '/checkin' },
   { key: 'write', name: '写新文章', icon: 'bi bi-file-earmark-plus', to: '/manage/posts/write' },

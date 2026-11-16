@@ -8,7 +8,7 @@
  *   user-certification        → 认证记录 id，进「我的认证」查看资料与审核状态
  *   links / integral-card / decoration → 固定页面
  *
- * 消息中心（views/user/Notifications.vue）与侧栏最新消息（components/SidebarRight.vue）
+ * 消息中心（views/notifications/Index.vue）与侧栏最新消息（components/SidebarRight.vue）
  * 共用本模块，避免两处维护两份跳转规则。
  */
 import { getComment } from '@/api/comment'

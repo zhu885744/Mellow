@@ -42,7 +42,7 @@ export const SIDEBAR_TYPES = [
     icon: 'bi-bell',
     desc: '最新一条未读消息预览（需登录）',
     fields: ['title', 'icon', 'moreUrl', 'collapsible'],
-    defaults: { title: '消息通知', icon: 'bi-bell', moreUrl: '/user/notifications', collapsible: false }
+    defaults: { title: '消息通知', icon: 'bi-bell', moreUrl: '/notifications', collapsible: false }
   },
   {
     value: 'articleRank',

@@ -28,7 +28,10 @@
       </RouterLink>
 
       <button type="button" class="chat-rail-btn" title="消息提醒" @click="alertOpen = !alertOpen">
-        <i :class="chatStore.alert.sound || chatStore.alert.toast ? 'bi bi-bell' : 'bi bi-bell-slash'" aria-hidden="true" />
+        <i
+          :class="chatStore.alert.sound || chatStore.alert.toast || chatStore.alert.desktop ? 'bi bi-bell' : 'bi bi-bell-slash'"
+          aria-hidden="true"
+        />
       </button>
 
       <span class="chat-rail-grow" />
@@ -68,6 +71,10 @@
         >
           <i class="bi bi-people" aria-hidden="true" />
           <span>联系人</span>
+        </RouterLink>
+        <!-- 窄屏把 rail 藏了，「返回站点」也跟着消失，这里补一个，手机上才有回前台的路 -->
+        <RouterLink to="/" class="chat-panel-home" title="返回站点" aria-label="返回站点">
+          <i class="bi bi-compass" aria-hidden="true" />
         </RouterLink>
       </div>
 
@@ -253,6 +260,24 @@
         </button>
       </div>
 
+      <div class="chat-alert-row">
+        <span class="chat-alert-copy">
+          <strong>浏览器通知</strong>
+          <em>{{ desktopHint }}</em>
+        </span>
+        <button
+          type="button"
+          class="chat-switch"
+          :class="{ 'is-on': desktopEnabled }"
+          role="switch"
+          :aria-checked="desktopEnabled"
+          :disabled="!desktopSupported"
+          @click="toggleDesktop"
+        >
+          <span class="chat-switch-knob" />
+        </button>
+      </div>
+
       <p class="chat-alert-tip">设置只保存在本机浏览器，不影响未读角标</p>
     </div>
 
@@ -309,6 +334,7 @@ import { listChatConversations, listChatFriends } from '@/api/chat'
 import { createRoom, listRooms } from '@/api/room'
 import { useChatStore } from '@/stores/chat'
 import { useUserStore } from '@/stores/user'
+import { useDesktopNotice } from '@/composables/useDesktopNotice'
 import { toast } from '@/utils/toast'
 import { getFullUrl } from '@/utils/emoji'
 import SelectMenu from '@/components/SelectMenu.vue'
@@ -346,6 +372,22 @@ const friends = ref([])
 const loadingFriends = ref(false)
 
 const alertOpen = ref(false)
+
+// 系统级桌面通知：与私信页共用同一个 composable（权限申请必须在点击栈里，
+// 偏好仍落 chat store 的 alert.desktop，存本机）
+const {
+  supported: desktopSupported,
+  enabled: desktopEnabled,
+  blocked: desktopBlocked,
+  toggle: toggleDesktop
+} = useDesktopNotice()
+
+const desktopHint = computed(() => {
+  if (!desktopSupported) return '当前环境不支持（浏览器要求 HTTPS）'
+  if (desktopBlocked.value) return '浏览器已拒绝，请在站点设置里允许通知'
+  if (desktopEnabled.value) return '切到其他标签页也能收到'
+  return '窗口在后台时也能收到系统通知'
+})
 const canCreate = ref({ allowed: false, reason: '', owned: 0, max_owned: 3 })
 const createOpen = ref(false)
 const creating = ref(false)
@@ -520,7 +562,17 @@ async function loadFriends() {
   }
 }
 
+/** 游客点了需要登录的动作：提示一句并带上回跳地址去登录页 */
+function requireLogin(message = '请先登录') {
+  if (userStore.isLogged) return false
+  toast.warning(message)
+  router.push({ name: 'login', query: { redirect: route.fullPath } })
+  return true
+}
+
 function openCreate() {
+  if (requireLogin('请先登录后再创建群聊')) return
+
   if (!canCreate.value.allowed) {
     toast.warning(canCreate.value.reason || '暂时不能创建群聊')
     return
@@ -1106,6 +1158,10 @@ onBeforeUnmount(() => {
 .chat-switch.is-on .chat-switch-knob {
   transform: translateX(15px);
 }
+.chat-switch:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
 .chat-alert-tip {
   margin: 8px 0 0;
   font-size: 11px;
@@ -1242,6 +1298,25 @@ onBeforeUnmount(() => {
   transition: background 0.12s, color 0.12s;
 }
 .chat-panel-tab.is-active {
+  color: var(--chat-blue);
+  background: var(--accent-soft);
+}
+/* 返回站点：宽度固定，不跟两个 tab 抢空间 */
+.chat-panel-home {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  font-size: 14px;
+  color: var(--text-soft);
+  background: var(--bg-muted);
+  border-radius: 6px;
+  transition: background 0.12s, color 0.12s;
+}
+.chat-panel-home:hover,
+.chat-panel-home:active {
   color: var(--chat-blue);
   background: var(--accent-soft);
 }

@@ -48,7 +48,7 @@ defineProps({
   title: { type: String, default: '消息通知' },
   icon: { type: String, default: 'bi-bell' },
   moreText: { type: String, default: '' },
-  moreUrl: { type: String, default: '/user/notifications' },
+  moreUrl: { type: String, default: '/notifications' },
   collapsible: { type: Boolean, default: false },
   defaultCollapsed: { type: Boolean, default: false },
   storeKey: { type: [String, Number], default: '' }
@@ -88,7 +88,7 @@ async function openLatest() {
   }
   // 跳转关联内容：与消息中心共用同一套规则，没有目标时回落到消息中心
   const link = await notificationLink(n)
-  router.push(link || '/user/notifications')
+  router.push(link || '/notifications')
 }
 </script>
 

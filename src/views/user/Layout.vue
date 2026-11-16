@@ -195,7 +195,7 @@ const menuGroups = computed(() => [
   {
     label: '互动',
     items: [
-      { path: '/user/notifications', name: '消息通知', icon: 'bi bi-bell', badge: notif.count > 0 ? notif.count : '' },
+      { path: '/notifications', name: '消息通知', icon: 'bi bi-bell', badge: notif.count > 0 ? notif.count : '' },
       // 消息：私信与群聊共用 /chat 一个页面（左侧统一列表，右侧切换会话）；
       // 未读数来自 WebSocket 实时推送（见 stores/chat.js），@ 提醒计入群聊
       {
