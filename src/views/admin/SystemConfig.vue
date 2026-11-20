@@ -87,13 +87,13 @@
 
                 <div class="form-item">
                   <label class="form-label">编辑器</label>
-                  <SelectMenu v-model="cfg.content[item.key].editor" variant="field" :options="EDITOR_OPTIONS" />
+                  <FormSelect v-model="cfg.content[item.key].editor" :options="EDITOR_OPTIONS" />
                   <p class="form-hint">Mellow 后台编辑器统一使用 Markdown，该值供其它端读取</p>
                 </div>
 
                 <div class="form-item">
                   <label class="form-label">内容审核</label>
-                  <SelectMenu v-model="cfg.content[item.key].audit" variant="field" :options="ON_OFF" />
+                  <FormSelect v-model="cfg.content[item.key].audit" :options="ON_OFF" />
                   <p class="form-hint">
                     开启后，用户新发布的{{ item.name }}需审核通过才对外可见；关闭则发布即通过。
                     已存在的{{ item.name }}二次编辑保存不会被打回待审核
@@ -102,21 +102,17 @@
 
                 <div class="form-item">
                   <label class="form-label">允许评论</label>
-                  <SelectMenu
+                  <FormSelect
                     v-model="cfg.content[item.key].comment.allow"
-                    variant="field"
-                    :options="COMMENT_ALLOW_OPTIONS"
-                  />
+                    :options="COMMENT_ALLOW_OPTIONS" />
                   <p class="form-hint">设为「禁止」时覆盖内容自身设置，一律禁止</p>
                 </div>
 
                 <div class="form-item">
                   <label class="form-label">显示评论</label>
-                  <SelectMenu
+                  <FormSelect
                     v-model="cfg.content[item.key].comment.show"
-                    variant="field"
-                    :options="COMMENT_SHOW_OPTIONS"
-                  />
+                    :options="COMMENT_SHOW_OPTIONS" />
                   <p class="form-hint">设为「隐藏」时覆盖内容自身设置，整块不展示</p>
                 </div>
 
@@ -145,7 +141,7 @@
             <div class="form-grid">
               <div class="form-item">
                 <label class="form-label">内容审核</label>
-                <SelectMenu v-model="cfg.comment.audit" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.comment.audit" :options="ON_OFF" />
                 <p class="form-hint">
                   开启后前台新评论进入待审核（在「评论管理」里通过 / 驳回），未通过的评论前台不可见；
                   关闭则提交即通过
@@ -153,27 +149,27 @@
               </div>
               <div class="form-item">
                 <label class="form-label">允许评论</label>
-                <SelectMenu v-model="cfg.comment.allow" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.comment.allow" :options="ON_OFF" />
               </div>
               <div class="form-item">
                 <label class="form-label">最大长度（字符）</label>
-                <input v-model="cfg.comment.max_length" class="input" type="number" min="0" step="1" />
+                <FormInput v-model="cfg.comment.max_length" type="number" min="0" step="1" />
               </div>
               <div class="form-item">
                 <label class="form-label">限流</label>
-                <SelectMenu v-model="cfg.comment.rate_limit.enabled" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.comment.rate_limit.enabled" :options="ON_OFF" />
               </div>
               <div class="form-item">
                 <label class="form-label">时间窗口（秒）</label>
-                <input v-model="cfg.comment.rate_limit.time_window" class="input" type="number" min="1" step="1" />
+                <FormInput v-model="cfg.comment.rate_limit.time_window" type="number" min="1" step="1" />
               </div>
               <div class="form-item">
                 <label class="form-label">窗口内最大条数</label>
-                <input v-model="cfg.comment.rate_limit.max_count" class="input" type="number" min="1" step="1" />
+                <FormInput v-model="cfg.comment.rate_limit.max_count" type="number" min="1" step="1" />
               </div>
               <div class="form-item">
                 <label class="form-label">必须包含中文</label>
-                <SelectMenu v-model="cfg.comment.require_chinese" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.comment.require_chinese" :options="ON_OFF" />
               </div>
             </div>
 
@@ -200,7 +196,7 @@
 
             <div class="form-item">
               <label class="form-label">内容审核</label>
-              <SelectMenu v-model="cfg.links.audit" variant="field" :options="ON_OFF" />
+              <FormSelect v-model="cfg.links.audit" :options="ON_OFF" />
               <p class="form-hint">
                 开启后前台提交的友链进入待审核（在「友链管理」里通过 / 驳回，申请时会通知管理员）；
                 关闭则提交即通过。管理员在后台自行添加的友链不受该开关影响
@@ -231,12 +227,12 @@
             <div class="form-grid">
               <div class="form-item">
                 <label class="form-label">装扮功能</label>
-                <SelectMenu v-model="cfg.decoration.enabled" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.decoration.enabled" :options="ON_OFF" />
                 <p class="form-hint">关闭后所有用户都无法佩戴 / 卸下装扮，已佩戴的样式仍会正常展示</p>
               </div>
               <div class="form-item">
                 <label class="form-label">商城显示装扮分区</label>
-                <SelectMenu v-model="cfg.decoration.showInGoods" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.decoration.showInGoods" :options="ON_OFF" />
                 <p class="form-hint">关闭后积分商城只显示普通商品，装扮仍可通过后台发放</p>
               </div>
             </div>
@@ -245,7 +241,7 @@
             <div class="form-grid">
               <div class="form-item">
                 <label class="form-label">启用头像框</label>
-                <SelectMenu v-model="cfg.decoration.frameEnabled" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.decoration.frameEnabled" :options="ON_OFF" />
               </div>
             </div>
             <!-- 缩放/对齐不再走全局默认值：每个头像框在「装扮管理」里用对齐器单独调洞大小与偏移 -->
@@ -254,11 +250,11 @@
             <div class="form-grid">
               <div class="form-item">
                 <label class="form-label">启用头衔</label>
-                <SelectMenu v-model="cfg.decoration.titleEnabled" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.decoration.titleEnabled" :options="ON_OFF" />
               </div>
               <div class="form-item">
                 <label class="form-label">允许用户自填文字</label>
-                <SelectMenu v-model="cfg.decoration.titleAllowCustom" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.decoration.titleAllowCustom" :options="ON_OFF" />
                 <p class="form-hint">
                   开启后，未内置文字且没有图片的「纯样式」头衔，可由用户佩戴时自行输入
                   （图片头衔不需要填字，在「装扮管理」里给头衔配上图片即可）
@@ -266,7 +262,7 @@
               </div>
               <div class="form-item">
                 <label class="form-label">头衔最大字数</label>
-                <input v-model="cfg.decoration.titleMaxLength" class="input" type="number" min="1" max="20" />
+                <FormInput v-model="cfg.decoration.titleMaxLength" type="number" min="1" max="20" />
               </div>
             </div>
 
@@ -288,7 +284,7 @@
             <div class="form-grid">
               <div class="form-item">
                 <label class="form-label">会话有效期（秒，支持表达式）</label>
-                <input v-model="toml.session.expire" class="input" type="text" placeholder="如 15 * 24 * 60 * 60" />
+                <FormInput v-model="toml.session.expire" type="text" placeholder="如 15 * 24 * 60 * 60" />
                 <p class="form-hint">滑动续期（最后活跃时间 + 有效期），默认 15 天；修改后只影响新登录 / 续期的会话，已签发的会话保持原时长</p>
               </div>
             </div>
@@ -310,11 +306,11 @@
               </header>
               <div class="form-item">
                 <label class="form-label">允许用户自行注册</label>
-                <SelectMenu v-model="cfg.register.value" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.register.value" :options="ON_OFF" />
               </div>
               <div class="form-item">
                 <label class="form-label">新用户注册验证</label>
-                <SelectMenu v-model="cfg.register.verifyMode" variant="field" :options="REGISTER_VERIFY_OPTIONS" />
+                <FormSelect v-model="cfg.register.verifyMode" :options="REGISTER_VERIFY_OPTIONS" />
                 <p class="form-hint">{{ registerVerifyHint }}</p>
               </div>
             </section>
@@ -328,29 +324,27 @@
               </header>
               <div class="form-item">
                 <label class="form-label">限制模式</label>
-                <SelectMenu v-model="cfg.register.domainMode" variant="field" :options="REGISTER_DOMAIN_OPTIONS" />
+                <FormSelect v-model="cfg.register.domainMode" :options="REGISTER_DOMAIN_OPTIONS" />
                 <p class="form-hint">{{ registerDomainHint }}</p>
               </div>
 
               <div v-if="cfg.register.domainMode === 'whitelist'" class="form-item">
                 <label class="form-label">注册邮箱白名单</label>
-                <textarea
+                <FormTextarea
                   v-model="cfg.register.whitelistText"
-                  class="textarea code-textarea"
+                  class="code-textarea"
                   rows="5"
-                  placeholder="qq.com&#10;163.com&#10;@foxmail.com"
-                ></textarea>
+                  placeholder="qq.com&#10;163.com&#10;@foxmail.com" />
                 <p class="form-hint">只允许使用这些域名结尾的邮箱地址注册，每行一个域名（@ 可省略，子域自动匹配，如 qq.com 同时允许 mail.qq.com）。</p>
               </div>
 
               <div v-if="cfg.register.domainMode === 'blacklist'" class="form-item">
                 <label class="form-label">注册邮箱黑名单</label>
-                <textarea
+                <FormTextarea
                   v-model="cfg.register.blacklistText"
-                  class="textarea code-textarea"
+                  class="code-textarea"
                   rows="5"
-                  placeholder="example.com&#10;@tempmail.com"
-                ></textarea>
+                  placeholder="example.com&#10;@tempmail.com" />
                 <p class="form-hint">禁止使用这些域名结尾的邮箱地址注册，每行一个域名（@ 可省略，子域自动匹配）。</p>
               </div>
             </section>
@@ -365,12 +359,12 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">站内消息通知</label>
-                  <SelectMenu v-model="cfg.register.welcomeMessage" variant="field" :options="ON_OFF" />
+                  <FormSelect v-model="cfg.register.welcomeMessage" :options="ON_OFF" />
                   <p class="form-hint">注册成功后，向用户发送站内欢迎消息</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">发送欢迎 Email</label>
-                  <SelectMenu v-model="cfg.register.welcomeEmail" variant="field" :options="ON_OFF" />
+                  <FormSelect v-model="cfg.register.welcomeEmail" :options="ON_OFF" />
                   <p class="form-hint">注册成功后，向用户注册邮箱发送欢迎邮件</p>
                 </div>
               </div>
@@ -391,7 +385,7 @@
                 </p>
                 <div v-else class="check-grid is-block">
                   <label v-for="g in registerGroups.list" :key="g.id" class="check-line">
-                    <input v-model="cfg.register.ids" type="checkbox" :value="Number(g.id)" />
+                    <FormCheckbox v-model="cfg.register.ids" :value="Number(g.id)" />
                     <span>
                       {{ g.name || g.key }}
                       <code v-if="g.key" class="group-key">{{ g.key }}</code>
@@ -429,12 +423,12 @@
               </header>
               <div class="form-item">
                 <label class="form-label">允许修改账号</label>
-                <SelectMenu v-model="cfg.account.value" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.account.value" :options="ON_OFF" />
                 <p class="form-hint">关闭后前台「修改账号」入口不可用，接口会直接拒绝提交</p>
               </div>
               <div class="form-item">
                 <label class="form-label">冷却天数</label>
-                <input v-model.number="cfg.account.cooldownDays" class="input" type="number" min="0" max="365" step="1" />
+                <FormInput v-model.number="cfg.account.cooldownDays" type="number" min="0" max="365" step="1" />
                 <p class="form-hint">一次修改成功后多少天内不可再次修改；填 0 表示不限制（-&gt; 最长 365 天）</p>
               </div>
             </section>
@@ -449,12 +443,12 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">要求已绑定手机号 / 邮箱</label>
-                  <SelectMenu v-model="cfg.account.requireContact" variant="field" :options="ON_OFF" />
+                  <FormSelect v-model="cfg.account.requireContact" :options="ON_OFF" />
                   <p class="form-hint">开启后，未绑定手机号或邮箱的账号不能修改</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">要求身份验证</label>
-                  <SelectMenu v-model="cfg.account.requireVerify" variant="field" :options="ON_OFF" />
+                  <FormSelect v-model="cfg.account.requireVerify" :options="ON_OFF" />
                   <p class="form-hint">开启后提交修改需先通过当前密码或邮箱 / 手机验证码校验</p>
                 </div>
               </div>
@@ -482,11 +476,11 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">启用缓存</label>
-                  <SelectMenu v-model="toml.cache.openValue" variant="field" :options="ON_OFF" />
+                  <FormSelect v-model="toml.cache.openValue" :options="ON_OFF" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">默认驱动</label>
-                  <SelectMenu v-model="toml.cache.default" variant="field" :options="CACHE_DRIVERS" />
+                  <FormSelect v-model="toml.cache.default" :options="CACHE_DRIVERS" />
                 </div>
               </div>
               <div class="config-foot">
@@ -506,27 +500,27 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">主机</label>
-                  <input v-model="toml.cache.redis.host" class="input" type="text" />
+                  <FormInput v-model="toml.cache.redis.host" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">端口</label>
-                  <input v-model="toml.cache.redis.port" class="input" type="number" step="1" />
+                  <FormInput v-model="toml.cache.redis.port" type="number" step="1" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">数据库</label>
-                  <input v-model="toml.cache.redis.database" class="input" type="number" step="1" />
+                  <FormInput v-model="toml.cache.redis.database" type="number" step="1" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">密码</label>
-                  <input v-model="toml.cache.redis.password" class="input" type="text" />
+                  <FormInput v-model="toml.cache.redis.password" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">前缀</label>
-                  <input v-model="toml.cache.redis.prefix" class="input" type="text" />
+                  <FormInput v-model="toml.cache.redis.prefix" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">有效期（秒，支持表达式）</label>
-                  <input v-model="toml.cache.redis.expire" class="input" type="text" />
+                  <FormInput v-model="toml.cache.redis.expire" type="text" />
                 </div>
               </div>
               <div class="config-foot">
@@ -548,15 +542,15 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">存储路径</label>
-                  <input v-model="toml.cache.file.path" class="input" type="text" />
+                  <FormInput v-model="toml.cache.file.path" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">前缀</label>
-                  <input v-model="toml.cache.file.prefix" class="input" type="text" />
+                  <FormInput v-model="toml.cache.file.prefix" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">有效期（秒，支持表达式）</label>
-                  <input v-model="toml.cache.file.expire" class="input" type="text" />
+                  <FormInput v-model="toml.cache.file.expire" type="text" />
                 </div>
               </div>
               <div class="config-foot">
@@ -574,7 +568,7 @@
               </header>
               <div class="form-item">
                 <label class="form-label">有效期（秒，支持表达式）</label>
-                <input v-model="toml.cache.ram.expire" class="input" type="text" />
+                <FormInput v-model="toml.cache.ram.expire" type="text" />
               </div>
               <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('cacheRam')" @click="saveCacheRam">
@@ -595,7 +589,7 @@
               </header>
               <div class="form-item">
                 <label class="form-label">默认驱动</label>
-                <SelectMenu v-model="toml.storage.default" variant="field" :options="STORAGE_DRIVERS" />
+                <FormSelect v-model="toml.storage.default" :options="STORAGE_DRIVERS" />
               </div>
               <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('storageDefault')" @click="saveStorageDefault">
@@ -613,7 +607,7 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">访问域名</label>
-                  <input v-model="toml.storage.local.domain" class="input" type="text" placeholder="留空 = 相对路径 /storage/xxx" />
+                  <FormInput v-model="toml.storage.local.domain" type="text" placeholder="留空 = 相对路径 /storage/xxx" />
                   <p class="form-hint">
                     留空时附件地址是相对路径（跟随站点域名）；需要 CDN 时填 https://cdn.example.com。
                     不要填成与「存储路径」相同的值，否则会拼出 storage/storage/xxx
@@ -621,17 +615,17 @@
                 </div>
                 <div class="form-item">
                   <label class="form-label">存储路径</label>
-                  <input v-model="toml.storage.local.path" class="input" type="text" placeholder="storage" />
+                  <FormInput v-model="toml.storage.local.path" type="text" placeholder="storage" />
                   <p class="form-hint">public 下的子目录，留空则文件直接放在 public 下</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">目录命名规则</label>
-                  <input v-model="toml.storage.local.dir_rule" class="input" type="text" placeholder="{Y}-{m}/{d}" />
+                  <FormInput v-model="toml.storage.local.dir_rule" type="text" placeholder="{Y}-{m}/{d}" />
                   <p class="form-hint">上传目录结构，可多层（用 / 分隔）；只想放在存储路径下不要子目录就填 /</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">文件命名规则</label>
-                  <input v-model="toml.storage.local.file_rule" class="input" type="text" placeholder="{timestamp}{str-random-10}" />
+                  <FormInput v-model="toml.storage.local.file_rule" type="text" placeholder="{timestamp}{str-random-10}" />
                   <p class="form-hint">不含扩展名，扩展名会按原文件自动追加</p>
                 </div>
               </div>
@@ -660,47 +654,47 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">SecretId</label>
-                  <input v-model="toml.storage.cos.secret_id" class="input" type="text" />
+                  <FormInput v-model="toml.storage.cos.secret_id" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">SecretKey</label>
-                  <input v-model="toml.storage.cos.secret_key" class="input" type="text" />
+                  <FormInput v-model="toml.storage.cos.secret_key" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">AppId</label>
-                  <input v-model="toml.storage.cos.app_id" class="input" type="text" placeholder="如 1250000000" />
+                  <FormInput v-model="toml.storage.cos.app_id" type="text" placeholder="如 1250000000" />
                   <p class="form-hint">桶名的数字后缀，用于拼默认域名 &lt;bucket&gt;-&lt;app_id&gt;.cos.&lt;region&gt;.myqcloud.com</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">Bucket</label>
-                  <input v-model="toml.storage.cos.bucket" class="input" type="text" placeholder="如 inis-cos" />
+                  <FormInput v-model="toml.storage.cos.bucket" type="text" placeholder="如 inis-cos" />
                   <p class="form-hint">
                     可填裸桶名（自动补 -AppId），也可直接填控制台复制的全名 inis-cos-1250000000（不会再重复拼）
                   </p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">地域</label>
-                  <input v-model="toml.storage.cos.region" class="input" type="text" placeholder="如 ap-guangzhou" />
+                  <FormInput v-model="toml.storage.cos.region" type="text" placeholder="如 ap-guangzhou" />
                   <p class="form-hint">留空按 ap-guangzhou（广州）处理</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">访问域名</label>
-                  <input v-model="toml.storage.cos.domain" class="input" type="text" placeholder="留空 = 默认域名" />
+                  <FormInput v-model="toml.storage.cos.domain" type="text" placeholder="留空 = 默认域名" />
                   <p class="form-hint">留空时用 https://&lt;bucket&gt;-&lt;app_id&gt;.cos.&lt;region&gt;.myqcloud.com，填了则作为 CDN 域名</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">路径前缀</label>
-                  <input v-model="toml.storage.cos.path" class="input" type="text" placeholder="如 inis" />
+                  <FormInput v-model="toml.storage.cos.path" type="text" placeholder="如 inis" />
                   <p class="form-hint">对象键前缀，留空则键直接从目录命名规则开始（不带前导 /）</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">目录命名规则</label>
-                  <input v-model="toml.storage.cos.dir_rule" class="input" type="text" placeholder="{Y}-{m}/{d}" />
+                  <FormInput v-model="toml.storage.cos.dir_rule" type="text" placeholder="{Y}-{m}/{d}" />
                   <p class="form-hint">对象键的目录结构，可多层（用 / 分隔）；不想分目录就填 /</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">文件命名规则</label>
-                  <input v-model="toml.storage.cos.file_rule" class="input" type="text" placeholder="{timestamp}{str-random-10}" />
+                  <FormInput v-model="toml.storage.cos.file_rule" type="text" placeholder="{timestamp}{str-random-10}" />
                   <p class="form-hint">不含扩展名，扩展名会按原文件自动追加</p>
                 </div>
               </div>
@@ -732,7 +726,7 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">允许的后缀</label>
-                  <input v-model="toml.storage.attachment.allow_extensions" class="input" type="text" />
+                  <FormInput v-model="toml.storage.attachment.allow_extensions" type="text" />
                   <p class="form-hint">
                     小写、英文逗号分隔，留空表示不限制。图片 jpg/jpeg/png/webp/gif/avif/heic/tiff…，
                     视频 mp4/mov/webm/mkv/avi…，压缩包 zip/rar/7z/tar/gz…
@@ -747,11 +741,11 @@
                 </div>
                 <div class="form-item">
                   <label class="form-label">单文件最大（KB）</label>
-                  <input v-model="toml.storage.attachment.max_file_size" class="input" type="number" min="1" step="1" />
+                  <FormInput v-model="toml.storage.attachment.max_file_size" type="number" min="1" step="1" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">并发上限</label>
-                  <input v-model="toml.storage.attachment.concurrent_limit" class="input" type="number" min="1" step="1" />
+                  <FormInput v-model="toml.storage.attachment.concurrent_limit" type="number" min="1" step="1" />
                   <p class="form-hint">同时上传的文件数上限（跨实例用 Redis 计数，Redis 不可用时降级本机计数）</p>
                 </div>
               </div>
@@ -775,15 +769,15 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">默认驱动</label>
-                  <SelectMenu v-model="toml.sms.drive.default" variant="field" :options="SMS_DRIVERS" />
+                  <FormSelect v-model="toml.sms.drive.default" :options="SMS_DRIVERS" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">邮件渠道</label>
-                  <SelectMenu v-model="toml.sms.drive.email" variant="field" :options="SMS_DRIVERS" />
+                  <FormSelect v-model="toml.sms.drive.email" :options="SMS_DRIVERS" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">短信渠道</label>
-                  <SelectMenu v-model="toml.sms.drive.sms" variant="field" :options="SMS_DRIVERS" />
+                  <FormSelect v-model="toml.sms.drive.sms" :options="SMS_DRIVERS" />
                 </div>
               </div>
               <div class="config-foot">
@@ -802,31 +796,31 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">SMTP 主机</label>
-                  <input v-model="toml.sms.email.host" class="input" type="text" />
+                  <FormInput v-model="toml.sms.email.host" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">端口</label>
-                  <input v-model="toml.sms.email.port" class="input" type="number" step="1" />
+                  <FormInput v-model="toml.sms.email.port" type="number" step="1" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">账号</label>
-                  <input v-model="toml.sms.email.account" class="input" type="text" />
+                  <FormInput v-model="toml.sms.email.account" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">密码 / 授权码</label>
-                  <input v-model="toml.sms.email.password" class="input" type="text" />
+                  <FormInput v-model="toml.sms.email.password" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">发件人昵称</label>
-                  <input v-model="toml.sms.email.nickname" class="input" type="text" />
+                  <FormInput v-model="toml.sms.email.nickname" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">邮件签名</label>
-                  <input v-model="toml.sms.email.sign_name" class="input" type="text" />
+                  <FormInput v-model="toml.sms.email.sign_name" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">测试收件人</label>
-                  <input v-model="test.email" class="input" type="text" placeholder="仅用于测试，不会保存" />
+                  <FormInput v-model="test.email" type="text" placeholder="仅用于测试，不会保存" />
                 </div>
               </div>
               <div class="config-foot">
@@ -854,14 +848,12 @@
               <div class="form-grid">
                 <div v-for="item in MAIL_QUEUE_FIELDS" :key="item.key" class="form-item">
                   <label class="form-label">{{ item.label }}</label>
-                  <input
+                  <FormInput
                     v-model.number="toml.sms.emailQueue[item.key]"
-                    class="input"
                     type="number"
                     step="1"
                     :min="item.min"
-                    :max="item.max"
-                  />
+                    :max="item.max" />
                   <p class="form-hint">{{ item.hint }}（{{ item.min }} ~ {{ item.max }}）</p>
                 </div>
               </div>
@@ -881,27 +873,27 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">AccessKey ID</label>
-                  <input v-model="toml.sms.aliyun.access_key_id" class="input" type="text" />
+                  <FormInput v-model="toml.sms.aliyun.access_key_id" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">AccessKey Secret</label>
-                  <input v-model="toml.sms.aliyun.access_key_secret" class="input" type="text" />
+                  <FormInput v-model="toml.sms.aliyun.access_key_secret" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">Endpoint</label>
-                  <input v-model="toml.sms.aliyun.endpoint" class="input" type="text" />
+                  <FormInput v-model="toml.sms.aliyun.endpoint" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">短信签名</label>
-                  <input v-model="toml.sms.aliyun.sign_name" class="input" type="text" />
+                  <FormInput v-model="toml.sms.aliyun.sign_name" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">模板 Code</label>
-                  <input v-model="toml.sms.aliyun.verify_code" class="input" type="text" />
+                  <FormInput v-model="toml.sms.aliyun.verify_code" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">测试手机号</label>
-                  <input v-model="test.phone" class="input" type="text" placeholder="仅用于测试，不会保存" />
+                  <FormInput v-model="test.phone" type="text" placeholder="仅用于测试，不会保存" />
                 </div>
               </div>
               <div class="config-foot">
@@ -924,23 +916,23 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">AccessKey ID</label>
-                  <input v-model="toml.sms.aliyunNumberVerify.access_key_id" class="input" type="text" />
+                  <FormInput v-model="toml.sms.aliyunNumberVerify.access_key_id" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">AccessKey Secret</label>
-                  <input v-model="toml.sms.aliyunNumberVerify.access_key_secret" class="input" type="text" />
+                  <FormInput v-model="toml.sms.aliyunNumberVerify.access_key_secret" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">Endpoint</label>
-                  <input v-model="toml.sms.aliyunNumberVerify.endpoint" class="input" type="text" />
+                  <FormInput v-model="toml.sms.aliyunNumberVerify.endpoint" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">短信签名</label>
-                  <input v-model="toml.sms.aliyunNumberVerify.sign_name" class="input" type="text" />
+                  <FormInput v-model="toml.sms.aliyunNumberVerify.sign_name" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">模板 Code</label>
-                  <input v-model="toml.sms.aliyunNumberVerify.template_code" class="input" type="text" />
+                  <FormInput v-model="toml.sms.aliyunNumberVerify.template_code" type="text" />
                 </div>
               </div>
               <div class="config-foot">
@@ -963,31 +955,31 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">SecretId</label>
-                  <input v-model="toml.sms.tencent.secret_id" class="input" type="text" />
+                  <FormInput v-model="toml.sms.tencent.secret_id" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">SecretKey</label>
-                  <input v-model="toml.sms.tencent.secret_key" class="input" type="text" />
+                  <FormInput v-model="toml.sms.tencent.secret_key" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">Endpoint</label>
-                  <input v-model="toml.sms.tencent.endpoint" class="input" type="text" />
+                  <FormInput v-model="toml.sms.tencent.endpoint" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">SDK AppId</label>
-                  <input v-model="toml.sms.tencent.sms_sdk_app_id" class="input" type="text" />
+                  <FormInput v-model="toml.sms.tencent.sms_sdk_app_id" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">短信签名</label>
-                  <input v-model="toml.sms.tencent.sign_name" class="input" type="text" />
+                  <FormInput v-model="toml.sms.tencent.sign_name" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">模板 ID</label>
-                  <input v-model="toml.sms.tencent.verify_code" class="input" type="text" />
+                  <FormInput v-model="toml.sms.tencent.verify_code" type="text" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">地域</label>
-                  <input v-model="toml.sms.tencent.region" class="input" type="text" />
+                  <FormInput v-model="toml.sms.tencent.region" type="text" />
                 </div>
               </div>
               <div class="config-foot">
@@ -1018,17 +1010,15 @@
 
               <div class="form-item">
                 <label class="form-label">总开关</label>
-                <SelectMenu v-model="cfg.mail.enabled" variant="field" :options="ON_OFF" />
+                <FormSelect v-model="cfg.mail.enabled" :options="ON_OFF" />
               </div>
 
               <div class="form-item">
                 <label class="form-label">管理员收件邮箱</label>
-                <input
+                <FormInput
                   v-model="cfg.mail.adminEmail"
-                  class="input"
                   type="text"
-                  placeholder="多个用逗号分隔；留空则用「超级管理员」账号的邮箱"
-                />
+                  placeholder="多个用逗号分隔；留空则用「超级管理员」账号的邮箱" />
                 <p class="form-hint">
                   审核 / 订单等「通知管理员」的场景发到这里；留空时自动取权限组 root=1 成员的邮箱
                 </p>
@@ -1053,7 +1043,7 @@
               <div class="form-grid">
                 <div v-for="scene in mailScenesOf(group)" :key="scene.key" class="form-item">
                   <label class="form-label">{{ scene.label }}</label>
-                  <SelectMenu v-model="cfg.mail.scenes[scene.key]" variant="field" :options="ON_OFF" />
+                  <FormSelect v-model="cfg.mail.scenes[scene.key]" :options="ON_OFF" />
                   <p class="form-hint">{{ scene.target === 'admin' ? '发给管理员' : '发给相关用户' }}</p>
                 </div>
               </div>
@@ -1077,7 +1067,7 @@
               </header>
               <div class="form-item">
                 <label class="form-label">保留天数</label>
-                <input v-model="toml.notification.retention_days" class="input" type="number" min="1" step="1" />
+                <FormInput v-model="toml.notification.retention_days" type="number" min="1" step="1" />
               </div>
               <div class="config-foot">
                 <button class="btn btn-primary btn-sm" :disabled="isSaving('notification')" @click="saveNotification">
@@ -1134,10 +1124,7 @@
                     关闭后前台「个人资料」页不再展示预设头像，用户只能自行上传；开启时展示上面的头像列表（列表为空则使用主题内置头像）
                   </p>
                 </div>
-                <label class="switch">
-                  <input type="checkbox" v-model="cfg.defaultAvatarsEnabled" />
-                  <span class="switch-slider"></span>
-                </label>
+                <FormCheckbox variant="switch" v-model="cfg.defaultAvatarsEnabled" />
               </div>
 
               <div class="avatar-grid">
@@ -1162,12 +1149,10 @@
               </div>
 
               <div class="avatar-add">
-                <input
+                <FormInput
                   v-model="newAvatarUrl"
-                  class="input"
                   placeholder="粘贴图片地址，或点「附件库」选择"
-                  @keyup.enter="addDefaultAvatar"
-                />
+                  @keyup.enter="addDefaultAvatar" />
                 <button type="button" class="btn btn-sm" @click="openAvatarLibrary">
                   <i class="bi bi-folder2-open" /> 附件库
                 </button>
@@ -1208,7 +1193,7 @@
 
               <div class="form-item">
                 <label class="form-label">压缩模式</label>
-                <SelectMenu v-model="cfg.uploadWebpMode" variant="field" :options="WEBP_MODE_OPTIONS" />
+                <FormSelect v-model="cfg.uploadWebpMode" :options="WEBP_MODE_OPTIONS" />
                 <p class="form-hint">
                   关闭：不处理，原样上传；强制压缩：所有可压缩图片（jpg / png / webp / bmp / tiff）
                   在上传前统一转换为 WebP，gif / svg 保持原样
@@ -1243,7 +1228,7 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">允许第三方账号创建新账号</label>
-                  <SelectMenu v-model="cfg.oauth.autoRegister" variant="field" :options="ON_OFF" />
+                  <FormSelect v-model="cfg.oauth.autoRegister" :options="ON_OFF" />
                   <p class="form-hint">
                     未绑定的第三方账号登录后，回调页会让用户自己选「创建新账号」或「绑定已有账号」（输入账号密码）。
                     开启：两个选项都提供；关闭：只提供「绑定已有账号」（同时受「系统设置 → 注册」总开关约束）
@@ -1251,12 +1236,12 @@
                 </div>
                 <div class="form-item">
                   <label class="form-label">请求超时（秒）</label>
-                  <input v-model.number="cfg.oauth.timeout" class="input" type="number" min="3" max="60" step="1" />
+                  <FormInput v-model.number="cfg.oauth.timeout" type="number" min="3" max="60" step="1" />
                   <p class="form-hint">第三方接口请求超时，3 ~ 60 秒（默认 15）</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">HTTP 代理</label>
-                  <input v-model.trim="cfg.oauth.proxy" class="input" type="text" placeholder="http://127.0.0.1:7890（留空表示直连）" />
+                  <FormInput v-model.trim="cfg.oauth.proxy" type="text" placeholder="http://127.0.0.1:7890（留空表示直连）" />
                   <p class="form-hint">
                     GitHub 在部分网络环境下直连不通（报 context deadline exceeded），此时填服务器上的代理地址即可，支持 http / socks5
                   </p>
@@ -1268,21 +1253,21 @@
                 <div class="form-grid">
                   <div class="form-item">
                     <label class="form-label">启用</label>
-                    <SelectMenu v-model="cfg.oauth[item.key].enable" variant="field" :options="ON_OFF" />
+                    <FormSelect v-model="cfg.oauth[item.key].enable" :options="ON_OFF" />
                     <p class="form-hint">{{ item.hint }}</p>
                   </div>
                   <div class="form-item">
                     <label class="form-label">AppID / Client ID</label>
-                    <input v-model.trim="cfg.oauth[item.key].appId" class="input" type="text" placeholder="开放平台应用 ID" />
+                    <FormInput v-model.trim="cfg.oauth[item.key].appId" type="text" placeholder="开放平台应用 ID" />
                   </div>
                   <div class="form-item">
                     <label class="form-label">AppKey / Client Secret</label>
-                    <input v-model.trim="cfg.oauth[item.key].appKey" class="input" type="text" placeholder="开放平台应用密钥" />
+                    <FormInput v-model.trim="cfg.oauth[item.key].appKey" type="text" placeholder="开放平台应用密钥" />
                     <p class="form-hint">仅服务端使用，不会返回给前端</p>
                   </div>
                   <div class="form-item">
                     <label class="form-label">回调地址</label>
-                    <input v-model.trim="cfg.oauth[item.key].redirect" class="input" type="text" :placeholder="oauthRedirectPlaceholder" />
+                    <FormInput v-model.trim="cfg.oauth[item.key].redirect" type="text" :placeholder="oauthRedirectPlaceholder" />
                     <p class="form-hint">建议填：{{ oauthRedirectPlaceholder }}</p>
                   </div>
                 </div>
@@ -1302,6 +1287,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 系统配置（/admin/system）
  *
@@ -1344,7 +1333,6 @@
  */
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import SelectMenu from '@/components/SelectMenu.vue'
 import SiteSettingsForm from '@/components/admin/SiteSettingsForm.vue'
 // 自定义菜单 + 个性侧边栏的可视化布局编辑（原在网站设置里，2026-11 抽成独立分页）
 import SiteLayoutForm from '@/components/admin/SiteLayoutForm.vue'

@@ -61,7 +61,7 @@ export const unwearDecoration = (type) =>
 // ===== 后台（管理员）=====
 
 export const DECORATION_ADMIN_FIELD =
-  'id,type,name,description,preview,payload,price_type,price,rarity,duration,unlock,category,status,sort,sold,is_default,create_time,update_time,delete_time'
+  'id,type,name,description,preview,payload,price_type,price,rarity,duration,renew,unlock,category,status,sort,sold,is_default,create_time,update_time,delete_time'
 
 // 装扮列表（管理员：默认含下架；传 onlyTrashed=true 看回收站）
 // 可用筛选：type 类型 / status 0下架 1上架 / price_type free 免费 · paid 付费 / keyword 名称模糊

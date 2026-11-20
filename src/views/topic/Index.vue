@@ -8,12 +8,11 @@
 
     <div class="topic-search">
       <i class="bi bi-search" />
-      <input
+      <FormInput
         v-model="keyword"
         type="search"
         placeholder="搜索话题，如：旅行 / 美食 / 摄影"
-        @keyup.enter="search"
-      />
+        @keyup.enter="search" />
       <button v-if="keyword" type="button" title="清空" @click="clearSearch">
         <i class="bi bi-x-lg" />
       </button>
@@ -42,6 +41,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 话题广场 /topics
  *

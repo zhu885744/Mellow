@@ -93,7 +93,7 @@ export const listBadges = (params = {}) =>
       limit: 50,
       order: 'sort desc, id asc',
       field:
-        'id,name,description,icon,image,color,condition,condition_value,category_id,rarity,start_time,end_time,expire_days,sort,status,remark,result,create_time,update_time,delete_time',
+        'id,name,description,icon,image,color,condition,condition_value,category_id,rarity,start_time,end_time,expire_days,renew,sort,status,remark,result,create_time,update_time,delete_time',
       ...params
     }
   })

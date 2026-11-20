@@ -18,13 +18,12 @@
       <div class="list-filter">
         <div class="search-box">
           <i class="bi bi-search" aria-hidden="true" />
-          <input
+          <FormInput
             v-model="keyword"
             class="search-input"
             type="search"
             placeholder="搜索内容或昵称…"
-            aria-label="搜索消息内容或发送者昵称"
-          />
+            aria-label="搜索消息内容或发送者昵称" />
         </div>
         <span class="filter-tip">
           已加载 {{ list.length }} 条<template v-if="hasMore">，可继续加载更早的消息</template>
@@ -100,6 +99,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 群聊消息（/admin/chat/room）
  *

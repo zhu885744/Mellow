@@ -156,19 +156,19 @@
 
           <div class="form-item">
             <label class="form-label">站点名称 *</label>
-            <input v-model="form.nickname" class="input" maxlength="40" placeholder="例如：某某的博客" />
+            <FormInput v-model="form.nickname" maxlength="40" placeholder="例如：某某的博客" />
           </div>
           <div class="form-item">
             <label class="form-label">站点链接 *</label>
-            <input v-model="form.url" class="input" placeholder="https://" />
+            <FormInput v-model="form.url" placeholder="https://" />
           </div>
           <div class="form-item">
             <label class="form-label">站点描述</label>
-            <input v-model="form.description" class="input" maxlength="80" placeholder="一句话介绍你的站点" />
+            <FormInput v-model="form.description" maxlength="80" placeholder="一句话介绍你的站点" />
           </div>
           <div class="form-item">
             <label class="form-label">图标链接</label>
-            <input v-model="form.avatar" class="input" placeholder="也可以直接粘贴图片地址" />
+            <FormInput v-model="form.avatar" placeholder="也可以直接粘贴图片地址" />
           </div>
 
           <p class="apply-tip">
@@ -197,6 +197,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'

@@ -69,7 +69,7 @@
           <label class="form-label">关注与粉丝列表</label>
           <div class="radio-col">
             <label class="radio-item" v-for="opt in followsOptions" :key="opt.value">
-              <input type="radio" :value="opt.value" v-model="privacy.follows" />
+              <FormRadio :value="opt.value" v-model="privacy.follows" />
               <span>{{ opt.label }}</span>
             </label>
           </div>
@@ -115,6 +115,7 @@
 </template>
 
 <script setup>
+import FormRadio from '@/components/form/FormRadio.vue'
 import { computed, reactive, ref, onMounted, watch } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useChatStore } from '@/stores/chat'

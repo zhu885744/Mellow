@@ -118,29 +118,28 @@
              label 会把点击再转发给 button，导致「点一下开关又立刻关上」 -->
         <div class="alert-field">
           <span class="alert-label">开启告警</span>
-          <SelectMenu v-model="alertForm.enabled" variant="field" :options="ALERT_ON_OFF_OPTIONS" />
+          <FormSelect v-model="alertForm.enabled" :options="ALERT_ON_OFF_OPTIONS" />
         </div>
         <label class="alert-field">
           <span class="alert-label">CPU 阈值 (%)</span>
-          <input v-model.number="alertForm.cpu" class="alert-input" type="number" min="1" max="100" />
+          <FormInput v-model.number="alertForm.cpu" class="alert-input" type="number" min="1" max="100" />
         </label>
         <label class="alert-field">
           <span class="alert-label">内存阈值 (%)</span>
-          <input v-model.number="alertForm.mem" class="alert-input" type="number" min="1" max="100" />
+          <FormInput v-model.number="alertForm.mem" class="alert-input" type="number" min="1" max="100" />
         </label>
         <label class="alert-field">
           <span class="alert-label">磁盘阈值 (%)</span>
-          <input v-model.number="alertForm.disk" class="alert-input" type="number" min="1" max="100" />
+          <FormInput v-model.number="alertForm.disk" class="alert-input" type="number" min="1" max="100" />
         </label>
         <label class="alert-field">
           <span class="alert-label">冷却 (秒)</span>
-          <input
+          <FormInput
             v-model.number="alertForm.cooldown"
             class="alert-input"
             type="number"
             min="60"
-            max="86400"
-          />
+            max="86400" />
         </label>
         <button class="btn btn-primary btn-sm" :disabled="alertSaving" @click="saveAlert">
           <i class="bi bi-check2" /> 保存阈值
@@ -266,10 +265,11 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import LineChart from '@/components/admin/LineChart.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { createSocketClient } from '@/utils/socket'
 import { fromNow } from '@/utils/time'
 import { toast } from '@/utils/toast'

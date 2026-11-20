@@ -17,16 +17,14 @@
 
           <div class="form-item">
             <label class="form-label" for="admin-unlock-password">登录密码</label>
-            <input
+            <FormInput
               id="admin-unlock-password"
               ref="inputRef"
               v-model="password"
-              class="input"
               type="password"
               autocomplete="current-password"
               placeholder="请输入当前账号的登录密码"
-              :disabled="loading"
-            />
+              :disabled="loading" />
           </div>
 
           <p v-if="error" class="unlock-error">
@@ -51,6 +49,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * AdminUnlockDialog - 全局「重新验证密码」弹窗（后台管理会话专用）
  *

@@ -139,11 +139,11 @@
         <h3 class="topic-edit-title">编辑话题资料</h3>
         <label class="topic-edit-label">
           话题简介
-          <textarea v-model="editForm.description" rows="4" maxlength="200" placeholder="介绍一下这个话题" />
+          <FormTextarea v-model="editForm.description" rows="4" maxlength="200" placeholder="介绍一下这个话题" />
         </label>
         <label class="topic-edit-label">
           封面图片
-          <input v-model="editForm.avatar" type="text" placeholder="https://..." />
+          <FormInput v-model="editForm.avatar" type="text" placeholder="https://..." />
         </label>
         <div class="topic-edit-images">
           <button type="button" class="btn btn-sm" :disabled="uploading" @click="coverFileRef?.click()">
@@ -178,6 +178,8 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 话题聚合页 /topic/:key（key 支持话题 id 或话题名）
  *

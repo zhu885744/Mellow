@@ -20,14 +20,13 @@
         <aside class="conv-side">
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="用户 UID 或消息关键词…"
               aria-label="按 UID 或消息关键词搜索会话"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <div v-if="loadingConv" class="is-loading"><span class="spinner" /> 加载中...</div>
@@ -169,6 +168,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 私信会话（/admin/chat/conversations）
  *

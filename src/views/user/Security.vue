@@ -36,7 +36,7 @@
       <div class="form-item">
         <label class="form-label">当前账号</label>
         <div class="input-row">
-          <input class="input" :value="currentAccount" disabled />
+          <FormInput :value="currentAccount" disabled />
           <button
             v-if="canEditAccount"
             class="btn"
@@ -54,13 +54,11 @@
         <p class="warn-tip"><i class="bi bi-exclamation-triangle" /> 修改账号后将影响登录，请谨慎操作</p>
         <div class="form-item">
           <label class="form-label">新账号</label>
-          <input
+          <FormInput
             v-model.trim="accountForm.newAccount"
-            class="input"
             :placeholder="accountPlaceholder"
             :maxlength="Number(accountRule?.max_length || CONST.ACCOUNT_MAX)"
-            @input="validateNewAccount"
-          />
+            @input="validateNewAccount" />
           <p v-if="accountErrors.newAccount" class="form-error">{{ accountErrors.newAccount }}</p>
         </div>
 
@@ -77,16 +75,14 @@
               {{ accountIdentityMode === 'password' ? `改用${accountIdentityLabel}验证码` : '改用当前密码' }}
             </button>
           </div>
-          <input
+          <FormInput
             v-if="accountIdentityMode === 'password'"
             v-model="accountForm.password"
             type="password"
-            class="input"
             placeholder="请输入当前密码"
-            autocomplete="current-password"
-          />
+            autocomplete="current-password" />
           <div v-else class="input-row">
-            <input v-model="accountForm.identityCode" class="input" placeholder="6位数字验证码" maxlength="6" />
+            <FormInput v-model="accountForm.identityCode" placeholder="6位数字验证码" maxlength="6" />
             <button
               type="button"
               class="btn"
@@ -121,12 +117,12 @@
           <form @submit.prevent="updateEmailFn">
             <div class="form-item">
               <label class="form-label">新邮箱</label>
-              <input v-model="emailForm.email" class="input" placeholder="请输入新邮箱" maxlength="50" />
+              <FormInput v-model="emailForm.email" placeholder="请输入新邮箱" maxlength="50" />
             </div>
             <div class="form-item">
               <label class="form-label">新邮箱验证码</label>
               <div class="input-row">
-                <input v-model="emailForm.code" class="input" placeholder="6位数字验证码" maxlength="6" />
+                <FormInput v-model="emailForm.code" placeholder="6位数字验证码" maxlength="6" />
                 <button type="button" class="btn" :disabled="emailSending || emailCountdown > 0" @click="sendEmailCode">
                   {{ emailSending ? '发送中...' : emailCountdown > 0 ? `${emailCountdown}秒后重试` : '发送验证码' }}
                 </button>
@@ -141,16 +137,14 @@
                   {{ emailIdentityMode === 'password' ? `改用${emailIdentityLabel}验证码` : '改用当前密码' }}
                 </button>
               </div>
-              <input
+              <FormInput
                 v-if="emailIdentityMode === 'password'"
                 v-model="emailForm.password"
                 type="password"
-                class="input"
                 placeholder="请输入当前密码"
-                autocomplete="current-password"
-              />
+                autocomplete="current-password" />
               <div v-else class="input-row">
-                <input v-model="emailForm.identityCode" class="input" placeholder="6位数字验证码" maxlength="6" />
+                <FormInput v-model="emailForm.identityCode" placeholder="6位数字验证码" maxlength="6" />
                 <button
                   type="button"
                   class="btn"
@@ -177,12 +171,12 @@
           <form @submit.prevent="updatePhoneFn">
             <div class="form-item">
               <label class="form-label">新手机号</label>
-              <input v-model="phoneForm.phone" class="input" placeholder="请输入新手机号" maxlength="11" />
+              <FormInput v-model="phoneForm.phone" placeholder="请输入新手机号" maxlength="11" />
             </div>
             <div class="form-item">
               <label class="form-label">新手机号验证码</label>
               <div class="input-row">
-                <input v-model="phoneForm.code" class="input" placeholder="6位数字验证码" maxlength="6" />
+                <FormInput v-model="phoneForm.code" placeholder="6位数字验证码" maxlength="6" />
                 <button type="button" class="btn" :disabled="phoneSending || phoneCountdown > 0" @click="sendPhoneCode">
                   {{ phoneSending ? '发送中...' : phoneCountdown > 0 ? `${phoneCountdown}秒后重试` : '发送验证码' }}
                 </button>
@@ -197,16 +191,14 @@
                   {{ phoneIdentityMode === 'password' ? `改用${phoneIdentityLabel}验证码` : '改用当前密码' }}
                 </button>
               </div>
-              <input
+              <FormInput
                 v-if="phoneIdentityMode === 'password'"
                 v-model="phoneForm.password"
                 type="password"
-                class="input"
                 placeholder="请输入当前密码"
-                autocomplete="current-password"
-              />
+                autocomplete="current-password" />
               <div v-else class="input-row">
-                <input v-model="phoneForm.identityCode" class="input" placeholder="6位数字验证码" maxlength="6" />
+                <FormInput v-model="phoneForm.identityCode" placeholder="6位数字验证码" maxlength="6" />
                 <button
                   type="button"
                   class="btn"
@@ -235,43 +227,37 @@
       <form @submit.prevent="handleChangePasswordSubmit">
         <div class="form-item">
           <label class="form-label">当前密码</label>
-          <input
+          <FormInput
             type="password"
             v-model="pwdForm.oldPassword"
-            class="input"
             placeholder="请输入当前密码"
             autocomplete="current-password"
-            @input="validateOldPassword"
-          />
+            @input="validateOldPassword" />
           <p v-if="pwdErrors.oldPassword" class="form-error">{{ pwdErrors.oldPassword }}</p>
           <p v-else class="field-tip">从未设置过密码（第三方登录注册）？请联系管理员协助处理</p>
         </div>
 
         <div class="form-item">
           <label class="form-label">新密码</label>
-          <input
+          <FormInput
             type="password"
             v-model="pwdForm.password"
-            class="input"
             placeholder="请输入新密码"
             minlength="6"
             maxlength="20"
             autocomplete="new-password"
-            @input="validateNewPassword"
-          />
+            @input="validateNewPassword" />
           <p v-if="pwdErrors.password" class="form-error">{{ pwdErrors.password }}</p>
         </div>
 
         <div class="form-item">
           <label class="form-label">确认新密码</label>
-          <input
+          <FormInput
             type="password"
             v-model="pwdForm.verifyPwd"
-            class="input"
             placeholder="请再次输入新密码"
             autocomplete="new-password"
-            @input="validateNewVerifyPwd"
-          />
+            @input="validateNewVerifyPwd" />
           <p v-if="pwdErrors.verifyPwd" class="form-error">{{ pwdErrors.verifyPwd }}</p>
         </div>
 
@@ -383,13 +369,11 @@
       <div class="field">
         <label>验证码</label>
         <div class="code-row">
-          <input
+          <FormInput
             v-model.trim="destroyForm.code"
-            class="input"
             type="text"
             placeholder="请输入验证码"
-            :disabled="destroyLoading"
-          />
+            :disabled="destroyLoading" />
           <button
             class="btn btn-sm btn-ghost"
             :disabled="destroyLoading || codeCountdown > 0"
@@ -403,25 +387,21 @@
 
       <div class="field">
         <label>当前密码</label>
-        <input
+        <FormInput
           v-model.trim="destroyForm.password"
-          class="input"
           type="password"
           placeholder="请输入当前登录密码"
-          :disabled="destroyLoading"
-        />
+          :disabled="destroyLoading" />
         <span class="field-hint">为防止他人盗用验证码操作，需二次验证密码</span>
       </div>
 
       <div class="field">
         <label>注销原因（选填）</label>
-        <textarea
+        <FormTextarea
           v-model.trim="destroyForm.source"
-          class="input"
           rows="2"
           placeholder="可填写注销原因"
-          :disabled="destroyLoading"
-        ></textarea>
+          :disabled="destroyLoading" />
       </div>
 
       <p v-if="destroyError" class="form-error">
@@ -454,6 +434,8 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'

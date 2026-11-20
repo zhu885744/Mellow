@@ -11,13 +11,11 @@
       </div>
 
       <div v-if="projects.length > 1" class="docs-version-row">
-        <SelectMenu
+        <FormSelect
           :model-value="version"
-          variant="field"
           :options="projectOptions"
           aria-label="文档项目"
-          @update:model-value="switchProject"
-        />
+          @update:model-value="switchProject" />
       </div>
 
       <nav class="docs-nav" aria-label="文档目录">
@@ -81,11 +79,11 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { call } from '@/api/request'
 import { listDocsProjects } from '@/api/docs'
-import SelectMenu from '@/components/SelectMenu.vue'
 import NavNode from './NavNode.vue'
 
 const route = useRoute()

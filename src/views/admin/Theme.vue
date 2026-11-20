@@ -107,7 +107,7 @@
             <!-- 圆角组：批量统一 -->
             <div v-if="group.key === 'shape'" class="quick-radius">
               <span class="quick-radius-label">统一圆角</span>
-              <input v-model.number="quickRadius" class="input quick-radius-input" type="number" min="0" max="40" step="1" />
+              <FormInput v-model.number="quickRadius" class="quick-radius-input" type="number" min="0" max="40" step="1" />
               <span class="quick-radius-unit">px</span>
               <button class="btn btn-ghost btn-sm" type="button" @click="applyQuickRadius">应用到全部圆角</button>
             </div>
@@ -142,15 +142,14 @@
 
                 <!-- 长度 -->
                 <div v-else class="length-field">
-                  <input
-                    class="input token-text"
+                  <FormInput
+                    class="token-text"
                     :class="{ 'is-invalid': !!tokenValue(token) && !lengthValid(tokenValue(token)) }"
                     :value="tokenValue(token)"
                     type="text"
                     placeholder="10px / 0.6rem"
                     spellcheck="false"
-                    @input="setToken(token.key, $event.target.value)"
-                  />
+                    @input="setToken(token.key, $event.target.value)" />
                   <span class="length-unit">{{ token.unit || 'px' }}</span>
                 </div>
 
@@ -169,13 +168,12 @@
             <div v-if="extraKeys.length" class="extra-list">
               <div v-for="key in extraKeys" :key="key" class="extra-row">
                 <code class="extra-key">--{{ key }}</code>
-                <input
-                  class="input extra-value"
+                <FormInput
+                  class="extra-value"
                   :value="form.extras[key]"
                   type="text"
                   spellcheck="false"
-                  @input="setExtra(key, $event.target.value)"
-                />
+                  @input="setExtra(key, $event.target.value)" />
                 <button type="button" class="extra-remove" title="删除" @click="removeExtra(key)">
                   <i class="bi bi-x-lg" />
                 </button>
@@ -183,20 +181,18 @@
             </div>
 
             <div class="extra-add">
-              <input
+              <FormInput
                 v-model="extraDraft.key"
-                class="input extra-key-input"
+                class="extra-key-input"
                 type="text"
                 placeholder="变量名，如 dur-fast"
-                spellcheck="false"
-              />
-              <input
+                spellcheck="false" />
+              <FormInput
                 v-model="extraDraft.value"
-                class="input extra-value"
+                class="extra-value"
                 type="text"
                 placeholder="值，如 180ms"
-                spellcheck="false"
-              />
+                spellcheck="false" />
               <button type="button" class="btn btn-sm" :disabled="!extraDraft.key || !extraDraft.value" @click="addExtra">
                 添加
               </button>
@@ -260,6 +256,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 主题配色（/admin/theme）
  *

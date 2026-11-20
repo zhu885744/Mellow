@@ -77,13 +77,12 @@
         </button>
       </div>
 
-      <SelectMenu
+      <FormSelect variant="pill"
         v-model="filter.type"
         :options="typeOptions"
         icon="bi bi-funnel"
         placeholder="全部类型"
-        @change="reload"
-      />
+        @change="reload" />
     </div>
 
     <!-- 骨架 -->
@@ -161,11 +160,11 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { listNotifications, readNotification } from '@/api/tags'
 // remove-all 单次有数量上限，用 @/api/notification 的封装循环清理到清空
 import { clearAllNotifications } from '@/api/notification'

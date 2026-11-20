@@ -17,13 +17,12 @@
       <template v-else>
         <!-- 标题 -->
         <div class="title-row">
-          <input
+          <FormInput
             v-model="form.title"
             class="title-input"
             type="text"
             maxlength="50"
-            placeholder="输入长文标题"
-          />
+            placeholder="输入长文标题" />
           <span class="title-count" :class="{ 'is-over': form.title.length >= titleLimit }">
             {{ form.title.length }}/{{ titleLimit }}
           </span>
@@ -58,12 +57,10 @@
                 <span>点击上传</span>
               </div>
               <div class="cover-url">
-                <input
+                <FormInput
                   v-model="form.cover"
-                  class="input"
                   type="text"
-                  placeholder="或直接粘贴图片链接"
-                />
+                  placeholder="或直接粘贴图片链接" />
                 <button type="button" class="btn btn-ghost btn-sm" :disabled="uploading" @click="pickCover">
                   {{ uploading ? '上传中...' : '上传' }}
                 </button>
@@ -86,48 +83,40 @@
           <!-- 摘要（仅文章） -->
           <div v-if="!isPage" class="form-item">
             <label class="form-label">摘要</label>
-            <textarea
+            <FormTextarea
               v-model="form.abstract"
-              class="textarea"
               rows="3"
               maxlength="200"
-              placeholder="请勿留空哦"
-            />
+              placeholder="请勿留空哦" />
           </div>
 
           <!-- 唯一标识（仅独立页面）：决定前台访问路径 /{key} -->
           <div v-if="isPage" class="form-item">
             <label class="form-label">唯一标识</label>
-            <input
+            <FormInput
               v-model="form.key"
-              class="input"
               type="text"
               maxlength="64"
-              placeholder="如 about，前台访问路径即为 /about"
-            />
+              placeholder="如 about，前台访问路径即为 /about" />
             <p class="form-hint">必填，仅支持字母、数字、下划线、中划线；需全站唯一，前台访问路径为 /{key}</p>
           </div>
 
           <!-- 备注（仅独立页面，不在前台展示） -->
           <div v-if="isPage" class="form-item">
             <label class="form-label">备注</label>
-            <input
+            <FormInput
               v-model="form.remark"
-              class="input"
               type="text"
               maxlength="200"
-              placeholder="仅后台可见，用于标记页面用途"
-            />
+              placeholder="仅后台可见，用于标记页面用途" />
           </div>
 
           <div class="form-item">
             <label class="form-label">发布时间</label>
-            <input
+            <FormInput
               v-model="publishAt"
-              class="input"
               type="datetime-local"
-              @input="publishAtTouched = true"
-            />
+              @input="publishAtTouched = true" />
           </div>
 
           <!-- 作者：管理员编辑他人文章 / 独立页面时能看到这条是谁的（与审核状态同一区块） -->
@@ -138,7 +127,7 @@
           <!-- 审核状态（仅管理员可见/可改） -->
           <div v-if="isAdminUser" class="form-item">
             <label class="form-label">审核状态</label>
-            <SelectMenu v-model="articleAudit" variant="field" :options="auditOptions" />
+            <FormSelect v-model="articleAudit" :options="auditOptions" />
             <p class="form-hint">
               仅管理员可设置：「通过」后{{ isPage ? '该页面对访客可见' : '文章对访客可见' }}；普通作者保存不会覆盖该状态
             </p>
@@ -147,33 +136,27 @@
           <!-- 驳回原因（仅管理员、且选「不通过」时出现，作者会收到通知） -->
           <div v-if="isAdminUser && Number(articleAudit) === 2" class="form-item">
             <label class="form-label">驳回原因</label>
-            <textarea
+            <FormTextarea
               v-model="articleReason"
-              class="textarea"
               rows="2"
               maxlength="512"
-              :placeholder="`说明不通过的原因，作者会在通知与「我的${isPage ? '页面' : '文章'}」里看到`"
-            />
+              :placeholder="`说明不通过的原因，作者会在通知与「我的${isPage ? '页面' : '文章'}」里看到`" />
           </div>
 
           <!-- 评论设置（json.comment：allow 允许/禁止，show 显示/隐藏） -->
           <div class="form-item">
             <label class="form-label">允许评论</label>
-            <SelectMenu
+            <FormSelect
               v-model="commentAllow"
-              variant="field"
-              :options="commentAllowOptions"
-            />
+              :options="commentAllowOptions" />
             <p class="form-hint">选「禁止」后仍展示已有评论，只是关闭发表与回复入口</p>
           </div>
 
           <div class="form-item">
             <label class="form-label">显示评论</label>
-            <SelectMenu
+            <FormSelect
               v-model="commentShow"
-              variant="field"
-              :options="commentShowOptions"
-            />
+              :options="commentShowOptions" />
             <p class="form-hint">选「隐藏」后{{ isPage ? '该页面' : '文章详情页' }}整个评论模块都不显示</p>
           </div>
 
@@ -189,14 +172,12 @@
           <!-- 付费可见的兑换积分（1 积分起，兑换所得归作者） -->
           <div v-if="Number(scope) === 3" class="form-item">
             <label class="form-label">兑换积分</label>
-            <input
+            <FormInput
               v-model.number="scopeIntegral"
-              class="input"
               type="number"
               min="1"
               max="999999"
-              placeholder="查看全文需消耗的积分，如 10"
-            />
+              placeholder="查看全文需消耗的积分，如 10" />
             <p class="form-hint">同一用户只需兑换一次，兑换所得积分归内容作者</p>
           </div>
 
@@ -218,14 +199,13 @@
                 @click="toggleTag(t)"
               >{{ t.name }}</span>
               <span class="tag-add">
-                <input
+                <FormInput
                   v-model="newTag"
                   class="tag-input"
                   type="text"
                   placeholder="+ 新话题"
                   maxlength="16"
-                  @keyup.enter="addTag"
-                />
+                  @keyup.enter="addTag" />
               </span>
             </div>
           </div>
@@ -235,13 +215,12 @@
         <div class="action-bar">
           <div class="action-left">
             <!-- 选择分类（仅文章） -->
-            <SelectMenu
+            <FormSelect variant="pill"
               v-if="!isPage"
               v-model="form.group"
               :options="groupSelectOptions"
               placeholder="选择分类"
-              icon="bi bi-collection"
-            />
+              icon="bi bi-collection" />
 
             <!-- 更多设置 -->
             <button
@@ -274,6 +253,9 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 内容编辑器（可复用）—— 同时服务于「文章」与「独立页面」
  *
@@ -290,7 +272,6 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter, onBeforeRouteLeave } from 'vue-router'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import ScopeRadio from '@/components/ScopeRadio.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import OwnerInfo from '@/components/admin/OwnerInfo.vue'

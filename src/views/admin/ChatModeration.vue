@@ -65,45 +65,41 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="sceneFilter"
             :options="sceneOptions"
             icon="bi bi-chat-square-dots"
             placeholder="全部场景"
-            @change="reload"
-          />
+            @change="reload" />
 
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="actionFilter"
             :options="actionOptions"
             icon="bi bi-sliders"
             placeholder="全部动作"
-            @change="reload"
-          />
+            @change="reload" />
 
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索命中词…"
               aria-label="搜索命中词"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <div class="search-box is-narrow">
             <i class="bi bi-person" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="uidText"
               class="search-input"
               type="number"
               min="1"
               placeholder="发送者 UID"
               aria-label="按发送者 UID 筛选"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -138,14 +134,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 条</span>
         </div>
@@ -167,13 +161,11 @@
             <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
               <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-                  <input
-                    type="checkbox"
-                    :checked="isSelected(item.id)"
+                  <FormCheckbox
+                    :model-value="isSelected(item.id)"
                     :disabled="busy"
                     :aria-label="`选择记录 ${item.id}`"
-                    @change="toggleSelect(item.id)"
-                  />
+                    @change="toggleSelect(item.id)" />
                 </label>
               </td>
 
@@ -289,13 +281,12 @@
     >
       <label v-if="confirm.withRemark" class="remark-field">
         <span class="remark-label">处理备注（可选，最多 255 字）</span>
-        <textarea
+        <FormTextarea
           v-model="confirm.remark"
           class="remark-input"
           rows="2"
           maxlength="255"
-          placeholder="例如：已撤回并警告 / 疑似误伤"
-        />
+          placeholder="例如：已撤回并警告 / 疑似误伤" />
       </label>
     </ConfirmDialog>
 
@@ -310,7 +301,7 @@
     >
       <div class="punish-form">
         <label class="punish-check">
-          <input v-model="punish.revoke" type="checkbox" :disabled="!punish.record?.msg_id" />
+          <FormCheckbox v-model="punish.revoke" :disabled="!punish.record?.msg_id" />
           <span>
             撤回这条消息
             <em v-if="!punish.record?.msg_id">（这条记录没有消息 ID，无法撤回）</em>
@@ -319,18 +310,17 @@
 
         <label class="punish-field">
           <span>禁言（私信 + 群聊同时生效）</span>
-          <SelectMenu v-model="punish.muteMinutes" :options="punishOptions" />
+          <FormSelect variant="pill" v-model="punish.muteMinutes" :options="punishOptions" />
         </label>
 
         <label class="punish-field">
           <span>原因 / 备注</span>
-          <input
+          <FormInput
             v-model="punish.reason"
             class="remark-input"
             type="text"
             maxlength="120"
-            placeholder="会写进处理备注与禁言原因"
-          />
+            placeholder="会写进处理备注与禁言原因" />
         </label>
 
         <p class="punish-hint">
@@ -342,6 +332,10 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 聊天审核（/admin/chat/moderation）
@@ -355,7 +349,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import {
   listChatModeration,
   countChatModeration,
@@ -556,7 +549,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

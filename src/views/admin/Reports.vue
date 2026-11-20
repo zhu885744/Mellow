@@ -143,7 +143,7 @@
       </div>
 
       <label v-if="dialog.status === 1 && canRemoveContent" class="dialog-check">
-        <input v-model="dialog.removeContent" type="checkbox" />
+        <FormCheckbox v-model="dialog.removeContent" />
         <span>同时移除被举报内容（软删除，作者可在「回收站」看到）</span>
       </label>
       <p v-else-if="dialog.status === 1" class="dialog-hint">
@@ -152,19 +152,19 @@
 
       <label class="dialog-remark">
         <span class="dialog-remark-label">处理说明<em>选填，会随通知发给举报人</em></span>
-        <textarea
+        <FormTextarea
           v-model="dialog.remark"
-          class="textarea"
           rows="3"
           maxlength="200"
-          placeholder="例如：已警告作者 / 内容不存在 / 未发现违规"
-        />
+          placeholder="例如：已警告作者 / 内容不存在 / 未发现违规" />
       </label>
     </ConfirmDialog>
   </div>
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 后台「举报管理」

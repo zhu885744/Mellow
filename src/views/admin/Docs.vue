@@ -114,14 +114,12 @@
           <template v-else>
             <div class="list-head-row">
               <label class="pick" title="全选本页">
-                <input
+                <FormCheckbox
                   ref="selectAllRef"
-                  type="checkbox"
-                  :checked="allSelected"
+                  :model-value="allSelected"
                   :disabled="busy || !docs.length"
                   aria-label="全选本页"
-                  @change="toggleSelectAll"
-                />
+                  @change="toggleSelectAll" />
               </label>
               <span class="list-head-text">
                 本页 {{ docs.length }} 篇
@@ -137,7 +135,7 @@
                 :class="{ 'is-trashed': trash, 'is-selected': isSelected(doc.id) }"
               >
                 <label class="pick" :title="isSelected(doc.id) ? '取消选择' : '选择'">
-                  <input type="checkbox" :checked="isSelected(doc.id)" @change="toggleSelect(doc.id)" />
+                  <FormCheckbox :model-value="isSelected(doc.id)" @change="toggleSelect(doc.id)" />
                 </label>
 
                 <span v-if="!trash" class="docs-row-sort" :title="`排序 ${doc.sort}`">{{ doc.sort }}</span>
@@ -208,29 +206,29 @@
         <div class="modal-body">
           <div class="form-row">
             <label>目录名称</label>
-            <input v-model="groupDialog.form.name" class="input" type="text" placeholder="如：快速开始" />
+            <FormInput v-model="groupDialog.form.name" type="text" placeholder="如：快速开始" />
           </div>
           <div class="form-row">
             <label>目录标识（slug）</label>
-            <input v-model="groupDialog.form.slug" class="input" type="text" placeholder="如：start" />
+            <FormInput v-model="groupDialog.form.slug" type="text" placeholder="如：start" />
           </div>
           <div class="form-row">
             <label>上级目录</label>
-            <SelectMenu v-model="groupDialog.form.pid" variant="field" :options="parentGroupOptions" />
+            <FormSelect v-model="groupDialog.form.pid" :options="parentGroupOptions" />
           </div>
           <div class="form-row form-row-half">
             <div>
               <label>排序</label>
-              <input v-model.number="groupDialog.form.sort" class="input" type="number" min="0" />
+              <FormInput v-model.number="groupDialog.form.sort" type="number" min="0" />
             </div>
             <div>
               <label>状态</label>
-              <SelectMenu v-model="groupDialog.form.status" variant="field" :options="STATUS_OPTIONS" />
+              <FormSelect v-model="groupDialog.form.status" :options="STATUS_OPTIONS" />
             </div>
           </div>
           <div class="form-row">
             <label>描述</label>
-            <input v-model="groupDialog.form.description" class="input" type="text" placeholder="可选" />
+            <FormInput v-model="groupDialog.form.description" type="text" placeholder="可选" />
           </div>
         </div>
 
@@ -308,11 +306,11 @@
           <div class="form-row form-row-half">
             <div>
               <label>导入到</label>
-              <SelectMenu v-model="importDialog.gid" variant="field" :options="importGroupOptions" />
+              <FormSelect v-model="importDialog.gid" :options="importGroupOptions" />
             </div>
             <div>
               <label>同名文档</label>
-              <SelectMenu v-model="importDialog.overwrite" variant="field" :options="OVERWRITE_OPTIONS" />
+              <FormSelect v-model="importDialog.overwrite" :options="OVERWRITE_OPTIONS" />
             </div>
           </div>
 
@@ -350,9 +348,11 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, reactive, computed, watch, watchEffect, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import SelectMenu from '@/components/SelectMenu.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import DocsTreeNode from './DocsTreeNode.vue'
 import { formatDate, formatDateTime } from '@/utils/time'
@@ -396,7 +396,7 @@ const selectAllRef = ref(null)
 
 // 半选态只能用 DOM 属性设置，绑不上模板
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

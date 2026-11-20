@@ -69,14 +69,13 @@
         <div class="filter-right">
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索分组名…"
               aria-label="搜索分组名"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -122,14 +121,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 个</span>
         </div>
@@ -149,13 +146,11 @@
             <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
               <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-                  <input
-                    type="checkbox"
-                    :checked="isSelected(item.id)"
+                  <FormCheckbox
+                    :model-value="isSelected(item.id)"
                     :disabled="busy || isProtectedGroup(item)"
                     :aria-label="`选择分组 ${item.name}`"
-                    @change="toggleSelect(item.id)"
-                  />
+                    @change="toggleSelect(item.id)" />
                 </label>
               </td>
               <td>
@@ -252,23 +247,23 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">分组名称</label>
-            <input v-model="edit.name" class="input" type="text" placeholder="必填" />
+            <FormInput v-model="edit.name" type="text" placeholder="必填" />
           </div>
           <div class="form-item">
             <label class="form-label">唯一标识 key</label>
-            <input v-model="edit.key" class="input" type="text" placeholder="可选，需唯一（如 editor）" />
+            <FormInput v-model="edit.key" type="text" placeholder="可选，需唯一（如 editor）" />
           </div>
         </div>
 
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">越权能力</label>
-            <SelectMenu v-model="edit.root" variant="field" :options="ROOT_OPTIONS" />
+            <FormSelect v-model="edit.root" :options="ROOT_OPTIONS" />
             <p class="form-hint">开启后可越权操作他人数据（如修改他人文章）</p>
           </div>
           <div class="form-item">
             <label class="form-label">备注</label>
-            <input v-model="edit.remark" class="input" type="text" placeholder="可选" />
+            <FormInput v-model="edit.remark" type="text" placeholder="可选" />
           </div>
         </div>
       </section>
@@ -277,7 +272,7 @@
         <h4 class="section-title">权限规则</h4>
 
         <label class="check-line">
-          <input v-model="edit.rulesAll" type="checkbox" />
+          <FormCheckbox v-model="edit.rulesAll" />
           <span>拥有全部规则（all）</span>
         </label>
 
@@ -298,7 +293,7 @@
           </div>
 
           <div class="pick-toolbar">
-            <input v-model="ruleKeyword" class="input" type="search" placeholder="搜索模块 / 规则名称 / 路由…" />
+            <FormInput v-model="ruleKeyword" type="search" placeholder="搜索模块 / 规则名称 / 路由…" />
             <button class="btn btn-sm btn-ghost" type="button" @click="toggleExpandAll">
               {{ allExpanded ? '收起全部' : '展开全部' }}
             </button>
@@ -309,7 +304,7 @@
           </div>
 
           <label class="check-line check-line-inline">
-            <input v-model="showUselessRules" type="checkbox" />
+            <FormCheckbox v-model="showUselessRules" />
             <span>显示无需授权的规则（免登录 / 需登录，默认隐藏）</span>
           </label>
 
@@ -319,12 +314,10 @@
             <section v-for="group in ruleGroups" :key="group.key" class="group-card">
               <header class="group-card-head">
                 <label class="pick" :title="group.allChecked ? '取消本模块' : '勾选本模块全部规则'">
-                  <input
-                    type="checkbox"
-                    :checked="group.allChecked"
+                  <FormCheckbox
+                    :model-value="group.allChecked"
                     :indeterminate.prop="group.someChecked"
-                    @change="toggleRuleGroup(group)"
-                  />
+                    @change="toggleRuleGroup(group)" />
                 </label>
                 <button
                   type="button"
@@ -347,7 +340,7 @@
               <ul v-if="isGroupOpen(group.key)" class="pick-list pick-list-nested">
                 <li v-for="rule in group.items" :key="rule.hash">
                   <label class="pick-item">
-                    <input v-model="edit.rules" type="checkbox" :value="rule.hash" />
+                    <FormCheckbox v-model="edit.rules" :value="rule.hash" />
                     <span class="pick-main">
                       <span class="pick-title">{{ authRuleTitle(rule) }}</span>
                       <code class="pick-route">{{ rule.route }}</code>
@@ -371,13 +364,13 @@
         <h4 class="section-title">后台页面</h4>
 
         <label class="check-line">
-          <input v-model="edit.pagesAll" type="checkbox" />
+          <FormCheckbox v-model="edit.pagesAll" />
           <span>拥有全部页面（all）</span>
         </label>
 
         <template v-if="!edit.pagesAll">
           <div class="pick-toolbar">
-            <input v-model="pageKeyword" class="input" type="search" placeholder="搜索页面名称或路径…" />
+            <FormInput v-model="pageKeyword" type="search" placeholder="搜索页面名称或路径…" />
             <button class="btn btn-sm btn-ghost" type="button" @click="toggleAllPages">
               {{ visiblePages.length && visiblePages.every((p) => edit.pages.includes(p.hash)) ? '取消全选' : '全选当前' }}
             </button>
@@ -388,7 +381,7 @@
           <ul v-else class="pick-list">
             <li v-for="p in visiblePages" :key="p.hash">
               <label class="pick-item">
-                <input v-model="edit.pages" type="checkbox" :value="p.hash" />
+                <FormCheckbox v-model="edit.pages" :value="p.hash" />
                 <span class="pick-main">
                   <span class="pick-title">{{ p.name }}</span>
                   <code class="pick-route">{{ p.path }}</code>
@@ -405,7 +398,7 @@
 
         <div class="form-item">
           <label class="form-label">成员用户 ID</label>
-          <input v-model="edit.memberIds" class="input" type="text" placeholder="多个用逗号分隔，如 1,2,3" />
+          <FormInput v-model="edit.memberIds" type="text" placeholder="多个用逗号分隔，如 1,2,3" />
           <p class="form-hint">以本次输入为准覆盖全部成员；留空表示移除所有成员</p>
         </div>
 
@@ -433,6 +426,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 权限分组（/admin/auth/group）
@@ -452,7 +448,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import {
   listAuthGroupsAdmin,
@@ -665,7 +660,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

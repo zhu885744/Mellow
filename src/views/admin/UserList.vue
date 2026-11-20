@@ -39,33 +39,30 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="searchField"
             :options="searchFields"
             icon="bi bi-funnel"
             placeholder="搜索范围"
-            @change="reload"
-          />
+            @change="reload" />
 
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="sortKey"
             :options="sortOptions"
             :disabled="trash"
             icon="bi bi-sort-down"
             placeholder="排序方式"
-            @change="reload"
-          />
+            @change="reload" />
 
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               :placeholder="`搜索${searchFieldLabel}…`"
               :aria-label="`搜索${searchFieldLabel}`"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button
@@ -128,14 +125,12 @@
         <!-- 本页全选 -->
         <div class="list-head-row">
           <label class="pick" title="全选本页（系统管理员与当前账号不可选）">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy || !selectableUsers.length"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 位 · 共 {{ total }} 位</span>
         </div>
@@ -148,13 +143,11 @@
             :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isProtected(item) ? protectedText(item) : (isSelected(item.id) ? '取消选择' : '选择')">
-              <input
-                type="checkbox"
-                :checked="isSelected(item.id)"
+              <FormCheckbox
+                :model-value="isSelected(item.id)"
                 :disabled="busy || isProtected(item)"
                 :aria-label="`选择用户 ${item.nickname || item.id}`"
-                @change="toggleSelect(item.id)"
-              />
+                @change="toggleSelect(item.id)" />
             </label>
 
             <img class="user-avatar" :src="item.avatar || defaultAvatar" :alt="item.nickname || 'avatar'" loading="lazy" />
@@ -240,16 +233,14 @@
                     :class="[`is-${opt.key}`, { 'is-active': Number(item.status) === opt.value, 'is-disabled': busy || isProtected(item) }]"
                     :title="isProtected(item) ? protectedText(item) : `设为${opt.label}`"
                   >
-                    <input
-                      type="radio"
+                    <FormRadio
                       class="status-radio"
                       :name="`user-status-${item.id}`"
                       :value="opt.value"
-                      :checked="Number(item.status) === opt.value"
+                      :model-value="Number(item.status) === opt.value"
                       :disabled="busy || isProtected(item)"
                       :aria-label="opt.label"
-                      @change="changeStatus(item, opt.value)"
-                    />
+                      @change="changeStatus(item, opt.value)" />
                     <i :class="opt.icon" aria-hidden="true" />
                   </label>
                 </div>
@@ -374,7 +365,7 @@
               </button>
             </div>
             <div class="avatar-fields">
-              <input v-model="edit.avatar" class="input" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
+              <FormInput v-model="edit.avatar" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
               <div class="avatar-actions">
                 <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickAvatar">
                   <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
@@ -402,17 +393,17 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">昵称</label>
-            <input v-model="edit.nickname" class="input" type="text" maxlength="32" placeholder="汉字、字母、数字、下划线或中划线" />
+            <FormInput v-model="edit.nickname" type="text" maxlength="32" placeholder="汉字、字母、数字、下划线或中划线" />
           </div>
           <div class="form-item">
             <label class="form-label">性别</label>
-            <SelectMenu v-model="edit.gender" variant="field" :options="GENDER_OPTIONS" />
+            <FormSelect v-model="edit.gender" :options="GENDER_OPTIONS" />
           </div>
         </div>
 
         <div class="form-item">
           <label class="form-label">个人简介</label>
-          <textarea v-model="edit.description" class="textarea" rows="2" maxlength="256" placeholder="可选，最多 256 字" />
+          <FormTextarea v-model="edit.description" rows="2" maxlength="256" placeholder="可选，最多 256 字" />
         </div>
       </section>
 
@@ -423,11 +414,11 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">账号</label>
-            <input v-model="edit.account" class="input" type="text" maxlength="32" placeholder="字母或数字，4-32 位" />
+            <FormInput v-model="edit.account" type="text" maxlength="32" placeholder="字母或数字，4-32 位" />
           </div>
           <div class="form-item">
             <label class="form-label">{{ edit.mode === 'create' ? '登录密码' : '重置密码' }}</label>
-            <input v-model="edit.password" class="input" type="text" maxlength="32" placeholder="6-32 位" />
+            <FormInput v-model="edit.password" type="text" maxlength="32" placeholder="6-32 位" />
             <p class="form-hint">
               {{ edit.mode === 'create' ? '留空则该账号只能通过邮箱验证码登录' : '留空表示不修改当前密码' }}
             </p>
@@ -437,35 +428,33 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">邮箱{{ edit.mode === 'create' ? '（必填）' : '' }}</label>
-            <input v-model="edit.email" class="input" type="email" placeholder="user@example.com" />
+            <FormInput v-model="edit.email" type="email" placeholder="user@example.com" />
           </div>
           <div class="form-item">
             <label class="form-label">手机号</label>
-            <input v-model="edit.phone" class="input" type="text" maxlength="32" placeholder="可选" />
+            <FormInput v-model="edit.phone" type="text" maxlength="32" placeholder="可选" />
           </div>
         </div>
 
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">注册来源</label>
-            <input v-model="edit.source" class="input" type="text" maxlength="32" placeholder="如 mellow / default" />
+            <FormInput v-model="edit.source" type="text" maxlength="32" placeholder="如 mellow / default" />
             <p class="form-hint">用于区分注册渠道，留空则不修改</p>
           </div>
           <div class="form-item">
             <label class="form-label">账号状态</label>
-            <SelectMenu
+            <FormSelect
               v-model="edit.status"
-              variant="field"
               :options="STATUS_OPTIONS"
-              :disabled="Number(edit.id) === 1"
-            />
+              :disabled="Number(edit.id) === 1" />
             <p v-if="Number(edit.id) === 1" class="form-hint">系统管理员账号状态不可修改</p>
           </div>
         </div>
 
         <div class="form-item">
           <label class="form-label">管理员备注</label>
-          <input v-model="edit.remark" class="input" type="text" placeholder="仅后台可见" />
+          <FormInput v-model="edit.remark" type="text" placeholder="仅后台可见" />
         </div>
       </section>
 
@@ -503,12 +492,12 @@
       <div class="form-item">
         <label class="form-label">封禁范围</label>
         <label class="check-line">
-          <input v-model="ban.all" type="checkbox" />
+          <FormCheckbox v-model="ban.all" />
           <span>全面封禁（限制全部操作）</span>
         </label>
         <div v-if="!ban.all" class="check-grid">
           <label v-for="t in BAN_TYPES" :key="t.bit" class="check-line">
-            <input v-model="ban.bits" type="checkbox" :value="t.bit" />
+            <FormCheckbox v-model="ban.bits" :value="t.bit" />
             <span>{{ t.label }}</span>
           </label>
         </div>
@@ -517,7 +506,7 @@
 
       <div class="form-item">
         <label class="form-label">封禁时长</label>
-        <SelectMenu v-model="ban.durationMode" variant="field" :options="BAN_DURATION_OPTIONS" />
+        <FormSelect v-model="ban.durationMode" :options="BAN_DURATION_OPTIONS" />
         <p class="form-hint">
           自动梯度按该用户累计封禁次数计算：首次 1 天、二次 7 天、三次 15 天、四次 30 天、五次及以上永久。
         </p>
@@ -525,26 +514,26 @@
 
       <div class="form-item">
         <label class="form-label">封禁原因</label>
-        <input v-model="ban.reason" class="input" type="text" maxlength="512" placeholder="默认为「违反社区规定」" />
+        <FormInput v-model="ban.reason" type="text" maxlength="512" placeholder="默认为「违反社区规定」" />
       </div>
 
       <div class="form-item">
         <label class="form-label">违规证据</label>
-        <textarea v-model="ban.evidence" class="textarea" rows="3" maxlength="1024" placeholder="可选，如违规内容链接、截图地址等" />
+        <FormTextarea v-model="ban.evidence" rows="3" maxlength="1024" placeholder="可选，如违规内容链接、截图地址等" />
       </div>
 
       <div class="form-item">
         <label class="form-label">附加处理</label>
         <label class="check-line">
-          <input v-model="ban.freezeUser" type="checkbox" />
+          <FormCheckbox v-model="ban.freezeUser" />
           <span>同时冻结账号（无法登录，解封时一并恢复）</span>
         </label>
         <label class="check-line">
-          <input v-model="ban.banAppeal" type="checkbox" />
+          <FormCheckbox v-model="ban.banAppeal" />
           <span>禁止申诉</span>
         </label>
         <label class="check-line is-danger">
-          <input v-model="ban.deleteContent" type="checkbox" />
+          <FormCheckbox v-model="ban.deleteContent" />
           <span>同时删除该用户的全部内容（文章 / 动态 / 评论，移入回收站）</span>
         </label>
       </div>
@@ -586,7 +575,7 @@
 
       <div class="form-item">
         <label class="form-label">处理结果</label>
-        <SelectMenu v-model="appeal.action" variant="field" :options="APPEAL_ACTIONS" />
+        <FormSelect v-model="appeal.action" :options="APPEAL_ACTIONS" />
         <p class="form-hint">
           通过：立即解封并恢复账号；驳回：封禁继续生效（用户均可收到站内消息）。
         </p>
@@ -596,13 +585,11 @@
         <label class="form-label">
           回复内容{{ appeal.action === 'reject' ? '（驳回必填）' : '（可选）' }}
         </label>
-        <textarea
+        <FormTextarea
           v-model="appeal.reply"
-          class="textarea"
           rows="3"
           maxlength="1024"
-          placeholder="驳回时请说明理由，用户会在站内消息里看到"
-        />
+          placeholder="驳回时请说明理由，用户会在站内消息里看到" />
       </div>
     </AdminFormDialog>
 
@@ -627,7 +614,7 @@
 
       <div v-else class="check-grid is-block">
         <label v-for="g in groups.all" :key="g.id" class="check-line">
-          <input v-model="groups.selected" type="checkbox" :value="Number(g.id)" />
+          <FormCheckbox v-model="groups.selected" :value="Number(g.id)" />
           <span>
             {{ g.name || g.key }}
             <code v-if="g.key" class="group-key">{{ g.key }}</code>
@@ -712,7 +699,7 @@
       @confirm="runClearBan"
     >
       <label v-if="clearBan.frozen" class="ban-clear-option">
-        <input v-model="clearBan.unfreeze" type="checkbox" />
+        <FormCheckbox v-model="clearBan.unfreeze" />
         <span>同时解除「冻结」状态（该账号当前处于冻结中，只清记录仍无法登录）</span>
       </label>
     </ConfirmDialog>
@@ -720,6 +707,11 @@
 </template>
 
 <script setup>
+import FormRadio from '@/components/form/FormRadio.vue'
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 用户列表（/admin/users 子路由）
@@ -740,7 +732,6 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import {
   listUsers,
   createUser,
@@ -1030,7 +1021,7 @@ const selectAllRef = ref(null)
 
 // 部分选中时展示半选态（indeterminate 只能通过 DOM 属性设置）
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

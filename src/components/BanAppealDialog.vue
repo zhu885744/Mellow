@@ -61,13 +61,12 @@
             <!-- 申诉表单 -->
             <template v-else>
               <p class="ban-appeal-label">申诉说明</p>
-              <textarea
+              <FormTextarea
                 v-model="content"
                 class="ban-textarea"
                 rows="4"
                 maxlength="500"
-                placeholder="请说明你的申诉理由，管理员会尽快处理…"
-              />
+                placeholder="请说明你的申诉理由，管理员会尽快处理…" />
               <div class="ban-count">{{ content.length }}/500</div>
             </template>
           </div>
@@ -95,6 +94,7 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
 import { ref, computed } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { storeToRefs } from 'pinia'

@@ -112,14 +112,13 @@
         <div class="filter-right">
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索备注或密钥…"
               aria-label="搜索备注或密钥"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -165,14 +164,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 个</span>
         </div>
@@ -190,13 +187,11 @@
             <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
               <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-                  <input
-                    type="checkbox"
-                    :checked="isSelected(item.id)"
+                  <FormCheckbox
+                    :model-value="isSelected(item.id)"
                     :disabled="busy"
                     :aria-label="`选择密钥 ${item.value}`"
-                    @change="toggleSelect(item.id)"
-                  />
+                    @change="toggleSelect(item.id)" />
                 </label>
               </td>
               <td>
@@ -293,7 +288,7 @@
       <div class="form-item">
         <label class="form-label">密钥值</label>
         <div class="key-input-row">
-          <input v-model="edit.value" class="input" type="text" placeholder="点「随机生成」或自行填写（留空则保存时由后端生成）" />
+          <FormInput v-model="edit.value" type="text" placeholder="点「随机生成」或自行填写（留空则保存时由后端生成）" />
           <button class="btn btn-sm" type="button" @click="edit.value = generateKey()">
             <i class="bi bi-shuffle" /> 随机生成
           </button>
@@ -312,18 +307,18 @@
 
       <div class="form-item">
         <label class="form-label">备注</label>
-        <input v-model="edit.remark" class="input" type="text" placeholder="可选，便于区分用途" />
+        <FormInput v-model="edit.remark" type="text" placeholder="可选，便于区分用途" />
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">状态</label>
-          <SelectMenu v-model="edit.status" variant="field" :options="STATUS_OPTIONS" />
+          <FormSelect v-model="edit.status" :options="STATUS_OPTIONS" />
           <p class="form-hint">停用后调用返回 403「该密钥已停用！」，可随时改回启用</p>
         </div>
         <div class="form-item">
           <label class="form-label">有效期</label>
-          <input v-model="edit.expireAt" class="input" type="datetime-local" />
+          <FormInput v-model="edit.expireAt" type="datetime-local" />
           <p class="form-hint">留空 = 永久有效；到期后调用返回 403「该密钥已过期！」</p>
         </div>
       </div>
@@ -343,6 +338,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 接口密钥（/admin/api/keys）
@@ -362,7 +360,6 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import {
   listApiKeys,
   countApiKeys,
@@ -597,7 +594,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

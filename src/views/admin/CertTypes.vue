@@ -76,11 +76,11 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">类型名称</label>
-            <input v-model="form.name" class="input" type="text" maxlength="32" placeholder="如：职业认证 / 创作者认证" />
+            <FormInput v-model="form.name" type="text" maxlength="32" placeholder="如：职业认证 / 创作者认证" />
           </div>
           <div class="form-item">
             <label class="form-label">图标</label>
-            <input v-model="form.icon" class="input" type="text" maxlength="64" placeholder="Bootstrap Icons 类名，如 bi-briefcase" />
+            <FormInput v-model="form.icon" type="text" maxlength="64" placeholder="Bootstrap Icons 类名，如 bi-briefcase" />
             <p class="form-hint">
               预览：<i :class="form.icon || 'bi bi-patch-check'" />
             </p>
@@ -94,13 +94,12 @@
               <em>昵称旁的盾牌与简介下的认证行共用这一色，留空走内置兜底色</em>
             </label>
             <div class="ct-color-row">
-              <input
+              <FormInput
                 v-model="form.color"
-                class="input ct-color-text"
+                class="ct-color-text"
                 type="text"
                 maxlength="9"
-                placeholder="#e8a020"
-              />
+                placeholder="#e8a020" />
               <input
                 class="ct-color-picker"
                 type="color"
@@ -122,11 +121,11 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">一句话简介</label>
-            <input v-model="form.intro" class="input" type="text" maxlength="60" placeholder="选类型时展示的副文案，可空" />
+            <FormInput v-model="form.intro" type="text" maxlength="60" placeholder="选类型时展示的副文案，可空" />
           </div>
           <div class="form-item">
             <label class="form-label">排序</label>
-            <input v-model.number="form.sort" class="input" type="number" min="0" max="9999" />
+            <FormInput v-model.number="form.sort" type="number" min="0" max="9999" />
             <p class="form-hint">数字小的排前面</p>
           </div>
         </div>
@@ -136,13 +135,11 @@
             认证说明
             <em>后台填写，申请页原样展示给用户；用户不能自己写</em>
           </label>
-          <textarea
+          <FormTextarea
             v-model="form.notice"
-            class="textarea"
             rows="4"
             maxlength="2000"
-            placeholder="说明该认证适合谁、需要准备什么材料、审核与展开口径"
-          />
+            placeholder="说明该认证适合谁、需要准备什么材料、审核与展开口径" />
         </div>
 
         <div class="form-item">
@@ -153,14 +150,13 @@
           <div class="ct-conds">
             <label v-for="cond in CERT_CONDITIONS" :key="cond.key" class="ct-cond-field">
               <span>{{ cond.label }}</span>
-              <input
+              <FormInput
                 v-model.number="form.conditions[cond.key]"
-                class="input cf-num"
+                class="cf-num"
                 type="number"
                 min="0"
                 max="100000000"
-                :placeholder="cond.hint"
-              />
+                :placeholder="cond.hint" />
               <em>{{ cond.unit }}</em>
             </label>
           </div>
@@ -180,14 +176,12 @@
             </span>
           </div>
           <div class="ct-cat-add">
-            <input
+            <FormInput
               v-model="categoryDraft"
-              class="input"
               type="text"
               maxlength="32"
               placeholder="输入领域后回车添加，如「摄影」"
-              @keydown.enter.prevent="addCategory"
-            />
+              @keydown.enter.prevent="addCategory" />
             <button class="btn btn-sm" type="button" @click="addCategory">添加</button>
           </div>
         </div>
@@ -201,7 +195,7 @@
         </div>
 
         <label class="ct-enable">
-          <input v-model="form.enable" type="checkbox" :true-value="1" :false-value="0" />
+          <FormCheckbox v-model="form.enable" :true-value="1" :false-value="0" />
           启用该类型（停用后前台不再可选，已有认证记录照常展示）
         </label>
       </div>
@@ -226,6 +220,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 后台「认证类型」配置
  *

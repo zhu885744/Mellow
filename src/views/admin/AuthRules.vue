@@ -74,47 +74,42 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="typeFilter"
             :options="AUTH_RULE_TYPE_OPTIONS"
             icon="bi bi-shield-check"
             placeholder="全部类型"
-            @change="reload"
-          />
+            @change="reload" />
 
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="methodFilter"
             :options="AUTH_RULE_METHOD_OPTIONS"
             icon="bi bi-signpost-split"
             placeholder="全部方法"
-            @change="reload"
-          />
+            @change="reload" />
 
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="sortKey"
             :options="sortOptions"
             icon="bi bi-sort-down"
             placeholder="排序方式"
-            @change="reload"
-          />
+            @change="reload" />
 
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="searchField"
             :options="AUTH_RULE_SEARCH_FIELDS"
             icon="bi bi-funnel"
-            placeholder="搜索字段"
-          />
+            placeholder="搜索字段" />
 
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索规则…"
               aria-label="搜索规则"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -160,14 +155,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 条</span>
         </div>
@@ -188,13 +181,11 @@
             <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
               <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-                  <input
-                    type="checkbox"
-                    :checked="isSelected(item.id)"
+                  <FormCheckbox
+                    :model-value="isSelected(item.id)"
                     :disabled="busy"
                     :aria-label="`选择规则 ${item.name}`"
-                    @change="toggleSelect(item.id)"
-                  />
+                    @change="toggleSelect(item.id)" />
                 </label>
               </td>
               <td>
@@ -260,36 +251,36 @@
     >
       <div class="form-item">
         <label class="form-label">规则名称</label>
-        <input v-model="edit.name" class="input" type="text" placeholder="如「【用户 API】获取全部」" />
+        <FormInput v-model="edit.name" type="text" placeholder="如「【用户 API】获取全部」" />
         <p class="form-hint">留空时后端会自动使用路由作为名称</p>
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">请求方法</label>
-          <SelectMenu v-model="edit.method" variant="field" :options="methodEditOptions" />
+          <FormSelect v-model="edit.method" :options="methodEditOptions" />
         </div>
         <div class="form-item">
           <label class="form-label">规则类型</label>
-          <SelectMenu v-model="edit.type" variant="field" :options="AUTH_RULE_TYPES" />
+          <FormSelect v-model="edit.type" :options="AUTH_RULE_TYPES" />
           <p class="form-hint">公共＝免登录放行；需登录＝登录即放行；默认＝需对应权限点</p>
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">路由</label>
-        <input v-model="edit.route" class="input" type="text" placeholder="如 /api/users/all" />
+        <FormInput v-model="edit.route" type="text" placeholder="如 /api/users/all" />
         <p class="form-hint">格式：<code>/api/控制器/方法</code>；修改后 hash 会重新计算</p>
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">费用（cost）</label>
-          <input v-model="edit.cost" class="input" type="number" min="0" step="1" placeholder="默认 1" />
+          <FormInput v-model="edit.cost" type="number" min="0" step="1" placeholder="默认 1" />
         </div>
         <div class="form-item">
           <label class="form-label">备注</label>
-          <input v-model="edit.remark" class="input" type="text" placeholder="可选" />
+          <FormInput v-model="edit.remark" type="text" placeholder="可选" />
         </div>
       </div>
     </AdminFormDialog>
@@ -308,6 +299,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 权限规则（/admin/auth/rules）
@@ -329,7 +323,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import {
   listAuthRules,
@@ -540,7 +533,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

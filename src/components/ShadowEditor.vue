@@ -11,12 +11,11 @@
       <div class="shadow-grid">
         <label v-for="field in fields" :key="field.key" class="shadow-field">
           <span>{{ field.label }}</span>
-          <input
+          <FormInput
             v-model.number="value[field.key]"
             type="number"
             step="1"
-            @change="emitValue"
-          />
+            @change="emitValue" />
         </label>
       </div>
 
@@ -41,6 +40,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * ShadowEditor - 阴影编辑器
  *

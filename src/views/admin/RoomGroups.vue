@@ -20,14 +20,13 @@
       <div class="list-filter">
         <div class="search-box">
           <i class="bi bi-search" aria-hidden="true" />
-          <input
+          <FormInput
             v-model="keyword"
             class="search-input"
             type="search"
             placeholder="搜索群聊名称…"
             aria-label="搜索群聊名称"
-            @keyup.enter="reload"
-          />
+            @keyup.enter="reload" />
         </div>
         <span class="filter-tip">按创建顺序排列，解散后不可恢复</span>
       </div>
@@ -123,13 +122,12 @@
           </button>
         </header>
 
-        <textarea
+        <FormTextarea
           v-model="noticeDraft"
           class="notice-textarea"
           rows="6"
           maxlength="500"
-          placeholder="最多 500 字，留空即清除公告"
-        />
+          placeholder="最多 500 字，留空即清除公告" />
 
         <div class="notice-foot">
           <span class="meta-text">{{ noticeDraft.length }} / 500</span>
@@ -156,6 +154,8 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 群聊管理（/admin/chat/groups）
  *

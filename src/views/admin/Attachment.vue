@@ -98,24 +98,22 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="sortKey"
             :options="sortOptions"
             icon="bi bi-sort-down"
             placeholder="排序方式"
-            @change="reload"
-          />
+            @change="reload" />
 
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索文件名…"
               aria-label="搜索文件名"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -161,14 +159,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 个</span>
           <span v-if="selectedIds.length" class="list-head-sel">已选 {{ selectedIds.length }} 个</span>
@@ -184,13 +180,11 @@
             @click="openPreview(item)"
           >
             <label class="pick card-pick" :title="isSelected(item.id) ? '取消选择' : '选择'" @click.stop>
-              <input
-                type="checkbox"
-                :checked="isSelected(item.id)"
+              <FormCheckbox
+                :model-value="isSelected(item.id)"
                 :disabled="busy"
                 :aria-label="`选择附件 ${item.original_name}`"
-                @change="toggleSelect(item.id)"
-              />
+                @change="toggleSelect(item.id)" />
             </label>
 
             <div
@@ -328,7 +322,7 @@
     >
       <div class="form-item">
         <label class="form-label">文件名</label>
-        <input v-model="rename.name" class="input" type="text" maxlength="256" placeholder="必填" />
+        <FormInput v-model="rename.name" type="text" maxlength="256" placeholder="必填" />
         <p class="form-hint">仅修改展示用的原始文件名，不影响实际存储与访问地址</p>
       </div>
     </AdminFormDialog>
@@ -347,6 +341,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 附件管理（/admin/attachment）
@@ -368,7 +365,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import {
   listAttachmentsAdmin,
@@ -638,7 +634,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

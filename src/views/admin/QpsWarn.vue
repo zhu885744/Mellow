@@ -72,24 +72,22 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="methodFilter"
             :options="methodOptions"
             icon="bi bi-signpost-split"
             placeholder="全部方法"
-            @change="reload"
-          />
+            @change="reload" />
 
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索 IP 或路径…"
               aria-label="搜索 IP 或路径"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -135,14 +133,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 条</span>
         </div>
@@ -160,13 +156,11 @@
             <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
               <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-                  <input
-                    type="checkbox"
-                    :checked="isSelected(item.id)"
+                  <FormCheckbox
+                    :model-value="isSelected(item.id)"
                     :disabled="busy"
                     :aria-label="`选择记录 ${item.ip}`"
-                    @change="toggleSelect(item.id)"
-                  />
+                    @change="toggleSelect(item.id)" />
                 </label>
               </td>
               <td>
@@ -229,6 +223,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * QPS 预警（/admin/qps/warn）
@@ -243,7 +240,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import {
   listQpsWarn,
   countQpsWarn,
@@ -430,7 +426,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

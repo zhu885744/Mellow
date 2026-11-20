@@ -72,24 +72,46 @@
               </span>
               <div class="held-main">
                 <strong class="held-name">
-                  {{ item.name }}
+                  <span class="held-name-text" :title="item.name">{{ item.name }}</span>
                   <span v-if="item.expired" class="held-expired">已过期</span>
                 </strong>
-                <span class="held-desc">{{ item.description || item.condition_name }}</span>
-                <span class="held-time">{{ fromNow(item.held_at) }}获得</span>
+                <span class="held-desc" :title="item.description || item.condition_name">
+                  {{ item.description || item.condition_name }}
+                </span>
+                <span class="held-time">
+                  {{ fromNow(item.held_at) }}获得
+                  <template v-if="expireText(item)">
+                    · <span class="held-expire" :class="{ 'is-past': item.expired }">{{ expireText(item) }}</span>
+                  </template>
+                </span>
               </div>
-              <button
-                v-if="!item.expired"
-                type="button"
-                class="wear-btn"
-                :class="{ 'is-active': wearingId === item.id }"
-                :disabled="wearingBusy === item.id"
-                :title="wearingId === item.id ? '点击卸下' : '佩戴到昵称旁'"
-                @click="toggleWear(item)"
-              >
-                <i :class="wearingId === item.id ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle'" />
-                {{ wearingId === item.id ? '佩戴中' : '佩戴' }}
-              </button>
+              <!-- 操作按钮独占一行：两个按钮时不会再把文字列挤成竖排 -->
+              <div v-if="Number(item.expire_time) > 0 || !item.expired" class="held-actions">
+                <!-- 有限期 + 后台给这枚勋章配了续期档位，才显示续期入口（永久勋章后端也会拒绝） -->
+                <button
+                  v-if="Number(item.expire_time) > 0 && item.renew_options?.length"
+                  type="button"
+                  class="wear-btn renew-btn"
+                  title="续期"
+                  @click="openRenew(item)"
+                >
+                  <i class="bi bi-arrow-repeat" />
+                  续期
+                </button>
+
+                <button
+                  v-if="!item.expired"
+                  type="button"
+                  class="wear-btn"
+                  :class="{ 'is-active': wearingId === item.id }"
+                  :disabled="wearingBusy === item.id"
+                  :title="wearingId === item.id ? '点击卸下' : '佩戴到昵称旁'"
+                  @click="toggleWear(item)"
+                >
+                  <i :class="wearingId === item.id ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle'" />
+                  {{ wearingId === item.id ? '佩戴中' : '佩戴' }}
+                </button>
+              </div>
             </div>
           </div>
 
@@ -143,6 +165,18 @@
         </div>
       </div>
     </Transition>
+
+    <!-- 续期：价格与档位是这枚勋章自己的（后台在勋章编辑里配置） -->
+    <RenewPlanDialog
+      :visible="renew.visible"
+      scope="badge"
+      :target-id="renew.id"
+      :target-name="renew.name"
+      :current-expire="renew.expire"
+      :options="renew.options"
+      @update:visible="(v) => (renew.visible = v)"
+      @done="load"
+    />
   </div>
 </template>
 
@@ -156,8 +190,9 @@
  */
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
+import RenewPlanDialog from '@/components/RenewPlanDialog.vue'
 import { getMyBadges, wearBadge, unwearBadge } from '@/api/badge'
-import { fromNow } from '@/utils/time'
+import { formatDate, fromNow } from '@/utils/time'
 import { toast } from '@/utils/toast'
 
 const loading = ref(false)
@@ -170,6 +205,18 @@ const activeCat = ref(null)
 const wearingId = ref(0)
 // 正在提交佩戴的勋章 id（避免连点）
 const wearingBusy = ref(0)
+// 续期弹层：只对「有限期 + 配了续期档位」的勋章开放（永久勋章后端也会拒绝）
+const renew = ref({ visible: false, id: 0, name: '', expire: 0, options: [] })
+
+function openRenew(item) {
+  renew.value = {
+    visible: true,
+    id: Number(item.id) || 0,
+    name: item.name || '',
+    expire: Number(item.expire_time) || 0,
+    options: item.renew_options || []
+  }
+}
 // 获得动效：本次访问新判定发放的勋章（后端 mine 的 granted，通常是空数组）
 const newBadges = ref([])
 const showReward = ref(false)
@@ -277,6 +324,28 @@ async function toggleWear(item) {
 function dateText(unix) {
   const date = new Date(Number(unix) * 1000)
   return `${date.getMonth() + 1}/${date.getDate()}`
+}
+
+/**
+ * 勋章有效期文案（expire_time 为发放时算好的 unix 秒，0 = 永久）
+ *
+ *   永久勋章           → ''（不显示，绝大多数勋章走这条）
+ *   距到期还有 30 天   → 「2026-12-01 到期（剩 12 天）」
+ *   距到期更远         → 「2026-12-01 到期」
+ *   已过期             → 「2026-11-01 到期」（名称旁已有「已过期」标签，不再重复写）
+ *
+ * 剩余天数只在 30 天内提示：每枚勋章都挂一串数字反而看不出重点。
+ */
+function expireText(item) {
+  const expire = Number(item.expire_time) || 0
+  if (expire <= 0) return ''
+
+  const date = formatDate(expire)
+  if (item.expired) return `${date} 到期`
+
+  const days = Math.ceil((expire - Date.now() / 1000) / 86400)
+  if (days > 0 && days <= 30) return `${date} 到期（剩 ${days} 天）`
+  return `${date} 到期`
 }
 
 // 现在拿不到时的原因：还没开始 / 已经结束 / 已过期
@@ -524,7 +593,7 @@ onMounted(load)
   opacity: 0.72;
 }
 .held-expired {
-  margin-left: 4px;
+  flex-shrink: 0;
   padding: 0 4px;
   font-size: 10px;
   font-weight: 500;
@@ -656,26 +725,34 @@ onMounted(load)
     animation: none;
   }
 }
+/* 列宽下限要容得下「图标 38 + 间距 + 文本」，「佩戴/续期」按钮已挪到卡片底部独占一行 */
 .held-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 10px;
 }
 .held-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  column-gap: 10px;
+  row-gap: 8px;
+  align-content: space-between;
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
+  transition: border-color 0.15s;
+}
+.held-item:hover {
+  border-color: var(--primary);
 }
 .held-icon {
-  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 38px;
   height: 38px;
+  margin-top: 1px;
   border-radius: 50%;
   border: 1px solid var(--border);
   background: var(--bg-card);
@@ -693,11 +770,24 @@ onMounted(load)
   flex-direction: column;
   gap: 2px;
 }
+/* 名称行：名字过长时省略，「已过期」标签不许被压缩 */
 .held-name {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
   font-size: 13px;
+  line-height: 1.4;
+}
+.held-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .held-desc {
   font-size: 11px;
+  line-height: 1.4;
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -705,16 +795,36 @@ onMounted(load)
 }
 .held-time {
   font-size: 11px;
+  line-height: 1.45;
   color: var(--text-light);
 }
-/* 佩戴按钮：贴在卡片右侧，佩戴中高亮 */
+/* 有效期：比「获得时间」略强一点，让到期日更好扫；已过期的弱化处理
+   （结论由名称旁的「已过期」标签负责，这里只留日期） */
+.held-expire {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+.held-expire.is-past {
+  color: var(--text-light);
+}
+/* 操作区：横跨卡片底部一行，两个按钮平分宽度 */
+.held-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--border-soft);
+}
+/* 佩戴按钮：佩戴中高亮 */
 .wear-btn {
-  margin-left: auto;
-  flex-shrink: 0;
+  flex: 1 1 0;
+  min-width: 0;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 3px;
-  height: 24px;
+  height: 26px;
   padding: 0 8px;
   font-size: 11px;
   color: var(--text-muted);
@@ -736,6 +846,11 @@ onMounted(load)
 .wear-btn:disabled {
   opacity: 0.6;
   cursor: default;
+}
+/* 续期按钮：用主色底区分「佩戴」，过期后这是唯一能救回这枚勋章的入口 */
+.renew-btn {
+  color: var(--primary-deep);
+  background: var(--accent-wash);
 }
 .todo-list {
   list-style: none;

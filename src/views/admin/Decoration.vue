@@ -97,14 +97,13 @@
             </div>
             <div class="search-box">
               <i class="bi bi-search" aria-hidden="true" />
-              <input
+              <FormInput
                 v-model="keyword"
                 class="search-input"
                 type="search"
                 placeholder="搜索装扮名称…"
                 aria-label="搜索装扮名称"
-                @input="doSearch"
-              />
+                @input="doSearch" />
             </div>
           </div>
         </div>
@@ -148,13 +147,11 @@
         <template v-else>
           <div class="list-head-row">
             <label class="pick" title="全选本页">
-              <input
-                type="checkbox"
-                :checked="pageAllSelected"
+              <FormCheckbox
+                :model-value="pageAllSelected"
                 :disabled="busy"
                 aria-label="全选本页"
-                @change="toggleSelectAll($event)"
-              />
+                @change="toggleSelectAll($event)" />
             </label>
             <span class="list-head-text">本页 {{ list.length }} 个 · 共 {{ total }} 个</span>
           </div>
@@ -167,7 +164,7 @@
               :class="{ 'is-selected': isSelected(item.id), 'is-off': Number(item.status) !== 1 }"
             >
               <label class="pick card-pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-                <input type="checkbox" :checked="isSelected(item.id)" @change="toggleSelect(item.id)" />
+                <FormCheckbox :model-value="isSelected(item.id)" @change="toggleSelect(item.id)" />
               </label>
 
               <div class="decoration-preview" :class="{ 'is-title': item.type === 'title' }">
@@ -200,6 +197,9 @@
                   </span>
                   <span class="decoration-tag">{{ priceText(item) }}</span>
                   <span class="decoration-tag">{{ durationText(item) }}</span>
+                  <span v-if="renewChip(item)" class="decoration-tag is-renew" :title="renewTip(item)">
+                    {{ renewChip(item) }}
+                  </span>
                   <span class="decoration-tag">售出 {{ Number(item.sold) || 0 }}</span>
                 </div>
               </div>
@@ -249,24 +249,21 @@
             </div>
             <div class="search-box full">
               <i class="bi bi-search" aria-hidden="true" />
-              <input
+              <FormInput
                 v-model="grant.keyword"
                 class="search-input"
                 type="search"
                 placeholder="搜索昵称后回车"
                 aria-label="搜索用户昵称"
-                @keyup.enter="loadGrantUsers()"
-              />
+                @keyup.enter="loadGrantUsers()" />
             </div>
             <div v-if="grant.loading" class="is-loading small"><span class="spinner" /> 加载中...</div>
             <ul v-else class="pick-list">
               <li v-for="user in grant.users" :key="user.id" class="pick-item">
                 <label class="pick">
-                  <input
-                    type="checkbox"
-                    :checked="grant.selectedUids.includes(Number(user.id))"
-                    @change="toggleGrantUser(user.id)"
-                  />
+                  <FormCheckbox
+                    :model-value="grant.selectedUids.includes(Number(user.id))"
+                    @change="toggleGrantUser(user.id)" />
                 </label>
                 <img v-if="user.avatar" class="pick-avatar" :src="user.avatar" :alt="user.nickname" loading="lazy" />
                 <span v-else class="pick-avatar is-empty"><i class="bi bi-person" /></span>
@@ -298,11 +295,9 @@
             <ul v-else class="pick-list">
               <li v-for="item in grantDecorations" :key="item.id" class="pick-item">
                 <label class="pick">
-                  <input
-                    type="checkbox"
-                    :checked="grant.selectedDecos.includes(Number(item.id))"
-                    @change="toggleGrantDeco(item.id)"
-                  />
+                  <FormCheckbox
+                    :model-value="grant.selectedDecos.includes(Number(item.id))"
+                    @change="toggleGrantDeco(item.id)" />
                 </label>
                 <img
                   v-if="item.type === 'avatar_frame'"
@@ -326,7 +321,7 @@
         <div class="grant-foot">
           <div class="form-item inline">
             <label class="form-label">有效期</label>
-            <SelectMenu v-model="grant.duration" variant="field" :options="DURATION_OPTIONS" />
+            <FormSelect v-model="grant.duration" :options="DURATION_OPTIONS" />
           </div>
           <div class="grant-actions">
             <button
@@ -364,18 +359,18 @@
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">装扮类型 <span class="required">*</span></label>
-                  <SelectMenu v-model="form.type" variant="field" :options="typeSelectOptions" :disabled="!!form.id" />
+                  <FormSelect v-model="form.type" :options="typeSelectOptions" :disabled="!!form.id" />
                   <p class="form-hint">{{ currentTypeMeta.description }}</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">装扮名称 <span class="required">*</span></label>
-                  <input v-model="form.name" class="input" maxlength="40" placeholder="如：掌门、星辰头像框" />
+                  <FormInput v-model="form.name" maxlength="40" placeholder="如：掌门、星辰头像框" />
                 </div>
               </div>
 
               <div class="form-item">
                 <label class="form-label">描述</label>
-                <input v-model="form.description" class="input" maxlength="120" placeholder="展示给用户的说明文字" />
+                <FormInput v-model="form.description" maxlength="120" placeholder="展示给用户的说明文字" />
               </div>
 
               <div class="section-title">
@@ -406,15 +401,13 @@
                     {{ form.type === 'avatar_frame' ? '素材地址' : '头衔图片（可选）' }}
                     <span v-if="form.type === 'avatar_frame'" class="required">*</span>
                   </label>
-                  <input
+                  <FormInput
                     v-model="form.p_image"
-                    class="input"
                     :placeholder="
                       form.type === 'avatar_frame'
                         ? 'https://.../frame.png（支持 gif）'
                         : 'https://.../badge.png，留空则为纯文字头衔'
-                    "
-                  />
+                    " />
                   <div class="image-actions">
                     <button type="button" class="btn btn-sm" :disabled="uploading" @click="pickDecorationImage">
                       <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
@@ -441,7 +434,7 @@
                 </div>
                 <div v-if="form.type !== 'avatar_frame'" class="form-item">
                   <label class="form-label">缩放比例</label>
-                  <input v-model="form.p_scale" class="input" type="number" step="0.05" min="0.5" max="3" />
+                  <FormInput v-model="form.p_scale" type="number" step="0.05" min="0.5" max="3" />
                   <p class="form-hint">控制图片头衔的高度，1 为默认尺寸</p>
                 </div>
               </div>
@@ -510,102 +503,104 @@
               <div v-if="form.type === 'title'" class="form-grid">
                 <div class="form-item">
                   <label class="form-label">头衔文字</label>
-                  <input v-model="form.p_text" class="input" maxlength="20" placeholder="留空则由用户佩戴时自填" />
+                  <FormInput v-model="form.p_text" maxlength="20" placeholder="留空则由用户佩戴时自填" />
                   <p class="form-hint">留空则是纯样式模板（佩戴时需用户输入文字）；与上面的图片二选一</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">图标（Bootstrap Icons）</label>
-                  <input v-model="form.p_icon" class="input" placeholder="如 bi bi-award" />
+                  <FormInput v-model="form.p_icon" placeholder="如 bi bi-award" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">文字颜色</label>
                   <div class="color-field">
-                    <input v-model="form.p_color" class="input" placeholder="#ffffff" />
+                    <FormInput v-model="form.p_color" placeholder="#ffffff" />
                     <input v-model="form.p_color" class="color-pick" type="color" />
                   </div>
                 </div>
                 <div class="form-item">
                   <label class="form-label">背景</label>
                   <div class="color-field">
-                    <input v-model="form.p_bg" class="input" placeholder="#8a8a82 或 linear-gradient(...)" />
+                    <FormInput v-model="form.p_bg" placeholder="#8a8a82 或 linear-gradient(...)" />
                     <input v-model="form.p_bg" class="color-pick" type="color" />
                   </div>
                 </div>
                 <div class="form-item">
                   <label class="form-label">边框</label>
-                  <input v-model="form.p_border" class="input" placeholder="留空无边框，也可填 #fcd34d" />
+                  <FormInput v-model="form.p_border" placeholder="留空无边框，也可填 #fcd34d" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">发光（box-shadow）</label>
-                  <input v-model="form.p_glow" class="input" placeholder="如 0 0 10px rgba(0,0,0,.3)" />
+                  <FormInput v-model="form.p_glow" placeholder="如 0 0 10px rgba(0,0,0,.3)" />
                 </div>
               </div>
 
               <label class="switch-row">
-                <input v-model="form.p_animated" type="checkbox" />
+                <FormCheckbox v-model="form.p_animated" />
                 <span>开启动效（头衔呼吸 / 头像框闪烁）</span>
               </label>
 
               <details class="advanced">
                 <summary>高级：其它样式字段（JSON）</summary>
-                <textarea
+                <FormTextarea
                   v-model="form.extraJson"
-                  class="textarea"
                   rows="3"
                   spellcheck="false"
-                  placeholder='{"key": "value"}，会与上方字段合并写入 payload'
-                />
+                  placeholder='{"key": "value"}，会与上方字段合并写入 payload' />
               </details>
 
               <div class="section-title"><i class="bi bi-coin" /> 获取方式</div>
               <div class="form-grid">
                 <div class="form-item">
                   <label class="form-label">价格类型</label>
-                  <SelectMenu v-model="form.price_type" variant="field" :options="PRICE_TYPE_OPTIONS" />
+                  <FormSelect v-model="form.price_type" :options="PRICE_TYPE_OPTIONS" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">所需积分</label>
-                  <input
+                  <FormInput
                     v-model="form.price"
-                    class="input"
                     type="number"
                     min="0"
-                    :disabled="form.price_type === 'free' || Number(form.is_default) === 1"
-                  />
+                    :disabled="form.price_type === 'free' || Number(form.is_default) === 1" />
                   <p class="form-hint">0 或免费装扮不出售（可作为默认装扮 / 活动发放）</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">有效期（天）</label>
-                  <input v-model="form.durationDays" class="input" type="number" min="0" />
+                  <FormInput v-model="form.durationDays" type="number" min="0" />
                   <p class="form-hint">0 表示永久有效</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">库存</label>
-                  <input v-model="form.stock" class="input" type="number" min="-1" />
+                  <FormInput v-model="form.stock" type="number" min="-1" />
                   <p class="form-hint">-1 表示不限量，0 表示已售罄</p>
                 </div>
                 <div class="form-item">
                   <label class="form-label">分类名</label>
-                  <input v-model="form.category" class="input" placeholder="留空自动按类型命名" />
+                  <FormInput v-model="form.category" placeholder="留空自动按类型命名" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">稀有度</label>
-                  <SelectMenu v-model="form.rarity" variant="field" :options="RARITY_OPTIONS" />
+                  <FormSelect v-model="form.rarity" :options="RARITY_OPTIONS" />
                 </div>
                 <div class="form-item">
                   <label class="form-label">排序值</label>
-                  <input v-model="form.sort" class="input" type="number" />
+                  <FormInput v-model="form.sort" type="number" />
                   <p class="form-hint">越大越靠前</p>
                 </div>
               </div>
 
+              <!-- 续期：档位与价格是这件装扮自己的，用户过期后按这里的档位续费 -->
+              <RenewOptionsEditor v-model="form.renew" />
+              <p v-if="Number(form.durationDays) <= 0" class="form-hint">
+                当前装扮有效期天数为 0（永久有效），续期档位不会在前台展示
+              </p>
+
               <div class="switch-group">
                 <label class="switch-row">
-                  <input v-model="form.status" type="checkbox" :true-value="1" :false-value="0" />
+                  <FormCheckbox v-model="form.status" :true-value="1" :false-value="0" />
                   <span>上架（前台可见、可佩戴）</span>
                 </label>
                 <label class="switch-row">
-                  <input v-model="form.is_default" type="checkbox" :true-value="1" :false-value="0" />
+                  <FormCheckbox v-model="form.is_default" :true-value="1" :false-value="0" />
                   <span>系统默认（所有用户免费拥有，商城不售卖）</span>
                 </label>
               </div>
@@ -635,6 +630,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 装扮管理（/admin/decoration）
  *
@@ -675,7 +674,8 @@ import TitleBadge from '@/components/TitleBadge.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
+import RenewOptionsEditor from '@/components/RenewOptionsEditor.vue'
+import { emptyRenewConfig, parseRenewConfig } from '@/utils/renew'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 
 const pageSize = ref(PAGE_SIZE_DEFAULT)
@@ -938,6 +938,23 @@ function durationText(item) {
   return `${Math.round(seconds / 86400)} 天`
 }
 
+// 续期档位：价格是每件装扮自己的，列表只给概览，明细放 title
+function renewOptionsOf(item) {
+  const config = parseRenewConfig(item.renew)
+  return config.enabled ? config.options : []
+}
+
+function renewChip(item) {
+  const count = renewOptionsOf(item).length
+  return count ? `续期 ${count} 档` : ''
+}
+
+function renewTip(item) {
+  return renewOptionsOf(item)
+    .map((option) => `${option.days} 天 / ${option.price} 积分`)
+    .join(' · ')
+}
+
 // ===== 新增 / 编辑 =====
 const form = reactive({
   visible: false,
@@ -956,6 +973,8 @@ const form = reactive({
   // -1 = 不限量（后端约定：0 表示已售罄）
   stock: -1,
   durationDays: 0,
+  // 续期档位（这件装扮自己的，见 components/RenewOptionsEditor.vue）
+  renew: emptyRenewConfig(),
   p_image: '',
   p_text: '',
   p_color: '',
@@ -1119,6 +1138,7 @@ function resetForm(type) {
   form.is_default = 0
   form.stock = -1
   form.durationDays = 0
+  form.renew = emptyRenewConfig()
   form.p_image = ''
   form.p_text = ''
   form.p_color = ''
@@ -1156,6 +1176,8 @@ function openEdit(item) {
   form.sort = Number(item.sort || 0)
   form.is_default = Number(item.is_default) === 1 ? 1 : 0
   form.durationDays = Math.round(Number(item.duration || 0) / 86400)
+  // 列表返回的是库里的 JSON 字符串，统一解析成 { enabled, options }
+  form.renew = parseRenewConfig(item.renew)
 
   const payload = parseJson(item.payload)
   form.p_image = payload.image || item.preview || ''
@@ -1254,6 +1276,7 @@ async function save() {
     is_default: Number(form.is_default) === 1 ? 1 : 0,
     // 秒；0 = 永久
     duration: Math.max(0, Number(form.durationDays) || 0) * 86400,
+    renew: form.renew,
     stock
   }
   if (form.id) payload.id = form.id
@@ -1923,6 +1946,11 @@ onMounted(() => {
 .decoration-tag.is-default {
   background: var(--accent-soft, rgba(64, 128, 255, 0.14));
   color: var(--primary-deep);
+}
+/* 续期档位：绿松色，与「已上架」的绿色、价格/时长的中性底色区分开 */
+.decoration-tag.is-renew {
+  background: rgba(47, 143, 91, 0.12);
+  color: #2f8f5b;
 }
 .decoration-actions {
   display: flex;

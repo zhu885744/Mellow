@@ -304,15 +304,15 @@
             <div class="modal-body">
               <div class="field">
                 <label>收货人</label>
-                <input v-model="addressForm.name" class="input" placeholder="请输入收货人姓名" />
+                <FormInput v-model="addressForm.name" placeholder="请输入收货人姓名" />
               </div>
               <div class="field">
                 <label>联系电话</label>
-                <input v-model="addressForm.phone" class="input" placeholder="请输入联系电话" />
+                <FormInput v-model="addressForm.phone" placeholder="请输入联系电话" />
               </div>
               <div class="field">
                 <label>收货地址</label>
-                <textarea v-model="addressForm.address" class="input" rows="3" placeholder="请输入详细收货地址"></textarea>
+                <FormTextarea v-model="addressForm.address" rows="3" placeholder="请输入详细收货地址" />
               </div>
             </div>
             <div class="modal-footer">
@@ -373,6 +373,8 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useUserStore } from '@/stores/user'

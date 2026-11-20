@@ -37,7 +37,7 @@
       <h3 class="section-title">卡密兑换</h3>
 
       <div class="redeem-row">
-        <input
+        <FormInput
           v-model="cardCode"
           class="redeem-input"
           type="text"
@@ -46,8 +46,7 @@
           spellcheck="false"
           placeholder="请输入卡密"
           :disabled="redeeming"
-          @keyup.enter="redeem"
-        />
+          @keyup.enter="redeem" />
         <button
           type="button"
           class="btn btn-primary"
@@ -130,13 +129,12 @@
             @click="setDirection(opt.value)"
           >{{ opt.label }}</button>
         </div>
-        <SelectMenu
+        <FormSelect variant="pill"
           v-model="typeFilter"
           :options="typeOptions"
           icon="bi bi-funnel"
           placeholder="全部类型"
-          @change="loadLogs"
-        />
+          @change="loadLogs" />
       </div>
 
       <div v-if="loadingLogs" class="is-loading"><span class="spinner" /> 加载中...</div>
@@ -164,8 +162,9 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import { ref, computed, onMounted } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { getIntegral, getIntegralLogs, getIntegralRules, getIntegralTasks, redeemIntegralCard } from '@/api/goods'
 // 我的待兑换卡密（签到等活动的奖励发到账号里，这里找回并兑换）
 import { getMyIntegralCards } from '@/api/integral'

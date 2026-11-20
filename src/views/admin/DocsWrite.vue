@@ -35,33 +35,33 @@
         <div class="form-grid">
           <div class="form-row">
             <label>标题 <em class="req">*</em></label>
-            <input v-model="form.title" class="input" type="text" placeholder="文档标题" />
+            <FormInput v-model="form.title" type="text" placeholder="文档标题" />
           </div>
 
           <div class="form-row">
             <label>标识（slug） <em class="req">*</em></label>
-            <input v-model="form.slug" class="input" type="text" placeholder="如：install" />
+            <FormInput v-model="form.slug" type="text" placeholder="如：install" />
             <p class="form-hint">只能用字母、数字、短横线和下划线，同一目录内唯一。</p>
           </div>
 
           <div class="form-row">
             <label>所属目录</label>
-            <SelectMenu v-model="form.gid" variant="field" :options="groupSelectOptions" />
+            <FormSelect v-model="form.gid" :options="groupSelectOptions" />
           </div>
 
           <div class="form-row">
             <label>排序</label>
-            <input v-model.number="form.sort" class="input" type="number" min="0" />
+            <FormInput v-model.number="form.sort" type="number" min="0" />
           </div>
 
           <div class="form-row">
             <label>可见性</label>
-            <SelectMenu v-model="form.visible" variant="field" :options="VISIBLE_OPTIONS" />
+            <FormSelect v-model="form.visible" :options="VISIBLE_OPTIONS" />
           </div>
 
           <div v-if="form.visible === 3" class="form-row">
             <label>角色组 ID（逗号分隔）</label>
-            <input v-model="form.role_ids" class="input" type="text" placeholder="如：1,2" />
+            <FormInput v-model="form.role_ids" type="text" placeholder="如：1,2" />
           </div>
         </div>
 
@@ -81,15 +81,15 @@
           <div class="form-grid">
             <div class="form-row">
               <label>SEO 标题</label>
-              <input v-model="form.seo_title" class="input" type="text" />
+              <FormInput v-model="form.seo_title" type="text" />
             </div>
             <div class="form-row">
               <label>SEO 关键词</label>
-              <input v-model="form.seo_keywords" class="input" type="text" />
+              <FormInput v-model="form.seo_keywords" type="text" />
             </div>
             <div class="form-row form-row-wide">
               <label>SEO 描述</label>
-              <input v-model="form.seo_description" class="input" type="text" />
+              <FormInput v-model="form.seo_description" type="text" />
             </div>
           </div>
         </details>
@@ -99,10 +99,11 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, reactive, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import MarkdownEditor from '@/components/MarkdownEditor.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { toast } from '@/utils/toast'
 import { docsGroupTree, getDocs, getDocsProject, saveDocs } from '@/api/docs'
 

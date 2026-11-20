@@ -37,25 +37,23 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="sortKey"
             :options="sortOptions"
             :disabled="trash"
             icon="bi bi-sort-down"
             placeholder="排序方式"
-            @change="reload"
-          />
+            @change="reload" />
 
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索名称…"
               aria-label="搜索名称"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -106,14 +104,12 @@
         <!-- 本页全选 -->
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy || !list.length"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 个 · 共 {{ total }} 个</span>
         </div>
@@ -126,13 +122,11 @@
             :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-              <input
-                type="checkbox"
-                :checked="isSelected(item.id)"
+              <FormCheckbox
+                :model-value="isSelected(item.id)"
                 :disabled="busy"
                 :aria-label="`选择等级 ${item.name || `Lv.${item.value}`}`"
-                @change="toggleSelect(item.id)"
-              />
+                @change="toggleSelect(item.id)" />
             </label>
 
             <span class="level-badge">Lv.{{ item.value }}</span>
@@ -199,47 +193,41 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">等级值</label>
-          <input
+          <FormInput
             v-model="dialog.value"
-            class="input"
             type="number"
             min="0"
             step="1"
-            placeholder="如 0、1、2"
-          />
+            placeholder="如 0、1、2" />
           <p class="form-hint">用于排序与展示（Lv.N），0 表示起始等级</p>
         </div>
         <div class="form-item">
           <label class="form-label">所需经验</label>
-          <input
+          <FormInput
             v-model="dialog.exp"
-            class="input"
             type="number"
             min="0"
             step="1"
-            placeholder="达到该等级所需累计经验"
-          />
+            placeholder="达到该等级所需累计经验" />
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">等级名称</label>
-        <input v-model="dialog.name" class="input" type="text" maxlength="32" placeholder="最多 32 字，如「新手」" />
+        <FormInput v-model="dialog.name" type="text" maxlength="32" placeholder="最多 32 字，如「新手」" />
       </div>
 
       <div class="form-item">
         <label class="form-label">等级描述</label>
-        <textarea
+        <FormTextarea
           v-model="dialog.description"
-          class="textarea"
           rows="3"
-          placeholder="可选，用于用户中心等级说明"
-        />
+          placeholder="可选，用于用户中心等级说明" />
       </div>
 
       <div class="form-item">
         <label class="form-label">备注</label>
-        <input v-model="dialog.remark" class="input" type="text" placeholder="仅后台可见" />
+        <FormInput v-model="dialog.remark" type="text" placeholder="仅后台可见" />
       </div>
     </AdminFormDialog>
 
@@ -257,6 +245,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 等级管理（/admin/level）
@@ -274,7 +266,6 @@ import { ref, reactive, computed, onMounted, watchEffect } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import {
   listLevels,
@@ -567,7 +558,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

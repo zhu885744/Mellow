@@ -34,52 +34,38 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="level"
             :options="COMMENT_LEVEL_OPTIONS"
             icon="bi bi-diagram-3"
             placeholder="全部层级"
-            @change="reload"
-          />
+            @change="reload" />
 
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="sortKey"
             :options="sortOptions"
             :disabled="trash"
             icon="bi bi-sort-down"
             placeholder="排序方式"
-            @change="reload"
-          />
+            @change="reload" />
 
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="searchField"
             :options="searchFields"
             icon="bi bi-funnel"
             placeholder="搜索范围"
-            @change="reload"
-          />
+            @change="reload" />
 
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               :placeholder="`搜索${searchFieldLabel}…`"
               :aria-label="`搜索${searchFieldLabel}`"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
-
-          <button
-            class="btn btn-ghost btn-sm"
-            :disabled="busy || repairing"
-            title="补全实况图（把历史上只存了封面的配图补成实况图）"
-            aria-label="补全实况图"
-            @click="askRepairLive"
-          >
-            <i class="bi bi-camera-reels" />
-          </button>
 
           <button
             class="btn btn-ghost btn-sm"
@@ -141,14 +127,12 @@
         <!-- 本页全选 -->
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 条 · 共 {{ total }} 条</span>
         </div>
@@ -161,13 +145,11 @@
             :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-              <input
-                type="checkbox"
-                :checked="isSelected(item.id)"
+              <FormCheckbox
+                :model-value="isSelected(item.id)"
                 :disabled="busy"
                 :aria-label="`选择评论 ${item.id}`"
-                @change="toggleSelect(item.id)"
-              />
+                @change="toggleSelect(item.id)" />
             </label>
 
             <img class="comment-avatar" :src="authorOf(item).avatar || defaultAvatar" :alt="authorOf(item).nickname" loading="lazy" />
@@ -316,12 +298,12 @@
     >
       <div class="form-item">
         <label class="form-label">评论内容</label>
-        <textarea v-model="edit.content" class="textarea" rows="4" placeholder="请输入评论内容" />
+        <FormTextarea v-model="edit.content" rows="4" placeholder="请输入评论内容" />
       </div>
 
       <div class="form-item">
         <label class="form-label">评论图片</label>
-        <input v-model="edit.images" class="input" type="text" placeholder="多个图片链接用英文逗号分隔" />
+        <FormInput v-model="edit.images" type="text" placeholder="多个图片链接用英文逗号分隔" />
 
         <div class="image-actions">
           <button type="button" class="btn btn-sm" :disabled="uploading" @click="pickCommentImages">
@@ -381,6 +363,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 评论列表（/admin/comment 子路由）
@@ -398,7 +384,6 @@ import { ref, reactive, computed, inject, watchEffect, onMounted, onUnmounted } 
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import EmojiText from '@/components/EmojiText.vue'
 import ScopeBadge from '@/components/ScopeBadge.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
@@ -411,8 +396,7 @@ import {
   removeComments,
   forceDeleteComments,
   restoreComments,
-  clearCommentRecycle,
-  repairCommentLive
+  clearCommentRecycle
 } from '@/api/comment'
 import { fromNow } from '@/utils/time'
 import { debounce, pickCommentAuthor } from '@/utils/helper'
@@ -748,7 +732,7 @@ const selectAllRef = ref(null)
 
 // 部分选中时展示半选态（indeterminate 只能通过 DOM 属性设置）
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {
@@ -923,29 +907,6 @@ function askClearRecycle() {
       toast.success('回收站已清空')
       page.value = 1
       await afterMutation(0)
-    }
-  })
-}
-
-// ---------- 实况图回填 ----------
-// 早期评论上传只存了封面，视频附件其实还在库里（命名约定 <封面名>-live.mp4）。
-// 这个操作扫描全部评论、按命名找回配对视频，把配图补成「封面::视频」。
-const repairing = ref(false)
-function askRepairLive() {
-  openConfirm({
-    title: '补全实况图',
-    message: '将扫描全部评论，把能找回配对视频的配图补成实况图。可重复执行，已补过的会自动跳过。',
-    confirmText: '开始补全',
-    action: async () => {
-      repairing.value = true
-      try {
-        const res = await repairCommentLive()
-        const data = res?.data || {}
-        toast.success(`已扫描 ${data.scanned || 0} 条，补全 ${data.fixed || 0} 条`)
-        await afterMutation(0)
-      } finally {
-        repairing.value = false
-      }
     }
   })
 }

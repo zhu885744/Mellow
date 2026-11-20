@@ -5,37 +5,34 @@
     <div v-for="(item, index) in list" :key="index" class="reward-row-wrap">
       <div class="reward-row">
         <div class="reward-row-asset" title="奖励类型（可扩展：见 model/reward.go 的资产注册表）">
-          <SelectMenu v-model="item.asset" variant="field" :options="assetOptions" />
+          <FormSelect v-model="item.asset" :options="assetOptions" />
         </div>
         <!-- 卡密是「纯卡密」：没有面额，所以不显示数值输入；发什么由下方的卡密内容决定 -->
-        <input
+        <FormInput
           v-if="!isCard(item)"
           v-model.number="item.value"
-          class="input reward-row-value"
+          class="reward-row-value"
           type="number"
           min="0"
           step="1"
           :placeholder="valuePlaceholder(item)"
-          :title="assetOf(item)?.desc || ''"
-        />
-        <input
+          :title="assetOf(item)?.desc || ''" />
+        <FormInput
           v-if="chance"
           v-model.number="item.chance"
-          class="input reward-row-chance"
+          class="reward-row-chance"
           type="number"
           min="0"
           max="100"
           step="1"
           placeholder="概率%"
-          title="触发概率（0 或 100 表示必得）"
-        />
-        <input
+          title="触发概率（0 或 100 表示必得）" />
+        <FormInput
           v-model="item.label"
-          class="input reward-row-label"
+          class="reward-row-label"
           type="text"
           maxlength="16"
-          placeholder="备注（可选）"
-        />
+          placeholder="备注（可选）" />
         <button class="btn btn-ghost btn-sm" type="button" title="删除该奖励" @click="remove(index)">
           <i class="bi bi-x-lg" />
         </button>
@@ -43,13 +40,12 @@
 
       <!-- 卡密：卡密内容（签到发出去的就是这些码） -->
       <div v-if="isCard(item)" class="reward-codes">
-        <textarea
+        <FormTextarea
           v-model="item.codesText"
-          class="input reward-codes-input"
+          class="reward-codes-input"
           rows="3"
           placeholder="卡密内容：一行一个，例如&#10;SN2026000001&#10;SN2026000002"
-          @input="scheduleStock(item)"
-        />
+          @input="scheduleStock(item)" />
         <p class="reward-codes-hint" :class="{ 'is-warn': !codeCount(item) }">
           <i class="bi bi-ticket-perforated" />
           <template v-if="!codeCount(item)">
@@ -78,6 +74,9 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 奖励项编辑器（后台签到页复用）
  *
@@ -94,7 +93,6 @@
  * 因此二次开发注册的新资产会自动出现在下拉框里。
  */
 import { computed, onMounted, reactive } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { getRewardCardStock } from '@/api/checkin'
 
 const props = defineProps({

@@ -49,14 +49,14 @@
         <div class="grid-2">
           <div class="form-item">
             <label class="form-label">启用校验</label>
-            <SelectMenu v-model="cfg.apiKey.value" variant="field" :options="ON_OFF" />
+            <FormSelect v-model="cfg.apiKey.value" :options="ON_OFF" />
             <p class="row-hint">
               开启时若没有任何可用密钥，系统会自动创建一个；「已停用 / 已过期」的密钥一律拒绝
             </p>
           </div>
           <div class="form-item">
             <label class="form-label">放行本站请求</label>
-            <SelectMenu v-model="cfg.apiKey.local" variant="field" :options="ON_OFF" />
+            <FormSelect v-model="cfg.apiKey.local" :options="ON_OFF" />
             <p class="row-hint">
               关闭后，打包进二进制的站内前端与后台都会 403（必须在反代里注入 i-api-key）
             </p>
@@ -90,15 +90,15 @@
         <div class="grid-3">
           <div class="form-item">
             <label class="form-label">启用限流</label>
-            <SelectMenu v-model="cfg.qps.value" variant="field" :options="ON_OFF" />
+            <FormSelect v-model="cfg.qps.value" :options="ON_OFF" />
           </div>
           <div class="form-item">
             <label class="form-label">单接口速率（次/秒）</label>
-            <input v-model="cfg.qps.json.point" class="input" type="number" min="1" step="1" />
+            <FormInput v-model="cfg.qps.json.point" type="number" min="1" step="1" />
           </div>
           <div class="form-item">
             <label class="form-label">全局速率（次/秒）</label>
-            <input v-model="cfg.qps.json.global" class="input" type="number" min="1" step="1" />
+            <FormInput v-model="cfg.qps.json.global" type="number" min="1" step="1" />
           </div>
         </div>
 
@@ -126,16 +126,16 @@
         <div class="grid-3">
           <div class="form-item">
             <label class="form-label">启用自动封禁</label>
-            <SelectMenu v-model="cfg.qpsBlock.value" variant="field" :options="ON_OFF" />
+            <FormSelect v-model="cfg.qpsBlock.value" :options="ON_OFF" />
           </div>
           <div class="form-item">
             <label class="form-label">触发次数</label>
-            <input v-model="cfg.qpsBlock.json.count" class="input" type="number" min="1" step="1" />
+            <FormInput v-model="cfg.qpsBlock.json.count" type="number" min="1" step="1" />
             <p class="row-hint">同一 IP 每 10 秒只记一次超限；低于 30 按 30 处理。App / NAT 出口建议 200 以上</p>
           </div>
           <div class="form-item">
             <label class="form-label">统计窗口（秒，支持表达式）</label>
-            <input v-model="cfg.qpsBlock.json.second" class="input" type="text" placeholder="如 60 * 60" />
+            <FormInput v-model="cfg.qpsBlock.json.second" type="text" placeholder="如 60 * 60" />
             <p class="row-hint">窗口内累计达标才封禁，时长按次数升级（1 小时 → 24 小时 → 7 天 → 永久）</p>
           </div>
         </div>
@@ -164,10 +164,7 @@
             <div class="row-title">发送验证码防刷</div>
             <p class="row-hint">同一手机号 / 邮箱 5 分钟内重复请求发送验证码时要求滑块（首次发送不受影响）</p>
           </div>
-          <label class="switch">
-            <input v-model="captchaSendCode" type="checkbox" />
-            <span class="switch-slider" />
-          </label>
+          <FormCheckbox variant="switch" v-model="captchaSendCode" />
         </div>
 
         <div class="scene-title">敏感操作（勾选后每次提交都要求滑块）</div>
@@ -206,6 +203,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 安全中心 · 安全与限流（/admin/security/policy）
  *
@@ -218,7 +218,6 @@
  * 一次 config/all 拉全量，避免多个 config/one 并发把单接口 QPS 打满。
  */
 import { reactive, ref, computed, onMounted } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { getAllConfigs, saveSystemConfig, getConfig } from '@/api/config'
 import { toast } from '@/utils/toast'
 

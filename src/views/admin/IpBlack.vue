@@ -75,24 +75,22 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="levelFilter"
             :options="levelOptions"
             icon="bi bi-layers"
             placeholder="全部等级"
-            @change="reload"
-          />
+            @change="reload" />
 
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索 IP 或原因…"
               aria-label="搜索 IP 或原因"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -138,14 +136,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 条</span>
         </div>
@@ -165,13 +161,11 @@
             <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
               <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-                  <input
-                    type="checkbox"
-                    :checked="isSelected(item.id)"
+                  <FormCheckbox
+                    :model-value="isSelected(item.id)"
                     :disabled="busy"
                     :aria-label="`选择记录 ${item.ip}`"
-                    @change="toggleSelect(item.id)"
-                  />
+                    @change="toggleSelect(item.id)" />
                 </label>
               </td>
               <td>
@@ -247,25 +241,23 @@
     >
       <div class="form-item">
         <label class="form-label">IP 地址</label>
-        <input v-model="edit.ip" class="input" type="text" placeholder="必填，如 192.168.1.1" />
+        <FormInput v-model="edit.ip" type="text" placeholder="必填，如 192.168.1.1" />
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">封禁等级</label>
-          <SelectMenu v-model="edit.level" variant="field" :options="editLevelOptions" />
+          <FormSelect v-model="edit.level" :options="editLevelOptions" />
         </div>
         <div class="form-item">
           <label class="form-label">自定义时长（小时）</label>
-          <input
+          <FormInput
             v-model="edit.duration"
-            class="input"
             type="number"
             min="0"
             step="1"
             :disabled="edit.level === 4"
-            placeholder="留空按等级默认时长"
-          />
+            placeholder="留空按等级默认时长" />
           <p class="form-hint">留空则按等级取默认（1 / 24 / 168 小时）</p>
         </div>
       </div>
@@ -273,11 +265,11 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">封禁原因</label>
-          <input v-model="edit.cause" class="input" type="text" placeholder="可选" />
+          <FormInput v-model="edit.cause" type="text" placeholder="可选" />
         </div>
         <div class="form-item">
           <label class="form-label">备注</label>
-          <input v-model="edit.remark" class="input" type="text" placeholder="可选，仅管理端可见" />
+          <FormInput v-model="edit.remark" type="text" placeholder="可选，仅管理端可见" />
         </div>
       </div>
 
@@ -301,6 +293,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * IP 黑名单（/admin/ip/black）
@@ -317,7 +312,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import {
   listIpBlack,
@@ -561,7 +555,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

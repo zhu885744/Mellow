@@ -147,17 +147,15 @@
       </p>
       <label class="dialog-field">
         <span class="dialog-field-label">认证有效期</span>
-        <SelectMenu v-model="passDialog.days" variant="field" :options="EXPIRE_OPTIONS" />
+        <FormSelect v-model="passDialog.days" :options="EXPIRE_OPTIONS" />
       </label>
       <label class="dialog-field">
         <span class="dialog-field-label">认证说明<em>由后台填写，展示在用户主页；用户端没有填写入口</em></span>
-        <textarea
+        <FormTextarea
           v-model="passDialog.description"
-          class="textarea"
           rows="3"
           maxlength="255"
-          placeholder="一句话介绍该认证，如「某某科技前端工程师，专注工程化与性能优化」"
-        />
+          placeholder="一句话介绍该认证，如「某某科技前端工程师，专注工程化与性能优化」" />
       </label>
       <p class="dialog-hint">
         通过后认证标识立即展示在用户主页昵称旁，用户会收到站内信通知。
@@ -189,13 +187,11 @@
 
       <label class="dialog-field edit-desc">
         <span class="dialog-field-label">认证说明<em>展示在用户主页；用户端没有填写入口</em></span>
-        <textarea
+        <FormTextarea
           v-model="editDialog.description"
-          class="textarea"
           rows="2"
           maxlength="255"
-          placeholder="可空；通过时也可以再填"
-        />
+          placeholder="可空；通过时也可以再填" />
       </label>
 
       <p class="dialog-hint">
@@ -217,26 +213,22 @@
     >
       <label class="dialog-field">
         <span class="dialog-field-label">用户 UID<em>可从「用户管理」复制；已认证的用户会被本次内容整条覆盖</em></span>
-        <input
+        <FormInput
           v-model="grantDialog.uid"
-          class="input"
           type="number"
           min="1"
           step="1"
-          placeholder="如 12"
-        />
+          placeholder="如 12" />
       </label>
       <OwnerInfo :uid="Number(grantDialog.uid) || 0" label="认证对象" fallback="请输入用户 UID" />
 
       <label class="dialog-field">
         <span class="dialog-field-label">认证类型</span>
-        <SelectMenu
+        <FormSelect
           v-model="grantDialog.certType"
-          variant="field"
           :options="grantTypeOptions"
           placeholder="请选择认证类型"
-          @change="onGrantTypeChange"
-        />
+          @change="onGrantTypeChange" />
       </label>
 
       <CertFieldsForm
@@ -252,18 +244,16 @@
 
       <label class="dialog-field">
         <span class="dialog-field-label">认证有效期</span>
-        <SelectMenu v-model="grantDialog.days" variant="field" :options="EXPIRE_OPTIONS" />
+        <FormSelect v-model="grantDialog.days" :options="EXPIRE_OPTIONS" />
       </label>
 
       <label class="dialog-field">
         <span class="dialog-field-label">认证说明<em>展示在用户主页；可留空</em></span>
-        <textarea
+        <FormTextarea
           v-model="grantDialog.description"
-          class="textarea"
           rows="2"
           maxlength="255"
-          placeholder="一句话介绍该认证，如「某某科技前端工程师，专注工程化与性能优化」"
-        />
+          placeholder="一句话介绍该认证，如「某某科技前端工程师，专注工程化与性能优化」" />
       </label>
 
       <p class="dialog-hint">
@@ -287,13 +277,11 @@
       </p>
       <label class="dialog-field">
         <span class="dialog-field-label">收回原因<em>可空；会随站内信一起发给用户</em></span>
-        <textarea
+        <FormTextarea
           v-model="revokeDialog.reason"
-          class="textarea"
           rows="2"
           maxlength="200"
-          placeholder="如「资质已过期」「冒用他人身份」"
-        />
+          placeholder="如「资质已过期」「冒用他人身份」" />
       </label>
       <p class="dialog-hint">
         收回后认证记录会被删除，主页的认证标识立即消失，用户可重新提交申请。
@@ -318,6 +306,9 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 后台「用户认证」审核
@@ -340,7 +331,6 @@ import AuditDialog from '@/components/admin/AuditDialog.vue'
 import OwnerInfo from '@/components/admin/OwnerInfo.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import {
   editCertification,
   grantCertification,

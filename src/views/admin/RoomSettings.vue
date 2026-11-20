@@ -22,26 +22,25 @@
       <div v-else class="form-grid">
         <div class="field">
           <span class="field-label">群聊名称<span class="field-hint">最多 30 字</span></span>
-          <input v-model="info.name" class="field-input" type="text" maxlength="30" :disabled="denied" />
+          <FormInput v-model="info.name" class="field-input" type="text" maxlength="30" :disabled="denied" />
         </div>
 
         <div class="field">
           <span class="field-label">头像地址<span class="field-hint">留空使用默认图标，仅支持 http(s) 或站内附件地址</span></span>
           <div class="avatar-field">
             <img class="avatar-preview" :src="avatarPreview" alt="群聊头像预览" />
-            <input
+            <FormInput
               v-model="info.avatar"
               class="field-input"
               type="text"
               placeholder="https://… 或 /attachment/…"
-              :disabled="denied"
-            />
+              :disabled="denied" />
           </div>
         </div>
 
         <div class="field">
           <span class="field-label">简介<span class="field-hint">最多 200 字</span></span>
-          <textarea v-model="info.description" class="field-textarea" rows="3" maxlength="200" :disabled="denied" />
+          <FormTextarea v-model="info.description" class="field-textarea" rows="3" maxlength="200" :disabled="denied" />
         </div>
 
         <div class="form-actions">
@@ -72,14 +71,13 @@
       <div v-else class="clear-body">
         <div class="field is-inline">
           <span class="field-label">清空间隔</span>
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="clear.days"
             :options="dayOptions"
             icon="bi bi-calendar3"
             placeholder="选择间隔"
             :disabled="denied"
-            @change="saveClear"
-          />
+            @change="saveClear" />
         </div>
 
         <div class="clear-stats">
@@ -107,6 +105,9 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 /**
  * 群聊设置（/admin/chat/settings）
  *
@@ -118,7 +119,6 @@
  *   真正的清空由定时任务执行，这里只改间隔，不会立刻删数据。
  */
 import { ref, reactive, computed, onMounted } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { getRoomInfo, updateRoom, getRoomAutoClear, saveRoomAutoClear } from '@/api/room'
 import { formatTime } from '@/utils/time'
 import { toast } from '@/utils/toast'

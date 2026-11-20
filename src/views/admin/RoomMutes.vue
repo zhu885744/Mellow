@@ -17,23 +17,22 @@
       <div class="mute-form">
         <label class="field">
           <span class="field-label">用户 UID</span>
-          <input v-model="form.uid" class="field-input" type="number" min="1" placeholder="要禁言的用户 ID" />
+          <FormInput v-model="form.uid" class="field-input" type="number" min="1" placeholder="要禁言的用户 ID" />
         </label>
 
         <label class="field">
           <span class="field-label">时长</span>
-          <SelectMenu v-model="form.minutes" :options="durationOptions" />
+          <FormSelect variant="pill" v-model="form.minutes" :options="durationOptions" />
         </label>
 
         <label class="field is-grow">
           <span class="field-label">原因（可选）</span>
-          <input
+          <FormInput
             v-model="form.reason"
             class="field-input"
             type="text"
             maxlength="100"
-            placeholder="例如：刷屏 / 人身攻击"
-          />
+            placeholder="例如：刷屏 / 人身攻击" />
         </label>
 
         <button class="btn btn-primary mute-submit" :disabled="muting" @click="submitMute">
@@ -52,13 +51,12 @@
             <template v-if="groups.length > 0"> · 共 {{ groups.length }} 人</template>
           </p>
         </div>
-        <SelectMenu
+        <FormSelect variant="pill"
           v-model="scope"
           :options="scopeOptions"
           icon="bi bi-filter"
           placeholder="全部范围"
-          @change="load"
-        />
+          @change="load" />
       </header>
 
       <div v-if="loading" class="is-loading"><span class="spinner" /> 加载中...</div>
@@ -138,6 +136,8 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 /**
  * 禁言名单（/admin/chat/mutes）
  *
@@ -152,7 +152,6 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { listChatMutes, muteChatUser, unmuteChatUser } from '@/api/chat-admin'
 import { formatTime } from '@/utils/time'
 import { toast } from '@/utils/toast'

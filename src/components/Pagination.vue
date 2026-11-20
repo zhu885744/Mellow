@@ -2,13 +2,12 @@
   <!-- sizes 为空时（前台列表）行为与以前完全一致：只有页码，没有条数下拉 -->
   <nav v-if="pageCount > 1 || sizes.length" class="pager" aria-label="分页导航">
     <!-- 每页条数：切换后只上报新值，回到第 1 页与重新请求由父组件处理 -->
-    <SelectMenu
+    <FormSelect variant="pill"
       v-if="sizes.length"
       class="pager-size"
       :model-value="pageSize"
       :options="sizes"
-      @update:model-value="(value) => $emit('update:pageSize', Number(value))"
-    />
+      @update:model-value="(value) => $emit('update:pageSize', Number(value))" />
     <template v-for="(item, index) in pageItems" :key="`${item}-${index}`">
       <span v-if="item === '...'" class="pager-gap" aria-hidden="true">…</span>
       <button
@@ -27,8 +26,8 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
 import { computed } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 
 const props = defineProps({
   current: { type: Number, default: 1 },

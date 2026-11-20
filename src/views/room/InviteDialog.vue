@@ -27,7 +27,7 @@
           <label class="inv-field">
             <span>邀请链接（永久有效）</span>
             <div class="inv-link">
-              <input :value="url" readonly @focus="$event.target.select()" />
+              <FormInput :value="url" readonly @focus="$event.target.select()" />
               <button type="button" class="inv-copy" @click="copy">
                 <i :class="copied ? 'bi bi-check2' : 'bi bi-clipboard'" aria-hidden="true" />
                 {{ copied ? '已复制' : '复制' }}
@@ -52,6 +52,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 import { nextTick, onMounted, ref } from 'vue'
 import QRCode from 'qrcode'
 import { createRoomInvite, listRoomInvites } from '@/api/room'

@@ -69,14 +69,13 @@
         <div class="filter-right">
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索名称或路径…"
               aria-label="搜索名称或路径"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -122,14 +121,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 个</span>
         </div>
@@ -148,13 +145,11 @@
             <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
               <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-                  <input
-                    type="checkbox"
-                    :checked="isSelected(item.id)"
+                  <FormCheckbox
+                    :model-value="isSelected(item.id)"
                     :disabled="busy"
                     :aria-label="`选择页面 ${item.name}`"
-                    @change="toggleSelect(item.id)"
-                  />
+                    @change="toggleSelect(item.id)" />
                 </label>
               </td>
               <td>
@@ -224,34 +219,34 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">页面名称</label>
-          <input v-model="edit.name" class="input" type="text" placeholder="必填" />
+          <FormInput v-model="edit.name" type="text" placeholder="必填" />
         </div>
         <div class="form-item">
           <label class="form-label">页面路径</label>
-          <input v-model="edit.path" class="input" type="text" placeholder="必填，如 /admin/users" />
+          <FormInput v-model="edit.path" type="text" placeholder="必填，如 /admin/users" />
         </div>
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">图标名</label>
-          <input v-model="edit.icon" class="input" type="text" placeholder="可选，如 bi bi-bag" />
+          <FormInput v-model="edit.icon" type="text" placeholder="可选，如 bi bi-bag" />
           <p class="form-hint">填 Bootstrap Icons 类名（https://icons.getbootstrap.com/）</p>
         </div>
         <div class="form-item">
           <label class="form-label">图标大小</label>
-          <input v-model="edit.size" class="input" type="text" placeholder="默认 16px" />
+          <FormInput v-model="edit.size" type="text" placeholder="默认 16px" />
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">SVG 图标</label>
-        <textarea v-model="edit.svg" class="textarea" rows="3" placeholder="可选，填写后优先于图标名展示" />
+        <FormTextarea v-model="edit.svg" rows="3" placeholder="可选，填写后优先于图标名展示" />
       </div>
 
       <div class="form-item">
         <label class="form-label">备注</label>
-        <input v-model="edit.remark" class="input" type="text" placeholder="可选" />
+        <FormInput v-model="edit.remark" type="text" placeholder="可选" />
       </div>
     </AdminFormDialog>
 
@@ -269,6 +264,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 后台页面管理（/admin/security/pages）
@@ -437,7 +435,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

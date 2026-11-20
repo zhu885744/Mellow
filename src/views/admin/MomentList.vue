@@ -23,25 +23,23 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="sortKey"
             :options="sortOptions"
             :disabled="trash"
             icon="bi bi-sort-down"
             placeholder="排序方式"
-            @change="reload"
-          />
+            @change="reload" />
 
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索动态内容…"
               aria-label="搜索动态内容"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button
@@ -113,14 +111,12 @@
         <!-- 本页全选 -->
         <div class="list-head">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 条 · 共 {{ total }} 条</span>
         </div>
@@ -133,7 +129,7 @@
             :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-              <input type="checkbox" :checked="isSelected(item.id)" @change="toggleSelect(item.id)" />
+              <FormCheckbox :model-value="isSelected(item.id)" @change="toggleSelect(item.id)" />
             </label>
 
             <!-- 配图缩略图：固定 3 列展示，超出部分用 +N 角标提示（解析结果按页缓存） -->
@@ -229,16 +225,14 @@
                     :class="[`is-${opt.key}`, { 'is-active': Number(item.audit) === opt.value, 'is-disabled': busy }]"
                     :title="`设为${opt.label}`"
                   >
-                    <input
-                      type="radio"
+                    <FormRadio
                       class="audit-radio"
                       :name="`moment-audit-${item.id}`"
                       :value="opt.value"
-                      :checked="Number(item.audit) === opt.value"
+                      :model-value="Number(item.audit) === opt.value"
                       :disabled="busy"
                       :aria-label="opt.label"
-                      @change="audit(item, opt.value)"
-                    />
+                      @change="audit(item, opt.value)" />
                     <i :class="opt.icon" aria-hidden="true" />
                   </label>
                 </div>
@@ -296,6 +290,10 @@
 </template>
 
 <script setup>
+import FormRadio from '@/components/form/FormRadio.vue'
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 动态列表（/admin/moments 子路由）
@@ -310,7 +308,6 @@ import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmojiText from '@/components/EmojiText.vue'
 import ScopeBadge from '@/components/ScopeBadge.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import MomentEditDialog from '@/components/admin/MomentEditDialog.vue'
 import AuditDialog from '@/components/admin/AuditDialog.vue'
 import {
@@ -528,7 +525,7 @@ const selectAllRef = ref(null)
 
 // 部分选中时展示半选态（indeterminate 只能通过 DOM 属性设置）
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

@@ -99,7 +99,7 @@
         </div>
         <div class="shortcut-search">
           <i class="bi bi-search" />
-          <input v-model="keyword" type="search" placeholder="搜索功能" />
+          <FormInput v-model="keyword" type="search" placeholder="搜索功能" />
           <button v-if="keyword" type="button" title="清空" @click="keyword = ''">
             <i class="bi bi-x-lg" />
           </button>
@@ -171,6 +171,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 后台概览（/admin/dashboard）
  *

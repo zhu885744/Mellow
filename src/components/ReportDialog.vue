@@ -38,13 +38,12 @@
         补充说明
         <em class="report-detail-tag">选填</em>
       </span>
-      <textarea
+      <FormTextarea
         v-model="detail"
-        class="textarea report-detail-input"
+        class="report-detail-input"
         rows="3"
         maxlength="200"
-        placeholder="可补充具体情况（如时间、涉及哪一段内容），有助于我们判断"
-      />
+        placeholder="可补充具体情况（如时间、涉及哪一段内容），有助于我们判断" />
       <span class="report-detail-hint">{{ detail.length }}/200 · 仅管理员可见</span>
     </label>
 
@@ -86,6 +85,7 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
 /**
  * 举报弹窗（动态 / 文章 / 评论 / 用户共用）
  *

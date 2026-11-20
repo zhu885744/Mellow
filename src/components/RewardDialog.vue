@@ -32,15 +32,14 @@
 
       <label class="reward-field">
         <span class="reward-field-label">打赏积分</span>
-        <input
+        <FormInput
           v-model.number="value"
           type="number"
-          class="input reward-field-input"
+          class="reward-field-input"
           :min="summary.min"
           :max="summary.max"
           step="1"
-          placeholder="输入积分数量"
-        />
+          placeholder="输入积分数量" />
       </label>
 
       <label class="reward-field">
@@ -48,13 +47,12 @@
           留言
           <em class="reward-field-tag">选填</em>
         </span>
-        <textarea
+        <FormTextarea
           v-model="message"
-          class="textarea reward-field-textarea"
+          class="reward-field-textarea"
           rows="2"
           :maxlength="summary.message_max"
-          :placeholder="`给${toName || '作者'}说点什么…`"
-        />
+          :placeholder="`给${toName || '作者'}说点什么…`" />
         <span class="reward-field-hint">{{ message.length }}/{{ summary.message_max }}</span>
       </label>
 
@@ -66,6 +64,8 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 积分打赏弹窗（文章 / 动态 / 评论 / 用户主页共用）
  *

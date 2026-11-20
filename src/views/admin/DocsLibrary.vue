@@ -107,36 +107,34 @@
         <div class="modal-body">
           <div class="form-row">
             <label>名称 <em class="req">*</em></label>
-            <input v-model="dialog.form.name" class="input" type="text" placeholder="如：文章限制阅读" />
+            <FormInput v-model="dialog.form.name" type="text" placeholder="如：文章限制阅读" />
           </div>
 
           <div class="form-row">
             <label>别名 <em class="req">*</em></label>
-            <input
+            <FormInput
               v-model="dialog.form.slug"
-              class="input"
               type="text"
-              placeholder="仅使用小写字母、数字和短横线，如 article-restricted"
-            />
+              placeholder="仅使用小写字母、数字和短横线，如 article-restricted" />
             <p class="form-hint">前台访问地址：/docs/{{ dialog.form.slug || '项目别名' }}</p>
           </div>
 
           <div class="form-row">
             <label>描述</label>
-            <textarea v-model="dialog.form.description" class="input" rows="3" placeholder="用一句话说明这个项目讲什么" />
+            <FormTextarea v-model="dialog.form.description" rows="3" placeholder="用一句话说明这个项目讲什么" />
           </div>
 
           <div class="form-row">
             <label>图标</label>
             <div class="icon-field">
               <span class="icon-field-preview" aria-hidden="true"><i :class="iconOf(dialog.form)" /></span>
-              <input v-model="dialog.form.icon" class="input" type="text" placeholder="bi bi-file-earmark-lock" />
+              <FormInput v-model="dialog.form.icon" type="text" placeholder="bi bi-file-earmark-lock" />
             </div>
             <p class="form-hint">填Bootstrap Icons 类名，如 bi bi-file-earmark-lock；留空使用默认图标。</p>
           </div>
 
           <label class="switch-row">
-            <input v-model="commentEnabled" type="checkbox" />
+            <FormCheckbox v-model="commentEnabled" />
             <span>
               <strong>启用评论</strong>
               <em>启用之后访客可在该项目的文档页评论，需要登录账户才能评论。</em>
@@ -146,22 +144,22 @@
           <div class="form-row form-row-half">
             <div>
               <label>状态</label>
-              <SelectMenu v-model="dialog.form.status" variant="field" :options="STATUS_OPTIONS" />
+              <FormSelect v-model="dialog.form.status" :options="STATUS_OPTIONS" />
             </div>
             <div>
               <label>排序</label>
-              <input v-model.number="dialog.form.sort" class="input" type="number" min="0" />
+              <FormInput v-model.number="dialog.form.sort" type="number" min="0" />
             </div>
           </div>
 
           <div class="form-row">
             <label>可见性</label>
-            <SelectMenu v-model="dialog.form.visible" variant="field" :options="VISIBLE_OPTIONS" />
+            <FormSelect v-model="dialog.form.visible" :options="VISIBLE_OPTIONS" />
           </div>
 
           <div v-if="dialog.form.visible === 3" class="form-row">
             <label>角色组 ID（逗号分隔）</label>
-            <input v-model="dialog.form.role_ids" class="input" type="text" placeholder="如：1,2" />
+            <FormInput v-model="dialog.form.role_ids" type="text" placeholder="如：1,2" />
           </div>
         </div>
 
@@ -186,8 +184,11 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, reactive, computed, onMounted } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import { formatDate } from '@/utils/time'

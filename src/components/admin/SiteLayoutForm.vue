@@ -137,7 +137,7 @@
           <div class="col-label">
             <span>个性侧边栏</span>
             <label class="switch is-mini" title="前台是否渲染右侧整栏">
-              <input v-model="sidebar.enabled" type="checkbox" />
+              <FormCheckbox v-model="sidebar.enabled" />
               <span class="switch-slider" />
             </label>
           </div>
@@ -228,7 +228,7 @@
           </div>
 
           <div class="side-add">
-            <SelectMenu v-model="newModuleType" variant="field" :options="SIDEBAR_TYPE_OPTIONS" />
+            <FormSelect v-model="newModuleType" :options="SIDEBAR_TYPE_OPTIONS" />
             <button type="button" class="mini-btn is-primary" @click="addModule">
               <i class="bi bi-plus-lg" /> 添加模块
             </button>
@@ -250,14 +250,14 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">名称</label>
-            <input v-model="selectedMenu.name" class="input" placeholder="例如：关于" />
+            <FormInput v-model="selectedMenu.name" placeholder="例如：关于" />
           </div>
           <div class="form-item">
             <label class="form-label">图标（bootstrap-icons）</label>
             <!-- 预览直接嵌在输入框左侧，右侧是「图标库」外链按钮，整行不再换行 -->
             <div class="icon-field">
               <i class="icon-field-preview" :class="selectedMenu.icon || 'bi bi-question-circle'" />
-              <input v-model="selectedMenu.icon" class="input" placeholder="bi bi-info-circle" />
+              <FormInput v-model="selectedMenu.icon" placeholder="bi bi-info-circle" />
               <a
                 class="icon-field-link"
                 href="https://icons.getbootstrap.com/"
@@ -275,15 +275,13 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">跳转类型</label>
-            <SelectMenu v-model="selectedMenu.target" variant="field" :options="MENU_TARGET_OPTIONS" />
+            <FormSelect v-model="selectedMenu.target" :options="MENU_TARGET_OPTIONS" />
           </div>
           <div class="form-item">
             <label class="form-label">链接</label>
-            <input
+            <FormInput
               v-model="selectedMenu.url"
-              class="input"
-              :placeholder="selectedMenu.target === 'external' ? 'https://example.com' : '/about'"
-            />
+              :placeholder="selectedMenu.target === 'external' ? 'https://example.com' : '/about'" />
             <p class="form-hint">
               {{ selectedMenu.target === 'external' ? '站外链接，会在新窗口打开' : '站内路径，例如 /about、/topics' }}
             </p>
@@ -296,21 +294,17 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">模块类型</label>
-            <SelectMenu
+            <FormSelect
               :model-value="selectedModule.type"
-              variant="field"
               :options="SIDEBAR_TYPE_OPTIONS"
-              @update:modelValue="(value) => changeModuleType(selectedModule, value)"
-            />
+              @update:modelValue="(value) => changeModuleType(selectedModule, value)" />
             <p class="form-hint">{{ moduleTypeDesc(selectedModule.type) }}；切换类型会按新类型重置标题与内容</p>
           </div>
           <div class="form-item">
             <label class="form-label">标题</label>
-            <input
+            <FormInput
               v-model="selectedModule.title"
-              class="input"
-              :placeholder="moduleTypeDefaults(selectedModule.type).title || '使用类型默认标题'"
-            />
+              :placeholder="moduleTypeDefaults(selectedModule.type).title || '使用类型默认标题'" />
             <p class="form-hint">留空则使用类型默认标题</p>
           </div>
         </div>
@@ -320,7 +314,7 @@
             <label class="form-label">图标（bootstrap-icons）</label>
             <div class="icon-field">
               <i class="icon-field-preview" :class="selectedModule.icon || 'bi bi-question-circle'" />
-              <input v-model="selectedModule.icon" class="input" placeholder="bi bi-shuffle" />
+              <FormInput v-model="selectedModule.icon" placeholder="bi bi-shuffle" />
               <a
                 class="icon-field-link"
                 href="https://icons.getbootstrap.com/"
@@ -335,7 +329,7 @@
           </div>
           <div v-if="supportsField(selectedModule.type, 'limit')" class="form-item">
             <label class="form-label">显示条数</label>
-            <input v-model.number="selectedModule.limit" class="input" type="number" min="1" max="100" />
+            <FormInput v-model.number="selectedModule.limit" type="number" min="1" max="100" />
             <p class="form-hint">该模块列表最多展示多少条</p>
           </div>
         </div>
@@ -343,23 +337,22 @@
         <div v-if="supportsField(selectedModule.type, 'moreUrl')" class="form-grid">
           <div class="form-item">
             <label class="form-label">「更多」文案</label>
-            <input v-model="selectedModule.moreText" class="input" placeholder="留空则显示「更多」" />
+            <FormInput v-model="selectedModule.moreText" placeholder="留空则显示「更多」" />
           </div>
           <div class="form-item">
             <label class="form-label">「更多」链接</label>
-            <input v-model="selectedModule.moreUrl" class="input" placeholder="站内路径如 /topics，或完整网址" />
+            <FormInput v-model="selectedModule.moreUrl" placeholder="站内路径如 /topics，或完整网址" />
             <p class="form-hint">留空则不显示右上角入口；站外链接自动新窗口打开</p>
           </div>
         </div>
 
         <div v-if="supportsField(selectedModule.type, 'content')" class="form-item">
           <label class="form-label">自定义内容（HTML）</label>
-          <textarea
+          <FormTextarea
             v-model="selectedModule.content"
-            class="textarea code"
+            class="code"
             rows="6"
-            placeholder="<p>这里可以写公告、广告位、友链或任意 HTML</p>"
-          />
+            placeholder="<p>这里可以写公告、广告位、友链或任意 HTML</p>" />
           <p class="form-hint">原样渲染到前台，请只粘贴可信内容</p>
         </div>
 
@@ -374,10 +367,10 @@
           <p v-if="!selectedModule.items.length" class="col-empty">还没有链接</p>
 
           <div v-for="(link, index) in selectedModule.items" :key="index" class="link-row">
-            <input v-model="link.name" class="input" placeholder="名称" />
-            <input v-model="link.icon" class="input" placeholder="bi bi-link" />
-            <input v-model="link.url" class="input" placeholder="/about 或 https://…" />
-            <SelectMenu v-model="link.target" variant="field" :options="MENU_TARGET_OPTIONS" />
+            <FormInput v-model="link.name" placeholder="名称" />
+            <FormInput v-model="link.icon" placeholder="bi bi-link" />
+            <FormInput v-model="link.url" placeholder="/about 或 https://…" />
+            <FormSelect v-model="link.target" :options="MENU_TARGET_OPTIONS" />
             <button type="button" class="icon-btn" title="删除" @click="removeLink(selectedModule, index)">
               <i class="bi bi-trash3" />
             </button>
@@ -386,15 +379,15 @@
 
         <div class="flags">
           <label class="flag">
-            <input v-model="selectedModule.visible" type="checkbox" />
+            <FormCheckbox v-model="selectedModule.visible" />
             <span>前台显示该模块</span>
           </label>
           <label class="flag">
-            <input v-model="selectedModule.collapsible" type="checkbox" />
+            <FormCheckbox v-model="selectedModule.collapsible" />
             <span>允许访客折叠</span>
           </label>
           <label v-if="selectedModule.collapsible" class="flag">
-            <input v-model="selectedModule.collapsed" type="checkbox" />
+            <FormCheckbox v-model="selectedModule.collapsed" />
             <span>默认折叠</span>
           </label>
         </div>
@@ -428,6 +421,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 网站布局（系统配置 → 网站表单设置）
  *
@@ -444,7 +441,6 @@
  * 避免把其它后台页面（默认头像、上传模式等）写入的字段抹掉。
  */
 import { computed, onMounted, reactive, ref } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import { saveConfig } from '@/api/config'
 import { useSiteStore } from '@/stores/site'

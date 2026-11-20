@@ -20,26 +20,26 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">网站标题</label>
-          <input v-model="globalConfig.title" class="input" placeholder="输入您的网站标题" />
+          <FormInput v-model="globalConfig.title" placeholder="输入您的网站标题" />
           <p class="form-hint">显示在前台左栏顶部、浏览器标签与页脚版权处</p>
         </div>
         <div class="form-item">
           <label class="form-label">网站关键词</label>
-          <input v-model="globalConfig.keyword" class="input" placeholder="输入关键词，用逗号分隔" />
+          <FormInput v-model="globalConfig.keyword" placeholder="输入关键词，用逗号分隔" />
           <p class="form-hint">写入页面 meta keywords，多个关键词用逗号分隔</p>
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">网站描述</label>
-        <input v-model="globalConfig.description" class="input" placeholder="输入您的网站描述" />
+        <FormInput v-model="globalConfig.description" placeholder="输入您的网站描述" />
         <p class="form-hint">写入页面 meta description，同时显示在前台左栏标题下方</p>
       </div>
 
       <div class="form-item">
         <label class="form-label">网站 LOGO</label>
         <div class="input-group">
-          <input v-model="globalConfig.avatar" class="input" placeholder="输入 LOGO URL" />
+          <FormInput v-model="globalConfig.avatar" placeholder="输入 LOGO URL" />
           <button type="button" class="btn btn-sm" title="从附件库选择" @click="openLibrary('avatar')">
             <i class="bi bi-folder2-open" /> 附件库
           </button>
@@ -52,7 +52,7 @@
       <div class="form-item">
         <label class="form-label">网站图标</label>
         <div class="input-group">
-          <input v-model="globalConfig.favicon" class="input" placeholder="输入 favicon URL" />
+          <FormInput v-model="globalConfig.favicon" placeholder="输入 favicon URL" />
           <button type="button" class="btn btn-sm" title="从附件库选择" @click="openLibrary('favicon')">
             <i class="bi bi-folder2-open" /> 附件库
           </button>
@@ -65,7 +65,7 @@
 
       <div class="form-item">
         <label class="form-label">建站日期</label>
-        <input type="date" class="input" :value="formatDate(globalConfig.date)" @change="handleDateChange" />
+        <FormInput type="date" :value="formatDate(globalConfig.date)" @change="handleDateChange" />
         <p class="form-hint">网站的建立日期</p>
       </div>
     </section>
@@ -81,19 +81,19 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">ICP 备案编号</label>
-          <input v-model="globalConfig.copy.code" class="input" placeholder="输入 ICP 备案编号" />
+          <FormInput v-model="globalConfig.copy.code" placeholder="输入 ICP 备案编号" />
         </div>
         <div class="form-item">
           <label class="form-label">ICP 备案链接</label>
-          <input v-model="globalConfig.copy.link" class="input" placeholder="输入备案链接" />
+          <FormInput v-model="globalConfig.copy.link" placeholder="输入备案链接" />
         </div>
         <div class="form-item">
           <label class="form-label">公安联网备案编号</label>
-          <input v-model="globalConfig.police.code" class="input" placeholder="输入公安联网备案编号" />
+          <FormInput v-model="globalConfig.police.code" placeholder="输入公安联网备案编号" />
         </div>
         <div class="form-item">
           <label class="form-label">公安备案链接</label>
-          <input v-model="globalConfig.police.link" class="input" placeholder="输入公安备案链接" />
+          <FormInput v-model="globalConfig.police.link" placeholder="输入公安备案链接" />
         </div>
       </div>
     </section>
@@ -111,19 +111,16 @@
           <div class="form-label">启用登录协议提示</div>
           <p class="form-hint">在登录/注册/找回密码弹窗中显示协议同意提示</p>
         </div>
-        <label class="switch">
-          <input type="checkbox" v-model="globalConfig.auth_dialog_agreement.enabled" />
-          <span class="switch-slider"></span>
-        </label>
+        <FormCheckbox variant="switch" v-model="globalConfig.auth_dialog_agreement.enabled" />
       </div>
       <template v-if="globalConfig.auth_dialog_agreement.enabled">
         <div class="form-item">
           <label class="form-label">用户协议内容</label>
-          <textarea v-model="globalConfig.auth_dialog_agreement.user_agreement_content" class="textarea" rows="4"></textarea>
+          <FormTextarea v-model="globalConfig.auth_dialog_agreement.user_agreement_content" rows="4" />
         </div>
         <div class="form-item">
           <label class="form-label">隐私协议内容</label>
-          <textarea v-model="globalConfig.auth_dialog_agreement.privacy_agreement_content" class="textarea" rows="4"></textarea>
+          <FormTextarea v-model="globalConfig.auth_dialog_agreement.privacy_agreement_content" rows="4" />
         </div>
       </template>
     </section>
@@ -142,36 +139,26 @@
           <div class="form-label">启用悬浮按钮</div>
           <p class="form-hint">在网站右侧显示悬浮按钮</p>
         </div>
-        <label class="switch">
-          <input type="checkbox" v-model="globalConfig.float_buttons.enabled" />
-          <span class="switch-slider"></span>
-        </label>
+        <FormCheckbox variant="switch" v-model="globalConfig.float_buttons.enabled" />
       </div>
 
       <template v-if="globalConfig.float_buttons.enabled">
         <div class="switch-row compact">
           <label class="form-label">显示返回顶部按钮</label>
-          <label class="switch">
-            <input type="checkbox" v-model="globalConfig.float_buttons.show_back_to_top" />
-            <span class="switch-slider"></span>
-          </label>
+          <FormCheckbox variant="switch" v-model="globalConfig.float_buttons.show_back_to_top" />
         </div>
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">按钮样式</label>
-            <SelectMenu
+            <FormSelect
               v-model="globalConfig.float_buttons.style"
-              variant="field"
-              :options="floatStyleOptions"
-            />
+              :options="floatStyleOptions" />
           </div>
           <div class="form-item">
             <label class="form-label">显示位置</label>
-            <SelectMenu
+            <FormSelect
               v-model="globalConfig.float_buttons.position"
-              variant="field"
-              :options="floatPositionOptions"
-            />
+              :options="floatPositionOptions" />
           </div>
         </div>
 
@@ -211,32 +198,29 @@
             </div>
             <div class="switch-row compact">
               <label class="form-label">启用</label>
-              <label class="switch">
-                <input type="checkbox" v-model="button.enabled" />
-                <span class="switch-slider"></span>
-              </label>
+              <FormCheckbox variant="switch" v-model="button.enabled" />
             </div>
             <div class="form-grid">
               <div class="form-item">
                 <label class="form-label">按钮名称</label>
-                <input v-model="button.name" class="input" />
+                <FormInput v-model="button.name" />
               </div>
               <div class="form-item">
                 <label class="form-label">按钮图标</label>
-                <input v-model="button.icon" class="input" placeholder="例如：bi bi-qq" />
+                <FormInput v-model="button.icon" placeholder="例如：bi bi-qq" />
               </div>
             </div>
             <div class="form-item">
               <label class="form-label">按钮链接</label>
-              <input v-model="button.url" class="input" placeholder="输入按钮链接" />
+              <FormInput v-model="button.url" placeholder="输入按钮链接" />
             </div>
             <div class="form-item">
               <label class="form-label">按钮简介</label>
-              <input v-model="button.tooltip" class="input" placeholder="鼠标悬停时显示" />
+              <FormInput v-model="button.tooltip" placeholder="鼠标悬停时显示" />
             </div>
             <div class="form-item">
               <label class="form-label">悬浮图片</label>
-              <input v-model="button.image_url" class="input" placeholder="鼠标移到此处的图片" />
+              <FormInput v-model="button.image_url" placeholder="鼠标移到此处的图片" />
               <div class="image-actions">
                 <button
                   type="button"
@@ -284,8 +268,11 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, onMounted, computed } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { saveConfig } from '@/api/config'
 import { uploadAttachments } from '@/api/attachment'

@@ -97,25 +97,23 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-if="view === 'all'"
             v-model="typeFilter"
             :options="typeOptions"
             icon="bi bi-tags"
             placeholder="全部类型"
-            @change="reload"
-          />
+            @change="reload" />
 
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索标题…"
               aria-label="搜索标题"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="loadList()">
@@ -176,14 +174,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy || !list.length"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 条</span>
         </div>
@@ -191,13 +187,11 @@
         <ul class="notice-list">
           <li v-for="item in list" :key="item.id" class="notice-row" :class="{ 'is-selected': isSelected(item.id) }">
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-              <input
-                type="checkbox"
-                :checked="isSelected(item.id)"
+              <FormCheckbox
+                :model-value="isSelected(item.id)"
                 :disabled="busy"
                 :aria-label="`选择消息 ${item.title}`"
-                @change="toggleSelect(item.id)"
-              />
+                @change="toggleSelect(item.id)" />
             </label>
 
             <span class="type-chip" :class="typeClass(item)">{{ typeLabel(item) }}</span>
@@ -281,7 +275,7 @@
     >
       <div class="form-item">
         <label class="form-label">发送目标</label>
-        <SelectMenu v-model="send.target" variant="field" :options="targetOptions" />
+        <FormSelect v-model="send.target" :options="targetOptions" />
         <p class="form-hint">
           全体用户采用广播模式（仅一条记录、全体可见）；指定用户会为每人单独创建记录
         </p>
@@ -289,27 +283,27 @@
 
       <div v-if="send.target !== 'all'" class="form-item">
         <label class="form-label">用户 ID</label>
-        <input v-model="send.userIds" class="input" type="text" placeholder="多个用英文逗号分隔，如 1,2,3" />
+        <FormInput v-model="send.userIds" type="text" placeholder="多个用英文逗号分隔，如 1,2,3" />
         <p class="form-hint">请输入接收消息的用户 ID（可在「用户管理」中查看）</p>
       </div>
 
       <div class="form-item">
         <label class="form-label">通知标题</label>
-        <input v-model="send.titleText" class="input" type="text" maxlength="128" placeholder="必填" />
+        <FormInput v-model="send.titleText" type="text" maxlength="128" placeholder="必填" />
       </div>
 
       <div class="form-item">
         <label class="form-label">通知内容</label>
-        <textarea v-model="send.content" class="textarea" rows="4" placeholder="必填" />
+        <FormTextarea v-model="send.content" rows="4" placeholder="必填" />
       </div>
 
       <div class="form-item">
         <label class="check-line">
-          <input v-model="send.asSystem" type="checkbox" />
+          <FormCheckbox v-model="send.asSystem" />
           <span>以系统身份发送（标题自动加「【短消息】」前缀）</span>
         </label>
         <label class="check-line" :class="{ 'is-disabled': send.target === 'all' }">
-          <input v-model="send.sendEmail" type="checkbox" :disabled="send.target === 'all'" />
+          <FormCheckbox v-model="send.sendEmail" :disabled="send.target === 'all'" />
           <span>同时发送邮件通知（使用「用户消息通知」邮件模板，仅对已填写邮箱的用户生效）</span>
         </label>
         <p v-if="send.target === 'all'" class="form-hint">广播模式不支持邮件通知</p>
@@ -327,12 +321,12 @@
     >
       <div class="form-item">
         <label class="form-label">通知标题</label>
-        <input v-model="edit.title" class="input" type="text" maxlength="128" placeholder="必填" />
+        <FormInput v-model="edit.title" type="text" maxlength="128" placeholder="必填" />
       </div>
 
       <div class="form-item">
         <label class="form-label">通知内容</label>
-        <textarea v-model="edit.content" class="textarea" rows="4" placeholder="必填" />
+        <FormTextarea v-model="edit.content" rows="4" placeholder="必填" />
       </div>
     </AdminFormDialog>
 
@@ -350,6 +344,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 消息管理（/admin/message）—— 管理端专用
@@ -383,7 +381,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import {
   listBroadcasts,
@@ -804,7 +801,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

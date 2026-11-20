@@ -186,22 +186,20 @@
           <form id="profile-form" novalidate @submit.prevent="save">
             <div class="form-item">
               <label class="form-label" for="profile-nickname">昵称</label>
-              <input
+              <FormInput
                 id="profile-nickname"
                 v-model="form.nickname"
-                class="input"
                 placeholder="请输入昵称"
                 maxlength="20"
-                autocomplete="nickname"
-              />
+                autocomplete="nickname" />
             </div>
 
             <div class="form-item">
               <label class="form-label">性别</label>
               <div class="radio-row">
-                <label class="radio-item"><input v-model="form.gender" type="radio" :value="1" /> 男</label>
-                <label class="radio-item"><input v-model="form.gender" type="radio" :value="2" /> 女</label>
-                <label class="radio-item"><input v-model="form.gender" type="radio" :value="0" /> 保密</label>
+                <label class="radio-item"><FormRadio v-model="form.gender" :value="1" /> 男</label>
+                <label class="radio-item"><FormRadio v-model="form.gender" :value="2" /> 女</label>
+                <label class="radio-item"><FormRadio v-model="form.gender" :value="0" /> 保密</label>
               </div>
             </div>
 
@@ -224,14 +222,12 @@
 
             <div class="form-item">
               <label class="form-label" for="profile-desc">个人简介</label>
-              <textarea
+              <FormTextarea
                 id="profile-desc"
                 v-model="form.description"
-                class="textarea"
                 rows="4"
                 maxlength="200"
-                placeholder="介绍一下自己吧"
-              />
+                placeholder="介绍一下自己吧" />
               <div class="char-count" :class="{ 'is-full': form.description.length >= 200 }">
                 {{ form.description.length }}/200
               </div>
@@ -239,14 +235,13 @@
 
             <div class="form-item">
               <label class="form-label">个人网站</label>
-              <input v-model="form.websiteName" class="input" placeholder="网站名称" maxlength="50" />
-              <input
+              <FormInput v-model="form.websiteName" placeholder="网站名称" maxlength="50" />
+              <FormInput
                 v-model="form.websiteUrl"
-                class="input website-url"
+                class="website-url"
                 placeholder="https://blog.example.com"
                 maxlength="100"
-                inputmode="url"
-              />
+                inputmode="url" />
               <p class="hint">展示在你的个人主页上，两项都留空表示不展示</p>
             </div>
 
@@ -303,6 +298,9 @@
 </template>
 
 <script setup>
+import FormRadio from '@/components/form/FormRadio.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, reactive, computed, onMounted, watch, nextTick, defineAsyncComponent } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { useSiteStore } from '@/stores/site'

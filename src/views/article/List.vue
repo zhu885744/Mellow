@@ -14,13 +14,12 @@
           @click="setFilter({ group: null, tag: null })"
         >全部</button>
         <span class="filter-divider">|</span>
-        <SelectMenu
+        <FormSelect variant="pill"
           v-model="filter.sort"
           :options="sortOptions"
           icon="bi bi-sort-down"
           placeholder="排序方式"
-          @change="reload"
-        />
+          @change="reload" />
       </div>
     </div>
 
@@ -42,6 +41,7 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
 import { ref, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import SectionTitle from '@/components/SectionTitle.vue'
@@ -49,7 +49,6 @@ import ArticleCard from '@/components/ArticleCard.vue'
 import ArticleSkeleton from '@/components/ArticleSkeleton.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmptyState from '@/components/EmptyState.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { listArticles } from '@/api/article'
 
 const route = useRoute()

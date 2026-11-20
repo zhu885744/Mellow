@@ -69,14 +69,13 @@
         <div class="filter-right">
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索 IP 或备注…"
               aria-label="搜索 IP 或备注"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
 
           <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -122,14 +121,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 条</span>
         </div>
@@ -147,13 +144,11 @@
             <tr v-for="item in list" :key="item.id" :class="{ 'is-selected': isSelected(item.id) }">
               <td class="cell-pick">
                 <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-                  <input
-                    type="checkbox"
-                    :checked="isSelected(item.id)"
+                  <FormCheckbox
+                    :model-value="isSelected(item.id)"
                     :disabled="busy"
                     :aria-label="`选择记录 ${item.ip}`"
-                    @change="toggleSelect(item.id)"
-                  />
+                    @change="toggleSelect(item.id)" />
                 </label>
               </td>
               <td>
@@ -210,13 +205,13 @@
     >
       <div class="form-item">
         <label class="form-label">IP 地址</label>
-        <input v-model="edit.ip" class="input" type="text" placeholder="必填，如 192.168.1.1" />
+        <FormInput v-model="edit.ip" type="text" placeholder="必填，如 192.168.1.1" />
         <p class="form-hint">后端会校验唯一性，重复的 IP 会提示「已存在白名单中」</p>
       </div>
 
       <div class="form-item">
         <label class="form-label">备注</label>
-        <input v-model="edit.remark" class="input" type="text" placeholder="可选，便于区分来源" />
+        <FormInput v-model="edit.remark" type="text" placeholder="可选，便于区分来源" />
       </div>
     </AdminFormDialog>
 
@@ -234,6 +229,8 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * IP 白名单（/admin/ip/white）
@@ -389,7 +386,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

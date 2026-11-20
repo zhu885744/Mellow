@@ -37,40 +37,36 @@
       </div>
 
       <div class="filter-right">
-        <SelectMenu
+        <FormSelect variant="pill"
           v-model="group"
           :options="groupOptions"
           icon="bi bi-collection"
           placeholder="全部分组"
-          @change="reload"
-        />
+          @change="reload" />
 
-        <SelectMenu
+        <FormSelect variant="pill"
           v-model="sortKey"
           :options="sortOptions"
           :disabled="trash"
           icon="bi bi-sort-down"
           placeholder="排序方式"
-          @change="reload"
-        />
+          @change="reload" />
 
-        <SelectMenu
+        <FormSelect variant="pill"
           v-model="searchField"
           :options="searchFields"
           icon="bi bi-funnel"
-          placeholder="搜索字段"
-        />
+          placeholder="搜索字段" />
 
         <div class="search-box">
           <i class="bi bi-search" aria-hidden="true" />
-          <input
+          <FormInput
             v-model="keyword"
             class="search-input"
             type="search"
             placeholder="搜索友链…"
             aria-label="搜索友链"
-            @input="doSearch"
-          />
+            @input="doSearch" />
         </div>
 
         <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -125,14 +121,12 @@
     <template v-else>
       <div class="list-head-row">
         <label class="pick" title="全选本页">
-          <input
+          <FormCheckbox
             ref="selectAllRef"
-            type="checkbox"
-            :checked="pageAllSelected"
+            :model-value="pageAllSelected"
             :disabled="busy"
             aria-label="全选本页"
-            @change="toggleSelectAll"
-          />
+            @change="toggleSelectAll" />
         </label>
         <span class="list-head-text">本页 {{ list.length }} 条</span>
       </div>
@@ -140,13 +134,11 @@
       <ul class="link-list">
         <li v-for="item in list" :key="item.id" class="link-row" :class="{ 'is-selected': isSelected(item.id) }">
           <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-            <input
-              type="checkbox"
-              :checked="isSelected(item.id)"
+            <FormCheckbox
+              :model-value="isSelected(item.id)"
               :disabled="busy"
               :aria-label="`选择友链 ${item.nickname || item.id}`"
-              @change="toggleSelect(item.id)"
-            />
+              @change="toggleSelect(item.id)" />
           </label>
 
           <div class="link-avatar">
@@ -252,17 +244,17 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">站点名称</label>
-          <input v-model="edit.nickname" class="input" type="text" maxlength="32" placeholder="必填" />
+          <FormInput v-model="edit.nickname" type="text" maxlength="32" placeholder="必填" />
         </div>
         <div class="form-item">
           <label class="form-label">站点链接</label>
-          <input v-model="edit.url" class="input" type="text" placeholder="必填，需带 http(s)://" />
+          <FormInput v-model="edit.url" type="text" placeholder="必填，需带 http(s)://" />
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">站点描述</label>
-        <textarea v-model="edit.description" class="textarea" rows="2" placeholder="可选" />
+        <FormTextarea v-model="edit.description" rows="2" placeholder="可选" />
       </div>
 
       <div class="form-item">
@@ -279,7 +271,7 @@
             </button>
           </div>
           <div class="cover-fields">
-            <input v-model="edit.avatar" class="input" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
+            <FormInput v-model="edit.avatar" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
             <div class="cover-actions">
               <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickAvatar">
                 <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
@@ -305,23 +297,23 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">所属分组</label>
-          <SelectMenu v-model="edit.group" variant="field" :options="editGroupOptions" />
+          <FormSelect v-model="edit.group" :options="editGroupOptions" />
         </div>
         <div class="form-item">
           <label class="form-label">打开方式</label>
-          <SelectMenu v-model="edit.target" variant="field" :options="LINK_TARGET_OPTIONS" />
+          <FormSelect v-model="edit.target" :options="LINK_TARGET_OPTIONS" />
         </div>
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">审核状态</label>
-          <SelectMenu v-model="edit.audit" variant="field" :options="AUDIT_OPTIONS" />
+          <FormSelect v-model="edit.audit" :options="AUDIT_OPTIONS" />
           <p class="form-hint">审核状态、驳回原因与备注仅管理员可修改</p>
         </div>
         <div class="form-item">
           <label class="form-label">备注</label>
-          <input v-model="edit.remark" class="input" type="text" placeholder="仅管理员可见" />
+          <FormInput v-model="edit.remark" type="text" placeholder="仅管理员可见" />
         </div>
       </div>
 
@@ -331,13 +323,11 @@
           驳回原因
           <span class="form-hint-inline">选填 · 作者可见</span>
         </label>
-        <textarea
+        <FormTextarea
           v-model="edit.reason"
-          class="textarea"
           rows="2"
           maxlength="512"
-          placeholder="如：站点内容与本站定位不符 / 暂时无法访问"
-        />
+          placeholder="如：站点内容与本站定位不符 / 暂时无法访问" />
       </div>
     </AdminFormDialog>
 
@@ -372,6 +362,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 友链列表（/admin/links 子路由）
@@ -391,7 +385,6 @@ import { ref, reactive, computed, watchEffect, inject, onMounted, onUnmounted } 
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import AuditDialog from '@/components/admin/AuditDialog.vue'
 import OwnerInfo from '@/components/admin/OwnerInfo.vue'
@@ -673,7 +666,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

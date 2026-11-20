@@ -34,38 +34,34 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-if="source === 'system'"
             v-model="date"
             :options="dateOptions"
             icon="bi bi-calendar3"
             placeholder="选择日期"
-            @change="onDateChange"
-          />
-          <SelectMenu
+            @change="onDateChange" />
+          <FormSelect variant="pill"
             v-model="file"
             :options="fileOptions"
             icon="bi bi-file-earmark-text"
             placeholder="选择文件"
-            @change="reloadFromFirstPage"
-          />
-          <SelectMenu
+            @change="reloadFromFirstPage" />
+          <FormSelect variant="pill"
             v-model="level"
             :options="levelOptions"
             icon="bi bi-funnel"
             placeholder="全部级别"
-            @change="reloadFromFirstPage"
-          />
+            @change="reloadFromFirstPage" />
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索关键字…"
               aria-label="搜索日志关键字"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
         </div>
       </div>
@@ -181,8 +177,9 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import { computed, onMounted, ref } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import { listLogDates, listLogFiles, readLog } from '@/api/log'

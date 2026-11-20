@@ -19,19 +19,19 @@
         <em v-if="needReason" class="audit-reason-tag is-required">必填</em>
         <em v-else class="audit-reason-tag">选填</em>
       </span>
-      <textarea
+      <FormTextarea
         v-model="reason"
-        class="textarea audit-reason-input"
+        class="audit-reason-input"
         rows="3"
         maxlength="512"
-        :placeholder="needReason ? '说明不通过的原因，作者会在通知与「我的内容」里看到' : '可选：补充说明，作者可见'"
-      />
+        :placeholder="needReason ? '说明不通过的原因，作者会在通知与「我的内容」里看到' : '可选：补充说明，作者可见'" />
       <span class="audit-reason-hint">{{ reason.length }}/512 · 原因会随通知一起发给作者</span>
     </label>
   </ConfirmDialog>
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
 /**
  * 审核驳回弹窗（动态 / 文章 / 友链后台列表共用）
  *

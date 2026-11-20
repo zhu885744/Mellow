@@ -41,26 +41,20 @@
       <div class="grid-2">
         <div class="form-item">
           <label class="form-label">签到开关</label>
-          <label class="switch">
-            <input v-model.number="form.enabled" type="checkbox" :true-value="1" :false-value="0" />
-            <span>{{ form.enabled ? '已开启' : '已关闭（前台不再展示签到）' }}</span>
-          </label>
+          <FormCheckbox variant="switch" v-model.number="form.enabled" :true-value="1" :false-value="0" :label="form.enabled ? '已开启' : '已关闭（前台不再展示签到）'" />
         </div>
         <div class="form-item">
           <label class="form-label">名称</label>
-          <input v-model="form.name" class="input" type="text" maxlength="16" placeholder="每日签到" />
+          <FormInput v-model="form.name" type="text" maxlength="16" placeholder="每日签到" />
         </div>
         <div class="form-item">
           <label class="form-label">每日重置时间</label>
-          <SelectMenu v-model="form.reset_hour" variant="field" :options="RESET_HOURS" />
+          <FormSelect v-model="form.reset_hour" :options="RESET_HOURS" />
           <p class="form-hint">选择 4 点表示凌晨 4 点之前仍算前一天，方便熬夜用户。</p>
         </div>
         <div class="form-item">
           <label class="form-label">签到成功通知</label>
-          <label class="switch">
-            <input v-model.number="form.notice" type="checkbox" :true-value="1" :false-value="0" />
-            <span>{{ form.notice ? '发送站内信' : '不发送' }}</span>
-          </label>
+          <FormCheckbox variant="switch" v-model.number="form.notice" :true-value="1" :false-value="0" :label="form.notice ? '发送站内信' : '不发送'" />
         </div>
       </div>
     </section>
@@ -82,22 +76,19 @@
       <div class="grid-2">
         <div class="form-item">
           <label class="form-label">启用</label>
-          <label class="switch">
-            <input v-model.number="form.streak.enabled" type="checkbox" :true-value="1" :false-value="0" />
-            <span>{{ form.streak.enabled ? '已启用' : '未启用' }}</span>
-          </label>
+          <FormCheckbox variant="switch" v-model.number="form.streak.enabled" :true-value="1" :false-value="0" :label="form.streak.enabled ? '已启用' : '未启用'" />
         </div>
         <div class="form-item">
           <label class="form-label">奖励类型</label>
-          <SelectMenu v-model="form.streak.asset" variant="field" :options="assetOptions" />
+          <FormSelect v-model="form.streak.asset" :options="assetOptions" />
         </div>
         <div class="form-item">
           <label class="form-label">每连续一天额外奖励</label>
-          <input v-model.number="form.streak.per_day" class="input" type="number" min="0" step="1" />
+          <FormInput v-model.number="form.streak.per_day" type="number" min="0" step="1" />
         </div>
         <div class="form-item">
           <label class="form-label">加成上限</label>
-          <input v-model.number="form.streak.max" class="input" type="number" min="0" step="1" placeholder="0 = 不封顶" />
+          <FormInput v-model.number="form.streak.max" type="number" min="0" step="1" placeholder="0 = 不封顶" />
         </div>
       </div>
       <p class="hint">连续第 N 天额外奖励 = min(N × 每连续一天, 上限)。</p>
@@ -107,25 +98,19 @@
     <section class="card card-pad">
       <header class="block-head">
         <h3 class="block-title"><i class="bi bi-calendar3-week" /> 周期奖励</h3>
-        <label class="switch">
-          <input v-model.number="form.cycle.enabled" type="checkbox" :true-value="1" :false-value="0" />
-          <span>{{ form.cycle.enabled ? '已启用' : '未启用' }}</span>
-        </label>
+        <FormCheckbox variant="switch" v-model.number="form.cycle.enabled" :true-value="1" :false-value="0" :label="form.cycle.enabled ? '已启用' : '未启用'" />
       </header>
       <p class="block-desc">连签第 N 天额外发放，例如常见的「7 天一轮，第 7 天有大奖」。</p>
 
       <template v-if="form.cycle.enabled">
         <div class="form-item">
-          <label class="switch">
-            <input v-model.number="form.cycle.loop" type="checkbox" :true-value="1" :false-value="0" />
-            <span>{{ form.cycle.loop ? '循环（第 8 天重新从第 1 天算）' : '不循环（超过天数按最后一天算）' }}</span>
-          </label>
+          <FormCheckbox variant="switch" v-model.number="form.cycle.loop" :true-value="1" :false-value="0" :label="form.cycle.loop ? '循环（第 8 天重新从第 1 天算）' : '不循环（超过天数按最后一天算）'" />
         </div>
 
         <div v-for="(day, index) in form.cycle.days" :key="index" class="sub-card">
           <div class="sub-card-head">
             <span class="sub-card-title">第 {{ index + 1 }} 天</span>
-            <input v-model="day.label" class="input sub-card-label" type="text" maxlength="16" placeholder="标签（可选）" />
+            <FormInput v-model="day.label" class="sub-card-label" type="text" maxlength="16" placeholder="标签（可选）" />
             <button class="btn btn-ghost btn-sm" type="button" title="删除该天" @click="removeDay(index)">
               <i class="bi bi-trash" />
             </button>
@@ -156,9 +141,9 @@
       <div v-for="(item, index) in form.milestones" :key="index" class="sub-card">
         <div class="sub-card-head">
           <span class="sub-card-title">连续</span>
-          <input v-model.number="item.day" class="input sub-card-day" type="number" min="1" step="1" />
+          <FormInput v-model.number="item.day" class="sub-card-day" type="number" min="1" step="1" />
           <span class="sub-card-title">天</span>
-          <input v-model="item.label" class="input sub-card-label" type="text" maxlength="16" placeholder="标签（可选）" />
+          <FormInput v-model="item.label" class="sub-card-label" type="text" maxlength="16" placeholder="标签（可选）" />
           <button class="btn btn-ghost btn-sm" type="button" title="删除" @click="removeLadder('milestones', index)">
             <i class="bi bi-trash" />
           </button>
@@ -186,9 +171,9 @@
       <div v-for="(item, index) in form.monthly" :key="index" class="sub-card">
         <div class="sub-card-head">
           <span class="sub-card-title">当月签到满</span>
-          <input v-model.number="item.day" class="input sub-card-day" type="number" min="1" step="1" />
+          <FormInput v-model.number="item.day" class="sub-card-day" type="number" min="1" step="1" />
           <span class="sub-card-title">天</span>
-          <input v-model="item.label" class="input sub-card-label" type="text" maxlength="16" placeholder="标签（可选）" />
+          <FormInput v-model="item.label" class="sub-card-label" type="text" maxlength="16" placeholder="标签（可选）" />
           <button class="btn btn-ghost btn-sm" type="button" title="删除" @click="removeLadder('monthly', index)">
             <i class="bi bi-trash" />
           </button>
@@ -214,27 +199,24 @@
       <div class="grid-2">
         <div class="form-item">
           <label class="form-label">启用</label>
-          <label class="switch">
-            <input v-model.number="form.makeup.enabled" type="checkbox" :true-value="1" :false-value="0" />
-            <span>{{ form.makeup.enabled ? '已启用' : '未启用' }}</span>
-          </label>
+          <FormCheckbox variant="switch" v-model.number="form.makeup.enabled" :true-value="1" :false-value="0" :label="form.makeup.enabled ? '已启用' : '未启用'" />
         </div>
         <div class="form-item">
           <label class="form-label">可补签天数</label>
-          <input v-model.number="form.makeup.days" class="input" type="number" min="1" step="1" placeholder="7" />
+          <FormInput v-model.number="form.makeup.days" type="number" min="1" step="1" placeholder="7" />
           <p class="form-hint">只能补最近 N 天内、且没有签到过的日期</p>
         </div>
         <div class="form-item">
           <label class="form-label">每月次数上限</label>
-          <input v-model.number="form.makeup.limit" class="input" type="number" min="0" step="1" placeholder="0 = 不限制" />
+          <FormInput v-model.number="form.makeup.limit" type="number" min="0" step="1" placeholder="0 = 不限制" />
         </div>
         <div class="form-item">
           <label class="form-label">消耗类型</label>
-          <SelectMenu v-model="form.makeup.asset" variant="field" :options="assetOptions" />
+          <FormSelect v-model="form.makeup.asset" :options="assetOptions" />
         </div>
         <div class="form-item">
           <label class="form-label">每次消耗</label>
-          <input v-model.number="form.makeup.cost" class="input" type="number" min="0" step="1" placeholder="20" />
+          <FormInput v-model.number="form.makeup.cost" type="number" min="0" step="1" placeholder="20" />
         </div>
       </div>
       <p class="hint">
@@ -248,7 +230,7 @@
     <section class="card card-pad">
       <h3 class="block-title"><i class="bi bi-chat-quote" /> 签到文案</h3>
       <p class="block-desc">签到成功后随机展示一条，每行一条。</p>
-      <textarea v-model="form.tips" class="textarea" rows="5" placeholder="签到成功，今天也要元气满满～" />
+      <FormTextarea v-model="form.tips" rows="5" placeholder="签到成功，今天也要元气满满～" />
     </section>
 
     <div class="foot-actions">
@@ -260,6 +242,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 签到管理（/admin/checkin）
  *
@@ -279,7 +265,6 @@
  * 前端不写死类型，资产清单从 /api/checkin/rules 拉取。
  */
 import { ref, reactive, computed, onMounted } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import RewardItemsEditor from '@/components/admin/RewardItemsEditor.vue'
 import { getCheckinConfig, saveCheckinConfig, getCheckinRules } from '@/api/checkin'
 // 卡密奖励不再依赖「积分 → 卡密」的池子（卡密内容在奖励项里自己填），因此这里不再拉卡密统计

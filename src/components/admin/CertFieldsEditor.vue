@@ -7,18 +7,17 @@
     <div v-for="(field, index) in list" :key="index" class="cf-card">
       <header class="cf-head">
         <span class="cf-index">{{ index + 1 }}</span>
-        <input
+        <FormInput
           v-model="field.label"
-          class="input cf-label"
+          class="cf-label"
           type="text"
           maxlength="20"
-          placeholder="字段名称，如「公司 / 组织」"
-        />
+          placeholder="字段名称，如「公司 / 组织」" />
         <div class="cf-type">
-          <SelectMenu v-model="field.type" variant="field" :options="CERT_FIELD_TYPES" />
+          <FormSelect v-model="field.type" :options="CERT_FIELD_TYPES" />
         </div>
         <label class="cf-check">
-          <input v-model="field.required" type="checkbox" />
+          <FormCheckbox v-model="field.required" />
           必填
         </label>
         <button class="btn btn-ghost btn-sm" type="button" title="删除该字段" @click="remove(index)">
@@ -29,31 +28,29 @@
       <div class="cf-grid">
         <div class="form-item">
           <label class="form-label">存储键</label>
-          <input v-model="field.key" class="input" type="text" maxlength="32" placeholder="英文 / 数字 / 下划线，如 company" />
+          <FormInput v-model="field.key" type="text" maxlength="32" placeholder="英文 / 数字 / 下划线，如 company" />
           <p v-if="keyError(index)" class="cf-warn"><i class="bi bi-exclamation-triangle" /> {{ keyError(index) }}</p>
           <p v-else-if="CERT_SYSTEM_KEYS[field.key]" class="form-hint">{{ CERT_SYSTEM_KEYS[field.key] }}</p>
         </div>
         <div class="form-item">
           <label class="form-label">输入提示</label>
-          <input v-model="field.placeholder" class="input" type="text" maxlength="64" placeholder="可选，显示在输入框内" />
+          <FormInput v-model="field.placeholder" type="text" maxlength="64" placeholder="可选，显示在输入框内" />
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">字段说明</label>
-        <input
+        <FormInput
           v-model="field.hint"
-          class="input"
           type="text"
           maxlength="100"
-          placeholder="可选，显示在输入框下方（说明用途，不要写营销话术）"
-        />
+          placeholder="可选，显示在输入框下方（说明用途，不要写营销话术）" />
       </div>
 
       <!-- 图片：张数上限 -->
       <div v-if="field.type === 'image'" class="form-item cf-inline">
         <label class="form-label">最多上传</label>
-        <input v-model.number="field.max_count" class="input cf-num" type="number" min="1" max="12" />
+        <FormInput v-model.number="field.max_count" class="cf-num" type="number" min="1" max="12" />
         <span class="form-hint">张（1 ~ 12，留空按 6）</span>
       </div>
 
@@ -69,14 +66,12 @@
           </span>
         </div>
         <div class="cf-option-add">
-          <input
+          <FormInput
             v-model="drafts[index]"
-            class="input"
             type="text"
             maxlength="32"
             placeholder="输入候选值后回车添加"
-            @keydown.enter.prevent="addOption(index)"
-          />
+            @keydown.enter.prevent="addOption(index)" />
           <button class="btn btn-sm" type="button" @click="addOption(index)">添加</button>
         </div>
         <p v-if="field.key === 'category'" class="form-hint">
@@ -87,21 +82,21 @@
       <!-- 文本类：长度上限 -->
       <div v-if="field.type === 'text' || field.type === 'textarea'" class="form-item cf-inline">
         <label class="form-label">最大字符数</label>
-        <input v-model.number="field.max" class="input cf-num" type="number" min="0" max="2000" placeholder="0 = 默认" />
+        <FormInput v-model.number="field.max" class="cf-num" type="number" min="0" max="2000" placeholder="0 = 默认" />
         <span class="form-hint">0 表示按类型默认（单行 64 / 多行 500）</span>
       </div>
 
       <div class="cf-flags">
         <label class="cf-check">
-          <input v-model="field.public" type="checkbox" />
+          <FormCheckbox v-model="field.public" />
           公开展示
         </label>
         <label class="cf-check">
-          <input v-model="field.admin_only" type="checkbox" />
+          <FormCheckbox v-model="field.admin_only" />
           仅后台可见
         </label>
         <label v-if="field.type === 'select'" class="cf-check">
-          <input v-model="field.multiple" type="checkbox" />
+          <FormCheckbox v-model="field.multiple" />
           允许多选
         </label>
       </div>
@@ -115,6 +110,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 认证申请字段编辑器（后台「认证类型」页复用）
  *
@@ -127,7 +125,6 @@
  *   - 其它键的值进记录的 data JSON，前台只展示「公开展示」且非「仅后台可见」的项。
  */
 import { computed, reactive } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { CERT_FIELD_TYPES, CERT_SYSTEM_KEYS } from '@/api/cert-type'
 
 const props = defineProps({

@@ -83,35 +83,33 @@
             <form class="install-form" @submit.prevent="connectDB">
               <label class="form-item">
                 <span class="form-label">主机地址</span>
-                <input v-model="form.hostname" class="input" type="text" required placeholder="localhost" />
+                <FormInput v-model="form.hostname" type="text" required placeholder="localhost" />
               </label>
               <label class="form-item">
                 <span class="form-label">端口</span>
-                <input v-model="form.hostport" class="input" type="number" required placeholder="3306" />
+                <FormInput v-model="form.hostport" type="number" required placeholder="3306" />
               </label>
               <label class="form-item">
                 <span class="form-label">数据库名</span>
-                <input v-model="form.database" class="input" type="text" required placeholder="需提前创建" />
+                <FormInput v-model="form.database" type="text" required placeholder="需提前创建" />
               </label>
               <label class="form-item">
                 <span class="form-label">用户名</span>
-                <input v-model="form.username" class="input" type="text" required autocomplete="off" />
+                <FormInput v-model="form.username" type="text" required autocomplete="off" />
               </label>
               <label class="form-item">
                 <span class="form-label">密码</span>
-                <input
+                <FormInput
                   v-model="form.password"
-                  class="input"
                   type="password"
                   required
-                  autocomplete="new-password"
-                />
+                  autocomplete="new-password" />
               </label>
               <!-- 用 div 而不是 label：SelectMenu 的触发器是 button，
                    label 会把点击再转发一次，导致下拉刚打开就被关掉 -->
               <div class="form-item">
                 <span class="form-label">字符集</span>
-                <SelectMenu v-model="form.charset" variant="field" :options="CHARSET_OPTIONS" />
+                <FormSelect v-model="form.charset" :options="CHARSET_OPTIONS" />
               </div>
 
               <button
@@ -173,6 +171,8 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 安装向导（/install）
  *
@@ -184,7 +184,6 @@
  * 与老版 public/install.html 的步骤完全一致：检查 → 连接数据库 → 初始化 → 完成。
  */
 import { computed, onMounted, reactive, ref } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { installCheck, installConnectDB, installInfo, installInitDB, installLock } from '@/api/install'
 
 const steps = [

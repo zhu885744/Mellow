@@ -72,22 +72,18 @@
         <p class="oauth-note">
           将使用 {{ platformName }} 的昵称与头像建号，邮箱与密码需自行设置（用于登录与找回密码）。
         </p>
-        <input
+        <FormInput
           v-model="registerForm.email"
-          class="input"
           type="email"
           autocomplete="email"
-          placeholder="邮箱"
-        />
+          placeholder="邮箱" />
         <div class="oauth-code-row">
-          <input
+          <FormInput
             v-model="registerForm.code"
-            class="input"
             type="text"
             inputmode="numeric"
             autocomplete="one-time-code"
-            placeholder="邮箱验证码"
-          />
+            placeholder="邮箱验证码" />
           <button
             type="button"
             class="btn"
@@ -95,20 +91,16 @@
             @click="sendEmailCode"
           >{{ codeCountdown > 0 ? `${codeCountdown}s` : '获取验证码' }}</button>
         </div>
-        <input
+        <FormInput
           v-model="registerForm.password"
-          class="input"
           type="password"
           autocomplete="new-password"
-          placeholder="设置密码（至少 6 位，不能是纯数字）"
-        />
-        <input
+          placeholder="设置密码（至少 6 位，不能是纯数字）" />
+        <FormInput
           v-model="registerForm.password2"
-          class="input"
           type="password"
           autocomplete="new-password"
-          placeholder="确认密码"
-        />
+          placeholder="确认密码" />
         <button class="btn btn-primary btn-block" type="submit" :disabled="submitting">
           {{ submitting ? '处理中…' : '创建并登录' }}
         </button>
@@ -116,20 +108,16 @@
 
       <!-- 绑定已有账号：账号 + 密码校验通过后绑定并登录 -->
       <form v-else class="oauth-form" @submit.prevent="doBindAccount">
-        <input
+        <FormInput
           v-model="form.account"
-          class="input"
           type="text"
           autocomplete="username"
-          placeholder="账号 / 邮箱 / 手机号"
-        />
-        <input
+          placeholder="账号 / 邮箱 / 手机号" />
+        <FormInput
           v-model="form.password"
-          class="input"
           type="password"
           autocomplete="current-password"
-          placeholder="密码"
-        />
+          placeholder="密码" />
         <button class="btn btn-primary btn-block" type="submit" :disabled="submitting">
           {{ submitting ? '绑定中…' : '绑定并登录' }}
         </button>
@@ -154,6 +142,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { oauthBindAccount, oauthRegisterByTicket, oauthSignIn } from '@/api/oauth'

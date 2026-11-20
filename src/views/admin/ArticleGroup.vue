@@ -39,12 +39,11 @@
         <div class="filter-right">
           <div class="search-box">
             <i class="bi bi-search" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
-              placeholder="搜索名称 / 标识 / 描述…"
-            />
+              placeholder="搜索名称 / 标识 / 描述…" />
           </div>
           <button class="btn btn-sm" :disabled="loading" @click="load()">
             <i class="bi bi-arrow-clockwise" /> 刷新
@@ -94,14 +93,12 @@
         <!-- 本页全选 -->
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy || !rows.length"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">共 {{ rows.length }} 个分类</span>
         </div>
@@ -114,13 +111,11 @@
             :class="{ 'is-selected': isSelected(g.id) }"
           >
             <label class="pick" :title="isSelected(g.id) ? '取消选择' : '选择'">
-              <input
-                type="checkbox"
-                :checked="isSelected(g.id)"
+              <FormCheckbox
+                :model-value="isSelected(g.id)"
                 :disabled="busy"
                 :aria-label="`选择分类 ${g.name || g.id}`"
-                @change="toggleSelect(g.id)"
-              />
+                @change="toggleSelect(g.id)" />
             </label>
 
             <div class="group-main" :style="{ paddingLeft: g.level * 22 + 'px' }">
@@ -182,23 +177,21 @@
     >
       <div class="form-item">
         <label class="form-label">上级分类</label>
-        <SelectMenu
+        <FormSelect
           v-model="dialog.pid"
-          variant="field"
           :options="pidSelectOptions"
-          placeholder="请选择上级分类"
-        />
+          placeholder="请选择上级分类" />
         <p class="form-hint">可选择任意层级作为父分类；编辑时不可选择自身及其子分类</p>
       </div>
 
       <div class="form-item">
         <label class="form-label">分类名称</label>
-        <input v-model="dialog.name" class="input" type="text" maxlength="32" placeholder="请输入分类名称" />
+        <FormInput v-model="dialog.name" type="text" maxlength="32" placeholder="请输入分类名称" />
       </div>
 
       <div class="form-item">
         <label class="form-label">唯一识别码</label>
-        <input v-model="dialog.key" class="input" type="text" maxlength="64" placeholder="可选，如 tech（用于前台 /category/tech）" />
+        <FormInput v-model="dialog.key" type="text" maxlength="64" placeholder="可选，如 tech（用于前台 /category/tech）" />
         <p class="form-hint">仅支持字母、数字、下划线、中划线；留空则不使用前台标识路由</p>
       </div>
 
@@ -215,12 +208,10 @@
             <i class="bi bi-image" />
             <span>上传</span>
           </div>
-          <input
+          <FormInput
             v-model="dialog.avatar"
-            class="input"
             type="text"
-            placeholder="或直接粘贴图片链接"
-          />
+            placeholder="或直接粘贴图片链接" />
           <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickAvatar">
             {{ uploading ? '上传中...' : '上传' }}
           </button>
@@ -241,13 +232,11 @@
 
       <div class="form-item">
         <label class="form-label">分类描述</label>
-        <textarea
+        <FormTextarea
           v-model="dialog.description"
-          class="textarea"
           rows="3"
           maxlength="200"
-          placeholder="可选，用于前台分类页展示"
-        />
+          placeholder="可选，用于前台分类页展示" />
       </div>
     </AdminFormDialog>
 
@@ -265,11 +254,14 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, reactive, computed, onMounted, watchEffect } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import {
   listArticleGroups,
   saveArticleGroup,
@@ -691,7 +683,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

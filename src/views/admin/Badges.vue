@@ -93,19 +93,18 @@
 
         <div class="filter-right">
           <label v-if="!trash && list.length" class="check-all" title="选择本页全部勋章">
-            <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
+            <FormCheckbox :model-value="allSelected" @change="toggleSelectAll" />
             全选本页
           </label>
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索勋章名称…"
               aria-label="搜索勋章名称"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
           <button class="btn btn-sm" :disabled="loading" @click="load()">
             <i class="bi bi-arrow-clockwise" /> 刷新
@@ -123,7 +122,7 @@
       <!-- 批量操作：勾选勋章后直接挪到某个分类（分类改了不影响发放条件） -->
       <div v-if="!trash && selectedIds.length" class="batch-bar">
         <span class="batch-count"><i class="bi bi-check2-square" /> 已选 {{ selectedIds.length }} 枚</span>
-        <SelectMenu v-model="batchCategory" :options="batchCategoryOptions" placeholder="目标分类" />
+        <FormSelect variant="pill" v-model="batchCategory" :options="batchCategoryOptions" placeholder="目标分类" />
         <button class="btn btn-primary btn-sm" :disabled="busy" @click="applyBatchMove">
           <i class="bi bi-arrow-right-square" /> 移动到该分类
         </button>
@@ -141,11 +140,9 @@
       <ul v-else class="badge-list">
         <li v-for="item in list" :key="item.id" class="badge-row">
           <label v-if="!trash" class="row-check" :title="`选择「${item.name}」`">
-            <input
-              type="checkbox"
-              :checked="selectedIds.includes(item.id)"
-              @change="toggleSelect(item.id)"
-            />
+            <FormCheckbox
+              :model-value="selectedIds.includes(item.id)"
+              @change="toggleSelect(item.id)" />
           </label>
           <span class="badge-icon" :style="iconStyle(item)">
             <img v-if="item.image" :src="item.image" :alt="item.name" loading="lazy" />
@@ -172,6 +169,9 @@
               </span>
               <span v-if="isLimited(item)" class="cond-chip is-limit" :title="limitText(item)">
                 <i class="bi bi-hourglass-split" /> {{ limitText(item) }}
+              </span>
+              <span v-if="renewChip(item)" class="cond-chip is-renew" :title="renewTip(item)">
+                <i class="bi bi-arrow-repeat" /> {{ renewChip(item) }}
               </span>
             </div>
             <p class="badge-desc">{{ item.description || '暂无说明' }}</p>
@@ -234,11 +234,11 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">勋章名称</label>
-          <input v-model="dialog.name" class="input" type="text" maxlength="64" placeholder="如「初出茅庐」" />
+          <FormInput v-model="dialog.name" type="text" maxlength="64" placeholder="如「初出茅庐」" />
         </div>
         <div class="form-item">
           <label class="form-label">排序</label>
-          <input v-model="dialog.sort" class="input" type="number" step="1" placeholder="数字越大越靠前" />
+          <FormInput v-model="dialog.sort" type="number" step="1" placeholder="数字越大越靠前" />
         </div>
       </div>
 
@@ -274,14 +274,14 @@
             <span class="icon-preview" :style="iconStyle(dialog)">
               <i :class="dialog.icon || 'bi bi-award'" />
             </span>
-            <input v-model="dialog.icon" class="input" type="text" placeholder="bi bi-award" />
+            <FormInput v-model="dialog.icon" type="text" placeholder="bi bi-award" />
           </div>
           <p class="form-hint">形如 <code>bi bi-award</code>，可在 icons.getbootstrap.com 查</p>
         </div>
         <div class="form-item">
           <label class="form-label">主题色</label>
           <div class="color-input">
-            <input v-model="dialog.color" class="input" type="text" placeholder="#d4a017" />
+            <FormInput v-model="dialog.color" type="text" placeholder="#d4a017" />
             <input v-model="dialog.color" class="color-picker" type="color" />
           </div>
         </div>
@@ -294,7 +294,7 @@
             <img v-if="dialog.image" :src="dialog.image" alt="" />
             <i v-else class="bi bi-image" />
           </span>
-          <input v-model="dialog.image" class="input" type="text" placeholder="填写图片 URL，留空则用图标" />
+          <FormInput v-model="dialog.image" type="text" placeholder="填写图片 URL，留空则用图标" />
         </div>
         <div class="image-actions">
           <button type="button" class="btn btn-sm" :disabled="uploadingImage" @click="pickBadgeImage">
@@ -314,24 +314,20 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">获得条件</label>
-          <SelectMenu
+          <FormSelect
             v-model="dialog.condition"
-            variant="field"
             :options="conditionOptions"
-            @change="onConditionChange"
-          />
+            @change="onConditionChange" />
         </div>
         <div class="form-item">
           <label class="form-label">条件阈值</label>
-          <input
+          <FormInput
             v-model="dialog.condition_value"
-            class="input"
             type="number"
             min="0"
             step="1"
             :disabled="dialog.condition === 'manual'"
-            :placeholder="conditionPlaceholder"
-          />
+            :placeholder="conditionPlaceholder" />
           <p class="form-hint">手动发放的勋章不需要阈值</p>
         </div>
       </div>
@@ -339,48 +335,52 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">稀有度</label>
-          <SelectMenu v-model="dialog.rarity" variant="field" :options="RARITY_OPTIONS" />
+          <FormSelect v-model="dialog.rarity" :options="RARITY_OPTIONS" />
           <p class="form-hint">只影响展示：描边、光效、标签</p>
         </div>
         <div class="form-item">
           <label class="form-label">获得后有效天数</label>
-          <input
+          <FormInput
             v-model="dialog.expire_days"
-            class="input"
             type="number"
             min="0"
             step="1"
-            placeholder="0 = 永久有效"
-          />
+            placeholder="0 = 永久有效" />
           <p class="form-hint">填 >0 即为限定勋章：按发放时间算过期，过期后不能佩戴</p>
         </div>
       </div>
 
+      <!-- 续期：档位与价格是这枚勋章自己的，用户过期后按这里的档位续费 -->
+      <RenewOptionsEditor v-model="dialog.renew" />
+      <p v-if="Number(dialog.expire_days) <= 0" class="form-hint">
+        当前勋章有效天数为 0（永久有效），续期档位不会在前台展示
+      </p>
+
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">可获取开始时间</label>
-          <input v-model="dialog.start_time" class="input" type="datetime-local" />
+          <FormInput v-model="dialog.start_time" type="datetime-local" />
         </div>
         <div class="form-item">
           <label class="form-label">可获取结束时间</label>
-          <input v-model="dialog.end_time" class="input" type="datetime-local" />
+          <FormInput v-model="dialog.end_time" type="datetime-local" />
         </div>
       </div>
       <p class="form-hint">留空 = 不限；窗口关上后不再自动发放，已经获得的不受影响</p>
 
       <div class="form-item">
         <label class="form-label">勋章说明</label>
-        <textarea v-model="dialog.description" class="textarea" rows="2" placeholder="展示给用户的获得说明，留空则按条件自动生成" />
+        <FormTextarea v-model="dialog.description" rows="2" placeholder="展示给用户的获得说明，留空则按条件自动生成" />
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">状态</label>
-          <SelectMenu v-model="dialog.status" variant="field" :options="STATUS_OPTIONS" />
+          <FormSelect v-model="dialog.status" :options="STATUS_OPTIONS" />
         </div>
         <div class="form-item">
           <label class="form-label">备注</label>
-          <input v-model="dialog.remark" class="input" type="text" placeholder="仅后台可见" />
+          <FormInput v-model="dialog.remark" type="text" placeholder="仅后台可见" />
         </div>
       </div>
     </AdminFormDialog>
@@ -414,13 +414,13 @@
 
       <div class="form-item">
         <label class="form-label">用户 ID</label>
-        <input v-model="grant.uids" class="input" type="text" placeholder="多个用户用逗号分隔，如 2,3,4" />
+        <FormInput v-model="grant.uids" type="text" placeholder="多个用户用逗号分隔，如 2,3,4" />
         <p class="form-hint">可以从「用户管理」里复制用户 ID</p>
       </div>
 
       <div class="form-item">
         <label class="form-label">备注（可选）</label>
-        <input v-model="grant.remark" class="input" type="text" placeholder="记录发放原因，如「活动奖励」" />
+        <FormInput v-model="grant.remark" type="text" placeholder="记录发放原因，如「活动奖励」" />
       </div>
     </AdminFormDialog>
 
@@ -480,11 +480,11 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">分类名称</label>
-          <input v-model="catDialog.name" class="input" type="text" maxlength="32" placeholder="如「限定勋章」" />
+          <FormInput v-model="catDialog.name" type="text" maxlength="32" placeholder="如「限定勋章」" />
         </div>
         <div class="form-item">
           <label class="form-label">排序</label>
-          <input v-model="catDialog.sort" class="input" type="number" step="1" placeholder="数字越大越靠前" />
+          <FormInput v-model="catDialog.sort" type="number" step="1" placeholder="数字越大越靠前" />
         </div>
       </div>
 
@@ -495,13 +495,13 @@
             <span class="icon-preview" :style="iconStyle(catDialog)">
               <i :class="catDialog.icon || 'bi bi-collection'" />
             </span>
-            <input v-model="catDialog.icon" class="input" type="text" placeholder="bi bi-collection" />
+            <FormInput v-model="catDialog.icon" type="text" placeholder="bi bi-collection" />
           </div>
         </div>
         <div class="form-item">
           <label class="form-label">主题色</label>
           <div class="color-input">
-            <input v-model="catDialog.color" class="input" type="text" placeholder="#4f7cff" />
+            <FormInput v-model="catDialog.color" type="text" placeholder="#4f7cff" />
             <input v-model="catDialog.color" class="color-picker" type="color" />
           </div>
         </div>
@@ -509,22 +509,20 @@
 
       <div class="form-item">
         <label class="form-label">分类说明（前台分组头部展示）</label>
-        <textarea
+        <FormTextarea
           v-model="catDialog.description"
-          class="textarea"
           rows="2"
-          placeholder="如「靠日常活跃攒出来的勋章」"
-        />
+          placeholder="如「靠日常活跃攒出来的勋章」" />
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">状态</label>
-          <SelectMenu v-model="catDialog.status" variant="field" :options="CATEGORY_STATUS_OPTIONS" />
+          <FormSelect v-model="catDialog.status" :options="CATEGORY_STATUS_OPTIONS" />
         </div>
         <div class="form-item">
           <label class="form-label">封面图（可选）</label>
-          <input v-model="catDialog.cover" class="input" type="text" placeholder="图片 URL，留空则不显示" />
+          <FormInput v-model="catDialog.cover" type="text" placeholder="图片 URL，留空则不显示" />
         </div>
       </div>
 
@@ -561,6 +559,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 勋章管理（/admin/badges）
@@ -577,8 +579,9 @@ import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
+import RenewOptionsEditor from '@/components/RenewOptionsEditor.vue'
+import { emptyRenewConfig, parseRenewConfig } from '@/utils/renew'
 import {
   listBadges,
   saveBadge,
@@ -696,6 +699,8 @@ const dialog = reactive({
   start_time: '',
   end_time: '',
   expire_days: 0,
+  // 续期档位（这枚勋章自己的，见 components/RenewOptionsEditor.vue）
+  renew: emptyRenewConfig(),
   sort: 0,
   status: 1,
   remark: ''
@@ -922,6 +927,7 @@ function resetDialog(categoryId = 0) {
     start_time: '',
     end_time: '',
     expire_days: 0,
+    renew: emptyRenewConfig(),
     sort: 0,
     status: 1,
     remark: ''
@@ -949,6 +955,8 @@ function openEdit(item) {
     start_time: toLocalInput(item.start_time),
     end_time: toLocalInput(item.end_time),
     expire_days: Number(item.expire_days) || 0,
+    // 列表返回的是库里的 JSON 字符串，统一解析成 { enabled, options }
+    renew: parseRenewConfig(item.renew),
     sort: Number(item.sort) || 0,
     status: Number(item.status ?? 1),
     remark: item.remark || ''
@@ -989,6 +997,7 @@ async function save() {
       start_time: toUnix(dialog.start_time),
       end_time: toUnix(dialog.end_time),
       expire_days: Math.max(0, Number(dialog.expire_days) || 0),
+      renew: dialog.renew,
       sort: Number(dialog.sort) || 0,
       status: Number(dialog.status)
     }
@@ -1308,6 +1317,23 @@ function limitText(item) {
   else if (item.start_time) parts.push(`${dateText(item.start_time)} 起`)
   if (Number(item.expire_days) > 0) parts.push(`有效 ${item.expire_days} 天`)
   return parts.join(' · ')
+}
+
+// 续期档位：价格是每枚勋章自己的，列表只给概览，明细放 title
+function renewOptionsOf(item) {
+  const config = parseRenewConfig(item.renew)
+  return config.enabled ? config.options : []
+}
+
+function renewChip(item) {
+  const count = renewOptionsOf(item).length
+  return count ? `续期 ${count} 档` : ''
+}
+
+function renewTip(item) {
+  return renewOptionsOf(item)
+    .map((option) => `${option.days} 天 / ${option.price} 积分`)
+    .join(' · ')
 }
 
 onMounted(() => {
@@ -1714,6 +1740,11 @@ onMounted(() => {
 .cond-chip.is-limit {
   color: #e08b00;
   background: rgba(240, 160, 32, 0.12);
+}
+/* 续期档位：与「限时」区分开（续期是运营配的付费选项，不是勋章本身的限制） */
+.cond-chip.is-renew {
+  color: #2f8f5b;
+  background: rgba(47, 143, 91, 0.12);
 }
 .badge-actions {
   display: flex;

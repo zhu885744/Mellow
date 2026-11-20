@@ -7,48 +7,40 @@
       </label>
 
       <!-- 单行文本 / 链接 -->
-      <input
+      <FormInput
         v-if="field.type === 'text' || field.type === 'link'"
         v-model="values[field.key]"
-        class="input"
         type="text"
         :maxlength="field.max || (field.type === 'link' ? 512 : 64)"
-        :placeholder="field.placeholder || ''"
-      />
+        :placeholder="field.placeholder || ''" />
 
       <!-- 多行文本 -->
-      <textarea
+      <FormTextarea
         v-else-if="field.type === 'textarea'"
         v-model="values[field.key]"
-        class="textarea"
         rows="3"
         :maxlength="field.max || 500"
-        :placeholder="field.placeholder || ''"
-      />
+        :placeholder="field.placeholder || ''" />
 
       <!-- 数字 / 日期 -->
-      <input
+      <FormInput
         v-else-if="field.type === 'number'"
         v-model="values[field.key]"
-        class="input cff-num"
+        class="cff-num"
         type="number"
-        :placeholder="field.placeholder || ''"
-      />
-      <input
+        :placeholder="field.placeholder || ''" />
+      <FormInput
         v-else-if="field.type === 'date'"
         v-model="values[field.key]"
-        class="input cff-num"
-        type="date"
-      />
+        class="cff-num"
+        type="date" />
 
       <!-- 单选下拉 -->
-      <SelectMenu
+      <FormSelect
         v-else-if="field.type === 'select' && !field.multiple"
         v-model="values[field.key]"
-        variant="field"
         :options="optionsOf(field)"
-        :placeholder="field.placeholder || '请选择'"
-      />
+        :placeholder="field.placeholder || '请选择'" />
 
       <!-- 多选：SelectMenu 不支持多选，这里用可点选的标签 -->
       <div v-else-if="field.type === 'select' && field.multiple" class="cff-chips">
@@ -91,6 +83,9 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 认证字段表单（用户申请页 / 后台改资料 共用）
  *
@@ -101,7 +96,6 @@
  * 字段类型：text / textarea / number / select（含多选）/ date / link / image。
  */
 import { computed, ref } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { uploadCertificationImages } from '@/api/user-certification'
 import { openLightbox } from '@/utils/lightbox'
 import { toast } from '@/utils/toast'

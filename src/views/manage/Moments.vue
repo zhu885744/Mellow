@@ -25,13 +25,12 @@
       </div>
       <div class="search-box">
         <i class="bi bi-search" />
-        <input
+        <FormInput
           v-model="keyword"
           class="search-input"
           type="search"
           placeholder="搜索内容…"
-          @input="doSearch"
-        />
+          @input="doSearch" />
       </div>
     </div>
 
@@ -190,32 +189,30 @@
 
               <div class="location-box">
                 <i class="bi bi-geo-alt" />
-                <input
+                <FormInput
                   v-model="editForm.location"
                   class="search-input"
                   type="text"
                   placeholder="位置（可选）"
-                  maxlength="64"
-                />
+                  maxlength="64" />
               </div>
 
               <!-- 可见范围：1 公开 / 2 登录可见 / 3 付费可见（积分兑换） -->
               <div class="scope-box">
                 <span class="scope-label">可见范围</span>
                 <ScopeRadio v-model="editForm.scope" :options="scopeOptions" />
-                <input
+                <FormInput
                   v-if="Number(editForm.scope) === 3"
                   v-model.number="editForm.scopeIntegral"
                   class="scope-input"
                   type="number"
                   min="1"
                   max="999999"
-                  placeholder="兑换所需积分"
-                />
+                  placeholder="兑换所需积分" />
               </div>
 
               <label class="switch-row">
-                <input v-model="editForm.status" type="checkbox" :true-value="1" :false-value="0" />
+                <FormCheckbox v-model="editForm.status" :true-value="1" :false-value="0" />
                 <span>{{ editForm.status === 1 ? '已发布' : '存为草稿' }}</span>
               </label>
             </div>
@@ -238,6 +235,8 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import EmptyState from '@/components/EmptyState.vue'

@@ -82,25 +82,20 @@
                 <div class="row-title">启用词库</div>
                 <p class="row-hint">关闭后所有场景直接放行，规则仍然保留</p>
               </div>
-              <label class="switch">
-                <input v-model="cfg.sensitive.enabled" type="checkbox" />
-                <span class="switch-slider" />
-              </label>
+              <FormCheckbox variant="switch" v-model="cfg.sensitive.enabled" />
             </div>
 
             <div class="grid-2">
               <div class="form-item">
                 <label class="form-label">缺省动作</label>
-                <SelectMenu
+                <FormSelect
                   v-model="cfg.sensitive.default_action"
-                  variant="field"
-                  :options="SENSITIVE_ACTION_OPTIONS"
-                />
+                  :options="SENSITIVE_ACTION_OPTIONS" />
                 <p class="row-hint">规则未单独指定动作时使用，建议保持「进审核」</p>
               </div>
               <div class="form-item">
                 <label class="form-label">当前版本</label>
-                <input class="input" :value="cfg.sensitive.version" readonly />
+                <FormInput :value="cfg.sensitive.version" readonly />
                 <p class="row-hint">每次保存自动 +1，命中审计按此版本回溯误伤</p>
               </div>
             </div>
@@ -108,12 +103,11 @@
 
           <div v-else class="form-item">
             <label class="form-label">规则文件（TOML）</label>
-            <textarea
+            <FormTextarea
               v-model="cfg.sensitiveContent"
-              class="textarea code"
+              class="code"
               rows="20"
-              spellcheck="false"
-            />
+              spellcheck="false" />
             <p class="row-hint">
               每条 [[rules]] 支持 word / action / scenes / level / match；action 可选
               block / limit / review / warn / log；[[whitelist]] 命中即放行。保存前会做 TOML
@@ -149,11 +143,11 @@
                 <div class="rule-fields">
                   <div class="form-item is-flat">
                     <label class="form-label">词条</label>
-                    <input v-model="rule.word" class="input" maxlength="64" placeholder="如：官方公告" />
+                    <FormInput v-model="rule.word" maxlength="64" placeholder="如：官方公告" />
                   </div>
                   <div class="form-item is-flat">
                     <label class="form-label">匹配方式</label>
-                    <SelectMenu v-model="rule.match" variant="field" :options="SENSITIVE_MATCH_OPTIONS" />
+                    <FormSelect v-model="rule.match" :options="SENSITIVE_MATCH_OPTIONS" />
                   </div>
                 </div>
                 <button class="icon-btn" title="删除" @click="removeSensitiveRule('whitelist', index)">
@@ -211,19 +205,19 @@
                 <div class="rule-fields is-four">
                   <div class="form-item is-flat">
                     <label class="form-label">词条</label>
-                    <input v-model="rule.word" class="input" maxlength="64" placeholder="如：广告" />
+                    <FormInput v-model="rule.word" maxlength="64" placeholder="如：广告" />
                   </div>
                   <div class="form-item is-flat">
                     <label class="form-label">处置动作</label>
-                    <SelectMenu v-model="rule.action" variant="field" :options="SENSITIVE_ACTION_OPTIONS" />
+                    <FormSelect v-model="rule.action" :options="SENSITIVE_ACTION_OPTIONS" />
                   </div>
                   <div class="form-item is-flat">
                     <label class="form-label">风险等级</label>
-                    <SelectMenu v-model="rule.level" variant="field" :options="SENSITIVE_LEVEL_OPTIONS" />
+                    <FormSelect v-model="rule.level" :options="SENSITIVE_LEVEL_OPTIONS" />
                   </div>
                   <div class="form-item is-flat">
                     <label class="form-label">匹配方式</label>
-                    <SelectMenu v-model="rule.match" variant="field" :options="SENSITIVE_MATCH_OPTIONS" />
+                    <FormSelect v-model="rule.match" :options="SENSITIVE_MATCH_OPTIONS" />
                   </div>
                 </div>
                 <button class="icon-btn" title="删除" @click="removeSensitiveRule('rules', index)">
@@ -274,16 +268,14 @@
           <div class="grid-2">
             <div class="form-item">
               <label class="form-label">场景</label>
-              <SelectMenu v-model="cfg.sensitiveTest.scene" variant="field" :options="SENSITIVE_SCENES" />
+              <FormSelect v-model="cfg.sensitiveTest.scene" :options="SENSITIVE_SCENES" />
             </div>
             <div class="form-item">
               <label class="form-label">测试文本</label>
-              <input
+              <FormInput
                 v-model="cfg.sensitiveTest.text"
-                class="input"
                 placeholder="输入一段文本，检查会命中哪条规则"
-                @keyup.enter="runSensitiveTest"
-              />
+                @keyup.enter="runSensitiveTest" />
             </div>
           </div>
 
@@ -319,8 +311,8 @@
               <p class="card-desc">按机审维度与场景聚合；私信 / 群聊不保存原文</p>
             </div>
             <div class="head-filters">
-              <SelectMenu v-model="cfg.sensitiveDays" variant="field" :options="SENSITIVE_STATS_DAYS" />
-              <SelectMenu v-model="cfg.sensitiveType" variant="field" :options="cfg.sensitiveTypeOptions" />
+              <FormSelect v-model="cfg.sensitiveDays" :options="SENSITIVE_STATS_DAYS" />
+              <FormSelect v-model="cfg.sensitiveType" :options="cfg.sensitiveTypeOptions" />
             </div>
           </div>
 
@@ -361,21 +353,18 @@
                 与敏感词库互补：本地同步快筛，云端异步兜底。凭据不全会自动失效，不会静默扣量
               </p>
             </div>
-            <label class="switch">
-              <input v-model="toml.audit.enabled" type="checkbox" />
-              <span class="switch-slider" />
-            </label>
+            <FormCheckbox variant="switch" v-model="toml.audit.enabled" />
           </div>
 
           <div class="grid-2">
             <div class="form-item">
               <label class="form-label">服务商</label>
-              <SelectMenu v-model="toml.audit.provider" variant="field" :options="AUDIT_PROVIDER_OPTIONS" />
+              <FormSelect v-model="toml.audit.provider" :options="AUDIT_PROVIDER_OPTIONS" />
               <p class="row-hint">目前只接入了百度内容安全</p>
             </div>
             <div class="form-item">
               <label class="form-label">请求超时（秒）</label>
-              <input v-model.number="toml.audit.baidu.timeout" class="input" type="number" min="1" max="60" />
+              <FormInput v-model.number="toml.audit.baidu.timeout" type="number" min="1" max="60" />
               <p class="row-hint">图片审核按此值 ×3（下限 10 秒）；超时按失败处理，不误伤内容状态</p>
             </div>
           </div>
@@ -396,23 +385,19 @@
 
           <div class="form-item">
             <label class="form-label">API Key</label>
-            <input
+            <FormInput
               v-model.trim="toml.audit.baidu.api_key"
-              class="input"
               autocomplete="off"
-              placeholder="百度智能云 → 内容安全 → 应用列表"
-            />
+              placeholder="百度智能云 → 内容安全 → 应用列表" />
           </div>
 
           <div class="form-item">
             <label class="form-label">Secret Key</label>
-            <input
+            <FormInput
               v-model.trim="toml.audit.baidu.secret_key"
-              class="input"
               type="password"
               autocomplete="new-password"
-              placeholder="只在服务器 config/audit.toml 里保存"
-            />
+              placeholder="只在服务器 config/audit.toml 里保存" />
           </div>
         </section>
 
@@ -427,20 +412,20 @@
           <div class="grid-2">
             <div class="form-item">
               <label class="form-label">文本审核策略 ID</label>
-              <input v-model.trim="toml.audit.baidu.text_strategy_id" class="input" placeholder="留空使用默认策略" />
+              <FormInput v-model.trim="toml.audit.baidu.text_strategy_id" placeholder="留空使用默认策略" />
             </div>
             <div class="form-item">
               <label class="form-label">图像审核策略 ID</label>
-              <input v-model.trim="toml.audit.baidu.image_strategy_id" class="input" placeholder="留空使用默认策略" />
+              <FormInput v-model.trim="toml.audit.baidu.image_strategy_id" placeholder="留空使用默认策略" />
             </div>
             <div class="form-item">
               <label class="form-label">并发协程</label>
-              <input v-model.number="toml.audit.baidu.workers" class="input" type="number" min="1" max="32" />
+              <FormInput v-model.number="toml.audit.baidu.workers" type="number" min="1" max="32" />
               <p class="row-hint">与账号 QPS 配额匹配，建议 2~8</p>
             </div>
             <div class="form-item">
               <label class="form-label">待审队列长度</label>
-              <input v-model.number="toml.audit.baidu.queue_size" class="input" type="number" min="16" max="8192" />
+              <FormInput v-model.number="toml.audit.baidu.queue_size" type="number" min="16" max="8192" />
               <p class="row-hint">队列满时丢弃本次并记日志，不会阻塞发布</p>
             </div>
           </div>
@@ -456,12 +441,10 @@
 
           <div class="form-item">
             <label class="form-label">测试文本</label>
-            <textarea
+            <FormTextarea
               v-model="toml.auditTest.text"
-              class="textarea"
               rows="3"
-              placeholder="粘贴一段文本，例如正常的句子或已知的违规词"
-            />
+              placeholder="粘贴一段文本，例如正常的句子或已知的违规词" />
           </div>
 
           <div class="card-foot">
@@ -499,6 +482,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 安全中心 · 内容审核（/admin/security/content）
  *
@@ -519,7 +506,6 @@
  *   POST /api/toml/audit-test          真实调用一次文本审核（会计费）
  */
 import { computed, reactive, ref, watch, onMounted } from 'vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import {
   getTomlSensitive,
   getTomlSensitiveStats,

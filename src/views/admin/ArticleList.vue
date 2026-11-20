@@ -39,32 +39,29 @@
         </div>
 
         <div class="filter-right">
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="groupId"
             :options="groupSelectOptions"
             icon="bi bi-folder2"
             placeholder="全部分类"
-            @change="reload"
-          />
+            @change="reload" />
 
-          <SelectMenu
+          <FormSelect variant="pill"
             v-model="sortKey"
             :options="sortOptions"
             :disabled="trash"
             icon="bi bi-sort-down"
             placeholder="排序方式"
-            @change="reload"
-          />
+            @change="reload" />
 
           <div class="search-box">
             <i class="bi bi-search" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索标题…"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
         </div>
       </div>
@@ -123,14 +120,12 @@
         <!-- 本页全选 -->
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy || !list.length"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 篇 · 共 {{ total }} 篇</span>
         </div>
@@ -138,11 +133,9 @@
         <ul class="post-list">
         <li v-for="item in list" :key="item.id" class="post-row" :class="{ 'is-selected': isSelected(item.id) }">
           <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-            <input
-              type="checkbox"
-              :checked="isSelected(item.id)"
-              @change="toggleSelect(item.id)"
-            />
+            <FormCheckbox
+              :model-value="isSelected(item.id)"
+              @change="toggleSelect(item.id)" />
           </label>
 
           <div class="post-cover" :class="{ 'is-trash': trash }" @click="onTitleClick(item)">
@@ -276,6 +269,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 文章列表（/admin/article 的子路由）
@@ -293,7 +289,6 @@ import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 import EmojiText from '@/components/EmojiText.vue'
 import ScopeBadge from '@/components/ScopeBadge.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AuditDialog from '@/components/admin/AuditDialog.vue'
 import {
   getArticles,
@@ -588,7 +583,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function toggleSelect(id) {

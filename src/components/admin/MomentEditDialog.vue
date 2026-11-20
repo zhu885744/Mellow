@@ -70,32 +70,30 @@
 
     <div class="location-box">
       <i class="bi bi-geo-alt" aria-hidden="true" />
-      <input
+      <FormInput
         v-model="form.location"
         class="dialog-input"
         type="text"
         placeholder="位置（可选）"
-        maxlength="64"
-      />
+        maxlength="64" />
     </div>
 
     <!-- 可见范围：1 公开 / 2 登录可见 / 3 付费可见（积分兑换），用单选框平铺 -->
     <div class="scope-box">
       <span class="scope-label">可见范围</span>
       <ScopeRadio v-model="form.scope" :options="scopeOptions" />
-      <input
+      <FormInput
         v-if="Number(form.scope) === 3"
         v-model.number="form.scopeIntegral"
         class="dialog-input scope-input"
         type="number"
         min="1"
         max="999999"
-        placeholder="兑换所需积分"
-      />
+        placeholder="兑换所需积分" />
     </div>
 
     <label class="switch-row">
-      <input v-model="form.status" type="checkbox" :true-value="1" :false-value="0" />
+      <FormCheckbox v-model="form.status" :true-value="1" :false-value="0" />
       <span>{{ form.status === 1 ? '已发布' : '存为草稿' }}</span>
     </label>
 
@@ -115,6 +113,8 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
 /**
  * 后台动态编辑弹窗
  *

@@ -13,18 +13,16 @@
     <form v-else class="auth-form" @submit.prevent="handleRegister">
       <div class="form-item">
         <label class="form-label">邮箱 / 手机号 *</label>
-        <input
+        <FormInput
           v-model="form.social"
-          class="input"
           required
-          placeholder="用于接收验证码"
-        />
+          placeholder="用于接收验证码" />
       </div>
 
       <div class="form-item">
         <label class="form-label">验证码 *</label>
         <div class="code-row">
-          <input v-model="form.code" class="input" required maxlength="6" />
+          <FormInput v-model="form.code" required maxlength="6" />
           <button
             type="button"
             class="btn"
@@ -38,24 +36,20 @@
 
       <div class="form-item">
         <label class="form-label">密码 *</label>
-        <input
+        <FormInput
           v-model="form.password"
-          class="input"
           type="password"
           required
           minlength="6"
-          autocomplete="new-password"
-        />
+          autocomplete="new-password" />
       </div>
 
       <div class="form-item">
         <label class="form-label">确认密码 *</label>
-        <input
+        <FormInput
           v-model="form.password2"
-          class="input"
           type="password"
-          required
-        />
+          required />
         <p v-if="form.password2 && form.password !== form.password2" class="form-error">
           两次密码不一致
         </p>
@@ -78,6 +72,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { register, registerSendCode } from '@/api/comm'

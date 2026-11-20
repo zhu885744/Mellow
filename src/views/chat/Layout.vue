@@ -46,12 +46,11 @@
       <div class="chat-search-row">
         <label class="chat-search">
           <i class="bi bi-search" aria-hidden="true" />
-          <input
+          <FormInput
             v-model="keyword"
             type="search"
             :placeholder="panel === 'contacts' ? '搜索好友 / 群聊' : '搜索'"
-            :aria-label="panel === 'contacts' ? '搜索好友或群聊' : '搜索会话'"
-          />
+            :aria-label="panel === 'contacts' ? '搜索好友或群聊' : '搜索会话'" />
         </label>
         <button v-if="panel === 'chats'" type="button" class="chat-add" title="新建群聊" @click="openCreate">
           <i class="bi bi-plus-lg" aria-hidden="true" />
@@ -300,17 +299,17 @@
         <template v-else>
           <label class="chat-field">
             <span>名称</span>
-            <input v-model="form.name" maxlength="30" placeholder="2 ~ 30 个字" />
+            <FormInput v-model="form.name" maxlength="30" placeholder="2 ~ 30 个字" />
           </label>
 
           <label class="chat-field">
             <span>简介</span>
-            <textarea v-model="form.description" rows="3" maxlength="200" placeholder="一句话介绍这个群（可选）" />
+            <FormTextarea v-model="form.description" rows="3" maxlength="200" placeholder="一句话介绍这个群（可选）" />
           </label>
 
           <label class="chat-field">
             <span>入群方式</span>
-            <SelectMenu v-model="form.join_type" variant="field" :options="joinTypeOptions" placeholder="请选择入群方式" />
+            <FormSelect v-model="form.join_type" :options="joinTypeOptions" placeholder="请选择入群方式" />
           </label>
 
           <p class="chat-tip">每人最多创建 {{ canCreate.max_owned || 3 }} 个群，已创建 {{ canCreate.owned || 0 }} 个。</p>
@@ -328,6 +327,9 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listChatConversations, listChatFriends } from '@/api/chat'
@@ -337,7 +339,6 @@ import { useUserStore } from '@/stores/user'
 import { useDesktopNotice } from '@/composables/useDesktopNotice'
 import { toast } from '@/utils/toast'
 import { getFullUrl } from '@/utils/emoji'
-import SelectMenu from '@/components/SelectMenu.vue'
 
 /**
  * 消息外壳：私信 + 群聊共用一份列表（/chat）

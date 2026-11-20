@@ -48,19 +48,19 @@
         <h3 class="dialog-title">{{ editing ? '编辑友链' : '申请友链' }}</h3>
         <div class="form-item">
           <label class="form-label">站点名称 *</label>
-          <input v-model="form.nickname" class="input" maxlength="32" />
+          <FormInput v-model="form.nickname" maxlength="32" />
         </div>
         <div class="form-item">
           <label class="form-label">站点链接 *</label>
-          <input v-model="form.url" class="input" placeholder="https://" />
+          <FormInput v-model="form.url" placeholder="https://" />
         </div>
         <div class="form-item">
           <label class="form-label">站点描述</label>
-          <input v-model="form.description" class="input" />
+          <FormInput v-model="form.description" />
         </div>
         <div class="form-item">
           <label class="form-label">站点头像</label>
-          <input v-model="form.avatar" class="input" placeholder="粘贴图片链接，或点击下方按钮" />
+          <FormInput v-model="form.avatar" placeholder="粘贴图片链接，或点击下方按钮" />
           <div class="image-actions">
             <button type="button" class="btn btn-sm" :disabled="uploading" @click="avatarFileRef?.click()">
               <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
@@ -94,6 +94,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, computed, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { listLinks, createLink, updateLink, removeLink } from '@/api/links'

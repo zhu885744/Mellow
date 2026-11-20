@@ -39,14 +39,13 @@
         <div class="filter-right">
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索标题…"
               aria-label="搜索标题"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
           <button class="btn btn-sm" :disabled="loading" @click="load()">
             <i class="bi bi-arrow-clockwise" /> 刷新
@@ -96,14 +95,12 @@
         <!-- 本页全选 -->
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy || !list.length"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 张 · 共 {{ total }} 张</span>
         </div>
@@ -116,13 +113,11 @@
             :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-              <input
-                type="checkbox"
-                :checked="isSelected(item.id)"
+              <FormCheckbox
+                :model-value="isSelected(item.id)"
                 :disabled="busy"
                 :aria-label="`选择轮播 ${item.title || item.id}`"
-                @change="toggleSelect(item.id)"
-              />
+                @change="toggleSelect(item.id)" />
             </label>
 
             <button
@@ -204,7 +199,7 @@
     >
       <div class="form-item">
         <label class="form-label">轮播标题</label>
-        <input v-model="dialog.title" class="input" type="text" maxlength="32" placeholder="最多 32 字" />
+        <FormInput v-model="dialog.title" type="text" maxlength="32" placeholder="最多 32 字" />
       </div>
 
       <div class="form-item">
@@ -221,7 +216,7 @@
             </button>
           </div>
           <div class="cover-fields">
-            <input v-model="dialog.image" class="input" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
+            <FormInput v-model="dialog.image" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
             <div class="cover-actions">
               <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickImage">
                 <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
@@ -249,45 +244,41 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">跳转链接</label>
-          <input v-model="dialog.url" class="input" type="text" maxlength="256" placeholder="可选，如 /about 或 https://example.com" />
+          <FormInput v-model="dialog.url" type="text" maxlength="256" placeholder="可选，如 /about 或 https://example.com" />
         </div>
         <div class="form-item">
           <label class="form-label">打开方式</label>
-          <SelectMenu
+          <FormSelect
             v-model="dialog.target"
-            variant="field"
             :options="TARGET_OPTIONS"
-            placeholder="请选择打开方式"
-          />
+            placeholder="请选择打开方式" />
         </div>
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">开始时间</label>
-          <input v-model="dialog.startAt" class="input" type="datetime-local" />
+          <FormInput v-model="dialog.startAt" type="datetime-local" />
           <p class="form-hint">留空表示立即生效</p>
         </div>
         <div class="form-item">
           <label class="form-label">结束时间</label>
-          <input v-model="dialog.endAt" class="input" type="datetime-local" />
+          <FormInput v-model="dialog.endAt" type="datetime-local" />
           <p class="form-hint">留空表示长期有效</p>
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">说明文字</label>
-        <textarea
+        <FormTextarea
           v-model="dialog.content"
-          class="textarea"
           rows="3"
-          placeholder="可选，部分主题会显示在轮播图上方"
-        />
+          placeholder="可选，部分主题会显示在轮播图上方" />
       </div>
 
       <div class="form-item">
         <label class="form-label">备注</label>
-        <input v-model="dialog.remark" class="input" type="text" placeholder="仅后台可见" />
+        <FormInput v-model="dialog.remark" type="text" placeholder="仅后台可见" />
       </div>
     </AdminFormDialog>
 
@@ -305,6 +296,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 轮播管理（/admin/banner）
@@ -322,7 +317,6 @@ import { ref, reactive, computed, onMounted, watchEffect } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import {
   listBanners,
@@ -681,7 +675,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

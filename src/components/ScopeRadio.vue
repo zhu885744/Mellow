@@ -6,15 +6,13 @@
       class="scope-radio-item"
       :class="{ 'is-checked': Number(modelValue) === Number(opt.value), 'is-disabled': disabled }"
     >
-      <input
+      <FormRadio
         class="scope-radio-input"
-        type="radio"
         :name="name || undefined"
         :value="opt.value"
-        :checked="Number(modelValue) === Number(opt.value)"
+        :model-value="Number(modelValue) === Number(opt.value)"
         :disabled="disabled"
-        @change="pick(opt.value)"
-      />
+        @change="pick(opt.value)" />
       <span class="scope-radio-dot" aria-hidden="true" />
       <span class="scope-radio-text">{{ opt.label }}</span>
     </label>
@@ -22,6 +20,7 @@
 </template>
 
 <script setup>
+import FormRadio from '@/components/form/FormRadio.vue'
 /**
  * 可见范围单选框组（公开 / 登录可见 / 付费可见）
  *

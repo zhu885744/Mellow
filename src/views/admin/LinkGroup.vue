@@ -47,14 +47,13 @@
         <div class="filter-right">
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索分组名…"
               aria-label="搜索分组名"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
         </div>
       </div>
@@ -96,14 +95,12 @@
       <template v-else>
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 个</span>
         </div>
@@ -111,13 +108,11 @@
         <ul class="group-list">
           <li v-for="item in list" :key="item.id" class="group-row" :class="{ 'is-selected': isSelected(item.id) }">
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-              <input
-                type="checkbox"
-                :checked="isSelected(item.id)"
+              <FormCheckbox
+                :model-value="isSelected(item.id)"
                 :disabled="busy"
                 :aria-label="`选择分组 ${item.name}`"
-                @change="toggleSelect(item.id)"
-              />
+                @change="toggleSelect(item.id)" />
             </label>
 
             <div class="group-avatar">
@@ -183,12 +178,12 @@
     >
       <div class="form-item">
         <label class="form-label">分组名称</label>
-        <input v-model="edit.name" class="input" type="text" maxlength="32" placeholder="必填" />
+        <FormInput v-model="edit.name" type="text" maxlength="32" placeholder="必填" />
       </div>
 
       <div class="form-item">
         <label class="form-label">分组描述</label>
-        <textarea v-model="edit.description" class="textarea" rows="2" placeholder="可选" />
+        <FormTextarea v-model="edit.description" rows="2" placeholder="可选" />
       </div>
 
       <div class="form-item">
@@ -205,7 +200,7 @@
             </button>
           </div>
           <div class="cover-fields">
-            <input v-model="edit.avatar" class="input" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
+            <FormInput v-model="edit.avatar" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
             <div class="cover-actions">
               <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickAvatar">
                 <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
@@ -243,6 +238,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 友链分组（/admin/links/group）
@@ -412,7 +410,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

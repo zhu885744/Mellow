@@ -28,13 +28,12 @@
       </div>
       <div class="search-box">
         <i class="bi bi-search" />
-        <input
+        <FormInput
           v-model="keyword"
           class="search-input"
           type="search"
           placeholder="搜索标题…"
-          @input="doSearch"
-        />
+          @input="doSearch" />
       </div>
     </div>
 
@@ -118,6 +117,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import EmptyState from '@/components/EmptyState.vue'

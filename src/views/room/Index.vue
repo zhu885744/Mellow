@@ -153,12 +153,11 @@
           <i class="bi bi-lock" aria-hidden="true" />
           {{ Number(room.join_type) === 1 ? '该群聊需要群主审批后加入' : Number(room.join_type) === 2 ? '该群聊仅限邀请加入' : '加入后即可查看消息并参与聊天' }}
         </p>
-        <input
+        <FormInput
           v-if="Number(room.join_type) === 1"
           v-model="joinMessage"
           maxlength="120"
-          placeholder="申请留言（可选）"
-        />
+          placeholder="申请留言（可选）" />
         <button
           type="button"
           class="room-btn room-btn-primary"
@@ -370,12 +369,12 @@
         <div v-if="adminTab === 'profile'" class="room-admin-body">
           <label class="room-field">
             <span>名称</span>
-            <input v-model="form.name" maxlength="30" placeholder="最多 30 个字" />
+            <FormInput v-model="form.name" maxlength="30" placeholder="最多 30 个字" />
           </label>
 
           <label class="room-field">
             <span>简介</span>
-            <textarea v-model="form.description" rows="3" maxlength="200" placeholder="最多 200 个字" />
+            <FormTextarea v-model="form.description" rows="3" maxlength="200" placeholder="最多 200 个字" />
           </label>
 
           <label class="room-field">
@@ -385,18 +384,16 @@
                 <img v-if="form.avatar" :src="fullUrl(form.avatar)" alt="" />
                 <i v-else class="bi bi-image" aria-hidden="true" />
               </span>
-              <input v-model="form.avatar" placeholder="图片地址，或直接上传" />
+              <FormInput v-model="form.avatar" placeholder="图片地址，或直接上传" />
             </div>
           </label>
 
           <label v-if="!isPublicRoom" class="room-field">
             <span>入群方式</span>
-            <SelectMenu
+            <FormSelect
               v-model="form.join_type"
-              variant="field"
               :options="joinTypeOptions"
-              placeholder="请选择入群方式"
-            />
+              placeholder="请选择入群方式" />
           </label>
 
           <div class="room-admin-actions">
@@ -415,12 +412,11 @@
         <div v-else-if="adminTab === 'notice'" class="room-admin-body">
           <label class="room-field">
             <span>群公告</span>
-            <textarea
+            <FormTextarea
               v-model="noticeDraft"
               rows="5"
               maxlength="500"
-              placeholder="最多 500 个字，留空即清除公告"
-            />
+              placeholder="最多 500 个字，留空即清除公告" />
           </label>
 
           <p class="room-tip">公告会展示在房间顶部，所有成员可见（不会推送新的消息提醒）。</p>
@@ -433,7 +429,7 @@
         <div v-else-if="adminTab === 'members'" class="room-admin-body">
           <div v-if="canModerate" class="room-invite">
             <div class="room-invite-row">
-              <input v-model="inviteUid" type="number" min="1" placeholder="用户 ID" />
+              <FormInput v-model="inviteUid" type="number" min="1" placeholder="用户 ID" />
               <button type="button" class="room-btn room-btn-primary" :disabled="inviting" @click="invite">
                 {{ inviting ? '邀请中…' : '邀请' }}
               </button>
@@ -494,12 +490,10 @@
         <div v-else-if="adminTab === 'clear'" class="room-admin-body">
           <label class="room-field">
             <span>清空间隔</span>
-            <SelectMenu
+            <FormSelect
               v-model="clearDays"
-              variant="field"
               :options="clearOptions"
-              placeholder="请选择清空间隔"
-            />
+              placeholder="请选择清空间隔" />
           </label>
 
           <p class="room-tip">
@@ -665,6 +659,9 @@
 </template>
 
 <script setup>
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import InviteDialog from './InviteDialog.vue'
@@ -701,7 +698,6 @@ import { openLightbox } from '@/utils/lightbox'
 import { getFullUrl, renderEmojiWithBreaks } from '@/utils/emoji'
 import EmojiPicker from '@/components/EmojiPicker.vue'
 import ChatEmojiInput from '@/components/ChatEmojiInput.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 
 /**
  * 公共群聊（/room/1）

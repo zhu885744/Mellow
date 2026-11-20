@@ -39,14 +39,13 @@
         <div class="filter-right">
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索名称…"
               aria-label="搜索名称"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
           <button class="btn btn-sm" :disabled="loading" @click="load()">
             <i class="bi bi-arrow-clockwise" /> 刷新
@@ -96,14 +95,12 @@
         <!-- 本页全选 -->
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy || !list.length"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 个 · 共 {{ total }} 个</span>
         </div>
@@ -116,13 +113,11 @@
             :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-              <input
-                type="checkbox"
-                :checked="isSelected(item.id)"
+              <FormCheckbox
+                :model-value="isSelected(item.id)"
                 :disabled="busy"
                 :aria-label="`选择话题 ${item.name || item.id}`"
-                @change="toggleSelect(item.id)"
-              />
+                @change="toggleSelect(item.id)" />
             </label>
 
             <div class="tag-avatar">
@@ -197,28 +192,24 @@
     >
       <div class="form-item">
         <label class="form-label">话题名称</label>
-        <input v-model="dialog.name" class="input" type="text" maxlength="32" placeholder="最多 32 字" />
+        <FormInput v-model="dialog.name" type="text" maxlength="32" placeholder="最多 32 字" />
       </div>
 
       <div class="form-item">
         <label class="form-label">话题描述</label>
-        <textarea
+        <FormTextarea
           v-model="dialog.description"
-          class="textarea"
           rows="3"
-          placeholder="可选，用于前台话题页展示"
-        />
+          placeholder="可选，用于前台话题页展示" />
       </div>
 
       <div class="form-item">
         <label class="form-label">话题主持人（用户 ID）</label>
-        <input
+        <FormInput
           v-model.number="dialog.moderator_uid"
-          class="input"
           type="number"
           min="0"
-          placeholder="0 表示暂无主持人"
-        />
+          placeholder="0 表示暂无主持人" />
         <p class="form-hint">
           主持人可在前台话题页编辑该话题的简介与封面；留 0 表示不设置
         </p>
@@ -226,7 +217,7 @@
 
       <div class="form-item">
         <label class="form-label">精选话题</label>
-        <SelectMenu v-model="dialog.recommend" variant="field" :options="RECOMMEND_OPTIONS" />
+        <FormSelect v-model="dialog.recommend" :options="RECOMMEND_OPTIONS" />
       </div>
 
       <div class="form-item">
@@ -243,7 +234,7 @@
             </button>
           </div>
           <div class="cover-fields">
-            <input v-model="dialog.avatar" class="input" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
+            <FormInput v-model="dialog.avatar" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
             <div class="cover-actions">
               <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickImage">
                 <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
@@ -284,6 +275,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 话题管理（/admin/tags）
@@ -313,7 +308,6 @@ import {
 } from '@/api/tags'
 import { uploadAttachments } from '@/api/attachment'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import { fromNow } from '@/utils/time'
 import { debounce } from '@/utils/helper'
 import { toast } from '@/utils/toast'
@@ -616,7 +610,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

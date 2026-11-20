@@ -2,7 +2,7 @@
   <div v-if="ready" class="auth-agreement">
     <!-- 勾选模式（注册页） -->
     <label v-if="required" class="agree-row">
-      <input v-model="checked" type="checkbox" class="agree-check" />
+      <FormCheckbox v-model="checked" class="agree-check" />
       <span class="agree-text">
         我已阅读并同意
         <a class="agree-link" @click.stop.prevent="open('user')">《用户协议》</a>
@@ -36,6 +36,7 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSiteStore } from '@/stores/site'
 

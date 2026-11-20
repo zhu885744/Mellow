@@ -234,12 +234,10 @@
             </template>
             <template v-else>
               <label class="fans-check">
-                <input
-                  type="checkbox"
-                  :checked="allFansSelected"
+                <FormCheckbox
+                  :model-value="allFansSelected"
                   :indeterminate="partFansSelected"
-                  @change="toggleSelectAllFans"
-                />
+                  @change="toggleSelectAllFans" />
                 <span>全选本页</span>
               </label>
               <span class="fans-bar-text">已选 {{ selectedFanIds.length }} 人</span>
@@ -268,14 +266,12 @@
               @click="onFanRowClick($event, item)"
             >
               <!-- 批量模式：勾选框只在粉丝 tab 出现（关注 tab 不做批量操作） -->
-              <input
+              <FormCheckbox
                 v-if="fanManageMode && tab === 'fans'"
                 v-model="selectedFanIds"
                 class="row-check"
-                type="checkbox"
                 :value="item.id"
-                :aria-label="`选择 ${item.nickname || '用户'}`"
-              />
+                :aria-label="`选择 ${item.nickname || '用户'}`" />
               <RouterLink :to="`/author/${item.uid || item.user_id || item.id}`" class="row-link">
                 <img
                   :src="thumbUrl(item.avatar || defaultAvatar, 88)"
@@ -439,6 +435,7 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
 import { ref, computed, onMounted, onBeforeUnmount, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ArticleCard from '@/components/ArticleCard.vue'

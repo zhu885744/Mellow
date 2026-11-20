@@ -82,31 +82,28 @@
           </div>
 
           <div class="filter-right">
-            <SelectMenu
+            <FormSelect variant="pill"
               v-model="userSort"
               :options="userSortOptions"
               icon="bi bi-sort-down"
               placeholder="排序方式"
-              @change="reloadUsers"
-            />
+              @change="reloadUsers" />
 
-            <SelectMenu
+            <FormSelect variant="pill"
               v-model="userSearchField"
               :options="USER_SEARCH_FIELDS"
               icon="bi bi-funnel"
-              placeholder="搜索字段"
-            />
+              placeholder="搜索字段" />
 
             <div class="search-box">
               <i class="bi bi-search" aria-hidden="true" />
-              <input
+              <FormInput
                 v-model="userKeyword"
                 class="search-input"
                 type="search"
                 placeholder="搜索用户…"
                 aria-label="搜索用户"
-                @input="doUserSearch"
-              />
+                @input="doUserSearch" />
             </div>
 
             <button class="btn btn-sm" :disabled="userLoading" @click="loadUsers()">
@@ -135,14 +132,12 @@
         <template v-else>
           <div class="list-head-row">
             <label class="pick" title="全选本页">
-              <input
+              <FormCheckbox
                 ref="userAllRef"
-                type="checkbox"
-                :checked="userPageAllSelected"
+                :model-value="userPageAllSelected"
                 :disabled="busy"
                 aria-label="全选本页"
-                @change="toggleUserAll"
-              />
+                @change="toggleUserAll" />
             </label>
             <span class="list-head-text">本页 {{ users.length }} 位</span>
           </div>
@@ -150,13 +145,11 @@
           <ul class="user-list">
             <li v-for="item in users" :key="item.id" class="user-row" :class="{ 'is-selected': isUserSelected(item.id) }">
               <label class="pick" :title="isUserSelected(item.id) ? '取消选择' : '选择'">
-                <input
-                  type="checkbox"
-                  :checked="isUserSelected(item.id)"
+                <FormCheckbox
+                  :model-value="isUserSelected(item.id)"
                   :disabled="busy"
                   :aria-label="`选择用户 ${item.nickname || item.id}`"
-                  @change="toggleUser(item.id)"
-                />
+                  @change="toggleUser(item.id)" />
               </label>
 
               <div class="user-avatar">
@@ -225,24 +218,22 @@
           </div>
 
           <div class="filter-right">
-            <SelectMenu
+            <FormSelect variant="pill"
               v-model="cardSort"
               :options="cardSortOptions"
               icon="bi bi-sort-down"
               placeholder="排序方式"
-              @change="reloadCards"
-            />
+              @change="reloadCards" />
 
             <div class="search-box">
               <i class="bi bi-search" aria-hidden="true" />
-              <input
+              <FormInput
                 v-model="cardKeyword"
                 class="search-input"
                 type="search"
                 placeholder="搜索卡密…"
                 aria-label="搜索卡密"
-                @input="doCardSearch"
-              />
+                @input="doCardSearch" />
             </div>
 
             <button class="btn btn-sm" :disabled="cardLoading" @click="loadCards()">
@@ -278,14 +269,12 @@
         <template v-else>
           <div class="list-head-row">
             <label class="pick" title="全选本页">
-              <input
+              <FormCheckbox
                 ref="cardAllRef"
-                type="checkbox"
-                :checked="cardPageAllSelected"
+                :model-value="cardPageAllSelected"
                 :disabled="busy"
                 aria-label="全选本页"
-                @change="toggleCardAll"
-              />
+                @change="toggleCardAll" />
             </label>
             <span class="list-head-text">本页 {{ cards.length }} 张</span>
           </div>
@@ -293,13 +282,11 @@
           <ul class="card-list">
             <li v-for="item in cards" :key="item.id" class="card-row" :class="{ 'is-selected': isCardSelected(item.id) }">
               <label class="pick" :title="isCardSelected(item.id) ? '取消选择' : '选择'">
-                <input
-                  type="checkbox"
-                  :checked="isCardSelected(item.id)"
+                <FormCheckbox
+                  :model-value="isCardSelected(item.id)"
                   :disabled="busy || Number(item.status) === 1 || Number(item.status) === 2"
                   :aria-label="`选择卡密 ${item.card}`"
-                  @change="toggleCard(item.id)"
-                />
+                  @change="toggleCard(item.id)" />
               </label>
 
               <div class="card-main">
@@ -457,7 +444,7 @@
 
       <div class="form-item">
         <label class="form-label">积分调整值</label>
-        <input v-model="adjust.value" class="input" type="number" step="1" placeholder="正数发放，负数扣除" />
+        <FormInput v-model="adjust.value" type="number" step="1" placeholder="正数发放，负数扣除" />
         <div class="quick-row">
           <button v-for="n in [10, 50, 100]" :key="`add-${n}`" class="btn btn-sm" type="button" @click="adjust.value = n">
             +{{ n }}
@@ -473,7 +460,7 @@
 
       <div class="form-item">
         <label class="form-label">说明</label>
-        <input v-model="adjust.description" class="input" type="text" placeholder="可选，会记入用户积分流水" />
+        <FormInput v-model="adjust.description" type="text" placeholder="可选，会记入用户积分流水" />
       </div>
     </AdminFormDialog>
 
@@ -489,29 +476,29 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">积分面额</label>
-          <input v-model="gen.value" class="input" type="number" min="1" step="1" placeholder="每张卡密兑换的积分" />
+          <FormInput v-model="gen.value" type="number" min="1" step="1" placeholder="每张卡密兑换的积分" />
         </div>
         <div class="form-item">
           <label class="form-label">生成数量</label>
-          <input v-model="gen.count" class="input" type="number" min="1" max="1000" step="1" placeholder="1 ~ 1000" />
+          <FormInput v-model="gen.count" type="number" min="1" max="1000" step="1" placeholder="1 ~ 1000" />
         </div>
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">卡密长度</label>
-          <input v-model="gen.length" class="input" type="number" min="8" max="64" step="1" placeholder="默认 16" />
+          <FormInput v-model="gen.length" type="number" min="8" max="64" step="1" placeholder="默认 16" />
         </div>
         <div class="form-item">
           <label class="form-label">有效期</label>
-          <input v-model="gen.expire" class="input" type="date" />
+          <FormInput v-model="gen.expire" type="date" />
           <p class="form-hint">留空表示永久有效</p>
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">备注</label>
-        <input v-model="gen.remark" class="input" type="text" maxlength="255" placeholder="可选，便于区分批次用途" />
+        <FormInput v-model="gen.remark" type="text" maxlength="255" placeholder="可选，便于区分批次用途" />
       </div>
     </AdminFormDialog>
 
@@ -527,12 +514,10 @@
     >
       <div class="form-item">
         <label class="form-label">卡密内容</label>
-        <textarea
+        <FormTextarea
           v-model="imp.codes"
-          class="textarea"
           rows="8"
-          placeholder="一行一个，例如：&#10;SN2026000001&#10;SN2026000002"
-        />
+          placeholder="一行一个，例如：&#10;SN2026000001&#10;SN2026000002" />
         <p class="form-hint">
           每行一个，长度 8 ~ 64 位；会自动去掉空格与连字符并转成大写（与用户兑换时的输入规则一致），
           与系统里已有卡密重复的会被跳过，单次最多 1000 张。
@@ -542,18 +527,18 @@
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">积分面额</label>
-          <input v-model="imp.value" class="input" type="number" min="1" step="1" placeholder="每张卡密兑换的积分" />
+          <FormInput v-model="imp.value" type="number" min="1" step="1" placeholder="每张卡密兑换的积分" />
         </div>
         <div class="form-item">
           <label class="form-label">有效期</label>
-          <input v-model="imp.expire" class="input" type="date" />
+          <FormInput v-model="imp.expire" type="date" />
           <p class="form-hint">留空表示永久有效</p>
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">备注</label>
-        <input v-model="imp.remark" class="input" type="text" maxlength="255" placeholder="可选，便于区分批次用途" />
+        <FormInput v-model="imp.remark" type="text" maxlength="255" placeholder="可选，便于区分批次用途" />
       </div>
     </AdminFormDialog>
 
@@ -569,20 +554,18 @@
     >
       <div class="form-item">
         <label class="form-label">操作</label>
-        <SelectMenu v-model="bind.mode" variant="field" :options="bindModeOptions" />
+        <FormSelect v-model="bind.mode" :options="bindModeOptions" />
       </div>
 
       <template v-if="bind.mode === 'bind'">
         <div class="form-item">
           <label class="form-label">兑换人用户 ID</label>
-          <input
+          <FormInput
             v-model="bind.uid"
-            class="input"
             type="text"
             inputmode="numeric"
             placeholder="请输入用户 ID（可在「用户管理」中查看）"
-            @input="onBindUidInput"
-          />
+            @input="onBindUidInput" />
           <p class="form-hint">绑定后只有该用户能兑换这些卡密，其他用户兑换会提示「卡密已被使用」</p>
         </div>
 
@@ -639,17 +622,17 @@
     >
       <div class="form-item">
         <label class="form-label">规则名称</label>
-        <input v-model="rule.name" class="input" type="text" maxlength="32" placeholder="如「每日签到」" />
+        <FormInput v-model="rule.name" type="text" maxlength="32" placeholder="如「每日签到」" />
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">单次积分</label>
-          <input v-model="rule.value" class="input" type="number" min="0" step="1" placeholder="每次动作获得的积分" />
+          <FormInput v-model="rule.value" type="number" min="0" step="1" placeholder="每次动作获得的积分" />
         </div>
         <div class="form-item">
           <label class="form-label">每日上限</label>
-          <input v-model="rule.limit" class="input" type="number" min="0" step="1" placeholder="0 表示不限" />
+          <FormInput v-model="rule.limit" type="number" min="0" step="1" placeholder="0 表示不限" />
           <p class="form-hint">0 表示不限制次数</p>
         </div>
       </div>
@@ -673,6 +656,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 积分管理（/admin/integral）
  *
@@ -695,7 +682,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import { listUsers, countUsers, listUsersByIds } from '@/api/users'
 import {
@@ -1114,7 +1100,7 @@ const userSomeSelected = computed(() => selectedUids.value.length > 0 && !userPa
 const userAllRef = ref(null)
 
 watchEffect(() => {
-  if (userAllRef.value) userAllRef.value.indeterminate = userSomeSelected.value
+  if (userAllRef.value) userAllRef.value.setIndeterminate(userSomeSelected.value)
 })
 
 function isUserSelected(id) {
@@ -1274,7 +1260,7 @@ const cardSomeSelected = computed(() => selectedIds.value.length > 0 && !cardPag
 const cardAllRef = ref(null)
 
 watchEffect(() => {
-  if (cardAllRef.value) cardAllRef.value.indeterminate = cardSomeSelected.value
+  if (cardAllRef.value) cardAllRef.value.setIndeterminate(cardSomeSelected.value)
 })
 
 function isCardSelected(id) {

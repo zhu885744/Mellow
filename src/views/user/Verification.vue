@@ -57,7 +57,7 @@
         <div class="cert-form">
           <div class="form-row">
             <label>认证类型<span class="required">*</span></label>
-            <SelectMenu v-model="form.cert_type" variant="field" :options="typeOptions" placeholder="请选择认证类型" />
+            <FormSelect v-model="form.cert_type" :options="typeOptions" placeholder="请选择认证类型" />
             <p v-if="activeType?.intro" class="form-hint">{{ activeType.intro }}</p>
           </div>
 
@@ -129,6 +129,7 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
 /**
  * 我的认证（/user/verification）
  *
@@ -146,7 +147,6 @@
  */
 import { computed, onMounted, reactive, ref, watch } from 'vue'
 import SectionTitle from '@/components/SectionTitle.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import VerifiedBadge from '@/components/VerifiedBadge.vue'
 import CertFieldsForm from '@/components/CertFieldsForm.vue'
 import { applyCertification, getMyCertification } from '@/api/user-certification'

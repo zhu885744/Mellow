@@ -94,14 +94,13 @@
     <!-- 所在位置（可选） -->
     <div class="composer-loc">
       <i class="bi bi-geo-alt" />
-      <input
+      <FormInput
         v-model="location"
         class="composer-loc-input"
         type="text"
         maxlength="64"
         placeholder="所在位置（可选）"
-        @keyup.enter="submit"
-      />
+        @keyup.enter="submit" />
     </div>
 
     <!-- 可见范围：公开 / 登录可见 / 付费可见（积分兑换），用单选框平铺 -->
@@ -111,15 +110,14 @@
         可见范围
       </span>
       <ScopeRadio v-model="scope" :options="scopeOptions" />
-      <input
+      <FormInput
         v-if="Number(scope) === 3"
         v-model.number="scopeIntegral"
         class="composer-scope-input"
         type="number"
         min="1"
         max="999999"
-        placeholder="查看需消耗的积分"
-      />
+        placeholder="查看需消耗的积分" />
     </div>
 
     <div class="composer-actions">
@@ -134,6 +132,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 动态发布器（**唯一实现**）
  *

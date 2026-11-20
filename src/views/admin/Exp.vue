@@ -71,31 +71,28 @@
           </div>
 
           <div class="filter-right">
-            <SelectMenu
+            <FormSelect variant="pill"
               v-model="userSort"
               :options="userSortOptions"
               icon="bi bi-sort-down"
               placeholder="排序方式"
-              @change="reloadUsers"
-            />
+              @change="reloadUsers" />
 
-            <SelectMenu
+            <FormSelect variant="pill"
               v-model="userSearchField"
               :options="USER_SEARCH_FIELDS"
               icon="bi bi-funnel"
-              placeholder="搜索字段"
-            />
+              placeholder="搜索字段" />
 
             <div class="search-box">
               <i class="bi bi-search" aria-hidden="true" />
-              <input
+              <FormInput
                 v-model="userKeyword"
                 class="search-input"
                 type="search"
                 placeholder="搜索用户…"
                 aria-label="搜索用户"
-                @input="doUserSearch"
-              />
+                @input="doUserSearch" />
             </div>
 
             <button class="btn btn-sm" :disabled="userLoading" @click="loadUsers()">
@@ -124,14 +121,12 @@
         <template v-else>
           <div class="list-head-row">
             <label class="pick" title="全选本页">
-              <input
+              <FormCheckbox
                 ref="userAllRef"
-                type="checkbox"
-                :checked="userPageAllSelected"
+                :model-value="userPageAllSelected"
                 :disabled="busy"
                 aria-label="全选本页"
-                @change="toggleUserAll"
-              />
+                @change="toggleUserAll" />
             </label>
             <span class="list-head-text">本页 {{ users.length }} 位</span>
           </div>
@@ -139,13 +134,11 @@
           <ul class="user-list">
             <li v-for="item in users" :key="item.id" class="user-row" :class="{ 'is-selected': isUserSelected(item.id) }">
               <label class="pick" :title="isUserSelected(item.id) ? '取消选择' : '选择'">
-                <input
-                  type="checkbox"
-                  :checked="isUserSelected(item.id)"
+                <FormCheckbox
+                  :model-value="isUserSelected(item.id)"
                   :disabled="busy"
                   :aria-label="`选择用户 ${item.nickname || item.id}`"
-                  @change="toggleUser(item.id)"
-                />
+                  @change="toggleUser(item.id)" />
               </label>
 
               <div class="user-avatar">
@@ -216,33 +209,30 @@
           </div>
 
           <div class="filter-right">
-            <SelectMenu
+            <FormSelect variant="pill"
               v-model="typeFilter"
               :options="typeOptions"
               icon="bi bi-tags"
               placeholder="全部类型"
-              @change="reload"
-            />
+              @change="reload" />
 
-            <SelectMenu
+            <FormSelect variant="pill"
               v-model="sortKey"
               :options="sortOptions"
               :disabled="trash"
               icon="bi bi-sort-down"
               placeholder="排序方式"
-              @change="reload"
-            />
+              @change="reload" />
 
             <div class="search-box">
               <i class="bi bi-search" aria-hidden="true" />
-              <input
+              <FormInput
                 v-model="keyword"
                 class="search-input"
                 type="search"
                 placeholder="搜索说明…"
                 aria-label="搜索说明"
-                @input="doSearch"
-              />
+                @input="doSearch" />
             </div>
 
             <button class="btn btn-sm" :disabled="loading" @click="load()">
@@ -398,7 +388,7 @@
 
       <div class="form-item">
         <label class="form-label">经验调整值</label>
-        <input v-model="adjust.value" class="input" type="number" step="1" placeholder="正数发放，负数扣除" />
+        <FormInput v-model="adjust.value" type="number" step="1" placeholder="正数发放，负数扣除" />
         <div class="quick-row">
           <button v-for="n in [10, 50, 100]" :key="`add-${n}`" class="btn btn-sm" type="button" @click="adjust.value = n">
             +{{ n }}
@@ -414,7 +404,7 @@
 
       <div class="form-item">
         <label class="form-label">说明</label>
-        <input v-model="adjust.description" class="input" type="text" placeholder="可选，默认「管理员发放/扣除经验值 N」" />
+        <FormInput v-model="adjust.description" type="text" placeholder="可选，默认「管理员发放/扣除经验值 N」" />
       </div>
     </AdminFormDialog>
 
@@ -429,17 +419,17 @@
     >
       <div class="form-item">
         <label class="form-label">规则名称</label>
-        <input v-model="rule.name" class="input" type="text" maxlength="32" placeholder="如「点赞」" />
+        <FormInput v-model="rule.name" type="text" maxlength="32" placeholder="如「点赞」" />
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">单次经验</label>
-          <input v-model="rule.value" class="input" type="number" min="0" step="1" placeholder="每次动作获得的经验" />
+          <FormInput v-model="rule.value" type="number" min="0" step="1" placeholder="每次动作获得的经验" />
         </div>
         <div class="form-item">
           <label class="form-label">每日上限</label>
-          <input v-model="rule.limit" class="input" type="number" min="0" step="1" placeholder="0 表示不限" />
+          <FormInput v-model="rule.limit" type="number" min="0" step="1" placeholder="0 表示不限" />
           <p class="form-hint">0 表示不限制次数</p>
         </div>
       </div>
@@ -464,6 +454,9 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 经验管理（/admin/exp）
  *
@@ -485,7 +478,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import { listUsers, countUsers } from '@/api/users'
 import {
@@ -839,7 +831,7 @@ const userSomeSelected = computed(() => selectedUids.value.length > 0 && !userPa
 const userAllRef = ref(null)
 
 watchEffect(() => {
-  if (userAllRef.value) userAllRef.value.indeterminate = userSomeSelected.value
+  if (userAllRef.value) userAllRef.value.setIndeterminate(userSomeSelected.value)
 })
 
 function isUserSelected(id) {

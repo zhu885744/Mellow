@@ -111,6 +111,16 @@
                   <span v-if="actingId === item.id" class="spinner" />
                   <template v-else>{{ blockReason(item) || '立即佩戴' }}</template>
                 </button>
+
+                <!-- 有限期 + 后台给这件装扮配了续期档位，才显示续期入口（永久装扮后端也会拒绝） -->
+                <button
+                  v-if="Number(item.expire_time) > 0 && item.renew_options?.length"
+                  type="button"
+                  class="btn btn-sm btn-ghost btn-block"
+                  @click="openRenew(item)"
+                >
+                  <i class="bi bi-arrow-repeat" /> 续期
+                </button>
               </div>
             </div>
           </div>
@@ -135,13 +145,11 @@
               <div class="pending-preview">
                 <TitleBadge :payload="pendingTitle.payload" :text="customTitleText" size="lg" />
               </div>
-              <input
+              <FormInput
                 v-model="customTitleText"
-                class="input"
                 maxlength="10"
                 placeholder="请输入头衔文字（最多 10 字）"
-                @keyup.enter="confirmWear"
-              />
+                @keyup.enter="confirmWear" />
             </div>
             <div class="modal-footer">
               <button class="btn btn-ghost" @click="pendingTitle = null">取消</button>
@@ -151,10 +159,23 @@
         </div>
       </Transition>
     </Teleport>
+
+    <!-- 续期：价格与档位是这件装扮自己的（后台在装扮编辑里配置） -->
+    <RenewPlanDialog
+      :visible="renew.visible"
+      scope="decoration"
+      :target-id="renew.id"
+      :target-name="renew.name"
+      :current-expire="renew.expire"
+      :options="renew.options"
+      @update:visible="(v) => (renew.visible = v)"
+      @done="loadMine"
+    />
   </div>
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, computed, onMounted } from 'vue'
 import { useUserStore } from '@/stores/user'
 import { getMyDecorations, wearDecoration, unwearDecoration } from '@/api/decoration'
@@ -164,6 +185,7 @@ import { rarityMeta } from '@/utils/decoration'
 import { frameGeometryFromPayload } from '@/utils/helper'
 import SectionTitle from '@/components/SectionTitle.vue'
 import EmptyState from '@/components/EmptyState.vue'
+import RenewPlanDialog from '@/components/RenewPlanDialog.vue'
 import AvatarFrame from '@/components/AvatarFrame.vue'
 import TitleBadge from '@/components/TitleBadge.vue'
 
@@ -175,6 +197,18 @@ const defaultAvatar =
 
 const loading = ref(false)
 const actingId = ref(null)
+// 续期弹层：只对「有限期 + 配了续期档位」的装扮开放
+const renew = ref({ visible: false, id: 0, name: '', expire: 0, options: [] })
+
+function openRenew(item) {
+  renew.value = {
+    visible: true,
+    id: Number(item.id) || 0,
+    name: item.name || '',
+    expire: Number(item.expire_time) || 0,
+    options: item.renew_options || []
+  }
+}
 // 后端 /decoration/mine 返回：{ types, wearing, list }
 const store = ref({ types: [], wearing: {}, list: {} })
 
@@ -537,6 +571,10 @@ onMounted(loadMine)
 .decoration-actions {
   margin-top: auto;
   padding-top: 2px;
+  /* 佩戴 / 续期两个整行按钮：竖排留一点缝，避免贴成一块 */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .is-loading {

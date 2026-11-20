@@ -220,15 +220,21 @@ onMounted(load)
 }
 
 /* ---------- 年份区块 ---------- */
+/* 每年一张卡片，与首页文章卡片 / 文章详情页同一套外观（bg-card + border-soft + radius-lg + 20px）。
+   归档是分组列表，按年拆卡片比整页一张长卡片更好滚，也比空白底更像「列表页」。 */
 .archive-timeline {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: 16px;
 }
 .archive-year-block {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
 }
 .archive-year-head {
   display: flex;

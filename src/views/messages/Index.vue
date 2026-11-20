@@ -91,7 +91,7 @@
 
       <label class="msg-search">
         <i class="bi bi-search" aria-hidden="true" />
-        <input v-model="keyword" type="search" placeholder="搜索昵称" aria-label="搜索会话" />
+        <FormInput v-model="keyword" type="search" placeholder="搜索昵称" aria-label="搜索会话" />
         <button v-if="keyword" type="button" class="msg-search-clear" title="清空" @click="keyword = ''">
           <i class="bi bi-x-circle-fill" aria-hidden="true" />
         </button>
@@ -472,6 +472,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {

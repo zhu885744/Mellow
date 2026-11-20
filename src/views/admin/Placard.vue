@@ -39,14 +39,13 @@
         <div class="filter-right">
           <div class="search-box">
             <i class="bi bi-search" aria-hidden="true" />
-            <input
+            <FormInput
               v-model="keyword"
               class="search-input"
               type="search"
               placeholder="搜索标题…"
               aria-label="搜索标题"
-              @input="doSearch"
-            />
+              @input="doSearch" />
           </div>
           <button class="btn btn-sm" :disabled="loading" @click="load()">
             <i class="bi bi-arrow-clockwise" /> 刷新
@@ -96,14 +95,12 @@
         <!-- 本页全选 -->
         <div class="list-head-row">
           <label class="pick" title="全选本页">
-            <input
+            <FormCheckbox
               ref="selectAllRef"
-              type="checkbox"
-              :checked="pageAllSelected"
+              :model-value="pageAllSelected"
               :disabled="busy || !list.length"
               aria-label="全选本页"
-              @change="toggleSelectAll"
-            />
+              @change="toggleSelectAll" />
           </label>
           <span class="list-head-text">本页 {{ list.length }} 条 · 共 {{ total }} 条</span>
         </div>
@@ -116,13 +113,11 @@
             :class="{ 'is-selected': isSelected(item.id) }"
           >
             <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-              <input
-                type="checkbox"
-                :checked="isSelected(item.id)"
+              <FormCheckbox
+                :model-value="isSelected(item.id)"
                 :disabled="busy"
                 :aria-label="`选择公告 ${item.title || item.id}`"
-                @change="toggleSelect(item.id)"
-              />
+                @change="toggleSelect(item.id)" />
             </label>
 
             <div class="placard-main">
@@ -192,45 +187,39 @@
     >
       <div class="form-item">
         <label class="form-label">公告标题</label>
-        <input v-model="dialog.title" class="input" type="text" maxlength="32" placeholder="最多 32 字" />
+        <FormInput v-model="dialog.title" type="text" maxlength="32" placeholder="最多 32 字" />
       </div>
 
       <div class="form-grid">
         <div class="form-item">
           <label class="form-label">公告类型</label>
-          <SelectMenu
+          <FormSelect
             v-model="dialog.type"
-            variant="field"
             :options="PLACARD_TYPES"
-            placeholder="请选择类型"
-          />
+            placeholder="请选择类型" />
           <p class="form-hint">决定首页轮播左侧圆点与公告弹窗类型标签的配色</p>
         </div>
         <div class="form-item">
           <label class="form-label">打开方式</label>
-          <SelectMenu
+          <FormSelect
             v-model="dialog.target"
-            variant="field"
             :options="TARGET_OPTIONS"
-            placeholder="请选择打开方式"
-          />
+            placeholder="请选择打开方式" />
         </div>
       </div>
 
       <div class="form-item">
         <label class="form-label">公告内容</label>
-        <textarea
+        <FormTextarea
           v-model="dialog.content"
-          class="textarea"
           rows="4"
           maxlength="512"
-          placeholder="最多 512 字，支持 HTML（前台弹窗按原文渲染）"
-        />
+          placeholder="最多 512 字，支持 HTML（前台弹窗按原文渲染）" />
       </div>
 
       <div class="form-item">
         <label class="form-label">跳转链接</label>
-        <input v-model="dialog.url" class="input" type="text" maxlength="256" placeholder="可选，如 /about 或 https://example.com" />
+        <FormInput v-model="dialog.url" type="text" maxlength="256" placeholder="可选，如 /about 或 https://example.com" />
         <p class="form-hint">留空则前台只展示内容，不显示跳转按钮</p>
       </div>
     </AdminFormDialog>
@@ -249,6 +238,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 import { PAGE_SIZE_DEFAULT, PAGE_SIZE_OPTIONS } from '@/utils/page-size'
 /**
  * 公告管理（/admin/placard）
@@ -266,7 +259,6 @@ import { ref, reactive, computed, onMounted, watchEffect } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import {
   listPlacards,
@@ -553,7 +545,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

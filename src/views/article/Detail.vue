@@ -442,8 +442,16 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* 与动态详情页对齐：components/MomentItem.vue 的 .moment-card 是
+   「背景 + 描边 + 大圆角 + 20px 内边距」的一张卡片，文章详情整块也照这个来，
+   两边的阅读体验才一致（评论区在卡片内，和动态展开评论后的形态相同）。
+   不加 hover 阴影：详情页不是列表项，鼠标一直在卡片上会让整块一直泛着阴影。 */
 .article-detail {
-  padding: 8px 0;
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  margin-bottom: 16px;
 }
 .title {
   font-family: var(--font-serif);

@@ -1,12 +1,5 @@
 <template>
   <div class="moment-detail-page">
-    <div class="detail-bar">
-      <!-- 动态列表页已下线：返回走首页「发现」（动态与文章混排），与 /moments 旧地址的重定向目标一致 -->
-      <RouterLink :to="{ name: 'home' }" class="back-link">
-        <i class="bi bi-arrow-left" /> 返回首页
-      </RouterLink>
-    </div>
-
     <div v-if="loading" class="state-tip">加载中…</div>
     <div v-else-if="!moment" class="state-tip empty">动态不存在或已被删除</div>
     <MomentItem
@@ -56,14 +49,6 @@ onMounted(load)
 </script>
 
 <style scoped>
-.moment-detail-page {
-  max-width: 680px;
-  margin: 0 auto;
-  padding: 24px 0 40px;
-}
-.detail-bar {
-  margin-bottom: 16px;
-}
 .back-link {
   display: inline-flex;
   align-items: center;

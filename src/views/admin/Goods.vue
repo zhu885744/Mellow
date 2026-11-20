@@ -84,24 +84,22 @@
           </div>
 
           <div class="filter-right">
-            <SelectMenu
+            <FormSelect variant="pill"
               v-model="category"
               :options="categoryOptions"
               icon="bi bi-collection"
               placeholder="全部分类"
-              @change="reloadGoods"
-            />
+              @change="reloadGoods" />
 
             <div class="search-box">
               <i class="bi bi-search" aria-hidden="true" />
-              <input
+              <FormInput
                 v-model="keyword"
                 class="search-input"
                 type="search"
                 placeholder="搜索商品名…"
                 aria-label="搜索商品名"
-                @input="doSearch"
-              />
+                @input="doSearch" />
             </div>
 
             <button class="btn btn-sm" :disabled="loading" @click="loadGoods()">
@@ -147,14 +145,12 @@
         <template v-else>
           <div class="list-head-row">
             <label class="pick" title="全选本页">
-              <input
+              <FormCheckbox
                 ref="selectAllRef"
-                type="checkbox"
-                :checked="pageAllSelected"
+                :model-value="pageAllSelected"
                 :disabled="busy"
                 aria-label="全选本页"
-                @change="toggleSelectAll"
-              />
+                @change="toggleSelectAll" />
             </label>
             <span class="list-head-text">本页 {{ list.length }} 件</span>
           </div>
@@ -162,13 +158,11 @@
           <ul class="goods-list">
             <li v-for="item in list" :key="item.id" class="goods-row" :class="{ 'is-selected': isSelected(item.id) }">
               <label class="pick" :title="isSelected(item.id) ? '取消选择' : '选择'">
-                <input
-                  type="checkbox"
-                  :checked="isSelected(item.id)"
+                <FormCheckbox
+                  :model-value="isSelected(item.id)"
                   :disabled="busy"
                   :aria-label="`选择商品 ${item.title}`"
-                  @change="toggleSelect(item.id)"
-                />
+                  @change="toggleSelect(item.id)" />
               </label>
 
               <div class="goods-cover">
@@ -390,12 +384,12 @@
 
         <div class="form-item">
           <label class="form-label">商品名称</label>
-          <input v-model="edit.title" class="input" type="text" maxlength="128" placeholder="最多 128 字" />
+          <FormInput v-model="edit.title" type="text" maxlength="128" placeholder="最多 128 字" />
         </div>
 
         <div class="form-item">
           <label class="form-label">商品描述</label>
-          <textarea v-model="edit.description" class="textarea" rows="2" placeholder="可选，展示在商品详情" />
+          <FormTextarea v-model="edit.description" rows="2" placeholder="可选，展示在商品详情" />
         </div>
 
         <div class="form-item">
@@ -412,7 +406,7 @@
               </button>
             </div>
             <div class="cover-fields">
-              <input v-model="edit.cover" class="input" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
+              <FormInput v-model="edit.cover" type="text" placeholder="粘贴图片链接，或点击下方按钮上传" />
               <div class="cover-actions">
                 <button class="btn btn-sm" type="button" :disabled="uploading" @click="pickCover">
                   <i class="bi bi-upload" /> {{ uploading ? '上传中...' : '上传图片' }}
@@ -438,11 +432,11 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">分类</label>
-            <input v-model="edit.category" class="input" type="text" maxlength="32" placeholder="可选，如「虚拟道具」" />
+            <FormInput v-model="edit.category" type="text" maxlength="32" placeholder="可选，如「虚拟道具」" />
           </div>
           <div class="form-item">
             <label class="form-label">排序权重</label>
-            <input v-model="edit.sort" class="input" type="number" step="1" placeholder="越大越靠前" />
+            <FormInput v-model="edit.sort" type="number" step="1" placeholder="越大越靠前" />
           </div>
         </div>
       </section>
@@ -453,45 +447,45 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">积分价格</label>
-            <input v-model="edit.price" class="input" type="number" min="0" step="1" placeholder="兑换所需积分" />
+            <FormInput v-model="edit.price" type="number" min="0" step="1" placeholder="兑换所需积分" />
           </div>
           <div class="form-item">
             <label class="form-label">库存</label>
-            <input v-model="edit.stock" class="input" type="number" min="0" step="1" placeholder="0 表示售罄" />
+            <FormInput v-model="edit.stock" type="number" min="0" step="1" placeholder="0 表示售罄" />
           </div>
         </div>
 
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">每人限购</label>
-            <input v-model="edit.limit_per_user" class="input" type="number" min="0" step="1" placeholder="0 表示不限购" />
+            <FormInput v-model="edit.limit_per_user" type="number" min="0" step="1" placeholder="0 表示不限购" />
           </div>
           <div class="form-item">
             <label class="form-label">最低经验</label>
-            <input v-model="edit.min_exp" class="input" type="number" min="0" step="1" placeholder="0 表示不限" />
+            <FormInput v-model="edit.min_exp" type="number" min="0" step="1" placeholder="0 表示不限" />
           </div>
         </div>
 
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">上架状态</label>
-            <SelectMenu v-model="edit.status" variant="field" :options="SALE_OPTIONS" />
+            <FormSelect v-model="edit.status" :options="SALE_OPTIONS" />
           </div>
           <div class="form-item">
             <label class="form-label">商品类型</label>
-            <SelectMenu v-model="edit.type" variant="field" :options="TYPE_OPTIONS" />
+            <FormSelect v-model="edit.type" :options="TYPE_OPTIONS" />
           </div>
         </div>
 
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">开始时间</label>
-            <input v-model="edit.startAt" class="input" type="datetime-local" />
+            <FormInput v-model="edit.startAt" type="datetime-local" />
             <p class="form-hint">留空表示立即开始</p>
           </div>
           <div class="form-item">
             <label class="form-label">结束时间</label>
-            <input v-model="edit.endAt" class="input" type="datetime-local" />
+            <FormInput v-model="edit.endAt" type="datetime-local" />
             <p class="form-hint">留空表示长期有效</p>
           </div>
         </div>
@@ -503,7 +497,7 @@
         <div class="form-grid">
           <div class="form-item">
             <label class="form-label">发货方式</label>
-            <SelectMenu v-model="edit.deliver_type" variant="field" :options="deliverOptions" />
+            <FormSelect v-model="edit.deliver_type" :options="deliverOptions" />
             <p class="form-hint">仅虚拟商品需要；实物商品下单时填写收货地址</p>
           </div>
           <div v-if="edit.deliver_type === 'card'" class="form-item">
@@ -514,12 +508,12 @@
 
         <div v-if="edit.deliver_type === 'text'" class="form-item">
           <label class="form-label">发货内容</label>
-          <textarea v-model="edit.deliver_content" class="textarea" rows="3" placeholder="所有订单发放同一段文本" />
+          <FormTextarea v-model="edit.deliver_content" rows="3" placeholder="所有订单发放同一段文本" />
         </div>
 
         <div v-else-if="edit.deliver_type === 'card'" class="form-item">
           <label class="form-label">卡密池</label>
-          <textarea v-model="edit.cardsText" class="textarea" rows="4" placeholder="一行一个卡密，发货时随机抽取并移除" />
+          <FormTextarea v-model="edit.cardsText" rows="4" placeholder="一行一个卡密，发货时随机抽取并移除" />
           <p class="form-hint">仅管理员可见；已发出的卡密会由后端自动移出卡密池</p>
         </div>
 
@@ -549,7 +543,7 @@
       </div>
       <div class="form-item">
         <label class="form-label">物流信息</label>
-        <textarea v-model="ship.logistics" class="textarea" rows="3" placeholder="快递公司 + 运单号，虚拟商品可留空" />
+        <FormTextarea v-model="ship.logistics" rows="3" placeholder="快递公司 + 运单号，虚拟商品可留空" />
       </div>
     </AdminFormDialog>
 
@@ -579,6 +573,10 @@
 </template>
 
 <script setup>
+import FormCheckbox from '@/components/form/FormCheckbox.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
+import FormTextarea from '@/components/form/FormTextarea.vue'
+import FormInput from '@/components/form/FormInput.vue'
 /**
  * 商品管理（/admin/goods）
  *
@@ -597,7 +595,6 @@ import { ref, reactive, computed, watchEffect, onMounted } from 'vue'
 import EmptyState from '@/components/EmptyState.vue'
 import Pagination from '@/components/Pagination.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import SelectMenu from '@/components/SelectMenu.vue'
 import AdminFormDialog from '@/components/admin/AdminFormDialog.vue'
 import {
   listGoodsAdmin,
@@ -948,7 +945,7 @@ const someSelected = computed(() => selectedIds.value.length > 0 && !pageAllSele
 const selectAllRef = ref(null)
 
 watchEffect(() => {
-  if (selectAllRef.value) selectAllRef.value.indeterminate = someSelected.value
+  if (selectAllRef.value) selectAllRef.value.setIndeterminate(someSelected.value)
 })
 
 function isSelected(id) {

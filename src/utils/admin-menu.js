@@ -69,7 +69,7 @@ export const ADMIN_MENU_GROUPS = [
         path: '/admin/goods',
         name: '商城管理',
         icon: 'bi bi-bag',
-        pages: ['/admin/goods', '/admin/integral', '/admin/decoration', '/admin/checkin']
+        pages: ['/admin/goods', '/admin/integral', '/admin/decoration', '/admin/goods/renew', '/admin/checkin']
       },
       {
         path: '/admin/message',

@@ -21,26 +21,22 @@
     <form v-if="mode === 'password'" class="auth-form" @submit.prevent="handleLogin">
       <div class="form-item">
         <label class="form-label">账号 / 邮箱 / 手机号</label>
-        <input
+        <FormInput
           v-model="account"
-          class="input"
           type="text"
           autocomplete="username"
           required
-          placeholder="请输入账号"
-        />
+          placeholder="请输入账号" />
       </div>
 
       <div class="form-item">
         <label class="form-label">密码</label>
-        <input
+        <FormInput
           v-model="password"
-          class="input"
           type="password"
           autocomplete="current-password"
           required
-          placeholder="请输入密码"
-        />
+          placeholder="请输入密码" />
       </div>
 
       <div class="form-actions">
@@ -58,28 +54,24 @@
     <form v-else class="auth-form" @submit.prevent="handleCodeLogin">
       <div class="form-item">
         <label class="form-label">邮箱 / 手机号</label>
-        <input
+        <FormInput
           v-model="codeForm.social"
-          class="input"
           type="text"
           autocomplete="username"
           required
-          placeholder="请输入邮箱或手机号"
-        />
+          placeholder="请输入邮箱或手机号" />
       </div>
 
       <div class="form-item">
         <label class="form-label">验证码</label>
         <div class="code-row">
-          <input
+          <FormInput
             v-model="codeForm.code"
-            class="input"
             required
             maxlength="6"
             inputmode="numeric"
             autocomplete="one-time-code"
-            placeholder="请输入验证码"
-          />
+            placeholder="请输入验证码" />
           <button
             type="button"
             class="btn"
@@ -109,6 +101,7 @@
 </template>
 
 <script setup>
+import FormInput from '@/components/form/FormInput.vue'
 import { ref, onUnmounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { login, signCode, signCodeSend } from '@/api/comm'

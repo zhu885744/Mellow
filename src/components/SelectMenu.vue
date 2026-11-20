@@ -59,6 +59,7 @@
 </template>
 
 <script setup>
+import FormSelect from '@/components/form/FormSelect.vue'
 /**
  * 主题统一的下拉选择器 —— 全站唯一的「下拉列表」实现
  *
@@ -68,8 +69,8 @@
  *   3. 本项目已有 30+ 处用本组件，混用会让同类控件在不同页面长得不一样。
  *
  * 用法：
- *   - 筛选栏 / 工具条：默认 pill 形态  <SelectMenu v-model="x" :options="list" icon="bi bi-funnel" />
- *   - 表单内部：variant="field"        <SelectMenu v-model="x" variant="field" :options="list" />
+ *   - 筛选栏 / 工具条：默认 pill 形态  <FormSelect variant="pill" v-model="x" :options="list" icon="bi bi-funnel" />
+ *   - 表单内部：variant="field"        <FormSelect v-model="x" :options="list" />
  *   options 为 [{ value, label, disabled? }]；值比较统一走 String()，数字 / 字符串都能对上。
  *
  * 浮层定位：默认贴着触发器绝对定位；当下拉处在滚动容器（弹窗 .modal-body、表格滚动区等）
