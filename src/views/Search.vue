@@ -1,30 +1,32 @@
 <template>
   <div class="search-page">
-    <!-- 搜索区：大输入框 + 范围切换 -->
-    <section class="search-hero card card-pad">
+    <!-- 搜索区：标题 + 大搜索框（提交按钮内嵌）+ 范围分段 -->
+    <section class="search-hero">
+      <header class="search-hero-head">
+        <h1 class="search-title">搜索</h1>
+        <p class="search-desc">文章、页面、话题、用户与动态，一次搜全站</p>
+      </header>
+
       <form class="search-form" role="search" @submit.prevent="submit">
-        <!-- 图标 / 输入框 / 清空按钮放在同一个相对定位容器里：
-             直接挂在 form 上的话，手机端表单换行成两行后绝对定位的元素会垂直错位 -->
-        <div class="search-form-field">
-          <i class="bi bi-search search-form-icon" aria-hidden="true" />
-          <input
-            ref="inputRef"
-            v-model="keyword"
-            class="search-form-input"
-            type="search"
-            :placeholder="placeholder"
-            aria-label="搜索"
-            autocomplete="off"
-            @input="onInput"
-            @keydown.down.prevent="move(1)"
-            @keydown.up.prevent="move(-1)"
-          />
-          <button v-if="keyword" type="button" class="search-form-clear" aria-label="清空" @click="clearKeyword">
-            <i class="bi bi-x" />
-          </button>
-        </div>
-        <button type="submit" class="btn btn-primary search-form-submit">
-          <i class="bi bi-search" /> 搜索
+        <i class="bi bi-search search-form-icon" aria-hidden="true" />
+        <FormInput
+          ref="inputRef"
+          v-model="keyword"
+          class="search-input"
+          type="search"
+          :placeholder="placeholder"
+          aria-label="搜索"
+          autocomplete="off"
+          @input="onInput"
+          @keydown.down.prevent="move(1)"
+          @keydown.up.prevent="move(-1)"
+        />
+        <button v-if="keyword" type="button" class="search-clear" aria-label="清空" @click="clearKeyword">
+          <i class="bi bi-x-lg" />
+        </button>
+        <button type="submit" class="search-submit">
+          <i class="bi bi-search" aria-hidden="true" />
+          <span class="search-submit-text">搜索</span>
         </button>
       </form>
 
@@ -39,27 +41,34 @@
           :aria-selected="scope === item.key"
           @click="changeScope(item.key)"
         >
-          <i :class="item.icon" /> {{ item.label }}
+          {{ item.label }}
         </button>
       </div>
     </section>
 
-    <!-- 未搜索：热门关键词 + 搜索历史 -->
-    <template v-if="!submitted">
-      <section class="card card-pad">
+    <!-- 未搜索：热门关键词 + 搜索历史（桌面两列，手机单列） -->
+    <div v-if="!submitted" class="search-suggest">
+      <section class="card suggest-card">
         <header class="block-head">
-          <h3 class="block-title"><i class="bi bi-fire" /> 热门搜索</h3>
+          <h2 class="block-title"><i class="bi bi-fire" /> 热门搜索</h2>
         </header>
         <div class="tag-list">
-          <button v-for="(word, i) in HOT_SEARCHES" :key="i" class="search-tag" @click="useKeyword(word)">
+          <button
+            v-for="(word, i) in HOT_SEARCHES"
+            :key="i"
+            class="search-tag"
+            :class="{ 'is-top': i < 3 }"
+            @click="useKeyword(word)"
+          >
+            <span class="tag-rank">{{ i + 1 }}</span>
             {{ word }}
           </button>
         </div>
       </section>
 
-      <section v-if="history.length" class="card card-pad">
+      <section v-if="history.length" class="card suggest-card">
         <header class="block-head">
-          <h3 class="block-title"><i class="bi bi-clock-history" /> 搜索历史</h3>
+          <h2 class="block-title"><i class="bi bi-clock-history" /> 搜索历史</h2>
           <button type="button" class="link-btn" @click="clearHistory">清除全部</button>
         </header>
         <div class="tag-list">
@@ -71,39 +80,51 @@
           </span>
         </div>
       </section>
-    </template>
+    </div>
 
     <!-- 搜索结果 -->
     <template v-else>
       <div class="result-head">
-        <span>
-          关键词 <strong>{{ submitted }}</strong>
-          <template v-if="!loading"> · 共 {{ results.length }} 条结果</template>
-        </span>
+        <p class="result-head-text">
+          <template v-if="loading">
+            正在搜索 <span class="result-keyword">{{ submitted }}</span>…
+          </template>
+          <template v-else>
+            找到 <strong>{{ results.length }}</strong> 条与
+            <span class="result-keyword">{{ submitted }}</span>
+            相关的内容
+          </template>
+        </p>
         <span class="result-hint">
           <kbd>↑</kbd><kbd>↓</kbd> 选择 · <kbd>Enter</kbd> 打开
         </span>
       </div>
 
-      <!-- 加载骨架 -->
-      <div v-if="loading" class="card card-pad">
-        <div v-for="i in 4" :key="'sk-' + i" class="skeleton-row" />
+      <!-- 加载骨架：与真实条目同构（缩略图 + 两行文字） -->
+      <div v-if="loading" class="card result-skeleton">
+        <div v-for="i in 4" :key="'sk-' + i" class="skeleton-item">
+          <span class="skeleton sk-thumb" />
+          <span class="sk-lines">
+            <span class="skeleton sk-line is-title" />
+            <span class="skeleton sk-line is-text" />
+          </span>
+        </div>
       </div>
 
-      <div v-else-if="!results.length" class="card card-pad">
+      <div v-else-if="!results.length" class="card">
         <EmptyState icon="bi bi-search" text="没有找到相关内容，换个关键词试试" />
       </div>
 
-      <!-- 按类型分组 -->
+      <!-- 按类型分组：组头在卡片外，列表本身是一张卡 -->
       <template v-else>
-        <section v-for="group in groups" :key="group.key" class="card card-pad result-group">
-          <header class="block-head">
-            <h3 class="block-title">
+        <section v-for="group in groups" :key="group.key" class="result-group">
+          <header class="group-head">
+            <h3 class="group-title">
               <i :class="group.icon" /> {{ group.label }}
             </h3>
-            <span class="block-count">{{ group.items.length }} 条</span>
+            <span class="group-count">{{ group.items.length }}</span>
           </header>
-          <ul class="result-list">
+          <ul class="card result-list">
             <li
               v-for="item in group.items"
               :key="item.id || item._index"
@@ -167,6 +188,7 @@ import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { escapeHtml } from '@/utils/emoji'
 import { parseLiveItem } from '@/utils/livePhoto'
+import FormInput from '@/components/form/FormInput.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import { call } from '@/api/request'
 import { fromNow } from '@/utils/time'
@@ -619,124 +641,198 @@ onMounted(() => {
 .search-page {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   min-width: 0;
 }
 
 /* ---------- 搜索区 ---------- */
+/* 一整块「搜索台」：左上角淡朱砂光晕，与站内其它纸感卡片区分层级 */
 .search-hero {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.search-form {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-/* 图标与清空按钮的定位基准 */
-.search-form-field {
   position: relative;
-  flex: 1;
-  min-width: 0;
+  overflow: hidden;
+  padding: 22px 20px 18px;
+  background:
+    radial-gradient(120% 150% at 0% 0%, var(--accent-wash), transparent 58%),
+    var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+}
+.search-hero-head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+.search-title {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  color: var(--text);
+}
+.search-desc {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* 搜索框：胶囊形，提交按钮内嵌在右端（手机端也不换行） */
+.search-form {
+  position: relative;
   display: flex;
   align-items: center;
+  margin-top: 16px;
 }
 .search-form-icon {
   position: absolute;
   left: 16px;
   top: 50%;
   transform: translateY(-50%);
+  z-index: 1;
+  font-size: 15px;
   color: var(--text-muted);
   pointer-events: none;
 }
-.search-form-input {
-  flex: 1;
+.search-input {
   width: 100%;
-  min-width: 0;
-  height: var(--control-h-lg);
-  padding: 0 42px 0 44px;
+  height: 50px;
+  padding: 0 128px 0 42px;
   border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius: 999px;
   background: var(--bg-soft);
   color: var(--text);
   font-size: 15px;
-  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    background-color var(--dur) var(--ease);
 }
-/* 隐藏 type=search 的原生清除按钮：否则会和下面自定义的 ❌ 同时出现（两个叉）
+/* 隐藏 type=search 的原生清除按钮：否则会和自定义的 ❌ 同时出现（两个叉）
    各内核的伪元素都写一遍，避免浏览器差异 */
-.search-form-input::-webkit-search-cancel-button,
-.search-form-input::-webkit-search-decoration,
-.search-form-input::-webkit-search-results-button,
-.search-form-input::-webkit-search-results-decoration {
+.search-input::-webkit-search-cancel-button,
+.search-input::-webkit-search-decoration,
+.search-input::-webkit-search-results-button,
+.search-input::-webkit-search-results-decoration {
   -webkit-appearance: none;
   appearance: none;
   display: none;
 }
-.search-form-input::-ms-clear {
+.search-input::-ms-clear {
   display: none;
   width: 0;
   height: 0;
 }
-.search-form-input::placeholder {
+.search-input::placeholder {
   color: var(--text-light);
 }
-.search-form-input:focus {
+.search-input:focus {
   outline: none;
   background: var(--bg-card);
   border-color: var(--primary);
   box-shadow: 0 0 0 3px var(--accent-ring);
 }
-.search-form-clear {
+.search-clear {
   position: absolute;
-  right: 10px;
+  right: 96px;
   top: 50%;
   transform: translateY(-50%);
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
   color: var(--text-muted);
+  background: transparent;
   -webkit-tap-highlight-color: transparent;
 }
-.search-form-clear:hover {
+.search-clear:hover {
   background: var(--bg-muted);
   color: var(--text);
 }
-.search-form-submit {
-  flex-shrink: 0;
-  height: var(--control-h-lg);
-}
-
-/* 范围切换 */
-.search-scopes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-.scope-btn {
+.search-submit {
+  position: absolute;
+  right: 5px;
+  top: 50%;
+  transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  padding: 5px 14px;
-  font-size: 13px;
-  border: 1px solid var(--border);
+  height: 40px;
+  padding: 0 18px;
+  border: none;
   border-radius: 999px;
-  color: var(--text-soft);
-  background: var(--bg-soft);
-  transition: all 0.15s;
+  background: linear-gradient(135deg, var(--primary), var(--primary-deep));
+  color: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 3px 10px var(--accent-glow);
+  transition: box-shadow var(--dur) var(--ease), filter var(--dur) var(--ease);
+}
+.search-submit:hover {
+  box-shadow: 0 5px 16px var(--accent-glow);
+  filter: brightness(1.04);
+}
+.search-submit:active {
+  box-shadow: 0 2px 8px var(--accent-glow);
+}
+.search-submit i {
+  font-size: 13px;
+}
+
+/* 范围切换：分段控件（与首页发现流同一套胶囊语言） */
+.search-scopes {
+  display: flex;
+  gap: 2px;
+  margin-top: 14px;
+  padding: 3px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.search-scopes::-webkit-scrollbar {
+  display: none;
+}
+.scope-btn {
+  flex: 1 0 auto;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease),
+    box-shadow var(--dur) var(--ease);
   -webkit-tap-highlight-color: transparent;
 }
 .scope-btn:hover {
-  color: var(--primary);
-  border-color: var(--primary);
+  color: var(--text);
 }
 .scope-btn.is-active {
-  color: #fff;
-  background: var(--primary);
-  border-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+  background: var(--bg-card);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- 未搜索时的推荐区（热门 / 历史） ---------- */
+.search-suggest {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.suggest-card {
+  padding: 18px 20px 16px;
 }
 
 /* ---------- 区块头 ---------- */
@@ -757,14 +853,18 @@ onMounted(() => {
   font-weight: 700;
   color: var(--text);
 }
-.block-count {
-  font-size: 12px;
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
+.block-title .bi {
+  font-size: 14px;
+  color: var(--primary);
 }
 .link-btn {
   font-size: 12px;
   color: var(--text-muted);
+  font-family: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease);
 }
 .link-btn:hover {
   color: var(--danger);
@@ -779,26 +879,55 @@ onMounted(() => {
 .search-tag {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   min-height: 32px;
   padding: 4px 14px;
+  font-family: inherit;
   font-size: 13px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-soft);
   border-radius: 999px;
   color: var(--text-soft);
   background: var(--bg-soft);
-  transition: all 0.15s;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), border-color var(--dur) var(--ease),
+    background-color var(--dur) var(--ease);
   -webkit-tap-highlight-color: transparent;
 }
 .search-tag:hover {
   color: var(--primary);
-  border-color: var(--primary);
+  border-color: var(--primary-soft);
+  background: var(--accent-wash);
+}
+/* 热搜排名：前三名用实心朱砂，其余淡底 */
+.tag-rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+}
+.search-tag.is-top .tag-rank {
+  background: var(--primary);
+  color: #fff;
 }
 .search-tag-history {
   padding-right: 6px;
 }
 .search-tag-text {
+  font-family: inherit;
+  font-size: inherit;
   color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
 }
 .search-tag-remove {
   display: inline-flex;
@@ -811,25 +940,49 @@ onMounted(() => {
   font-size: 13px;
   line-height: 1;
   color: var(--text-light);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: color var(--dur) var(--ease), background-color var(--dur) var(--ease);
 }
 .search-tag-remove:hover {
   color: var(--danger);
+  background: var(--bg-muted);
 }
 
 /* ---------- 结果 ---------- */
 .result-head {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
   gap: 12px;
+}
+.result-head-text {
+  margin: 0;
   font-size: 13px;
   color: var(--text-muted);
+}
+.result-head-text strong {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+/* 关键词：淡朱砂底的小块，比加粗更醒目 */
+.result-keyword {
+  margin: 0 2px;
+  padding: 1px 8px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-weight: 600;
+  word-break: break-all;
 }
 .result-hint {
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  flex-shrink: 0;
   font-size: 12px;
+  color: var(--text-light);
 }
 .result-hint kbd {
   padding: 1px 5px;
@@ -841,40 +994,100 @@ onMounted(() => {
   font-size: 11px;
 }
 
+/* 结果分组：组头在卡片外，列表本身是一张卡 */
+.result-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.group-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 2px;
+}
+.group-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.group-title .bi {
+  font-size: 13px;
+  color: var(--primary);
+}
+.group-count {
+  margin-left: auto;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  color: var(--text-muted);
+  font-size: 11px;
+  line-height: 1.7;
+  font-variant-numeric: tabular-nums;
+}
+
 .result-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
   margin: 0;
-  padding: 0;
+  padding: 6px;
   list-style: none;
+  box-shadow: var(--shadow-sm);
+}
+/* 覆盖全局 .card:hover：整张列表不做悬浮反馈，反馈落在条目上 */
+.result-list:hover {
+  box-shadow: var(--shadow-sm);
 }
 .result-item {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 12px;
-  padding: 12px 10px;
-  border-radius: var(--radius-sm);
+  padding: 12px;
+  border-radius: var(--radius);
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color var(--dur) var(--ease);
 }
-.result-item + .result-item {
-  border-top: 1px dashed var(--border-soft, var(--border));
+/* 条目分隔线：虚线但不贴边，左右留出缩进 */
+.result-item + .result-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 12px;
+  right: 12px;
+  border-top: 1px dashed var(--border-soft);
 }
 .result-item:hover,
 .result-item.is-selected {
-  background: var(--bg-muted);
+  background: var(--accent-wash);
+}
+/* 键盘选中：左侧朱砂短条，和 hover 区分开 */
+.result-item.is-selected::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: var(--primary);
 }
 /* 缩略图：没有图 / 图挂了时展示类型图标 */
 .result-thumb {
   flex-shrink: 0;
-  width: 52px;
-  height: 52px;
+  width: 56px;
+  height: 56px;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
+  border: 1px solid var(--border-soft);
   background: var(--bg-muted);
   color: var(--text-muted);
   font-size: 18px;
@@ -885,25 +1098,26 @@ onMounted(() => {
   object-fit: cover;
   display: block;
 }
-/* 头像类图片用圆形更自然 */
-.result-thumb.is-users img,
-.result-thumb.is-links img,
-.result-thumb.is-tag img {
+/* 头像类（话题 / 用户 / 友链）整块圆形：容器也圆，避免方形描边露出 */
+.result-thumb.is-users,
+.result-thumb.is-links,
+.result-thumb.is-tag {
   border-radius: 50%;
 }
 .result-badge {
   flex-shrink: 0;
-  padding: 2px 8px;
+  padding: 1px 7px;
   font-size: 11px;
-  border-radius: 999px;
-  color: #fff;
-  background: var(--primary);
+  line-height: 1.7;
+  border-radius: 4px;
+  color: var(--primary-deep);
+  background: var(--accent-soft);
 }
-.result-badge.is-page { background: #8a8a82; }
-.result-badge.is-tag { background: #5b9bd5; }
-.result-badge.is-links { background: #6aa84f; }
-.result-badge.is-users { background: #c98a2d; }
-.result-badge.is-moments { background: #7f6dbd; }
+.result-badge.is-page { color: #6f6f68; background: rgba(138, 138, 130, 0.14); }
+.result-badge.is-tag { color: #3d7fb8; background: rgba(91, 155, 213, 0.14); }
+.result-badge.is-links { color: #4f8a3a; background: rgba(106, 168, 79, 0.14); }
+.result-badge.is-users { color: #a5701f; background: rgba(201, 138, 45, 0.14); }
+.result-badge.is-moments { color: #6b5aa8; background: rgba(127, 109, 189, 0.14); }
 .result-main {
   flex: 1;
   min-width: 0;
@@ -926,6 +1140,10 @@ onMounted(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: color var(--dur) var(--ease);
+}
+.result-item:hover .result-title {
+  color: var(--primary-deep);
 }
 .result-title :deep(mark),
 .result-summary :deep(mark),
@@ -973,61 +1191,109 @@ onMounted(() => {
   flex-shrink: 0;
   align-self: center;
   color: var(--text-light);
+  transition: transform var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+.result-item:hover .result-arrow {
+  color: var(--primary);
+  transform: translateX(2px);
 }
 
-/* 加载骨架 */
-.skeleton-row {
-  height: 40px;
-  border-radius: var(--radius-sm);
-  background: linear-gradient(90deg, var(--bg-muted) 25%, var(--bg-soft) 37%, var(--bg-muted) 63%);
-  background-size: 400% 100%;
-  animation: skeleton-shine 1.4s ease infinite;
+/* 加载骨架：与真实条目同构（缩略图 + 标题行 + 摘要行） */
+.result-skeleton {
+  padding: 6px;
+  box-shadow: var(--shadow-sm);
 }
-.skeleton-row + .skeleton-row {
-  margin-top: 8px;
+.skeleton-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px;
 }
-@keyframes skeleton-shine {
-  0% { background-position: 100% 50%; }
-  100% { background-position: 0 50%; }
+.skeleton-item + .skeleton-item {
+  border-top: 1px dashed var(--border-soft);
+}
+.sk-thumb {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--radius);
+}
+.sk-lines {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+}
+.sk-line {
+  height: 12px;
+  border-radius: 4px;
+}
+.sk-line.is-title {
+  width: 45%;
+  height: 14px;
+}
+.sk-line.is-text {
+  width: 80%;
+}
+
+@media (max-width: 900px) {
+  .search-suggest {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 @media (max-width: 640px) {
+  .search-hero {
+    padding: 18px 14px 14px;
+  }
+  .search-title {
+    font-size: 19px;
+  }
+  .search-desc {
+    display: none;
+  }
   .search-form {
-    flex-wrap: wrap;
+    margin-top: 12px;
   }
-  /* 输入框独占一行（按钮换到下一行），图标 / 清空按钮的定位基准是 __field，不会错位 */
-  .search-form-field {
-    flex: 1 1 100%;
-  }
-  .search-form-input {
+  .search-input {
+    height: 46px;
     /* 16px 可避免 iOS 聚焦输入框时页面被放大 */
     font-size: 16px;
+    padding: 0 100px 0 38px;
   }
-  .search-form-submit {
-    width: 100%;
+  .search-form-icon {
+    left: 14px;
+  }
+  /* 窄屏提交键只留图标，把宽度还给输入框 */
+  .search-submit {
+    height: 36px;
+    padding: 0 12px;
+  }
+  .search-submit-text {
+    display: none;
+  }
+  .search-clear {
+    right: 52px;
   }
   .search-scopes {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    padding-bottom: 2px;
-    scrollbar-width: none;
-  }
-  .search-scopes::-webkit-scrollbar {
-    display: none;
+    margin-top: 12px;
   }
   .scope-btn {
     flex: 0 0 auto;
+    padding: 6px 12px;
   }
   .result-hint {
     display: none;
   }
   .result-item {
     gap: 10px;
-    padding: 10px 6px;
+    padding: 10px;
   }
   .result-thumb {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     font-size: 16px;
   }
   .result-title {
@@ -1036,6 +1302,10 @@ onMounted(() => {
   .result-summary {
     -webkit-line-clamp: 3;
     line-clamp: 3;
+  }
+  .sk-thumb {
+    width: 48px;
+    height: 48px;
   }
 }
 </style>

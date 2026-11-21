@@ -735,10 +735,10 @@ onUnmounted(() => {
   }
 }
 
-/* 手机端：给固定底栏让位（底栏只在 ≤640px 显示，见 components/MobileTabBar.vue） */
+/* 手机端：给悬浮 Dock 让位（Dock 高 58 + 下边距 10 + 间隙 16，见 components/MobileTabBar.vue） */
 @media (max-width: 640px) {
   .user-content {
-    padding-bottom: calc(56px + env(safe-area-inset-bottom) + 16px);
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
   }
 }
 </style>

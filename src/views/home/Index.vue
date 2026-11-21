@@ -1,17 +1,16 @@
 <template>
   <div class="home">
-    <!-- 公告 -->
+    <!-- 公告：单行横幅，内容轮播；右侧短条指示器 -->
     <div
       v-if="placards.length"
       class="placard-card"
       @mouseenter="pause"
       @mouseleave="resume"
     >
-      <div class="placard-head">
-        <i class="bi bi-megaphone"></i>
-        <span class="placard-title">公告</span>
-      </div>
-      <div class="placard-carousel">
+      <span class="placard-icon"><i class="bi bi-megaphone" /></span>
+      <span class="placard-title">公告</span>
+      <span class="placard-divider" aria-hidden="true" />
+      <div class="placard-body">
         <transition name="placard-fade" mode="out-in">
           <span
             :key="current.id"
@@ -27,15 +26,15 @@
             />
           </span>
         </transition>
-        <div v-if="placards.length > 1" class="placard-dots">
-          <button
-            v-for="(p, i) in placards"
-            :key="p.id"
-            class="placard-dot-btn"
-            :class="{ 'is-active': i === index }"
-            @click="goTo(i)"
-          />
-        </div>
+      </div>
+      <div v-if="placards.length > 1" class="placard-dots">
+        <button
+          v-for="(p, i) in placards"
+          :key="p.id"
+          class="placard-dot-btn"
+          :class="{ 'is-active': i === index }"
+          @click="goTo(i)"
+        />
       </div>
     </div>
 
@@ -43,7 +42,7 @@
     <button v-if="userStore.isLogged" type="button" class="compose" @click="composeOpen = true">
       <img class="compose-avatar" :src="composeAvatar" :alt="composeName" loading="lazy" />
       <span class="compose-placeholder">分享此刻的想法…</span>
-      <span class="btn btn-primary btn-sm">发布动态</span>
+      <span class="btn btn-primary btn-sm compose-btn"><i class="bi bi-pencil-square" /> 发布动态</span>
     </button>
 
     <RouterLink
@@ -62,29 +61,30 @@
     <!-- 发现：文章与动态按时间混排 -->
     <SectionTitle title="发现">
       <template #extra>
-        <div class="feed-filter" role="tablist" aria-label="内容类型">
-          <button
-            v-for="item in FILTERS"
-            :key="item.key"
-            type="button"
-            role="tab"
-            class="feed-filter-item"
-            :class="{ 'is-active': filter === item.key }"
-            :aria-selected="filter === item.key"
-            @click="switchFilter(item.key)"
-          >
-            {{ item.label }}
-          </button>
+        <div class="feed-extra">
+          <span class="feed-summary">{{ summaryText }}</span>
+          <div class="feed-filter" role="tablist" aria-label="内容类型">
+            <button
+              v-for="item in FILTERS"
+              :key="item.key"
+              type="button"
+              role="tab"
+              class="feed-filter-item"
+              :class="{ 'is-active': filter === item.key }"
+              :aria-selected="filter === item.key"
+              @click="switchFilter(item.key)"
+            >
+              {{ item.label }}
+            </button>
+          </div>
         </div>
       </template>
     </SectionTitle>
 
-    <p class="feed-summary">{{ summaryText }}</p>
-
     <div class="feed">
-      <!-- 首屏骨架 -->
+      <!-- 首屏骨架：首页卡片不带封面图，骨架也不画封面块，避免加载完跳一下 -->
       <template v-if="loading && !items.length">
-        <ArticleSkeleton v-for="i in 3" :key="'skeleton-' + i" :cover="i % 2 === 1" />
+        <ArticleSkeleton v-for="i in 3" :key="'skeleton-' + i" :cover="false" />
       </template>
 
       <!-- 混排列表：文章与动态都用动态卡片风格（文章显示正文片段 + 查看更多） -->
@@ -376,9 +376,9 @@ async function loadPlacards() {
 
 // ============ 发现页数据 ============
 const summaryText = computed(() => {
-  if (filter.value === 'article') return `共 ${totals.article} 篇文章`
-  if (filter.value === 'moment') return `共 ${totals.moment} 条动态`
-  return `文章 ${totals.article} 篇 · 动态 ${totals.moment} 条，按时间混排`
+  if (filter.value === 'article') return `${totals.article} 篇文章`
+  if (filter.value === 'moment') return `${totals.moment} 条动态`
+  return `文章 ${totals.article} · 动态 ${totals.moment}`
 })
 
 const emptyText = computed(() => {
@@ -560,61 +560,91 @@ onBeforeUnmount(() => {
   padding-bottom: 32px;
 }
 
-/* 公告模块 */
+/* 公告：单行横幅（图标 + 标签 + 轮播内容 + 短条指示器） */
 .placard-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 14px 16px;
-  margin-bottom: 24px;
-}
-.placard-head {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
+  padding: 9px 14px;
+  margin-bottom: 16px;
+  /* 左侧一层极淡的朱砂底色，强调但不抢正文 */
+  background: linear-gradient(90deg, var(--accent-wash), transparent 42%), var(--bg-card);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.placard-card:hover {
+  border-color: var(--primary-soft);
+  box-shadow: var(--shadow);
+}
+/* 图标：小方块底色，与站内 tag / 徽标同一套圆角 */
+.placard-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
   font-size: 14px;
+  color: var(--primary);
+  background: var(--accent-soft);
+  border-radius: var(--radius-sm);
+}
+.placard-title {
+  flex-shrink: 0;
+  font-size: 13px;
   font-weight: 600;
   color: var(--text);
-  margin-bottom: 10px;
+  letter-spacing: 0.02em;
 }
-.placard-head .bi {
-  color: var(--primary);
+.placard-divider {
+  flex-shrink: 0;
+  width: 1px;
+  height: 14px;
+  background: var(--border);
 }
-.placard-carousel {
+.placard-body {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  min-height: 22px;
+  flex: 1;
+  min-width: 0;
 }
 .placard-link {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 8px;
   flex: 1;
   min-width: 0;
   font-size: 13px;
   color: var(--text-soft);
-  text-decoration: none;
   line-height: 1.6;
+  cursor: pointer;
 }
-.placard-link:hover {
+.placard-link:hover .placard-name {
   color: var(--primary);
 }
 /* 类型圆点：颜色由 utils/placard.js 的行内样式给出（避免各页面配色漂移） */
 .placard-dot {
   flex-shrink: 0;
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  margin-top: 6px;
   background: var(--primary);
 }
 .placard-name {
-  font-weight: 500;
   flex-shrink: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--text);
+  transition: color var(--dur) var(--ease);
 }
 .placard-content {
+  flex: 1;
+  min-width: 0;
   color: var(--text-muted);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -624,25 +654,30 @@ onBeforeUnmount(() => {
   display: inline;
   margin: 0;
 }
+/* 指示器：短条，当前项拉长 —— 比小圆点更易瞄准 */
 .placard-dots {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 5px;
-  margin-left: 4px;
+  gap: 4px;
 }
 .placard-dot-btn {
   width: 6px;
   height: 6px;
   padding: 0;
   border: none;
-  border-radius: 50%;
+  border-radius: 999px;
   background: var(--text-muted);
-  opacity: 0.4;
+  opacity: 0.35;
   cursor: pointer;
-  transition: opacity 0.2s, background 0.2s;
+  transition: width var(--dur) var(--ease), opacity var(--dur) var(--ease),
+    background var(--dur) var(--ease);
+}
+.placard-dot-btn:hover {
+  opacity: 0.7;
 }
 .placard-dot-btn.is-active {
+  width: 16px;
   opacity: 1;
   background: var(--primary);
 }
@@ -684,10 +719,17 @@ onBeforeUnmount(() => {
   background: var(--primary);
 }
 
+/* 「发现」标题右侧：统计 + 筛选同一行，编号用等宽数字避免跳动 */
+.feed-extra {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
 .feed-summary {
-  margin: -6px 0 14px;
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--text-light, var(--text-muted));
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .feed {
@@ -708,6 +750,11 @@ onBeforeUnmount(() => {
 /* MomentItem 自带浅描边卡片：只补一层同款阴影，描边保留（跟随后台配色的 --line-soft） */
 .feed :deep(.moment-card) {
   box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--dur) var(--ease);
+}
+/* 悬停与文章卡片同一表现：只加阴影，不做位移（列表滚动时更稳） */
+.feed :deep(.moment-card:hover) {
+  box-shadow: var(--shadow);
 }
 
 /* 翻页时的轻提示：分页后旧内容会留到新数据回来为止，给个反馈避免「点了没反应」 */
@@ -832,17 +879,24 @@ onBeforeUnmount(() => {
   padding: 12px 16px;
   margin-bottom: 24px;
   background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
   color: var(--text-muted);
   font-family: inherit;
   font-size: 14px;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.2s;
+  transition: border-color var(--dur) var(--ease), box-shadow var(--dur) var(--ease),
+    transform var(--dur) var(--ease);
 }
 .compose:hover {
-  border-color: var(--primary);
+  border-color: var(--primary-soft);
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+}
+.compose:active {
+  transform: none;
 }
 .compose-avatar {
   flex-shrink: 0;
@@ -851,6 +905,7 @@ onBeforeUnmount(() => {
   border-radius: 50%;
   object-fit: cover;
   background: var(--bg-muted);
+  box-shadow: 0 0 0 2px var(--bg-card), 0 0 0 3px var(--border);
 }
 .compose-placeholder {
   flex: 1;
@@ -858,6 +913,14 @@ onBeforeUnmount(() => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* 右侧按钮：图标 + 文案，与 .btn 的 inline-flex 对齐 */
+.compose-btn {
+  flex-shrink: 0;
+  gap: 6px;
+}
+.compose-btn i {
+  font-size: 13px;
 }
 /* 未登录：整条即登录入口 */
 .compose-guest {
@@ -877,6 +940,25 @@ onBeforeUnmount(() => {
     padding: 10px 12px;
     margin-bottom: 18px;
     gap: 10px;
+  }
+  /* 窄屏：公告只留标题（摘要截断后没有信息量），统计数字让位给筛选 */
+  .placard-card {
+    gap: 8px;
+    padding: 8px 12px;
+    margin-bottom: 12px;
+  }
+  .placard-content,
+  .placard-divider {
+    display: none;
+  }
+  .placard-name {
+    max-width: none;
+  }
+  .feed-summary {
+    display: none;
+  }
+  .feed-extra {
+    gap: 0;
   }
 }
 </style>

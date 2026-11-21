@@ -976,10 +976,10 @@ onMounted(() => {
     max-width: min(140px, 42vw);
   }
   /* 手机端页脚：保留备案号一行（品牌 / 快捷链接 / 版权 / Powered by 收起），
-     底部留出固定 Tab Bar 的高度，避免备案号被挡住 */
+     底部留出悬浮 Dock 的高度（58 + 下边距 10 + 间隙 16），避免备案号被挡住 */
   .layout-footer {
     margin-top: 12px;
-    padding: 0 16px calc(72px + env(safe-area-inset-bottom));
+    padding: 0 16px calc(84px + env(safe-area-inset-bottom));
   }
   .footer-card {
     padding: 10px 14px;

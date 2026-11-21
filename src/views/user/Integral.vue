@@ -1,40 +1,39 @@
 <template>
   <div class="integral-page">
     <!-- 积分概览 -->
-    <div class="card card-pad">
-      <div class="balance">
+    <section class="card card-pad">
+      <div class="balance-top">
         <div class="balance-main">
           <span class="balance-label">当前积分</span>
           <strong class="balance-num">{{ summary.integral }}</strong>
+          <div class="today-row">
+            <span class="today-pill is-plus">今日 +{{ summary.today_income }}</span>
+            <span class="today-pill is-minus">今日 -{{ summary.today_expense }}</span>
+          </div>
         </div>
-        <router-link to="/goods" class="balance-link">
+        <RouterLink to="/goods" class="balance-link">
           积分商城 <i class="bi bi-arrow-right" aria-hidden="true" />
-        </router-link>
+        </RouterLink>
       </div>
 
       <dl class="balance-stats">
         <div class="balance-stat">
-          <dt>今日获得</dt>
-          <dd class="plus">+{{ summary.today_income }}</dd>
-        </div>
-        <div class="balance-stat">
-          <dt>今日消耗</dt>
-          <dd class="minus">-{{ summary.today_expense }}</dd>
-        </div>
-        <div class="balance-stat">
           <dt>累计获得</dt>
-          <dd>{{ summary.total_income }}</dd>
+          <dd class="is-plus">{{ summary.total_income }}</dd>
         </div>
         <div class="balance-stat">
           <dt>累计消耗</dt>
-          <dd>{{ summary.total_expense }}</dd>
+          <dd class="is-minus">{{ summary.total_expense }}</dd>
         </div>
       </dl>
-    </div>
+    </section>
 
     <!-- 卡密兑换 -->
-    <div v-if="isLogged" class="card card-pad">
-      <h3 class="section-title">卡密兑换</h3>
+    <section v-if="isLogged" class="card card-pad">
+      <header class="section-head">
+        <h3 class="section-title">卡密兑换</h3>
+        <span v-if="myCards.length" class="section-extra">{{ myCards.length }} 张待兑换</span>
+      </header>
 
       <div class="redeem-row">
         <FormInput
@@ -51,72 +50,90 @@
           type="button"
           class="btn btn-primary"
           :disabled="redeeming || !cardCode.trim()"
-          @click="redeem"
-        >{{ redeeming ? '兑换中...' : '立即兑换' }}</button>
+          @click="redeem">
+          {{ redeeming ? '兑换中...' : '立即兑换' }}
+        </button>
       </div>
       <p class="hint">不区分大小写，空格与连字符会被忽略；请勿向他人泄露卡密。</p>
 
       <!-- 我的待兑换卡密：签到等活动直接发到账号里的卡密在这里找回 -->
       <div v-if="myCards.length" class="mine-cards">
         <div class="mine-cards-head">
-          <span>我的待兑换卡密 {{ myCards.length }}</span>
+          <span>我的待兑换卡密</span>
           <button class="text-btn" type="button" :disabled="redeeming" @click="redeemAll">全部兑换</button>
         </div>
 
         <div v-for="item in myCards" :key="item.card_id || item.card" class="mine-card">
-          <code class="mine-card-code">{{ item.card }}</code>
+          <span class="mine-card-icon"><i class="bi bi-ticket-perforated" aria-hidden="true" /></span>
+          <div class="mine-card-main">
+            <code class="mine-card-code">{{ item.card }}</code>
+            <span class="mine-card-sub">
+              {{ cardSourceText(item.source) }}
+              <template v-if="item.expired"> · <em class="is-expired">已过期</em></template>
+            </span>
+          </div>
           <span class="mine-card-face">{{ item.value }} 积分</span>
-          <span v-if="item.source" class="mine-card-from">{{ cardSourceText(item.source) }}</span>
-          <span v-if="item.expired" class="mine-card-expired">已过期</span>
           <button
-            class="text-btn"
+            class="btn btn-sm btn-ghost mine-card-btn"
             type="button"
             :disabled="redeeming || item.expired"
-            @click="redeemCard(item)"
-          >兑换</button>
+            @click="redeemCard(item)">
+            兑换
+          </button>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- 今日任务进度 -->
-    <div v-if="isLogged" class="card card-pad">
-      <div class="section-head">
+    <!-- 今日任务 -->
+    <section v-if="isLogged" class="card card-pad">
+      <header class="section-head">
         <h3 class="section-title">今日任务</h3>
         <span class="section-extra">
           已完成 {{ tasks.done_count }}/{{ tasks.total_count }}
-          · 今日 +{{ tasks.today_income }}
           <template v-if="tasks.streak > 0"> · 连签 {{ tasks.streak }} 天</template>
         </span>
+      </header>
+
+      <div v-if="tasks.total_count" class="task-summary">
+        <span class="task-summary-value">+{{ tasks.today_income }}</span>
+        <span class="task-summary-label">今日已获得积分</span>
+        <span class="task-summary-progress">{{ donePercent }}%</span>
       </div>
+
       <div v-if="loadingTasks" class="is-loading"><span class="spinner" /> 加载中...</div>
       <ul v-else-if="taskList.length" class="task-list">
         <li v-for="t in taskList" :key="t.type" class="task-item" :class="{ 'is-done': t.done }">
-          <div class="task-row">
-            <span class="task-name">{{ t.name }}</span>
-            <span class="task-state">
-              {{ t.done ? '已完成' : (t.remain > 0 ? `+${t.remain} 积分` : '可继续') }}
-            </span>
-          </div>
-          <div class="task-progress">
-            <span class="task-bar"><span class="task-fill" :style="{ width: t.progress + '%' }" /></span>
-            <span class="task-count">
-              {{ t.today_count }}/{{ Number(t.daily_limit) > 0 ? t.daily_limit : '不限' }}
-            </span>
+          <span class="task-icon"><i :class="taskIcon(t)" aria-hidden="true" /></span>
+          <div class="task-main">
+            <div class="task-row">
+              <span class="task-name">{{ t.name }}</span>
+              <span class="task-state">
+                <template v-if="t.done">
+                  <i class="bi bi-check-circle-fill" aria-hidden="true" /> 已完成
+                </template>
+                <template v-else-if="Number(t.remain) > 0">还可 +{{ t.remain }}</template>
+                <template v-else>可继续</template>
+              </span>
+            </div>
+            <div class="task-progress">
+              <span class="task-bar"><span class="task-fill" :style="{ width: t.progress + '%' }" /></span>
+              <span class="task-count">{{ t.today_count }}/{{ Number(t.daily_limit) > 0 ? t.daily_limit : '不限' }}</span>
+            </div>
           </div>
         </li>
       </ul>
       <p v-else class="empty-text">暂无任务</p>
-    </div>
+    </section>
 
     <!-- 积分明细 -->
-    <div v-if="isLogged" class="card card-pad">
-      <div class="section-head">
+    <section v-if="isLogged" class="card card-pad">
+      <header class="section-head">
         <h3 class="section-title">积分明细</h3>
         <span v-if="logSummary" class="section-extra">
-          收入 <span class="plus">{{ logSummary.income }}</span>
-          · 支出 <span class="minus">{{ logSummary.expense }}</span>
+          收入 <span class="is-plus">{{ logSummary.income }}</span>
+          · 支出 <span class="is-minus">{{ logSummary.expense }}</span>
         </span>
-      </div>
+      </header>
 
       <div class="log-filter">
         <div class="chip-group">
@@ -126,71 +143,101 @@
             type="button"
             class="chip"
             :class="{ 'is-active': direction === opt.value }"
-            @click="setDirection(opt.value)"
-          >{{ opt.label }}</button>
+            @click="setDirection(opt.value)">
+            {{ opt.label }}
+          </button>
         </div>
-        <FormSelect variant="pill"
+        <FormSelect
           v-model="typeFilter"
+          variant="pill"
           :options="typeOptions"
           icon="bi bi-funnel"
           placeholder="全部类型"
-          @change="loadLogs" />
+          @change="setType" />
       </div>
 
-      <div v-if="loadingLogs" class="is-loading"><span class="spinner" /> 加载中...</div>
-      <div v-else-if="!logs.length" class="empty-text">暂无积分记录</div>
-      <table v-else class="log-table">
-        <thead>
-          <tr>
-            <th>说明</th>
-            <th class="log-num">变动</th>
-            <th class="log-time">时间</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="l in logs" :key="l.id">
-            <td class="log-desc">{{ l.description || typeName(l.type) }}</td>
-            <td class="log-num" :class="{ 'is-minus': Number(l.value) < 0 }">
-              {{ Number(l.value) > 0 ? '+' : '' }}{{ l.value }}
-            </td>
-            <td class="log-time">{{ formatTime(l.create_time) }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+      <ul v-if="loadingLogs" class="log-list" aria-hidden="true">
+        <li v-for="i in 4" :key="i" class="log-item is-skeleton">
+          <span class="log-icon skeleton-block" />
+          <div class="log-main">
+            <span class="skeleton-line" style="width: 44%" />
+            <span class="skeleton-line" style="width: 22%" />
+          </div>
+          <span class="skeleton-line" style="width: 40px" />
+        </li>
+      </ul>
+
+      <p v-else-if="!logRows.length" class="empty-text">暂无积分记录</p>
+
+      <template v-else>
+        <ul class="log-list">
+          <li v-for="row in logRows" :key="row.id" class="log-item">
+            <span class="log-icon"><i :class="row.icon" aria-hidden="true" /></span>
+            <div class="log-main">
+              <span class="log-title">{{ row.title }}</span>
+              <time class="log-time" :datetime="row.datetime" :title="row.timeFull">{{ row.timeAgo }}</time>
+            </div>
+            <span class="log-value" :class="{ 'is-minus': row.minus }">{{ row.valueText }}</span>
+          </li>
+        </ul>
+
+        <div class="log-more">
+          <button v-if="hasMore" class="btn btn-sm btn-ghost" :disabled="loadingMore" @click="loadMore">
+            {{ loadingMore ? '加载中...' : `加载更多（还有 ${restCount} 条）` }}
+          </button>
+          <span v-else class="log-end">已经到底啦</span>
+        </div>
+      </template>
+    </section>
   </div>
 </template>
 
 <script setup>
-import FormInput from '@/components/form/FormInput.vue'
-import FormSelect from '@/components/form/FormSelect.vue'
-import { ref, computed, onMounted } from 'vue'
+/**
+ * 我的积分（/user/integral）
+ *
+ * 性能要点：
+ *   1. 首屏只发 3 个请求（概览 / 今日任务 / 明细第一页），且并行；
+ *      「积分规则」只用于类型下拉的选项、「我的待兑换卡密」只影响卡密卡片，
+ *      都挪到空闲时段加载（规则另有 30 分钟本地缓存），不占首屏关键路径。
+ *   2. 明细支持分页加载（原来只显示前 20 条、看不到更多），并用请求序号丢弃过期响应，
+ *      快速切换筛选不会出现「点了支出却闪回收入」的错乱。
+ *   3. 明细由表格改成列表：窄屏没有横向滚动，行内容在 computed 里一次算好。
+ *   4. 概览把「今日收支」提到主数字下面，累计收支降为次级信息，一眼看到重点。
+ */
+import { computed, onMounted, ref, watch } from 'vue'
 import { getIntegral, getIntegralLogs, getIntegralRules, getIntegralTasks, redeemIntegralCard } from '@/api/goods'
-// 我的待兑换卡密（签到等活动的奖励发到账号里，这里找回并兑换）
 import { getMyIntegralCards } from '@/api/integral'
 import { useUserStore } from '@/stores/user'
 import { toast } from '@/utils/toast'
+import { cache } from '@/utils/cache'
+import { formatTime, fromNow } from '@/utils/time'
+import FormInput from '@/components/form/FormInput.vue'
+import FormSelect from '@/components/form/FormSelect.vue'
 
 const userStore = useUserStore()
 const isLogged = computed(() => userStore.isLogged)
 
+// 积分规则缓存（只影响类型下拉选项，30 分钟内复用）
+const CACHE_KEY_RULES = 'user-integral-rules'
+const LOG_LIMIT = 20
+
 const summary = ref({ integral: 0, total_income: 0, total_expense: 0, today_income: 0, today_expense: 0 })
-// 获取途径列表（页面不再展示，仅用于「积分明细」的类型筛选下拉）
-const rules = ref([])
-const logs = ref([])
-const logSummary = ref(null)
 const tasks = ref({ list: [], today_income: 0, done_count: 0, total_count: 0, streak: 0 })
 
-const loadingLogs = ref(false)
 const loadingTasks = ref(false)
 
-// 卡密兑换
-const cardCode = ref('')
-const redeeming = ref(false)
-// 我的待兑换卡密（签到等活动发放的，后端状态=已发放）
-const myCards = ref([])
+/* ---------------- 积分明细 ---------------- */
 
-// 明细筛选
+const logs = ref([])
+const logSummary = ref(null)
+const loadingLogs = ref(false)
+const loadingMore = ref(false)
+const logPage = ref(1)
+const logCount = ref(0)
+// 请求序号：筛选切得快时，只认最后一次请求的结果
+let logReqId = 0
+
 const direction = ref('')
 const typeFilter = ref('')
 const directionOptions = [
@@ -199,7 +246,78 @@ const directionOptions = [
   { value: 'expense', label: '支出' }
 ]
 
+const hasMore = computed(() => logs.value.length < logCount.value)
+const restCount = computed(() => Math.max(0, logCount.value - logs.value.length))
+
+const donePercent = computed(() => {
+  const total = Number(tasks.value.total_count) || 0
+  if (!total) return 0
+  return Math.round((Number(tasks.value.done_count) / total) * 100)
+})
+
+// 类型 -> 图标（规则接口里没给图标时兜底）
+const TYPE_ICON = {
+  'check-in': 'bi bi-calendar-check',
+  login: 'bi bi-box-arrow-in-right',
+  'article-create': 'bi bi-file-earmark-text',
+  comment: 'bi bi-chat-dots',
+  moments: 'bi bi-chat-square-quote',
+  share: 'bi bi-share',
+  buy: 'bi bi-bag-check',
+  refund: 'bi bi-arrow-counterclockwise',
+  give: 'bi bi-gift',
+  card: 'bi bi-ticket-perforated',
+  unlock: 'bi bi-unlock',
+  tip: 'bi bi-send',
+  'tip-income': 'bi bi-inbox'
+}
+
+// 明细类型 -> 文案
+const TYPE_NAME = {
+  'check-in': '每日签到',
+  login: '每日登录',
+  'article-create': '发布文章',
+  comment: '发表评论',
+  moments: '发布动态',
+  share: '分享内容',
+  buy: '积分兑换',
+  refund: '订单退款',
+  give: '管理员积分调整',
+  card: '卡密兑换',
+  unlock: '兑换内容可见权限',
+  tip: '打赏支出',
+  'tip-income': '收到打赏'
+}
+
+const iconOf = (type) => TYPE_ICON[type] || 'bi bi-coin'
+
+function taskIcon(task) {
+  // 后端规则里的 icon 形如 bi-coin（不带 bi 前缀），两种写法都要兼容
+  const raw = String(task?.icon || '').trim()
+  if (raw) return raw.startsWith('bi ') ? raw : `bi ${raw}`
+  return iconOf(task?.type)
+}
+
+// 行数据一次算好：模板里不再逐行调用函数
+const logRows = computed(() =>
+  logs.value.map((item) => {
+    const value = Number(item.value) || 0
+    const time = Number(item.create_time) || 0
+    return {
+      id: item.id,
+      icon: iconOf(item.type),
+      title: item.description || TYPE_NAME[item.type] || '积分变动',
+      minus: value < 0,
+      valueText: `${value > 0 ? '+' : ''}${value}`,
+      timeAgo: fromNow(time),
+      timeFull: formatTime(time),
+      datetime: time ? new Date(time * 1000).toISOString() : ''
+    }
+  })
+)
+
 // 类型下拉选项：首项「全部类型」+ 规则类型 + 内置类型（按 value 去重）
+const rules = ref([])
 const typeOptions = computed(() => {
   const list = [{ value: '', label: '全部类型' }]
   const seen = new Set([''])
@@ -220,34 +338,6 @@ const typeOptions = computed(() => {
 
 const taskList = computed(() => tasks.value.list || [])
 
-const typeMap = {
-  'check-in': '每日签到',
-  'login': '每日登录',
-  'article-create': '发布文章',
-  'comment': '发表评论',
-  'moments': '发布动态',
-  'share': '分享内容',
-  'buy': '积分兑换',
-  'refund': '订单退款',
-  'give': '管理员积分调整',
-  'card': '卡密兑换',
-  'unlock': '兑换内容可见权限',
-  'tip': '打赏支出',
-  'tip-income': '收到打赏'
-}
-
-function typeName(t) {
-  return typeMap[t] || t || '积分变动'
-}
-
-function formatTime(t) {
-  if (!t) return '-'
-  const d = new Date(Number(t) * 1000)
-  if (isNaN(d)) return '-'
-  const p = (n) => String(n).padStart(2, '0')
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
-}
-
 async function loadSummary() {
   if (!isLogged.value) return
   try {
@@ -266,11 +356,13 @@ async function loadSummary() {
 }
 
 async function loadRules() {
+  if (rules.value.length) return
   try {
     const res = await getIntegralRules()
-    const data = Array.isArray(res.data) ? res.data : (res.data?.data || [])
+    const data = Array.isArray(res.data) ? res.data : res.data?.data || []
     data.sort((a, b) => Number(b.value) - Number(a.value))
     rules.value = data
+    cache.set(CACHE_KEY_RULES, data, 30)
   } catch {
     rules.value = []
   }
@@ -283,60 +375,83 @@ async function loadTasks() {
     const res = await getIntegralTasks()
     tasks.value = res.data || tasks.value
   } catch {
-    // 忽略
+    // 忽略：任务卡展示空列表即可
   } finally {
     loadingTasks.value = false
   }
 }
 
-async function loadLogs() {
+/**
+ * 明细加载
+ * @param {boolean} more 是否翻页（false = 重新从第一页拉，用于筛选变化 / 兑换后刷新）
+ */
+async function loadLogs(more = false) {
   if (!isLogged.value) return
-  loadingLogs.value = true
+
+  const reqId = ++logReqId
+  if (more) {
+    loadingMore.value = true
+  } else {
+    // 重新拉第一页（筛选变化 / 兑换后刷新）
+    logPage.value = 1
+    loadingLogs.value = true
+  }
+
   try {
-    const params = {}
+    const params = { page: more ? logPage.value : 1, limit: LOG_LIMIT }
     if (direction.value) params.direction = direction.value
     if (typeFilter.value) params.type = typeFilter.value
+
     const res = await getIntegralLogs(params)
-    logs.value = res.data?.data || []
+    // 期间又切了筛选：这次结果作废（否则会把新筛选的数据覆盖成旧的）
+    if (reqId !== logReqId) return
+
+    const items = res.data?.data || []
+    if (more) {
+      const seen = new Set(logs.value.map((item) => item.id))
+      logs.value = [...logs.value, ...items.filter((item) => !seen.has(item.id))]
+    } else {
+      logs.value = items
+    }
+
+    logCount.value = Number(res.data?.count) || logs.value.length
     logSummary.value = res.data?.summary || null
   } catch {
-    logs.value = []
-    logSummary.value = null
+    if (reqId !== logReqId) return
+    if (!more) {
+      logs.value = []
+      logSummary.value = null
+    }
   } finally {
-    loadingLogs.value = false
+    if (reqId === logReqId) {
+      loadingLogs.value = false
+      loadingMore.value = false
+    }
   }
 }
 
-function setDirection(v) {
-  if (direction.value === v) return
-  direction.value = v
+function loadMore() {
+  if (loadingLogs.value || loadingMore.value || !hasMore.value) return
+  logPage.value += 1
+  loadLogs(true)
+}
+
+function setDirection(value) {
+  if (direction.value === value) return
+  direction.value = value
   loadLogs()
 }
 
-// 卡密兑换：成功后刷新积分概览 / 明细 / 我的卡密
-async function redeem() {
-  const code = cardCode.value.trim()
-  if (!code) {
-    toast.warning('请输入卡密')
-    return
-  }
-  redeeming.value = true
-  try {
-    const res = await redeemIntegralCard(code)
-    const value = Number(res?.data?.value) || 0
-    toast.success(value > 0 ? `兑换成功，获得 ${value} 积分` : '兑换成功')
-    cardCode.value = ''
-    await Promise.all([loadSummary(), loadLogs(), loadMyCards()])
-  } catch {
-    // 失败原因（卡密不存在/已使用/已过期/尝试过于频繁等）已由请求拦截器统一提示
-  } finally {
-    redeeming.value = false
-  }
+function setType() {
+  loadLogs()
 }
 
-// ---------- 我的待兑换卡密（签到等活动发到账号里的） ----------
+/* ---------------- 卡密兑换 ---------------- */
 
-// 卡密来源（后端存的是奖励流水类型）
+const cardCode = ref('')
+const redeeming = ref(false)
+const myCards = ref([])
+
 const cardSourceMap = {
   'check-in': '签到获得'
 }
@@ -356,6 +471,31 @@ async function loadMyCards() {
   } catch {
     // 拿不到不影响页面其它部分
     myCards.value = []
+  }
+}
+
+// 兑换成功后刷新：概览 / 明细 / 待兑换卡密
+async function refreshAfterRedeem() {
+  await Promise.all([loadSummary(), loadLogs(), loadMyCards()])
+}
+
+async function redeem() {
+  const code = cardCode.value.trim()
+  if (!code) {
+    toast.warning('请输入卡密')
+    return
+  }
+  redeeming.value = true
+  try {
+    const res = await redeemIntegralCard(code)
+    const value = Number(res?.data?.value) || 0
+    toast.success(value > 0 ? `兑换成功，获得 ${value} 积分` : '兑换成功')
+    cardCode.value = ''
+    await refreshAfterRedeem()
+  } catch {
+    // 失败原因（卡密不存在/已使用/已过期/尝试过于频繁等）已由请求拦截器统一提示
+  } finally {
+    redeeming.value = false
   }
 }
 
@@ -390,15 +530,49 @@ async function redeemAll() {
   redeeming.value = false
   toast.success(success ? `已兑换 ${success} 张，共获得 ${income} 积分` : '没有可兑换的卡密')
 
-  await Promise.all([loadMyCards(), loadSummary(), loadLogs()])
+  await refreshAfterRedeem()
 }
 
-onMounted(() => {
+/* ---------------- 首屏调度 ---------------- */
+
+/**
+ * 规则 / 待兑换卡密：不影响首屏主内容，放到浏览器空闲时再拉
+ *
+ * 规则先读缓存（30 分钟），没有才请求；卡密每次都要新的（兑换后会变）。
+ */
+function loadSecondary() {
+  const cached = cache.get(CACHE_KEY_RULES)
+  if (Array.isArray(cached) && cached.length) rules.value = cached
+  else loadRules()
+
+  loadMyCards()
+}
+
+function scheduleSecondary() {
+  if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+    window.requestIdleCallback(loadSecondary, { timeout: 1200 })
+    return
+  }
+  setTimeout(loadSecondary, 120)
+}
+
+// 只在登录态就绪后启动一次（刷新时用户信息可能比页面晚一拍）
+let started = false
+
+function start() {
+  if (started || !isLogged.value) return
+  started = true
+
+  // 关键路径：概览 + 任务 + 明细第一页，三个请求并行
   loadSummary()
-  loadRules()
   loadTasks()
   loadLogs()
-  loadMyCards()
+  scheduleSecondary()
+}
+
+onMounted(start)
+watch(isLogged, (val) => {
+  if (val) start()
 })
 </script>
 
@@ -406,7 +580,7 @@ onMounted(() => {
 .integral-page {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 /* ---------- 通用小节 ---------- */
@@ -419,23 +593,24 @@ onMounted(() => {
   margin-bottom: 12px;
 }
 .section-title {
-  margin: 0 0 10px;
+  margin: 0;
   font-size: 14px;
   font-weight: 600;
   color: var(--text);
-}
-.section-head .section-title {
-  margin: 0;
 }
 .section-extra {
   font-size: 12px;
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
-.plus {
+.is-plus {
   color: var(--success);
 }
-.minus {
+.is-minus {
+  color: var(--danger);
+}
+.is-expired {
+  font-style: normal;
   color: var(--danger);
 }
 .hint {
@@ -444,7 +619,6 @@ onMounted(() => {
   line-height: 1.6;
   color: var(--text-light);
 }
-/* 文字按钮：列表行里的次级操作，不加边框和底色 */
 .text-btn {
   padding: 0;
   font-size: 12px;
@@ -464,9 +638,9 @@ onMounted(() => {
 }
 
 /* ---------- 概览 ---------- */
-.balance {
+.balance-top {
   display: flex;
-  align-items: flex-end;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
@@ -481,16 +655,39 @@ onMounted(() => {
   color: var(--text-muted);
 }
 .balance-num {
-  font-size: 30px;
+  font-size: 32px;
   font-weight: 600;
   line-height: 1.1;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
+.today-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.today-pill {
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.today-pill.is-plus {
+  background: rgba(47, 143, 91, 0.12);
+}
+.today-pill.is-minus {
+  background: rgba(217, 84, 77, 0.1);
+}
 .balance-link {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  margin-top: 2px;
   font-size: 12px;
   color: var(--text-muted);
   text-decoration: none;
@@ -501,11 +698,11 @@ onMounted(() => {
 }
 .balance-stats {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
   margin: 14px 0 0;
   padding-top: 12px;
-  border-top: 1px solid var(--border-soft);
+  border-top: 1px dashed var(--border-soft);
 }
 .balance-stat {
   display: flex;
@@ -519,8 +716,8 @@ onMounted(() => {
 }
 .balance-stat dd {
   margin: 0;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 15px;
+  font-weight: 600;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
@@ -533,32 +730,11 @@ onMounted(() => {
 .redeem-input {
   flex: 1;
   min-width: 0;
-  /* 与同排的兑换按钮等高 */
-  height: var(--control-h);
-  padding: 0 12px;
-  font-size: 13px;
-  font-family: inherit;
   letter-spacing: 1px;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  outline: none;
-  transition: border-color 0.2s;
-}
-.redeem-input:focus {
-  border-color: var(--primary);
 }
 .redeem-input::placeholder {
   letter-spacing: normal;
-  color: var(--text-light);
 }
-.redeem-input:disabled {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-
-/* ---------- 我的待兑换卡密（活动发放） ---------- */
 .mine-cards {
   margin-top: 14px;
   padding-top: 10px;
@@ -573,17 +749,34 @@ onMounted(() => {
   font-size: 12px;
   color: var(--text-muted);
 }
-/* 行式列表：靠分隔线分区，不再给每行加卡片底色和边框 */
 .mine-card {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-wrap: wrap;
-  padding: 7px 0;
+  padding: 8px 0;
   border-bottom: 1px dashed var(--border-soft);
 }
 .mine-card:last-child {
   border-bottom: none;
+}
+.mine-card-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-size: 13px;
+}
+.mine-card-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 .mine-card-code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -591,35 +784,90 @@ onMounted(() => {
   letter-spacing: 1px;
   color: var(--text);
   user-select: all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-.mine-card-face {
-  font-size: 12px;
-  color: var(--text-muted);
-}
-.mine-card-from {
-  font-size: 12px;
+.mine-card-sub {
+  font-size: 11px;
   color: var(--text-light);
 }
-.mine-card-expired {
-  font-size: 12px;
-  color: var(--danger);
+.mine-card-face {
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--primary-deep);
+  font-variant-numeric: tabular-nums;
 }
-.mine-card > .text-btn {
-  margin-left: auto;
+.mine-card-btn {
+  flex-shrink: 0;
 }
 
 /* ---------- 今日任务 ---------- */
+.task-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  margin-bottom: 10px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+}
+.task-summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary-deep);
+  font-variant-numeric: tabular-nums;
+}
+.task-summary-label {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+.task-summary-progress {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary-deep);
+  font-variant-numeric: tabular-nums;
+}
 .task-list {
   display: flex;
   flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
-/* 行式列表：只靠分隔线分区，不再一行一个卡片 */
 .task-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border-soft);
 }
 .task-item:last-child {
   border-bottom: none;
+}
+.task-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--bg-muted);
+  color: var(--text-soft);
+  font-size: 14px;
+}
+.task-item.is-done .task-icon {
+  background: rgba(47, 143, 91, 0.12);
+  color: var(--success);
+}
+.task-main {
+  flex: 1;
+  min-width: 0;
 }
 .task-row {
   display: flex;
@@ -636,9 +884,13 @@ onMounted(() => {
 }
 .task-state {
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   font-size: 12px;
   color: var(--text-light);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .task-item.is-done .task-state {
   color: var(--success);
@@ -649,10 +901,9 @@ onMounted(() => {
   gap: 8px;
   margin-top: 8px;
 }
-/* 3px 细线进度，单色，避免和任务文字抢视觉 */
 .task-bar {
   flex: 1;
-  height: 3px;
+  height: 4px;
   border-radius: 999px;
   background: var(--bg-muted);
   overflow: hidden;
@@ -663,6 +914,9 @@ onMounted(() => {
   border-radius: 999px;
   background: var(--primary);
   transition: width 0.3s;
+}
+.task-item.is-done .task-fill {
+  background: var(--success);
 }
 .task-count {
   flex-shrink: 0;
@@ -685,7 +939,6 @@ onMounted(() => {
   gap: 4px;
 }
 .chip {
-  /* 与同排的类型下拉等高 */
   display: inline-flex;
   align-items: center;
   height: var(--control-h-sm);
@@ -695,6 +948,7 @@ onMounted(() => {
   background: none;
   color: var(--text-muted);
   font-size: 12px;
+  font-family: inherit;
   line-height: 1.5;
   cursor: pointer;
   transition: color 0.18s, background 0.18s;
@@ -708,6 +962,100 @@ onMounted(() => {
   color: var(--text);
   font-weight: 600;
 }
+.log-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.log-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border-soft);
+}
+.log-item:last-child {
+  border-bottom: none;
+}
+.log-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--primary-deep);
+  font-size: 14px;
+}
+.log-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.log-title {
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.log-time {
+  font-size: 11px;
+  color: var(--text-light);
+}
+.log-value {
+  flex-shrink: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--success);
+  font-variant-numeric: tabular-nums;
+}
+.log-value.is-minus {
+  color: var(--danger);
+}
+.log-more {
+  display: flex;
+  justify-content: center;
+  padding-top: 12px;
+}
+.log-end {
+  font-size: 12px;
+  color: var(--text-light);
+}
+
+/* 骨架屏 */
+.is-skeleton {
+  pointer-events: none;
+}
+.skeleton-block {
+  background: var(--bg-muted);
+}
+.skeleton-line {
+  display: block;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--bg-muted);
+  animation: integral-skeleton 1.2s ease-in-out infinite;
+}
+.skeleton-line + .skeleton-line {
+  margin-top: 6px;
+}
+@keyframes integral-skeleton {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
 .is-loading {
   padding: 20px;
   text-align: center;
@@ -720,59 +1068,19 @@ onMounted(() => {
   font-size: 13px;
   color: var(--text-muted);
 }
-/* 明细表：去掉表头底色和整行 hover，只留细线，读起来更安静 */
-.log-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-.log-table th,
-.log-table td {
-  padding: 9px 0;
-  text-align: left;
-  border-bottom: 1px solid var(--border-soft);
-}
-.log-table thead th {
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--text-light);
-  border-bottom-color: var(--border);
-}
-.log-table tbody tr:last-child td {
-  border-bottom: none;
-}
-.log-table .log-desc {
-  padding-right: 12px;
-  color: var(--text-soft);
-}
-.log-table .log-num {
-  color: var(--success);
-  font-weight: 500;
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
-}
-.log-table .log-num.is-minus {
-  color: var(--danger);
-}
-.log-table .log-time {
-  color: var(--text-light);
-  white-space: nowrap;
-  text-align: right;
-}
-.log-table thead .log-time {
-  text-align: right;
-}
 
 @media (max-width: 640px) {
-  .balance-stats {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 10px 12px;
-  }
   .balance-num {
-    font-size: 26px;
+    font-size: 28px;
   }
-  .log-table .log-time {
+  .redeem-row {
+    flex-direction: column;
+  }
+  .mine-card-face {
     font-size: 12px;
+  }
+  .log-title {
+    font-size: 12.5px;
   }
 }
 </style>

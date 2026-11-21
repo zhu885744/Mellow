@@ -214,24 +214,25 @@ watch(
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 6px 2px 8px;
+  gap: 3px;
+  padding: 0 2px;
   color: var(--text-muted);
+  font-family: inherit;
   cursor: pointer;
-  transition: color 0.2s;
+  transition: color var(--dur) var(--ease);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
 .tab-icon {
-  font-size: 21px;
+  font-size: 20px;
   line-height: 1;
-  margin-bottom: 3px;
   /* 发布面板展开时「+」会转成「×」，这里给个过渡 */
-  transition: transform 0.18s ease;
+  transition: transform var(--dur) var(--ease);
 }
 .tab-label {
-  font-size: 11px;
+  font-size: 10px;
   line-height: 1;
-  letter-spacing: 1px;
+  letter-spacing: 0.06em;
 }
 .tab-badge {
   position: absolute;
@@ -251,7 +252,13 @@ watch(
   box-sizing: border-box;
 }
 .tab-item.is-active {
-  color: var(--danger);
+  color: var(--primary);
+}
+.tab-item.is-active .tab-icon {
+  transform: translateY(-1px);
+}
+.tab-item.is-active .tab-label {
+  font-weight: 600;
 }
 /* 中间「发布」按钮：圆形大按钮（无文字标签，在格子内垂直居中） */
 .tab-item.highlight {
@@ -296,7 +303,8 @@ watch(
   position: fixed;
   left: 12px;
   right: 12px;
-  bottom: calc(56px + env(safe-area-inset-bottom) + 10px);
+  /* Dock 顶边（10 + 58）+ 凸出的圆钮（10）+ 间隙，落在圆钮上方 */
+  bottom: calc(86px + env(safe-area-inset-bottom));
   z-index: 202;
   /* 两个入口一行两个（原来 flex column 各占一行，手机上显得很空）。
      用 minmax(0, 1fr) 而不是 1fr：避免长文案把列撑宽。 */
@@ -305,7 +313,7 @@ watch(
   gap: 6px;
   padding: 6px;
   border: 1px solid var(--border-soft);
-  border-radius: 4px;
+  border-radius: var(--radius-lg);
   background: var(--bg-card);
   box-shadow: var(--shadow-md);
 }
@@ -384,36 +392,57 @@ watch(
   }
 }
 
-/* ---------- 手机端：固定到底部 ---------- */
+/* ---------- 手机端：悬浮 Dock ----------
+ * 胶囊形 + 半透明毛玻璃，浮在内容之上（不再贴屏幕底边）；
+ * 中间「发布」是独立圆钮，向上凸出 Dock 上沿。
+ * 页面底部让位：MainLayout / user/Layout 的页脚、Profile 的保存条都按
+ * 「Dock 高 58 + 下边距 10 + 间隙」预留，改动尺寸时一并调整。
+ */
 @media (max-width: 640px) {
   .mobile-tabbar {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    left: 50%;
+    bottom: calc(10px + env(safe-area-inset-bottom));
     z-index: 200;
     display: flex;
-    align-items: stretch;
-    justify-content: space-around;
-    height: calc(56px + env(safe-area-inset-bottom));
-    padding-bottom: env(safe-area-inset-bottom);
-    background: var(--bg-card);
-    border-top: 1px solid var(--border-soft);
-    box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.04);
+    align-items: center;
+    width: calc(100% - 24px);
+    max-width: 460px;
+    height: 58px;
+    padding: 0 6px;
+    transform: translateX(-50%);
+    background: var(--bg-overlay);
+    border: 1px solid var(--border-soft);
+    border-radius: 999px;
+    box-shadow: 0 10px 28px rgba(40, 34, 26, 0.16), 0 2px 6px rgba(40, 34, 26, 0.05);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
   }
   .tab-item {
-    padding-top: 8px;
+    height: 100%;
   }
-  .tab-item.is-active::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 22px;
-    height: 3px;
-    border-radius: 0 0 3px 3px;
-    background: var(--danger);
+  /* 中间发布键：凸出上沿 12px，白圈把圆钮和毛玻璃 Dock 分开 */
+  .tab-item.highlight {
+    flex: 0 0 auto;
+    width: 54px;
+    height: 54px;
+    margin: 0 2px;
+    padding: 0;
+    transform: translateY(-12px);
+  }
+  .tab-item.highlight .tab-icon {
+    width: 54px;
+    height: 54px;
+    margin: 0;
+    font-size: 25px;
+    border-radius: 50%;
+    border: 3px solid var(--bg-card);
+    box-shadow: 0 6px 16px var(--accent-glow);
+  }
+  /* 角标贴着图标右上角，位置随 Dock 高度收紧 */
+  .tab-badge {
+    top: 9px;
+    left: calc(50% + 8px);
   }
 }
 </style>

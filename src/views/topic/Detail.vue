@@ -115,7 +115,8 @@
             </div>
 
             <MomentItem v-if="row.type === 'moments'" :moment="row.item" @delete="loadContent" />
-            <ArticleCard v-else :article="row.item" :abstract-limit="50" />
+            <!-- 文章卡片与首页「发现」流同款（作者头部 + 标题 + 正文片段 + 互动栏） -->
+            <ArticleFeedItem v-else :article="row.item" :like-state="articleLikeStates[row.item.id]" />
           </div>
 
           <EmptyState
@@ -191,10 +192,10 @@ import FormInput from '@/components/form/FormInput.vue'
  * 正文里的 #话题# 由后端规范化为 #[话题名](/topic/id)（见 app/model/topics.go），
  * 动态 / 文章里的链接都会回到这里。
  */
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import ArticleCard from '@/components/ArticleCard.vue'
+import ArticleFeedItem from '@/components/ArticleFeedItem.vue'
 import MomentItem from '@/components/MomentItem.vue'
 import Pagination from '@/components/Pagination.vue'
 import EmptyState from '@/components/EmptyState.vue'
@@ -211,6 +212,7 @@ import {
 } from '@/api/topics'
 import { useUserStore } from '@/stores/user'
 import { uploadAttachments } from '@/api/attachment'
+import { likeStates } from '@/api/tags'
 import AttachmentLibrary from '@/components/AttachmentLibrary.vue'
 import { isAdmin, copyText } from '@/utils/helper'
 import { toast } from '@/utils/toast'
@@ -242,6 +244,27 @@ const limit = 10
 const followBusy = ref(false)
 
 const currentList = computed(() => (tab.value === 'moments' ? moments.value : articles.value))
+
+/* ---------- 文章卡片的批量点赞状态 ----------
+ * 与首页同一套做法：拿到一页文章后批量查一次，再通过 like-state 下发给卡片，
+ * 避免每张卡片挂载后各自请求 is-liked / counts（一页 10 条就是 10 个请求）。
+ */
+const articleLikeStates = reactive({})
+
+async function loadArticleLikeStates(list) {
+  const ids = list.map((item) => Number(item.id)).filter(Boolean)
+  if (!ids.length) return
+
+  try {
+    const res = await likeStates('article', ids)
+    const states = res?.data?.states || {}
+    Object.entries(states).forEach(([id, state]) => {
+      articleLikeStates[id] = state
+    })
+  } catch {
+    // 批量失败不阻塞列表：卡片会退化成自己查一次（见 ArticleFeedItem 的 onMounted）
+  }
+}
 
 // 统一成一种行结构，便于同一个模板里渲染「主持人操作条 + 不同类型的内容卡片」
 const rows = computed(() =>
@@ -296,6 +319,8 @@ async function loadContent() {
       moments.value = list
       articles.value = []
     } else {
+      // 先备好点赞状态再渲染，否则卡片挂载后会先各自查一次
+      await loadArticleLikeStates(list)
       articles.value = list
       moments.value = []
     }

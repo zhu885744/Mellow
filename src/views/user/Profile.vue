@@ -1172,9 +1172,9 @@ watch(() => userStore.user, (nu) => {
   }
 }
 @media (max-width: 640px) {
-  /* 给固定底栏 + 安全区让位，保存条别被 TabBar 压住 */
+  /* 给悬浮 Dock + 凸出的发布圆钮让位（Dock 顶边 68 + 间隙），保存条别被压住 */
   .save-bar {
-    bottom: calc(56px + env(safe-area-inset-bottom) + 10px);
+    bottom: calc(82px + env(safe-area-inset-bottom));
   }
   .save-state {
     font-size: 11px;
